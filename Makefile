@@ -1,5 +1,5 @@
-AGENTS_DIR := .agents
-DIR_TARGETS := .claude .cursor .windsurf .agent .gemini
+AGENTS_DIR := skills
+DIR_TARGETS := .claude .cursor .windsurf .agent .gemini .agents
 
 MD_SOURCE := AGENTS.md
 MD_TARGETS := CLAUDE.md GEMINI.md
