@@ -22,18 +22,6 @@ cd ai-coding-tooling
 make link
 ```
 
-This will symlink:
-
-| Source | Target |
-|---|---|
-| `.agents/` | `.claude/` |
-| `.agents/` | `.cursor/` |
-| `.agents/` | `.windsurf/` |
-| `.agents/` | `.agent/` |
-| `.agents/` | `.gemini/` |
-| `AGENTS.md` | `CLAUDE.md` |
-| `AGENTS.md` | `GEMINI.md` |
-
 Existing files or symlinks are skipped — nothing is overwritten.
 
 ### 3. Set up global agent configuration
@@ -44,9 +32,17 @@ Open this project in Claude Code and run:
 /global-agent-setup
 ```
 
-This will symlink `AGENTS.global.md` to `~/.claude/CLAUDE.md` and install all global skills from the Tech Leads Club registry.
+This will symlink `AGENTS.global.md` to the agent's global config file and install all global skills.
 
-### 4. Remove symlinks
+### 4. Install extended skill files
+
+After the global skills are installed (step 3), link the extended skill files into the installed skill directories:
+
+```bash
+make link-extended
+```
+
+### 5. Remove symlinks
 
 ```bash
 make unlink

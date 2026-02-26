@@ -54,7 +54,7 @@ If the symlink creation fails, report the error and stop.
 
 ### Step 3: Install global skills
 
-Read the `# Global Skills` section in `AGENTS.global.md` (at the project root) and process each listed skill. Install them sequentially (not in parallel) so errors are easy to trace.
+Read `AGENTS.global.md` at the project root using the **Read tool** (not grep or bash) to ensure no lines are truncated. Extract every skill entry from the `# Global Skills` section. Process each skill sequentially (not in parallel) so errors are easy to trace.
 
 For each skill entry, check its `Source:` field and act accordingly:
 
@@ -63,22 +63,42 @@ For each skill entry, check its `Source:` field and act accordingly:
   npx @tech-leads-club/agent-skills install --skill <skill-name> --agent <agent> --global
   ```
 - **`Source: Native Claude Code skill`** → skip installation entirely; the skill is built into the agent. Log it as "skipped (native)".
-- **`Source: This project (...)`** → install via symlink from the project's `.agents/skills/` folder:
+- **`Source: This project (...)`** → install via symlink from the project's `skills/` folder:
   ```bash
-  ln -s "$(pwd)/.agents/skills/<skill-name>" ~/.claude/skills/<skill-name>
+  ln -s "$(pwd)/skills/<skill-name>" ~/.claude/skills/<skill-name>
   ```
   Skip if a symlink or folder already exists at that path (log as "skipped (already present)").
 - **Source unknown or missing** → skip and warn the user.
 
 If any individual install fails, report which skill failed and its error output, then continue with the remaining skills. Summarize all successes, skips, and failures at the end.
 
-### Step 4: Confirm completion
+### Step 4: Install extended skills
+
+After all global skills are installed, check for an `extended/` directory at the project root. If it exists, process each subdirectory inside it. Each subdirectory represents an extended version of an existing skill — its name matches the parent skill's name.
+
+For each `extended/<skill-name>/` directory:
+
+1. Verify the parent skill is already installed at `~/.claude/skills/<skill-name>/`. If not, look up the skill by name in the `# Global Skills` list already read in Step 3, determine its `Source:`, and install it using the same strategy as Step 3 before proceeding. If the parent cannot be found in the list, warn and skip.
+2. Symlink the `SKILL.md` from the extended folder into the installed skill directory as `SKILL.extended.md`:
+   ```bash
+   ln -s "$(pwd)/extended/<skill-name>/SKILL.md" ~/.claude/skills/<skill-name>/SKILL.extended.md
+   ```
+3. If the extended folder contains a `reference/` directory, symlink it into the installed skill directory:
+   ```bash
+   ln -s "$(pwd)/extended/<skill-name>/reference" ~/.claude/skills/<skill-name>/reference
+   ```
+4. Skip any symlink target that already exists (log as "skipped (already present)").
+
+If any individual symlink fails, report it and continue with the remaining extensions.
+
+### Step 5: Confirm completion
 
 Report to the user:
 
 - The agent targeted (e.g. `claude-code`)
 - The full symlink path (e.g. `~/.claude/CLAUDE.md -> /path/to/project/AGENTS.global.md`)
 - Which skills were installed successfully
+- Which extended skill files were symlinked
 - Any failures encountered
 
 ## Examples
@@ -92,7 +112,8 @@ Actions:
 2. Check `~/.claude/CLAUDE.md` → not found
 3. Create symlink from `$(pwd)/AGENTS.global.md` → `~/.claude/CLAUDE.md`
 4. Read `# Global Skills` section from `AGENTS.global.md`, identify each skill's `Source:` field, and apply the appropriate install strategy for each
-5. Report summary of installs, symlinks, and skips
+5. Process `extended/` directory — symlink `SKILL.md` as `SKILL.extended.md` and `reference/` into each parent skill's installed directory
+6. Report summary of installs, symlinks, and skips
 
 Result: CLAUDE.md symlinked, skills installed per their declared source.
 
