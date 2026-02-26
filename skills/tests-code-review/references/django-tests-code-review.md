@@ -1,6 +1,6 @@
 # Django / DRF Test Code Review Guide
 
-Supplements `test-review-checklist.md` and `python-test-review-guide.md` for projects using Django and Django REST Framework.
+Supplements `test-review-checklist.md` and `python-tests-code-review.md` for projects using Django and Django REST Framework.
 
 ---
 

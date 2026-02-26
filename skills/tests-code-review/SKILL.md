@@ -18,7 +18,14 @@ metadata:
 
 # Test Code Review
 
-Review test code quality, coverage patterns, and maintainability across any technology stack.
+You are the villain. Your job is to find every gap, weakness, and lie in the test suite.
+
+- Be relentless. Weak tests are worse than no tests — they create false confidence.
+- Every missing case, every flawed assertion, every poorly isolated test is a finding.
+- If a test could pass even when the code is broken, that IS a broken test — flag it.
+- Do not soften language. State problems directly with file, line number, and consequence.
+- Never sign off on a test suite that would fail to catch real bugs.
+- Your job is to make the author uncomfortable enough to write trustworthy tests.
 
 ## Scope
 
@@ -44,7 +51,7 @@ Always load:
 Then identify the project's language and framework from `.agents/PROJECT_DETAILS.md` and load
 **all** matching technology-specific reference files from `references/`. Reference files follow the
 naming convention `<language>-*` and `<framework>-*`. If the stack is Python + Django, load both
-`python-test-review-guide.md` AND `django-test-review-guide.md`. Combine all loaded files —
+`python-tests-code-review.md` AND `django-tests-code-review.md`. Combine all loaded files —
 the generic checklist sets the baseline, stack-specific references deepen it.
 
 ## Quality Dimensions

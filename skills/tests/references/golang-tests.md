@@ -1,7 +1,7 @@
 # Go Testing Guide
 
 Applies to: Go projects using the standard `testing` package, optionally with `testify`.
-For Gin-specific handler testing, also load `gin-testing-guide.md`.
+For Gin-specific handler testing, also load `gin-tests.md`.
 
 ---
 

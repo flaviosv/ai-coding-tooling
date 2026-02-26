@@ -1,6 +1,6 @@
 # Gin Test Code Review Guide
 
-Supplements `test-review-checklist.md` and `golang-test-review-guide.md` for Go projects using the Gin HTTP framework.
+Supplements `test-review-checklist.md` and `golang-tests-code-review.md` for Go projects using the Gin HTTP framework.
 
 ---
 

@@ -27,11 +27,11 @@ Detect the project's tech stack from `.agents/PROJECT_DETAILS.md` (if present) o
 being edited. Then check both reference locations and load all matching files:
 
 1. **Parent skill's `reference/` directory** — contains language and framework-specific review
-   checklists (e.g. `golang-review-checklist.md`, `python-django-review-checklist.md`). Load every
+   checklists (e.g. `golang-code-review.md`, `python-django-code-review.md`). Load every
    file whose name matches the detected stack to inform style expectations.
 
 2. **This extension's `reference/` directory** — contains language and framework-specific coding
-   style guides (e.g. `go-coding-style.md`, `php-adobe-commerce-coding-style.md`). Load every file
+   style guides (e.g. `go-coding-guidelines.md`, `php-adobe-commerce-coding-guidelines.md`). Load every file
    that matches the detected stack.
 
 Reference files in both directories follow the naming convention `<language>-<framework>-*.md` or

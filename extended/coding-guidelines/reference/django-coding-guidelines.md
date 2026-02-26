@@ -1,13 +1,13 @@
 # Python + Django Coding Style Guide
 
-> Load this file together with `python-coding-style.md`. Rules here are additive and Django-specific.
+> Load this file together with `python-coding-guidelines.md`. Rules here are additive and Django-specific.
 
 ## Project Layout
 
 - Follow the standard Django app layout: `models.py`, `views.py`, `urls.py`, `serializers.py`, `admin.py`, `tests/`
 - Split large apps into sub-modules: `models/`, `views/`, `services/` — keep each file focused
 - Place business logic in `services.py` or a `services/` package, not in views or models
-- Keep `settings.py` clean — use `django-environ` or `django-configurations` for environment-based config
+- Use `django-environ` for simple environment variable loading with type coercion and `.env` file support. Use `django-configurations` when you need class-based settings with inheritance (e.g., `Base`, `Development`, `Production` classes). Do not use both together — pick one.
 - Use `apps.py` and `AppConfig.ready()` for signal registration — not module-level code
 
 ## Models
@@ -22,11 +22,13 @@
 
 ## Views and URLs
 
-- Prefer class-based views (CBVs) for standard CRUD; use function-based views (FBVs) for simple one-off logic
+- Choose views based on clarity: FBVs are more explicit and easier to read, test, and debug — prefer them by default. Use CBVs (or DRF ViewSets) when the class hierarchy genuinely reduces repetition, such as shared authentication mixins across many views. Avoid Django's generic CBV mixins (`CreateView`, `UpdateView`) in APIs — the inheritance chains are opaque.
 - Name URL patterns explicitly — use `reverse()` or `reverse_lazy()`, never hardcode paths
 - Keep views thin: validate input, call a service, return a response
 - Use `LoginRequiredMixin` or `@login_required` for authentication; use `PermissionRequiredMixin` for authorization
 - Apply `@require_http_methods` on FBVs to restrict allowed HTTP methods explicitly
+- Always paginate list endpoints. Use DRF's `PageNumberPagination` or `CursorPagination` (prefer cursor-based for large, frequently updated datasets). Never return unbounded querysets in API responses.
+- Django 3.1+ supports async views: define views with `async def` for I/O-bound handlers. Use `sync_to_async` to wrap ORM calls inside async views (the ORM is synchronous by default). Avoid mixing sync and async callables without the adapters.
 
 ## Django REST Framework (DRF)
 
@@ -45,6 +47,15 @@
 - Use `.exists()` instead of `.count() > 0` or `bool(queryset)` for existence checks
 - Use `.values()` or `.values_list()` when you only need scalar data, not model instances
 - Wrap multi-step database operations in `transaction.atomic()` to preserve consistency
+- Use `select_for_update()` inside `transaction.atomic()` when reading a row with the intent to update it — this acquires a row-level lock and prevents concurrent modification race conditions
+- Use `F()` expressions for atomic field updates that reference the current value (`Inventory.objects.filter(pk=pk).update(quantity=F('quantity') - 1)`) — never read-modify-write a field in Python for concurrent updates
+- Use `Q()` objects for complex OR/AND filter conditions instead of chaining `.filter()` calls with Python logic
+
+## Type Safety
+
+- Use `django-stubs` with mypy (or `djangoext` with pyright) for type-safe ORM access
+- Annotate queryset return types with `QuerySet[ModelName]`
+- Use `Manager.from_queryset()` to define typed custom managers
 
 ## Templates and Static Files
 
@@ -52,6 +63,13 @@
 - Use template tags and filters for reusable presentation logic
 - Organize templates under `<app>/templates/<app>/` to namespace them correctly
 - Reference static files with `{% static %}` — never hardcode paths
+
+## Caching
+
+- Use Django's cache framework (`django.core.cache`) with a backend appropriate to your scale (Memcached or Redis)
+- Cache at the view level with `@cache_page` for public pages, or at the fragment level with the `cache` template tag
+- For per-user or permission-sensitive data, cache manually with explicit cache keys
+- Always define a cache invalidation strategy before adding a cache — stale data is worse than a slow page
 
 ## Security
 
@@ -62,7 +80,7 @@
 
 ## Anti-Patterns to Avoid
 
-- Do not put business logic in models — keep models as data containers with minimal behavior
+- Keep models as thin data containers: field definitions, `Meta`, `__str__`, and database-level constraints. Push orchestration logic (e.g., "create user if not exists, then send email") into services, not into model methods or managers.
 - Do not use `objects.all()` without a filter in a view — always paginate or scope the queryset
 - Do not use `request.POST` directly — always pass through a form or serializer for validation
 - Do not define signals in `models.py` — register them in `AppConfig.ready()`

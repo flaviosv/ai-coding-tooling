@@ -1,7 +1,7 @@
 # Gin Testing Guide
 
 Applies to: Go projects using the Gin HTTP framework.
-Load in addition to `golang-testing-guide.md`.
+Load in addition to `golang-tests.md`.
 
 ---
 

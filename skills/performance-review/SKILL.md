@@ -47,7 +47,7 @@ Then identify the project's language and framework from `.agents/PROJECT_DETAILS
 
 Reference files follow the naming convention `<language>-<framework>-*.md`. Load every file that
 matches the detected stack — for example, if the stack is Python + Django, load both
-`python-performance-best-practices.md` and `django-performance-best-practices.md`.
+`python-performance-review.md` and `django-performance-review.md`.
 
 Apply all loaded sources together — the generic checklist sets the baseline, technology-specific
 references deepen it.
@@ -106,7 +106,7 @@ User says: "Can you do a performance audit of the orders module?"
 
 1. Load `references/performance-checklist.md`
 2. Detect stack from `.agents/PROJECT_DETAILS.md` (e.g. Python + Django)
-3. Load ALL matching stack-specific files: `references/python-performance-best-practices.md` AND `references/django-performance-best-practices.md`
+3. Load ALL matching stack-specific files: `references/python-performance-review.md` AND `references/django-performance-review.md`
 4. Scan changed or scoped files for issues
 5. Produce a structured report written to `performance_review_report.md` with findings grouped by P0/P1/P2/P3
 

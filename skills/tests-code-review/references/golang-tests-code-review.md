@@ -1,7 +1,7 @@
 # Go Test Code Review Guide
 
 Supplements `test-review-checklist.md` for Go projects.
-For Gin-specific handler test review, also load `gin-test-review-guide.md`.
+For Gin-specific handler test review, also load `gin-tests-code-review.md`.
 
 ---
 

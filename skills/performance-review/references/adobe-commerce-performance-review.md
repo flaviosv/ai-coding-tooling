@@ -2,7 +2,7 @@
 
 Applies to: Adobe Commerce / Magento 2 (AC 2.4.x)
 
-> Covers Adobe Commerce / Magento 2 platform performance concerns only. PHP language performance patterns are covered in `php-performance-best-practices.md`.
+> Covers Adobe Commerce / Magento 2 platform performance concerns only. PHP language performance patterns are covered in `php-performance-review.md`.
 
 ---
 

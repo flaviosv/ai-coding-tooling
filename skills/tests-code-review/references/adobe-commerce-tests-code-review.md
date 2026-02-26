@@ -1,8 +1,8 @@
 # Adobe Commerce (Magento 2) Test Code Review Guide
 
-Supplements `test-review-checklist.md` and `php-test-review-guide.md` for projects using Adobe Commerce / Magento 2 (PHPUnit, Magento Integration Test Framework).
+Supplements `test-review-checklist.md` and `php-tests-code-review.md` for projects using Adobe Commerce / Magento 2 (PHPUnit, Magento Integration Test Framework).
 
-> Covers Adobe Commerce / Magento 2 testing concerns only. PHP testing patterns are covered in `php-test-review-guide.md`.
+> Covers Adobe Commerce / Magento 2 testing concerns only. PHP testing patterns are covered in `php-tests-code-review.md`.
 
 ---
 

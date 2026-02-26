@@ -13,3 +13,4 @@ See [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) for the full project conc
 # Available Skills
 
 - **global-agent-setup** (`skills/global-agent-setup/SKILL.md`): Sets up global agent configuration by symlinking `AGENTS.global.md` to the agent's global config file and installing all global skills from the Tech Leads Club registry. Use when the user says "setup global agent", "install global skills", "run global-agent-setup", "initialize agent global config", or "setup my agent globally". Source: This project (`ai-coding-tooling`).
+- **add-tech-reference** (`skills/add-tech-reference/SKILL.md`): Add technology-specific reference files across all skills in this project and extend any qualifying global skills. Use when the user says "add support for <technology>", "add a new technology reference", "add <tech> to the stack", or "onboard <framework>". Source: This project (`ai-coding-tooling`).

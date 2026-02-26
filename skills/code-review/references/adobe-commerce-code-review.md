@@ -1,8 +1,8 @@
 # Adobe Commerce (Magento 2) Code Review Checklist
 
-Supplements the generic `review-checklist.md` and `php-review-checklist.md` for projects using Adobe Commerce / Magento 2 (AC 2.4.x).
+Supplements the generic `review-checklist.md` and `php-code-review.md` for projects using Adobe Commerce / Magento 2 (AC 2.4.x).
 
-> Covers Adobe Commerce / Magento 2 platform concerns only. PHP language best practices are covered in `php-review-checklist.md`.
+> Covers Adobe Commerce / Magento 2 platform concerns only. PHP language best practices are covered in `php-code-review.md`.
 
 ---
 

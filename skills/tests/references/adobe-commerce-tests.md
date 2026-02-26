@@ -2,7 +2,7 @@
 
 Applies to: Adobe Commerce / Magento 2 projects using PHPUnit, Magento Integration Test Framework, and MFTF (AC 2.4.x).
 
-> Covers Adobe Commerce / Magento 2 testing patterns only. PHP testing setup and patterns are covered in `php-testing-guide.md`.
+> Covers Adobe Commerce / Magento 2 testing patterns only. PHP testing setup and patterns are covered in `php-tests.md`.
 
 ---
 

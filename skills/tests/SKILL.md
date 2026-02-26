@@ -49,7 +49,7 @@ Then load the reference files:
 3. Identify the project's language and framework from `.agents/PROJECT_DETAILS.md`
 4. Load **all** matching technology-specific reference files from `references/`. Reference files
    follow the naming convention `<language>-*` and `<framework>-*`. If the stack is Python + Django,
-   load both `python-testing-guide.md` AND `django-testing-guide.md`. Combine all loaded files.
+   load both `python-tests.md` AND `django-tests.md`. Combine all loaded files.
 
 ---
 
