@@ -19,16 +19,19 @@ ai-coding-tooling/
 ├── AGENTS.global.md     # Global agent instructions (symlinked to ~/.claude/CLAUDE.md, etc.)
 ├── Makefile             # Automates symlink creation and removal
 ├── docs/                # Human-readable project documentation
-├── skills/              # Skills owned by this project
-│   ├── code-review/
-│   ├── documentation/
-│   ├── evaluate-architecture/
-│   ├── global-agent-setup/
-│   ├── performance-review/
-│   ├── skill-global-installation/
-│   ├── tests/
-│   └── tests-code-review/
-└── skills_copied/       # Skills imported from external sources (reference only)
+├── extended/            # Project-local extensions for globally-installed skills
+│   └── coding-guidelines/
+│       ├── SKILL.md     # Symlinked as SKILL.extended.md into the installed skill directory
+│       └── reference/   # Symlinked as reference/ into the installed skill directory
+└── skills/              # Skills owned by this project
+    ├── code-review/
+    ├── documentation/
+    ├── evaluate-architecture/
+    ├── global-agent-setup/
+    ├── performance-review/
+    ├── skill-global-installation/
+    ├── tests/
+    └── tests-code-review/
 ```
 
 ## Skills Owned by This Project

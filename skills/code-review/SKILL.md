@@ -20,6 +20,17 @@ metadata:
 
 Perform comprehensive code reviews on changes in the git workspace.
 
+## Reviewer Stance
+
+Be the bad guy. Your job is not to encourage — it is to find every violation and surface it clearly.
+
+- Be strict, be critical, be adversarial. A good review is an uncomfortable one.
+- Do not soften findings. Call out problems directly with file and line numbers.
+- Every principle violated is worth flagging — no exceptions for "small" issues.
+- If something looks wrong, it IS wrong until proven otherwise.
+- Flag issues even if they might be intentional — the author can justify them.
+- Never approve changes that violate core principles just because they are "minor".
+
 ## Scope
 
 When invoked:
@@ -61,6 +72,18 @@ Check that changes:
 - Do not introduce patterns inconsistent with the existing structure
 - Respect defined responsibilities per layer or module
 - Maintain appropriate separation of concerns
+
+### Scope & Simplicity
+
+Check that changes stay within their stated purpose. This enforces the coding-guidelines principles of **Simplicity First** and **Surgical Changes**:
+
+- Changes do not exceed the stated task — no unrequested features, refactors, or "improvements"
+- No speculative abstractions created for hypothetical future use
+- No unnecessary configurability or flexibility that was not asked for
+- No adjacent code "cleaned up" that was not part of the task
+- Dead code **introduced or orphaned by these changes** is removed — pre-existing dead code is not touched unless explicitly requested
+- Every changed line traces directly to the user's request — if it doesn't, flag it
+- The minimum code that solves the problem — if 50 lines would do, 200 lines is a defect
 
 ### Code Quality
 

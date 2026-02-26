@@ -18,10 +18,13 @@
 Repository (single source of truth)
   ├── AGENTS.md  ──────────────────────► CLAUDE.md, GEMINI.md (project root)
   ├── AGENTS.global.md  ───────────────► ~/.claude/CLAUDE.md (global, via global-agent-setup)
-  └── skills/  ────────────────────────► .claude/skills/, .cursor/skills/, .gemini/skills/, etc.
+  ├── skills/  ────────────────────────► .claude/skills/, .cursor/skills/, .gemini/skills/, etc.
+  └── extended/<skill>/
+        ├── SKILL.md  ───────────────► ~/.claude/skills/<skill>/SKILL.extended.md
+        └── reference/  ─────────────► ~/.claude/skills/<skill>/reference/
 ```
 
-`make link` creates all project-level symlinks. `/global-agent-setup` handles the global ones.
+`make link` creates all project-level symlinks (including extended skill files). `/global-agent-setup` handles the global ones.
 
 ## Skill Sources
 
@@ -32,7 +35,14 @@ Skills come from two sources:
 | This project | `skills/<name>/` | Symlinked via `make link` or `skill-global-installation` |
 | Tech Leads Club | `~/.claude/skills/<name>/` | Installed via `npx @tech-leads-club/agent-skills` |
 
-Skills in `skills_copied/` are reference copies only — not installed or symlinked.
+## Extended Skills
+
+The `extended/` directory holds project-local additions to globally-installed skills. Each subdirectory name matches an installed skill. It may contain:
+
+- `SKILL.md` — loaded alongside the parent skill as `SKILL.extended.md`; adds stack-specific rules (e.g. language-specific coding style guides)
+- `reference/` — reference files (checklists, style guides) loaded by the skill at runtime based on the detected tech stack
+
+`make link-extended` symlinks these into the correct installed skill directories. It runs automatically as part of `make link`. `make unlink-extended` removes the symlinks.
 
 ## Key Workflows
 
@@ -51,6 +61,12 @@ Create skills/<name>/SKILL.md
 ### Installing a Tech Leads Club skill
 ```
 /skill-global-installation → npx @tech-leads-club/agent-skills install → CLAUDE.md updated
+```
+
+### Extending a globally-installed skill
+```
+Create extended/<skill-name>/SKILL.md (and/or reference/ files)
+  → make link-extended (or make link) symlinks them into ~/.claude/skills/<skill-name>/
 ```
 
 ## Design Principles

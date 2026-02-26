@@ -28,6 +28,9 @@ Guidelines for writing, maintaining, and running tests across any technology sta
 - Write tests alongside or immediately after implementation when adding features
 - Tests define success criteria and enable confident refactoring
 - Focus on meaningful tests over coverage metrics
+- **Tests are documentation** — a test name and body should explain how the system is meant to work, without needing comments
+- A few well-written tests are better than many poorly written ones
+- If a test is hard to write, it signals a design problem in the production code — surface it
 
 ---
 
@@ -106,9 +109,14 @@ Before considering a feature or fix complete:
 - [ ] Edge cases covered (null, empty, boundary values, invalid input)
 - [ ] All tests passing
 - [ ] Coverage acceptable for critical paths
-- [ ] Test names clearly describe what they verify
+- [ ] Test names clearly describe the scenario AND the expected outcome — a failing name explains itself
 - [ ] Tests are independent and do not rely on execution order
 - [ ] No flaky patterns (sleeps, random state, time-dependent assertions)
+- [ ] Arrange-Act-Assert structure is visible in each test
+- [ ] Mocks only cover external dependencies — do NOT mock the unit under test
+- [ ] Mock setup is minimal — over-mocking hides real behaviour
+- [ ] Common setup is extracted into helpers — not copy-pasted across tests
+- [ ] Test code reads as documentation of how the system is meant to work
 
 ---
 
