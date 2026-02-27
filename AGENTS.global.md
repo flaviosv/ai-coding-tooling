@@ -36,3 +36,8 @@ These files are maintained by the **evaluate-architecture** skill. If they are m
 - **tests** (`skills/tests/SKILL.md`): Write and maintain tests for any project. Covers unit tests, integration tests, TDD practices, and code coverage analysis. Technology agnostic. Use when the user says "write tests", "add tests", "missing tests", "TDD", "test coverage", "unit test", or "integration test". Source: This project (`ai-coding-tooling`).
 - **tests-code-review** (`skills/tests-code-review/SKILL.md`): Review test code quality, coverage patterns, and maintainability. Technology agnostic. Use when the user says "review tests", "test code review", "check tests", or "review test coverage". Do NOT use for writing new tests or reviewing implementation code. Source: This project (`ai-coding-tooling`).
 - **add-tech-reference** (`skills/add-tech-reference/SKILL.md`): Add technology-specific reference files across all skills in this project and extend any qualifying global skills. Use when the user says "add support for <technology>", "add a new technology reference", "add <tech> to the stack", or "onboard <framework>". Source: This project (`ai-coding-tooling`).
+
+## Plan Mode
+
+- Make the plan extremely concise. Sacrifice grammar for the sake of concision.
+- At the end of each plan, give me a list of unresolved questions to answer, if any.
