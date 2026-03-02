@@ -16,15 +16,18 @@ This is a local setup tool for the `ai-coding-tooling` project. It is **not avai
 
 ### Step 0: Resolve the target agent
 
-If the user did not specify which agent to set up (e.g. did not say "for claude-code" or "for cursor"), ask:
+If the user did not specify which agent to set up, ask:
 
-> Which agent are you setting up for? (e.g. `claude-code`, `cursor`, `windsurf`)
+> Which agent are you setting up for? (e.g. `claude-code`, `gemini-cli`, `cursor`, `windsurf`)
 
-Wait for the answer before proceeding. Store it as `<agent>` for use in all subsequent steps.
+Wait for the answer before proceeding. Store it as `<agent>`.
 
-The global config file path depends on the agent:
-- `claude-code` → `~/.claude/CLAUDE.md`
-- Other agents → ask the user for the config file path if unknown.
+**Load agent-specific reference:** Check if a file exists at `skills/global-agent-setup/references/<agent>.md`. If it exists, read it now — it contains the config file path, skills directory, npx agent identifier, native skills to skip, and any agent-specific caveats. Use that information for all subsequent steps.
+
+If no reference file exists for the agent, ask the user for:
+- The global config file path (e.g. `~/.someagent/SOMEAGENT.md`)
+- The global skills directory path (e.g. `~/.someagent/skills/`)
+- The npx `--agent` identifier (e.g. `someagent`)
 
 ### Step 1: Check if the global config file already exists
 
@@ -40,9 +43,11 @@ If the output is `EXISTS`, **stop immediately** and report an error to the user:
 
 Do NOT proceed with any further steps if the file exists.
 
-### Step 2: Create the symlink
+### Step 2: Ensure required directories exist, then create the symlink
 
-Run:
+Some agents require their config directory and/or skills directory to be created first. Check the agent reference file — if it specifies a `mkdir` step, run it before symlinking.
+
+Then run:
 
 ```bash
 ln -s "$(pwd)/AGENTS.global.md" <config-path>
@@ -58,14 +63,14 @@ Read `AGENTS.global.md` at the project root using the **Read tool** (not grep or
 
 For each skill entry, check its `Source:` field and act accordingly:
 
-- **`Source: Tech Leads Club`** (or a techlead.club link) → install via npx:
+- **`Source: Tech Leads Club`** (or a techlead.club link) → install via npx using the agent identifier from the reference file:
   ```bash
-  npx @tech-leads-club/agent-skills install --skill <skill-name> --agent <agent> --global
+  npx @tech-leads-club/agent-skills install --skill <skill-name> --agent <npx-agent-id> --global
   ```
-- **`Source: Native Claude Code skill`** → skip installation entirely; the skill is built into the agent. Log it as "skipped (native)".
-- **`Source: This project (...)`** → install via symlink from the project's `skills/` folder:
+- **`Source: Native <agent> skill`** (or listed as native in the agent reference) → skip installation entirely; the skill is built into the agent. Log it as "skipped (native)".
+- **`Source: This project (...)`** → install via symlink from the project's `skills/` folder into the agent's skills directory:
   ```bash
-  ln -s "$(pwd)/skills/<skill-name>" ~/.claude/skills/<skill-name>
+  ln -s "$(pwd)/skills/<skill-name>" <skills-dir>/<skill-name>
   ```
   Skip if a symlink or folder already exists at that path (log as "skipped (already present)").
 - **Source unknown or missing** → skip and warn the user.
@@ -78,16 +83,21 @@ After all global skills are installed, check for an `extended/` directory at the
 
 For each `extended/<skill-name>/` directory:
 
-1. Verify the parent skill is already installed at `~/.claude/skills/<skill-name>/`. If not, look up the skill by name in the `# Global Skills` list already read in Step 3, determine its `Source:`, and install it using the same strategy as Step 3 before proceeding. If the parent cannot be found in the list, warn and skip.
+1. Verify the parent skill is already installed at `<skills-dir>/<skill-name>/`. If not, look up the skill by name in the `# Global Skills` list already read in Step 3, determine its `Source:`, and install it using the same strategy as Step 3 before proceeding. If the parent cannot be found in the list, warn and skip.
 2. Symlink the `SKILL.md` from the extended folder into the installed skill directory as `SKILL.extended.md`:
    ```bash
-   ln -s "$(pwd)/extended/<skill-name>/SKILL.md" ~/.claude/skills/<skill-name>/SKILL.extended.md
+   ln -s "$(pwd)/extended/<skill-name>/SKILL.md" <skills-dir>/<skill-name>/SKILL.extended.md
    ```
-3. If the extended folder contains a `reference/` directory, symlink it into the installed skill directory:
+3. If the extended folder contains a `reference/` directory, check whether `<skills-dir>/<skill-name>/reference` already exists (e.g. installed by npx). If it does, symlink as `reference.extended`; otherwise symlink as `reference`:
    ```bash
-   ln -s "$(pwd)/extended/<skill-name>/reference" ~/.claude/skills/<skill-name>/reference
+   # no collision:
+   ln -s "$(pwd)/extended/<skill-name>/reference" <skills-dir>/<skill-name>/reference
+   # collision with existing reference/:
+   ln -s "$(pwd)/extended/<skill-name>/reference" <skills-dir>/<skill-name>/reference.extended
    ```
 4. Skip any symlink target that already exists (log as "skipped (already present)").
+
+Refer to the agent reference file for any agent-specific notes on extended skill installation.
 
 If any individual symlink fails, report it and continue with the remaining extensions.
 
@@ -95,48 +105,56 @@ If any individual symlink fails, report it and continue with the remaining exten
 
 Report to the user:
 
-- The agent targeted (e.g. `claude-code`)
-- The full symlink path (e.g. `~/.claude/CLAUDE.md -> /path/to/project/AGENTS.global.md`)
+- The agent targeted
+- The full symlink path (e.g. `<config-path> -> /path/to/project/AGENTS.global.md`)
 - Which skills were installed successfully
 - Which extended skill files were symlinked
 - Any failures encountered
 
 ## Examples
 
-### Example 1: Agent specified upfront
+### Example 1: Known agent specified upfront
 
 User says: "Run global-agent-setup for claude-code"
 
 Actions:
-1. Agent is `claude-code`, config path is `~/.claude/CLAUDE.md`
-2. Check `~/.claude/CLAUDE.md` → not found
-3. Create symlink from `$(pwd)/AGENTS.global.md` → `~/.claude/CLAUDE.md`
-4. Read `# Global Skills` section from `AGENTS.global.md`, identify each skill's `Source:` field, and apply the appropriate install strategy for each
-5. Process `extended/` directory — symlink `SKILL.md` as `SKILL.extended.md` and `reference/` into each parent skill's installed directory
-6. Report summary of installs, symlinks, and skips
+1. Agent is `claude-code` → load `skills/global-agent-setup/references/claude-code.md`
+2. Config path is `~/.claude/CLAUDE.md`, skills dir is `~/.claude/skills/`, npx id is `claude-code`
+3. Check `~/.claude/CLAUDE.md` → not found
+4. Create symlink from `$(pwd)/AGENTS.global.md` → `~/.claude/CLAUDE.md`
+5. Read `# Global Skills` from `AGENTS.global.md`, install each per source
+6. Process `extended/` directory — symlink `SKILL.extended.md` and `reference/` per agent reference rules
+7. Report summary
 
-Result: CLAUDE.md symlinked, skills installed per their declared source.
+### Example 2: Known agent — Gemini CLI
 
-### Example 2: Agent not specified
-
-User says: "Run the global-agent-setup"
+User says: "Run global-agent-setup for gemini-cli"
 
 Actions:
-1. Ask: "Which agent are you setting up for? (e.g. `claude-code`, `cursor`, `windsurf`)"
-2. User responds: "cursor"
-3. Ask: "What is the global config file path for cursor?"
-4. User responds: "~/.cursor/config.md"
-5. Proceed with symlink and skill installation using `--agent cursor`
+1. Agent is `gemini-cli` → load `skills/global-agent-setup/references/gemini-cli.md`
+2. Config path is `~/.gemini/GEMINI.md`, skills dir is `~/.gemini/skills/`, npx id is `gemini`
+3. Reference specifies `mkdir -p ~/.gemini && mkdir -p ~/.gemini/skills` before symlinking
+4. Check `~/.gemini/GEMINI.md` → not found
+5. Run `mkdir -p ~/.gemini && mkdir -p ~/.gemini/skills`
+6. Create symlink, install skills, process extended skills
+7. Report summary
 
-Result: Config file symlinked, all skills installed for cursor.
+### Example 3: Unknown agent
 
-### Example 3: Config file already exists
+User says: "Run the global-agent-setup for cursor"
+
+Actions:
+1. Agent is `cursor` → no reference file found
+2. Ask user: config file path, skills directory, and npx `--agent` identifier
+3. Proceed with symlink and skill installation using provided values
+
+### Example 4: Config file already exists
 
 User says: "Setup global agent for claude-code"
 
 Actions:
-1. Agent is `claude-code`, config path is `~/.claude/CLAUDE.md`
-2. Check `~/.claude/CLAUDE.md` → EXISTS
+1. Load `references/claude-code.md`, config path is `~/.claude/CLAUDE.md`
+2. Check → EXISTS
 
 Result: Stop with error telling the user to remove the file manually first. Do not install any skills.
 
@@ -145,7 +163,7 @@ Result: Stop with error telling the user to remove the file manually first. Do n
 ### Error: config file already exists
 
 Cause: A previous setup was run or the user already has a global config file.
-Solution: Remove it manually (e.g. `rm ~/.claude/CLAUDE.md`) and re-run. Do not delete it automatically — it may contain important config.
+Solution: Remove it manually (e.g. `rm <config-path>`) and re-run. Do not delete it automatically — it may contain important config.
 
 ### Error: ln: file exists (symlink target collision)
 

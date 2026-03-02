@@ -29,7 +29,6 @@ When invoked, this skill updates one or more of:
 1. **Inline API Documentation** — annotations, docstrings, and comments in source files
 2. **Architecture Documentation** — `ARCHITECTURE.md`
 3. **Project Details** — `PROJECT_DETAILS.md`
-4. **Coding Style** — `CODING_STYLE.md`
 
 ---
 
@@ -82,7 +81,6 @@ Determine whether the changes affect any of the following files. Look for them i
 |------|-------------|
 | `ARCHITECTURE.md` | A new layer, component, pattern, or data flow was introduced or removed |
 | `PROJECT_DETAILS.md` | New dependencies, integrations, or environment variables were added or removed |
-| `CODING_STYLE.md` | A new convention, pattern, or formatting rule was introduced |
 | `README.md` / other `.md` files | Public-facing API, configuration, or usage behaviour changed |
 
 > If the project uses a `docs/` directory (symlinked into agent folders), edit files at their real source path (e.g. `docs/ARCHITECTURE.md`) rather than through the symlink.
@@ -136,8 +134,7 @@ If any file could not be updated (e.g. ambiguous change, insufficient context), 
 2. **Update inline docs** — annotate modified public symbols in source files
 3. **Update ARCHITECTURE.md** — if patterns, layers, or data flow changed
 4. **Update PROJECT_DETAILS.md** — if dependencies or environment config changed
-5. **Update CODING_STYLE.md** — if new conventions were introduced
-6. **Verify** — confirm all docs are consistent and complete
+5. **Verify** — confirm all docs are consistent and complete
 
 ---
 
