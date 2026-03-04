@@ -4,6 +4,12 @@ This is a global AGENTS.md file, with the intent to be reused across all the AI 
 
 # Directives
 
+## Coding Guidelines (Auto-Apply)
+
+Before writing, editing, or refactoring any code, **always** invoke the `coding-guidelines` skill.
+Do not wait to be asked. Load the skill, apply its rules, and use them as constraints for the entire task.
+This applies to all implementation work: new features, bug fixes, refactoring, and code changes of any kind.
+
 ## Project Context Files
 
 At the start of every session, if the following files exist in the project, read them before doing any work:
@@ -36,6 +42,14 @@ These files are maintained by the **evaluate-architecture** skill. If they are m
 - **tests** (`skills/tests/SKILL.md`): Write and maintain tests for any project. Covers unit tests, integration tests, TDD practices, and code coverage analysis. Technology agnostic. Use when the user says "write tests", "add tests", "missing tests", "TDD", "test coverage", "unit test", or "integration test". Source: This project (`ai-coding-tooling`).
 - **tests-code-review** (`skills/tests-code-review/SKILL.md`): Review test code quality, coverage patterns, and maintainability. Technology agnostic. Use when the user says "review tests", "test code review", "check tests", or "review test coverage". Do NOT use for writing new tests or reviewing implementation code. Source: This project (`ai-coding-tooling`).
 - **add-tech-reference** (`skills/add-tech-reference/SKILL.md`): Add technology-specific reference files across all skills in this project and extend any qualifying global skills. Use when the user says "add support for <technology>", "add a new technology reference", "add <tech> to the stack", or "onboard <framework>". Source: This project (`ai-coding-tooling`).
+
+## Skill Transparency
+
+Whenever a skill is invoked as part of executing a task, explicitly announce it to the user before running it. Use the format:
+
+> **Invoking skill:** `<skill-name>`
+
+Do this at every step where a skill is used — including auto-applied skills like `coding-guidelines`, skills triggered by other skills (e.g. `security-best-practices` loaded from within `code-review`), and any skill invoked mid-task. Never silently apply a skill without surfacing it to the user.
 
 ## Plan Mode
 

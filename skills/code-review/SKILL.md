@@ -56,6 +56,7 @@ Always load the following **mandatory** baseline checklists for every review:
 
 1. `references/review-checklist.md` — generic baseline covering architecture, code quality, documentation, security, and performance
 2. `references/clean-code-checklist.md` — clean code principles covering naming, functions, classes, control flow, side effects, and abstraction boundaries
+3. `references/solid-principles.md` — SOLID design principles covering SRP, OCP, LSP, ISP, DIP, and common cross-cutting smells
 
 Then identify the project's language and framework from `PROJECT_DETAILS.md` and load **all**
 matching technology-specific review checklists from `references/`. Reference files follow the naming
