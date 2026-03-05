@@ -40,3 +40,15 @@ matching file from both locations.
 
 If no matching reference file exists for the detected stack in either location, rely solely on the
 parent skill's behavioral guidelines.
+
+## SOLID Principles
+
+Always load `reference/solid-guidelines.md` from this extension's reference directory when writing or reviewing OOP-style code. Apply its rules proactively — treat SOLID violations as design defects, not style suggestions.
+
+Key checkpoints before completing any implementation task:
+
+1. **SRP**: Can you describe each new class/module in one sentence without "and"?
+2. **OCP**: Will adding the next variant require editing stable existing code?
+3. **LSP**: If subclassing, does the subclass honor the parent's full contract?
+4. **ISP**: Does the caller depend only on methods it actually uses?
+5. **DIP**: Is every volatile dependency (DB, HTTP, file system) injected rather than instantiated?

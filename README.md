@@ -89,6 +89,14 @@ personal/
 
 The `personal/` directory is gitignored — nothing inside it is tracked or committed.
 
+## Recommended MCP Servers
+
+| MCP Server | Purpose | Used by |
+|---|---|---|
+| **[Context7](https://context7.com)** | Fetches up-to-date documentation and code examples for any library. Provides authoritative raw material when generating technology-specific reference files. | `add-tech-reference` (Step 7) |
+
+Context7 is optional but strongly recommended. When available, `add-tech-reference` queries it for official documentation to ground reference files in current best practices rather than relying solely on LLM training data. If unavailable, the skill falls back to the agent's own knowledge.
+
 ### Source: [Tech Leads Club](https://techlead.club)
 
 Installed globally by `/global-agent-setup`. Treated as read-only — do not edit these directly:
