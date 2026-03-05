@@ -109,6 +109,12 @@
 - Implement `_isAllowed()` in admin controllers returning the ACL resource identifier
 - For programmatic authorization checks in services, inject `\Magento\Framework\AuthorizationInterface` and call `$this->authorization->isAllowed('Vendor_Module::resource')`
 
+## LESS / CSS
+
+- **Never use `darken()`, `lighten()`, or other LESS color functions** — Magento's LESS compiler (`less.php`) does not reliably resolve them, especially inside BEM `&:hover` blocks or when variables come from the compilation context rather than a local `@import`.
+- Instead, calculate the final hex value manually (e.g. `darken(#ffffff, 10%)` = `#e6e6e6`) and use the hardcoded value directly.
+- Do not add `@import (reference)` for Magento lib variables (`_lib.less`, `_responsive.less`) inside module `_extend.less` files — lib variables are injected by Magento's compilation pipeline automatically. Adding manual imports with `lib::css` paths will cause compiler errors.
+
 ## Anti-Patterns to Avoid
 
 - Do not use `ObjectManager` directly — use constructor injection or factories

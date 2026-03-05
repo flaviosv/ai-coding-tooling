@@ -1,14 +1,15 @@
 AGENTS_DIR := skills
 DOCS_DIR := docs
 EXTENDED_DIR := extended
+PERSONAL_DIR := personal
 DIR_TARGETS := .claude .cursor .windsurf .agent .gemini .agents
 
 MD_SOURCE := AGENTS.md
 MD_TARGETS := CLAUDE.md GEMINI.md
 
-.PHONY: link link-dirs link-md link-extended unlink unlink-dirs unlink-md unlink-extended
+.PHONY: link link-dirs link-md link-extended link-personal unlink unlink-dirs unlink-md unlink-extended unlink-personal
 
-link: link-dirs link-md link-extended
+link: link-dirs link-md link-extended link-personal
 
 link-dirs:
 	@for target in $(DIR_TARGETS); do \
@@ -66,7 +67,26 @@ link-extended:
 		fi; \
 	done
 
-unlink: unlink-dirs unlink-md unlink-extended
+link-personal:
+	@if [ ! -d "$(PERSONAL_DIR)" ]; then \
+		echo "SKIP: no $(PERSONAL_DIR)/ directory found"; \
+		exit 0; \
+	fi; \
+	for skill_dir in $(PERSONAL_DIR)/*/; do \
+		skill_name=$$(basename "$$skill_dir"); \
+		if [ ! -f "$$skill_dir/SKILL.md" ]; then \
+			echo "SKIP: $$skill_dir has no SKILL.md"; \
+			continue; \
+		fi; \
+		dest="$$HOME/.claude/skills/$$skill_name"; \
+		if [ -e "$$dest" ] || [ -L "$$dest" ]; then \
+			echo "SKIP: $$dest already exists"; \
+		else \
+			ln -s "$$(pwd)/$$skill_dir" "$$dest" && echo "LINKED: $$skill_dir -> $$dest"; \
+		fi; \
+	done
+
+unlink: unlink-dirs unlink-md unlink-extended unlink-personal
 
 unlink-dirs:
 	@for target in $(DIR_TARGETS); do \
@@ -89,6 +109,21 @@ unlink-md:
 		else \
 			echo "SKIP: $$target is not a symlink"; \
 		fi \
+	done
+
+unlink-personal:
+	@if [ ! -d "$(PERSONAL_DIR)" ]; then \
+		echo "SKIP: no $(PERSONAL_DIR)/ directory found"; \
+		exit 0; \
+	fi; \
+	for skill_dir in $(PERSONAL_DIR)/*/; do \
+		skill_name=$$(basename "$$skill_dir"); \
+		dest="$$HOME/.claude/skills/$$skill_name"; \
+		if [ -L "$$dest" ]; then \
+			rm "$$dest" && echo "REMOVED: $$dest"; \
+		else \
+			echo "SKIP: $$dest is not a symlink"; \
+		fi; \
 	done
 
 unlink-extended:

@@ -101,7 +101,24 @@ Refer to the agent reference file for any agent-specific notes on extended skill
 
 If any individual symlink fails, report it and continue with the remaining extensions.
 
-### Step 5: Confirm completion
+### Step 5: Install personal skills
+
+After extended skills are installed, check for a `personal/` directory at the project root. If it exists, scan it for subdirectories — each one is a personal (local-only) skill.
+
+For each `personal/<skill-name>/` directory:
+
+1. Check that `personal/<skill-name>/SKILL.md` exists. If not, skip and warn.
+2. Symlink the folder into the agent's skills directory:
+   ```bash
+   ln -s "$(pwd)/personal/<skill-name>" <skills-dir>/<skill-name>
+   ```
+3. Skip if a symlink or folder already exists at that path (log as "skipped (already present)").
+
+Label each installed personal skill as `Personal (local-only)` in the summary. These skills are gitignored and never listed in `AGENTS.global.md` — they are discovered dynamically at install time.
+
+If `personal/` does not exist, skip this step silently.
+
+### Step 6: Confirm completion
 
 Report to the user:
 
@@ -109,6 +126,7 @@ Report to the user:
 - The full symlink path (e.g. `<config-path> -> /path/to/project/AGENTS.global.md`)
 - Which skills were installed successfully
 - Which extended skill files were symlinked
+- Which personal skills were installed (labeled `Personal (local-only)`)
 - Any failures encountered
 
 ## Examples

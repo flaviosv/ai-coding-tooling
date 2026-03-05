@@ -43,6 +43,10 @@ These files are maintained by the **evaluate-architecture** skill. If they are m
 - **tests-code-review** (`skills/tests-code-review/SKILL.md`): Review test code quality, coverage patterns, and maintainability. Technology agnostic. Use when the user says "review tests", "test code review", "check tests", or "review test coverage". Do NOT use for writing new tests or reviewing implementation code. Source: This project (`ai-coding-tooling`).
 - **add-tech-reference** (`skills/add-tech-reference/SKILL.md`): Add technology-specific reference files across all skills in this project and extend any qualifying global skills. Use when the user says "add support for <technology>", "add a new technology reference", "add <tech> to the stack", or "onboard <framework>". Source: This project (`ai-coding-tooling`).
 
+## Personal Skills
+
+Skills in the `personal/` directory of `ai-coding-tooling` are auto-installed by `global-agent-setup` but are **not listed here** — they are local-only, gitignored, and discovered dynamically at install time. If you have personal skills installed, they will appear in your agent's skills directory alongside the global ones.
+
 ## Skill Transparency
 
 Whenever a skill is invoked as part of executing a task, explicitly announce it to the user before running it. Use the format:

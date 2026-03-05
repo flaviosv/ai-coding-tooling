@@ -75,6 +75,20 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 > - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the three context files that all agents read at the start of every session, ensuring consistent project understanding.
 > - **`add-tech-reference`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
 
+### Personal Skills (`personal/`)
+
+You can add private, local-only skills that are never committed to git. Create a `personal/` directory at the project root and add skill subdirectories inside it — each must contain a `SKILL.md` file following the same structure as `skills/`.
+
+```
+personal/
+  my-private-skill/
+    SKILL.md
+```
+
+`/global-agent-setup` and `make link` both auto-discover and install everything in `personal/` via symlink. Personal skills installed via `make link` are removed with `make unlink`. These skills are labeled `Personal (local-only)` in the `/global-agent-setup` install summary and are never listed in `AGENTS.global.md`.
+
+The `personal/` directory is gitignored — nothing inside it is tracked or committed.
+
 ### Source: [Tech Leads Club](https://techlead.club)
 
 Installed globally by `/global-agent-setup`. Treated as read-only — do not edit these directly:
