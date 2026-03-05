@@ -15,6 +15,10 @@ Use this as a baseline — technology-specific checklists extend this file.
 - [ ] Injection risks are mitigated (SQL, command, template, path traversal, etc.)
 - [ ] Dependencies used securely — no known-vulnerable patterns
 - [ ] Insecure defaults avoided (e.g. debug mode off, CORS not wildcard in production)
+- [ ] CSRF protection enforced on state-mutating endpoints
+- [ ] Resource ownership verified before acting — IDOR prevention (user A cannot access user B's data)
+- [ ] File uploads validated for type, size, and path — traversal and arbitrary write prevented
+- [ ] Dependency vulnerability scanning runs in CI — not just at install time
 
 ---
 
@@ -39,6 +43,8 @@ Use this as a baseline — technology-specific checklists extend this file.
 - [ ] Reusable abstractions used — no reimplementing functionality that already exists
 - [ ] API design is consistent (naming, response shape, status codes, error format)
 - [ ] Breaking changes are intentional and documented
+- [ ] Dependencies are injected — business logic does not construct concrete services or infrastructure objects inline
+- [ ] Middleware and interceptor responsibilities are narrow — each handles one cross-cutting concern and does not leak into adjacent layers
 
 ---
 
@@ -74,6 +80,7 @@ Aligns with the **Simplicity First** and **Surgical Changes** principles from co
 - [ ] Parameter types and return values described where not obvious from types
 - [ ] Inline comments explain *why*, not just *what*
 - [ ] `README` or usage docs updated if behaviour, configuration, or setup changed
+- [ ] Exceptions or errors that callers must handle are documented in the function signature or docstring
 
 ---
 
@@ -87,3 +94,5 @@ Aligns with the **Simplicity First** and **Surgical Changes** principles from co
 - [ ] No flaky test patterns (sleeps, random values, time-dependent assertions)
 - [ ] Test setup and teardown is clean — no leaked state between runs
 - [ ] Tests run fast — slow tests are marked or isolated
+- [ ] Both success and error paths are covered for every tested handler or function — not just the happy path
+- [ ] Response structure and payload content are asserted, not only status codes or return types

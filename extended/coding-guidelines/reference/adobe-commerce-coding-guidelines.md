@@ -2,125 +2,381 @@
 
 > Load this file together with `php-coding-guidelines.md`. Rules here are additive and Adobe Commerce-specific.
 
+---
+
 ## Module Structure
 
-- Follow the standard module layout: `Block/`, `Controller/`, `Model/`, `Plugin/`, `Observer/`, `Setup/`, `view/`
-- Declare the module in `etc/module.xml` with a proper `sequence` for dependencies
-- Register the module in `registration.php` at the module root
-- Keep `etc/di.xml` the single source of truth for dependency injection wiring — never use `ObjectManager` directly in business logic
-- Place frontend assets under `view/frontend/`, adminhtml under `view/adminhtml/`, shared under `view/base/`
+- Follow the standard module layout: `Block/`, `Controller/`, `Model/`, `Plugin/`, `Observer/`, `Setup/`, `view/`, `etc/`
+- Declare the module in `etc/module.xml` with a correct `<sequence>` listing all modules whose classes or tables this module depends on
+- Register the module in `registration.php` at the module root using `ComponentRegistrar::register`
+- Keep `etc/di.xml` as the single source of truth for dependency wiring — never use `ObjectManager` directly in business logic
+- Place frontend assets under `view/frontend/`, adminhtml assets under `view/adminhtml/`, and shared assets under `view/base/`
+
+```php
+// registration.php
+use Magento\Framework\Component\ComponentRegistrar;
+
+ComponentRegistrar::register(
+    ComponentRegistrar::MODULE,
+    'MyVendor_MyModule',
+    __DIR__
+);
+```
+
+---
 
 ## Naming Conventions
 
-- Module namespace: `Vendor_ModuleName` (e.g., `Acme_Catalog`)
-- Block classes: suffix with `Block` or place under `Block/` namespace
-- Model classes: place under `Model/`; resource models under `Model/ResourceModel/`; collections under `Model/ResourceModel/<Entity>/Collection`
-- Controllers: one action class per HTTP action; suffix with the action name (`IndexAction`, `SaveAction`)
-- Plugins: suffix with `Plugin` (`ProductRepositoryPlugin`)
-- Observers: suffix with `Observer` (`OrderSaveAfterObserver`)
-- ViewModels: suffix with `ViewModel`; implement `\Magento\Framework\View\Element\Block\ArgumentInterface`
+- Module namespace: `Vendor_ModuleName` (e.g., `Acme_Catalog`); PSR-4 root maps to `app/code/Acme/Catalog/`
+- Block classes: place under `Block/`; suffix not mandatory but `Block` suffix is conventional for complex blocks
+- Model classes: `Model/` for domain models; `Model/ResourceModel/` for resource models; `Model/ResourceModel/<Entity>/Collection` for collections
+- Controllers: one action class per HTTP action in `Controller/<Area>/<ControllerName>/<ActionName>.php`; each implements `\Magento\Framework\App\ActionInterface`
+- Plugins: suffix with `Plugin` (e.g., `ProductRepositoryPlugin`), placed in `Plugin/`
+- Observers: suffix with `Observer` (e.g., `OrderSaveAfterObserver`), placed in `Observer/`; implement `\Magento\Framework\Event\ObserverInterface`
+- ViewModels: suffix with `ViewModel` (e.g., `ProductInfoViewModel`); implement `\Magento\Framework\View\Element\Block\ArgumentInterface`
+- Service contract interfaces: `Api/<EntityName>RepositoryInterface`, `Api/<EntityName>ManagementInterface`
+- Data interfaces: `Api/Data/<EntityName>Interface`, `Api/Data/<EntityName>SearchResultsInterface`
+
+---
 
 ## Dependency Injection
 
 - Always inject dependencies through the constructor
-- Never use `\Magento\Framework\App\ObjectManager::getInstance()` outside of factories, tests, or setup scripts
-- Use virtual types in `di.xml` for parameter overrides instead of creating new classes
+- Never use `\Magento\Framework\App\ObjectManager::getInstance()` outside of factories, setup scripts, or test helpers
+- Use virtual types in `di.xml` for parameter overrides instead of creating redundant subclasses:
+
+```xml
+<!-- etc/di.xml -->
+<virtualType name="MyVendor\MyModule\Model\CustomLogger"
+             type="Magento\Framework\Logger\Monolog">
+    <arguments>
+        <argument name="name" xsi:type="string">MyModule</argument>
+    </arguments>
+</virtualType>
+```
+
 - Prefer interfaces over concrete classes in constructor type hints
-- Use factories (`XxxFactory`) for creating new model instances — never `new`
+- Use factories (`XxxFactory`) for creating new object instances — never `new` for DI-managed classes:
+
+```php
+// Good
+public function __construct(
+    private readonly ProductInterfaceFactory $productFactory,
+) {}
+
+public function createProduct(): ProductInterface
+{
+    return $this->productFactory->create();
+}
+
+// Bad
+public function createProduct(): ProductInterface
+{
+    return new \Magento\Catalog\Model\Product(); // bypasses DI and plugins
+}
+```
+
+- Use `Proxy` for heavy or circular dependencies — declare in `di.xml`, not in the constructor type hint:
+
+```xml
+<type name="MyVendor\MyModule\Model\HeavyConsumer">
+    <arguments>
+        <argument name="heavyService" xsi:type="object">
+            MyVendor\MyModule\Model\HeavyService\Proxy
+        </argument>
+    </arguments>
+</type>
+```
+
+---
 
 ## Service Contracts and APIs
 
-- Expose module functionality through service contracts (`Api/` interfaces + `Model/` implementations)
-- Define data interfaces in `Api/Data/`; implement with `Model/Data/`
-- Always use repository interfaces (`XxxRepositoryInterface`) for CRUD — not direct model loading
-- Mark public APIs with `@api` docblock annotation
+- Expose module functionality through service contracts: interfaces in `Api/`, implementations in `Model/`
+- Define data interfaces in `Api/Data/`; implement with `Model/Data/` using `ExtensibleDataObject` or `AbstractSimpleObject` as base
+- Always use repository interfaces (`XxxRepositoryInterface`) for CRUD operations — not direct model `load()` calls
+- Mark stable public APIs with the `@api` docblock annotation
 - Use `SearchCriteria` and `SearchResultsInterface` for collection retrieval in repositories
-- Build search criteria using `\Magento\Framework\Api\SearchCriteriaBuilder` injected as a constructor dependency — never instantiate it directly:
-  ```php
-  $criteria = $this->searchCriteriaBuilder
-      ->addFilter('status', 'active')
-      ->addSortOrder($this->sortOrderBuilder->setField('created_at')->setDescendingDirection()->create())
-      ->setPageSize(20)
-      ->create();
-  $results = $this->repository->getList($criteria);
-  ```
+- Build search criteria using `SearchCriteriaBuilder` injected as a constructor dependency — never instantiate it directly:
+
+```php
+$criteria = $this->searchCriteriaBuilder
+    ->addFilter('status', 'active')
+    ->addSortOrder(
+        $this->sortOrderBuilder
+            ->setField('created_at')
+            ->setDescendingDirection()
+            ->create()
+    )
+    ->setPageSize(20)
+    ->create();
+
+$results = $this->repository->getList($criteria);
+```
+
+---
 
 ## Extension Attributes
 
-- Use extension attributes (defined in `etc/extension_attributes.xml`) to add data to existing entities — never modify core `Api/Data` interfaces
-- Load and save extension attributes explicitly in repository plugins: read in an `afterGet`/`afterGetList` plugin, save in a `beforeSave` plugin
-- Access extension attributes via `getExtensionAttributes()` — always null-check and create via the generated factory if null
+- Use extension attributes (`etc/extension_attributes.xml`) to add data to existing entities — never modify core `Api/Data` interfaces directly
+- Load extension attributes in an `afterGet`/`afterGetList` plugin on the repository; save them in a `beforeSave` plugin:
+
+```php
+// Plugin/ProductRepositoryPlugin.php
+public function afterGet(
+    ProductRepositoryInterface $subject,
+    ProductInterface           $product
+): ProductInterface {
+    $extensionAttributes = $product->getExtensionAttributes()
+        ?? $this->productExtensionFactory->create();
+
+    $myData = $this->myRepository->getByProductId((int) $product->getId());
+    $extensionAttributes->setMyCustomData($myData);
+    $product->setExtensionAttributes($extensionAttributes);
+
+    return $product;
+}
+```
+
+- Always null-check extension attributes and create via the generated factory if null
+
+---
 
 ## Plugins (Interceptors)
 
-- Use plugins for cross-cutting concerns (logging, caching, authorization) — not for business logic
-- Use `before` and `after` plugins as the default. Only use `around` when you need to conditionally skip the original method call or wrap it in a try/catch. Never write an `around` plugin that always calls `$proceed()` without conditional logic — it adds overhead and complicates debugging with no benefit.
-- Keep plugins thin — delegate to a dedicated service class for logic
-- Avoid plugin chains that are hard to trace — prefer observers for event-driven scenarios
-- Plugins only intercept public methods. Do not attempt to write plugins for protected or private methods — they will not be invoked and will not produce an error, making the bug hard to detect. If you need to intercept behavior in a non-public method, raise a custom event or refactor the method to public.
+- Use plugins for cross-cutting concerns (logging, caching, authorization) — not for core business logic
+- Prefer `before` and `after` plugins. Use `around` only when the original method call must be conditionally skipped or wrapped in try/catch. An `around` plugin that always calls `$proceed()` with no conditional logic adds overhead for no benefit:
+
+```php
+// Bad — around plugin just to modify the result; always calls $proceed()
+public function aroundGetName(ProductInterface $subject, callable $proceed): string
+{
+    return strtoupper($proceed());
+}
+
+// Good — after plugin achieves the same result at lower cost
+public function afterGetName(ProductInterface $subject, string $result): string
+{
+    return strtoupper($result);
+}
+```
+
+- Keep plugin classes thin — delegate logic to a dedicated service class; plugins are wiring, not implementation
+- Plugins intercept public methods only. Do not target protected or private methods — the plugin will be silently ignored, creating an invisible bug. If the target behaviour is in a non-public method, dispatch a custom event or refactor the method to public
+
+---
 
 ## Events and Observers
 
-- Dispatch events at meaningful extension points using `\Magento\Framework\Event\ManagerInterface`
+- Dispatch events at meaningful extension points using `\Magento\Framework\Event\ManagerInterface::dispatch()`
 - Name events in lowercase with underscores: `vendor_module_entity_save_after`
-- Keep observers stateless — they must implement `\Magento\Framework\Event\ObserverInterface`
+- Keep observers stateless — no mutable instance properties that persist across requests
 - Do not perform heavy operations in observers — queue heavy work via message queues
+
+```php
+// Model/Service/OrderService.php
+public function placeOrder(OrderInterface $order): void
+{
+    $this->orderRepository->save($order);
+    $this->eventManager->dispatch(
+        'myvendor_mymodule_order_placed',
+        ['order' => $order]
+    );
+}
+```
+
+---
 
 ## Message Queues
 
-- Define topics in `etc/communication.xml` and consumers in `etc/queue_consumer.xml`
-- Define queue bindings in `etc/queue_topology.xml` and `etc/queue_publisher.xml`
-- Publish messages via `\Magento\Framework\MessageQueue\PublisherInterface` — never call consumers directly
-- Keep message payloads small — pass entity IDs, not full objects
+- Define topics in `etc/communication.xml` and bindings in `etc/queue_topology.xml` and `etc/queue_publisher.xml`
+- Define consumers in `etc/queue_consumer.xml`
+- Publish via `\Magento\Framework\MessageQueue\PublisherInterface` — never call consumers directly
+- Keep message payloads small — pass entity IDs, not serialized full objects
 - Implement idempotent consumers — messages may be delivered more than once
+
+```php
+// Consumer/OrderPlacedConsumer.php
+class OrderPlacedConsumer
+{
+    public function process(string $orderId): void
+    {
+        // Safe to call multiple times for the same orderId
+        if ($this->isAlreadyProcessed((int) $orderId)) {
+            return;
+        }
+        $order = $this->orderRepository->get((int) $orderId);
+        $this->doWork($order);
+        $this->markAsProcessed((int) $orderId);
+    }
+}
+```
+
+---
 
 ## GraphQL APIs
 
-- Define resolvers in `Model/Resolver/` and register them in `etc/schema.graphqls`
-- Never perform business logic directly in resolvers — delegate to service classes
-- Use `\Magento\GraphQl\Model\Query\ContextInterface` for customer/store context — never use session directly in resolvers
-- Return scalar types from resolvers; let the GraphQL layer handle serialization
+- Define schema types and resolvers in `etc/schema.graphqls`
+- Place resolver classes in `Model/Resolver/` and register them in `etc/schema.graphqls`
+- Delegate all business logic from resolvers to service classes — resolvers are thin wiring:
+
+```php
+// Model/Resolver/ProductExtendedData.php
+class ProductExtendedData implements ResolverInterface
+{
+    public function resolve(
+        Field        $field,
+        mixed        $context,
+        ResolveInfo  $info,
+        array        $value = null,
+        array        $args  = null
+    ): mixed {
+        return $this->productDataService->getExtendedData((int) $value['model']->getId());
+    }
+}
+```
+
+- Use `\Magento\GraphQl\Model\Query\ContextInterface` for customer and store context — never access session directly in resolvers
+- Return scalar values or arrays from resolvers; let the GraphQL framework handle serialization
+
+---
 
 ## Layout and Templates
 
 - Define layout handles in `view/<area>/layout/` XML files
-- Use `<referenceBlock>` and `<referenceContainer>` to extend existing layouts — never override unless necessary
-- Use ViewModels to pass data to templates — not Block methods that perform business logic
-- Templates must be `.phtml` files with minimal PHP — no business logic in templates
-- Escape all output with `$block->escapeHtml()`, `$block->escapeUrl()`, etc. — never print raw user input
+- Use `<referenceBlock>` and `<referenceContainer>` to extend existing layouts — avoid `<block>` overrides that replace core blocks
+- Use ViewModels to pass data to templates — not Block methods that perform business logic:
+
+```xml
+<!-- view/frontend/layout/catalog_product_view.xml -->
+<referenceBlock name="product.info.main">
+    <arguments>
+        <argument name="view_model" xsi:type="object">
+            MyVendor\MyModule\ViewModel\ProductInfoViewModel
+        </argument>
+    </arguments>
+</referenceBlock>
+```
+
+```php
+<!-- view/frontend/templates/product/info.phtml -->
+/** @var \MyVendor\MyModule\ViewModel\ProductInfoViewModel $viewModel */
+$viewModel = $block->getData('view_model');
+echo $block->escapeHtml($viewModel->getProductBadge());
+```
+
+- Templates must be `.phtml` files with minimal PHP — no business logic, no repository calls in templates
+- Escape all output: `$block->escapeHtml()`, `$block->escapeUrl()`, `$block->escapeJs()`, `$block->escapeHtmlAttr()`; never print raw user input
+
+---
 
 ## Data Management and Upgrades
 
-- Use Declarative Schema (`etc/db_schema.xml`) for all schema changes — not `InstallSchema`/`UpgradeSchema`
+- Use Declarative Schema (`etc/db_schema.xml`) for all schema changes — `InstallSchema` and `UpgradeSchema` classes are deprecated
 - After modifying `db_schema.xml`, regenerate the schema whitelist: `bin/magento setup:db-declaration:generate-whitelist --module-name=Vendor_Module`
-- Use data patches (`Setup/Patch/Data/`) for data migrations — one patch per logical change
-- Mark patches with `PatchVersionInterface` when order matters
-- Never modify core database tables directly — use extension attributes or separate tables
+- Use data patches (`Setup/Patch/Data/`) for data migrations — one patch class per logical change, implementing `DataPatchInterface`:
+
+```php
+// Setup/Patch/Data/AddCustomAttribute.php
+class AddCustomAttribute implements DataPatchInterface
+{
+    public function apply(): void
+    {
+        $this->eavSetup->addAttribute(\Magento\Catalog\Model\Product::ENTITY, 'my_attribute', [
+            'type'     => 'varchar',
+            'label'    => 'My Attribute',
+            'input'    => 'text',
+            'required' => false,
+            'global'   => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+        ]);
+    }
+
+    public static function getDependencies(): array
+    {
+        return [];
+    }
+
+    public function getAliases(): array
+    {
+        return [];
+    }
+}
+```
+
+- Never modify core database tables directly — use extension attributes or separate module tables
+
+---
 
 ## Caching
 
 - Tag all custom cache entries with a module-specific cache tag for granular invalidation
-- Implement `IdentityInterface` on blocks and ViewModels that have cacheable output
-- Use `\Magento\Framework\Cache\FrontendInterface` for custom cache — not raw `Zend_Cache`
+- Implement `IdentityInterface` on blocks and ViewModels that have cacheable output:
+
+```php
+use Magento\Framework\DataObject\IdentityInterface;
+
+class ProductBadgeBlock extends Template implements IdentityInterface
+{
+    public function getIdentities(): array
+    {
+        return [\Magento\Catalog\Model\Product::CACHE_TAG . '_' . $this->getProductId()];
+    }
+}
+```
+
+- Use `\Magento\Framework\App\CacheInterface` for custom cache — not raw Zend_Cache
+- Use `\Magento\Framework\Cache\FrontendInterface` for frontend-level cache operations
+
+---
 
 ## Security and ACL
 
-- Define ACL resources in `etc/acl.xml` for every admin action
-- Implement `_isAllowed()` in admin controllers returning the ACL resource identifier
-- For programmatic authorization checks in services, inject `\Magento\Framework\AuthorizationInterface` and call `$this->authorization->isAllowed('Vendor_Module::resource')`
+- Define ACL resources in `etc/acl.xml` for every admin-facing action
+- Implement `_isAllowed()` in all admin controllers returning the ACL resource identifier string:
+
+```php
+protected function _isAllowed(): bool
+{
+    return $this->_authorization->isAllowed('MyVendor_MyModule::manage');
+}
+```
+
+- For programmatic authorization checks in service classes, inject `\Magento\Framework\AuthorizationInterface`:
+
+```php
+public function __construct(
+    private readonly \Magento\Framework\AuthorizationInterface $authorization,
+) {}
+
+public function performSensitiveAction(): void
+{
+    if (!$this->authorization->isAllowed('MyVendor_MyModule::sensitive_action')) {
+        throw new \Magento\Framework\Exception\AuthorizationException(
+            __('Access denied.')
+        );
+    }
+    // ...
+}
+```
+
+---
 
 ## LESS / CSS
 
-- **Never use `darken()`, `lighten()`, or other LESS color functions** — Magento's LESS compiler (`less.php`) does not reliably resolve them, especially inside BEM `&:hover` blocks or when variables come from the compilation context rather than a local `@import`.
-- Instead, calculate the final hex value manually (e.g. `darken(#ffffff, 10%)` = `#e6e6e6`) and use the hardcoded value directly.
-- Do not add `@import (reference)` for Magento lib variables (`_lib.less`, `_responsive.less`) inside module `_extend.less` files — lib variables are injected by Magento's compilation pipeline automatically. Adding manual imports with `lib::css` paths will cause compiler errors.
+- **Never use `darken()`, `lighten()`, or similar LESS color functions** — Magento's LESS compiler (`less.php`) does not reliably resolve them, especially inside BEM `&:hover` blocks or when variables originate from the compilation context rather than a local `@import`. Calculate the final hex value manually instead (e.g. `darken(#ffffff, 10%)` = `#e6e6e6`).
+- Do not add `@import (reference)` for Magento lib variables (`_lib.less`, `_responsive.less`) inside module `_extend.less` files — lib variables are injected by Magento's compilation pipeline automatically. Manual `lib::css` path imports cause compiler errors.
+- Use `.less` files in `view/frontend/web/css/source/` for storefront overrides and `view/adminhtml/web/css/source/` for admin overrides.
+
+---
 
 ## Anti-Patterns to Avoid
 
-- Do not use `ObjectManager` directly — use constructor injection or factories
-- Do not override core templates by copying them — use layout XML to replace or extend
-- Do not rewrite core classes with `<preference>` when a plugin achieves the same result
-- Do not put business logic in Block classes — use ViewModels or Services
-- Do not use `$_GET`, `$_POST`, or `$_SESSION` directly — use request/session abstractions
-- Do not perform database queries in templates or Block `toHtml` methods
-- Do not skip ACL checks in admin controllers — always implement `_isAllowed()`
+- **ObjectManager direct use** — use constructor injection or factories; `ObjectManager::getInstance()` in business logic is a P0 finding
+- **Core template override by copy** — use layout XML to `<referenceBlock>` and extend; never copy a core `.phtml` template to override it
+- **`<preference>` rewrite when a plugin suffices** — preferences replace the entire class and break other extensions; plugins compose safely
+- **Business logic in Block classes** — extract to ViewModels or service classes; blocks are responsible for rendering only
+- **Raw superglobals** — never use `$_GET`, `$_POST`, or `$_SESSION` directly; use `\Magento\Framework\App\RequestInterface` and session abstractions
+- **Database queries in templates** — all data access in template scope must go through ViewModels pre-fetched by the block; no repository calls in `.phtml`
+- **Skipping ACL in admin controllers** — `_isAllowed()` is not optional; every admin action that is missing it is a security vulnerability
+- **`reindexAll()` in web requests** — synchronous full reindex during a page request can block for minutes; mark as `invalidate()` and let cron schedule it
+- **`around` plugins that always call `$proceed()`** — this pattern adds two stack frames and one closure allocation per call with no behavioural benefit; use `after` instead

@@ -1,187 +1,249 @@
 # Gin Test Code Review Guide
 
-Supplements `test-review-checklist.md` and `golang-tests-code-review.md` for Go projects using the Gin HTTP framework.
+Supplements `test-review-checklist.md` and `golang-tests-code-review.md` for Go projects using the Gin HTTP framework (v1.x).
 
 ---
 
-## DRF-Equivalent Review Points for Gin
+## Setup Anti-Patterns
 
-### ❌ Not Setting Test Mode
+### Not Setting Test Mode
 
 ```go
-// Bad — Gin runs in debug mode, pollutes test output and affects behaviour
+// Bad — Gin defaults to debug mode; pollutes test output with route registration logs
+// and affects some Gin internal behaviour
 func TestItemHandlerList(t *testing.T) {
     handler := NewHandler(mockUseCase)
-    handler.List(nil) // nil context — will panic
+    w := httptest.NewRecorder()
+    // ...
 }
 
-// Good
-func TestItemHandlerList(t *testing.T) {
-    gin.SetMode(gin.TestMode) // Always first
-    // ...
+// Good — call once in TestMain, or at the top of each test function
+func TestMain(m *testing.M) {
+    gin.SetMode(gin.TestMode)
+    os.Exit(m.Run())
 }
 ```
 
-### ❌ Not Using httptest
+### Not Using a Router for Tests That Exercise Routing
+
+`gin.CreateTestContext` bypasses Gin's routing pipeline — path parameters and middleware registered on the router are not applied. Tests that require path parameter extraction or middleware effects must use a router:
 
 ```go
-// Bad — no response capture, no assertions possible
-func TestItemHandler(t *testing.T) {
-    handler := NewHandler(mockUseCase)
-    handler.List(nil)
-}
-
-// Good
-func TestItemHandlerList(t *testing.T) {
-    gin.SetMode(gin.TestMode)
-
+// Bad — c.Param("id") will be empty; routing not exercised
+func TestItemHandlerGet(t *testing.T) {
     w := httptest.NewRecorder()
     c, _ := gin.CreateTestContext(w)
-    c.Request = httptest.NewRequest("GET", "/v1/items", nil)
+    c.Request = httptest.NewRequest("GET", "/v1/items/item-123", nil)
+    handler.Get(c)
+    // c.Param("id") is "" — handler may silently fail or return wrong item
+}
 
-    handler.List(c)
+// Good — router resolves /:id into c.Param("id")
+func TestItemHandlerGet(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    router := gin.New()
+    router.GET("/v1/items/:id", handler.Get)
 
+    w := httptest.NewRecorder()
+    req := httptest.NewRequest("GET", "/v1/items/item-123", nil)
+    router.ServeHTTP(w, req)
     assert.Equal(t, http.StatusOK, w.Code)
 }
 ```
 
-### ❌ Only Checking Status Code
+Reserve `gin.CreateTestContext` for the specific case where you need to inject Gin context values (e.g. `c.Set("user_id", ...)`) without running the middleware chain.
+
+---
+
+## Assertion Anti-Patterns
+
+### Only Checking Status Code
 
 ```go
-// Bad — status alone doesn't verify payload correctness
+// Bad — status alone does not verify payload correctness; a handler can return
+// 200 with an empty body or wrong structure and this test will pass
 func TestItemHandlerList(t *testing.T) {
     // ...
-    assert.Equal(t, http.StatusOK, w.Code) // Not enough
-
-// Good — also verify the response body structure
-    var response map[string]interface{}
-    require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
-    assert.Equal(t, float64(1), response["count"])
-    assert.NotEmpty(t, response["results"])
+    assert.Equal(t, http.StatusOK, w.Code) // not enough
 }
+
+// Good — also verify the response body structure and key fields
+assert.Equal(t, http.StatusOK, w.Code)
+
+var resp struct {
+    Data  []Item `json:"data"`
+    Total int64  `json:"total"`
+}
+require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+assert.Len(t, resp.Data, 1)
+assert.Equal(t, int64(1), resp.Total)
 ```
 
-### ❌ Not Testing Error Paths
+### Not Testing Error Paths
 
 ```go
-// Bad — only testing the happy path
+// Bad — only the happy path is tested; error handling code is untested
 func TestItemHandlerList(t *testing.T) {
-    mockUseCase := &MockItemUseCase{
-        ListFunc: func(ctx context.Context) ([]Item, error) {
-            return []Item{{Name: "Item1"}}, nil
+    mock := &MockItemUseCase{
+        ListFunc: func(ctx context.Context, limit, offset int) ([]Item, int64, error) {
+            return []Item{{Name: "Widget"}}, 1, nil
         },
     }
-    // Only one scenario tested
+    // Single scenario — use case errors, bad params, empty results not tested
+}
 
-// Good — table-driven to cover all relevant status codes
+// Good — table-driven covering all meaningful status code paths
 tests := []struct {
     name           string
+    queryParams    string
     mockErr        error
     expectedStatus int
 }{
-    {name: "success", mockErr: nil, expectedStatus: http.StatusOK},
-    {name: "use case error", mockErr: errors.New("internal"), expectedStatus: http.StatusInternalServerError},
-}
-```
-
-### ❌ Not Testing Path Parameters or Query Params
-
-```go
-// Bad — skips parsing verification
-func TestItemHandlerGet(t *testing.T) {
-    c, _ := gin.CreateTestContext(httptest.NewRecorder())
-    c.Request = httptest.NewRequest("GET", "/v1/items/", nil)
-    // Missing ID param — handler may fail silently
-
-// Good
-    c.Params = gin.Params{{Key: "id", Value: "item-123"}}
-    c.Request = httptest.NewRequest("GET", "/v1/items/item-123", nil)
+    {name: "success", queryParams: "?limit=50&offset=0", mockErr: nil, expectedStatus: http.StatusOK},
+    {name: "invalid limit", queryParams: "?limit=0", expectedStatus: http.StatusBadRequest},
+    {name: "use case error", queryParams: "?limit=50&offset=0",
+        mockErr: errors.New("db unavailable"), expectedStatus: http.StatusInternalServerError},
 }
 ```
 
 ---
 
-## Auth Context Review
+## Request Construction Anti-Patterns
 
-### ❌ Missing Auth Context Values
+### Not Testing Request Body Binding Errors
 
-Many handlers read a user ID or tenant ID from the Gin context (set by auth middleware). Tests that skip this will see the wrong behaviour:
+Handlers using `ShouldBindJSON` must handle malformed JSON and missing `Content-Type`. Tests that only provide valid input leave the binding error path uncovered:
 
 ```go
-// Bad — handler calls c.GetString("user_id") but context has no value set
+// Bad — only tests valid JSON
 func TestItemHandlerCreate(t *testing.T) {
-    gin.SetMode(gin.TestMode)
-    w := httptest.NewRecorder()
-    c, _ := gin.CreateTestContext(w)
-    c.Request = httptest.NewRequest("POST", "/v1/items", strings.NewReader(`{"name":"test"}`))
-    c.Request.Header.Set("Content-Type", "application/json")
-    handler.Create(c) // handler gets empty user_id → may silently create items without owner
-
-// Good — populate all context values the handler reads
-    c.Set("user_id", "user-abc-123")
-    c.Set("tenant_id", "tenant-1")
+    body := `{"name": "Widget", "category_id": "cat-1"}`
+    // Only one scenario — binding errors never exercised
 }
-```
 
-### ❌ Not Testing That `c.BindJSON` Error Path Is Handled
-
-```go
-// Bad — only tests valid JSON; missing the malformed body path
-func TestItemHandlerCreate(t *testing.T) {
-    body := `{"name": "New Item"}`  // only valid path tested
-
-// Good — table-driven to cover bind error
+// Good — table-driven including bind-failure scenarios
 tests := []struct {
     name           string
     body           string
     contentType    string
     expectedStatus int
 }{
-    {name: "valid", body: `{"name":"New Item"}`, contentType: "application/json", expectedStatus: http.StatusCreated},
-    {name: "malformed JSON", body: `{bad json}`, contentType: "application/json", expectedStatus: http.StatusBadRequest},
-    {name: "missing content-type", body: `{"name":"New Item"}`, contentType: "", expectedStatus: http.StatusBadRequest},
+    {
+        name: "valid", body: `{"name":"Widget","category_id":"cat-uuid-1"}`,
+        contentType: "application/json", expectedStatus: http.StatusCreated,
+    },
+    {
+        name: "malformed JSON", body: `{bad json}`,
+        contentType: "application/json", expectedStatus: http.StatusBadRequest,
+    },
+    {
+        name: "missing Content-Type", body: `{"name":"Widget","category_id":"cat-uuid-1"}`,
+        contentType: "", expectedStatus: http.StatusBadRequest,
+    },
+    {
+        name: "missing required field", body: `{"name":""}`,
+        contentType: "application/json", expectedStatus: http.StatusBadRequest,
+    },
 }
+```
+
+### Missing Context Values That Handlers Depend On
+
+Handlers that read values set by auth middleware (e.g. `user_id`, `tenant_id`) silently get zero values or wrong behaviour when those values are absent:
+
+```go
+// Bad — handler calls c.GetString("user_id") but context has no value set;
+// item may be created without an owner, or handler may behave unexpectedly
+func TestItemHandlerCreate(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    w := httptest.NewRecorder()
+    c, _ := gin.CreateTestContext(w)
+    c.Request = httptest.NewRequest("POST", "/v1/items",
+        strings.NewReader(`{"name":"Widget","category_id":"cat-1"}`))
+    c.Request.Header.Set("Content-Type", "application/json")
+    handler.Create(c) // user_id is "" — incorrect test precondition
+}
+
+// Good — populate all context values the handler reads
+c.Set("user_id", "user-abc-123")
+c.Set("tenant_id", "tenant-xyz")
 ```
 
 ---
 
-## Middleware Separation Review
+## Middleware Separation Anti-Patterns
 
-### ❌ Handler Tests That Re-test Middleware Logic
+### Handler Tests That Re-test Middleware Logic
+
+Auth, rate-limiting, and logging are middleware responsibilities. Handler tests that pass raw Authorization headers and expect middleware-level rejections are testing the wrong layer — and testing nothing if the middleware is not actually wired in the test:
 
 ```go
-// Bad — handler test checking auth token format; that's middleware's responsibility
+// Bad — handler test checking auth token format; that is middleware's job
 func TestItemHandlerList(t *testing.T) {
-    c.Request.Header.Set("Authorization", "invalid")
-    handler.List(c)
-    assert.Equal(t, http.StatusUnauthorized, w.Code) // auth is middleware's job, not handler's
+    req.Header.Set("Authorization", "invalid-token")
+    router.ServeHTTP(w, req)
+    assert.Equal(t, http.StatusUnauthorized, w.Code)
+    // This only passes if AuthMiddleware is wired in the test router.
+    // If it is, this test duplicates TestAuthMiddleware. If it is not, it tests nothing.
+}
 
-// Good — handler tests assume auth middleware has already run (user_id is in context)
+// Good — handler test assumes middleware has already run (user_id is in context)
 // Auth middleware is tested separately in TestAuthMiddleware
 func TestItemHandlerList(t *testing.T) {
-    c.Set("user_id", "user-123") // middleware pre-condition satisfied
+    gin.SetMode(gin.TestMode)
+    w := httptest.NewRecorder()
+    c, _ := gin.CreateTestContext(w)
+    c.Set("user_id", "user-123") // precondition: auth middleware has run
+    c.Request = httptest.NewRequest("GET", "/v1/items", nil)
     handler.List(c)
     assert.Equal(t, http.StatusOK, w.Code)
 }
 ```
 
+### Middleware Not Tested for `c.Abort()` Behaviour
+
+Middleware that writes an error response without calling `c.Abort()` allows subsequent handlers to run. Tests must verify the chain is actually stopped:
+
+```go
+// Good — verify the protected handler did not execute after middleware rejection
+func TestAuthMiddlewareBlocksProtectedRoute(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+
+    handlerCalled := false
+    router := gin.New()
+    router.Use(AuthMiddleware())
+    router.GET("/protected", func(c *gin.Context) {
+        handlerCalled = true
+        c.Status(http.StatusOK)
+    })
+
+    w := httptest.NewRecorder()
+    req := httptest.NewRequest("GET", "/protected", nil) // no auth header
+    router.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusUnauthorized, w.Code)
+    assert.False(t, handlerCalled, "handler must not run when auth middleware rejects the request")
+}
+```
+
 ---
 
-## Checklist for Gin Handler Tests
+## Checklist for Gin Handler and Middleware Tests
 
-- [ ] `gin.SetMode(gin.TestMode)` called at the start of every handler test function
-- [ ] `httptest.NewRecorder()` and `gin.CreateTestContext()` used for all handler tests
-- [ ] Both success **and** error status codes tested
-- [ ] Response body structure verified beyond just the status code
-- [ ] Path parameters (`c.Params`) set when the handler reads them
-- [ ] Query parameters included in the request URL when used
-- [ ] Request body set with correct `Content-Type` header for POST/PUT/PATCH
-- [ ] Gin context values (`c.Set`) populated when the handler reads them
-- [ ] Use case / service dependencies mocked — no real implementations in handler tests
+- [ ] `gin.SetMode(gin.TestMode)` set globally in `TestMain` or at the start of every test function
+- [ ] `router.ServeHTTP(w, req)` used for tests that require route parameter resolution or middleware wiring
+- [ ] `gin.CreateTestContext` used only for injecting Gin context values directly — not as a general-purpose handler test harness
+- [ ] Both success and error status codes tested for every handler
+- [ ] Response body structure validated — not just the status code
+- [ ] Path parameters verified by registering the route with a parameter pattern and using the correct URL in the request
+- [ ] Query parameters included in the request URL when the handler reads them
+- [ ] Request body tests include: valid input, malformed JSON, missing `Content-Type`, missing required fields
+- [ ] All Gin context values the handler reads (`c.Get`, `c.GetString`, `c.MustGet`) are set in tests
+- [ ] Use case / service dependencies mocked — no real DB or external calls in unit handler tests
 - [ ] Table-driven tests used when multiple status codes or scenarios exist
-- [ ] All Gin context values the handler reads (`c.Get`, `c.GetString`) are set in tests
-- [ ] Malformed request body path tested (JSON parse failure → 400)
-- [ ] Middleware logic not re-tested in handler tests — each concern tested in isolation
+- [ ] Middleware tested in its own test function — not re-exercised inside handler tests
+- [ ] Middleware tests verify that `c.Abort()` stops the handler chain when an error is returned
+- [ ] Middleware tests verify that downstream context values are set correctly on the success path
 
 ---
 

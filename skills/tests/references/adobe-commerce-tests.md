@@ -8,16 +8,18 @@ Applies to: Adobe Commerce / Magento 2 projects using PHPUnit, Magento Integrati
 
 ## Test Types Overview
 
-| Type | Location | Purpose |
-|---|---|---|
-| Unit | `Test/Unit/` | Isolated class logic with mocked dependencies |
-| Integration | `Test/Integration/` | Module interaction with real DI and DB |
-| API Functional | `Test/Api/` | REST / GraphQL endpoint contracts |
-| MFTF | `Test/Mftf/` | End-to-end browser-level acceptance tests |
+| Type | Location | Framework | Purpose |
+|---|---|---|---|
+| Unit | `Test/Unit/` | PHPUnit | Isolated class logic with all dependencies mocked |
+| Integration | `Test/Integration/` | Magento Integration Test Framework (PHPUnit) | Module interaction with real DI container and test DB |
+| API Functional | `Test/Api/` | Magento Webapi Test Framework (PHPUnit) | REST and GraphQL endpoint contracts |
+| MFTF | `Test/Mftf/` | MFTF (Codeception/XML) | End-to-end browser-level acceptance tests |
 
 ---
 
 ## Unit Tests
+
+Unit tests live in `Test/Unit/` and extend `\PHPUnit\Framework\TestCase`. All dependencies are injected via constructor and mocked — no Magento bootstrap, no database, no DI container.
 
 ### Service Class with Constructor Injection
 
@@ -28,6 +30,7 @@ namespace MyVendor\MyModule\Test\Unit\Service;
 use MyVendor\MyModule\Service\OrderProcessor;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Api\Data\OrderInterface;
+use Magento\Framework\Exception\CouldNotSaveException;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
@@ -39,7 +42,7 @@ class OrderProcessorTest extends TestCase
     protected function setUp(): void
     {
         $this->orderRepository = $this->createMock(OrderRepositoryInterface::class);
-        $this->processor = new OrderProcessor($this->orderRepository);
+        $this->processor       = new OrderProcessor($this->orderRepository);
     }
 
     public function testProcessSavesOrder(): void
@@ -54,15 +57,17 @@ class OrderProcessorTest extends TestCase
     {
         $order = $this->createMock(OrderInterface::class);
         $this->orderRepository->method('save')
-            ->willThrowException(new \Magento\Framework\Exception\CouldNotSaveException(__('error')));
+            ->willThrowException(new CouldNotSaveException(__('Could not save order')));
 
-        $this->expectException(\Magento\Framework\Exception\CouldNotSaveException::class);
+        $this->expectException(CouldNotSaveException::class);
         $this->processor->process($order);
     }
 }
 ```
 
-### Testing Plugins
+### Testing Plugins (Interceptors)
+
+Call the plugin method directly — do not go through the DI interceptor proxy:
 
 ```php
 // Test/Unit/Plugin/ProductNamePluginTest.php
@@ -81,16 +86,25 @@ class ProductNamePluginTest extends TestCase
         $this->plugin = new ProductNamePlugin();
     }
 
-    public function testAfterGetNameAppendsTag(): void
+    public function testAfterGetNameAppendsSaleTag(): void
     {
         $subject = $this->createMock(ProductInterface::class);
-        $result = $this->plugin->afterGetName($subject, 'Widget Pro');
+        $result  = $this->plugin->afterGetName($subject, 'Widget Pro');
         $this->assertStringContainsString('[SALE]', $result);
+    }
+
+    public function testAfterGetNameHandlesEmptyString(): void
+    {
+        $subject = $this->createMock(ProductInterface::class);
+        $result  = $this->plugin->afterGetName($subject, '');
+        $this->assertSame('', $result);
     }
 }
 ```
 
 ### Testing Observers
+
+Instantiate the observer directly with mocked dependencies — do not fire the real event dispatch:
 
 ```php
 // Test/Unit/Observer/SetOrderStatusObserverTest.php
@@ -104,7 +118,7 @@ use PHPUnit\Framework\TestCase;
 
 class SetOrderStatusObserverTest extends TestCase
 {
-    public function testExecuteSetsStatus(): void
+    public function testExecuteSetsCustomStatus(): void
     {
         $order = $this->createMock(OrderInterface::class);
         $order->expects($this->once())->method('setStatus')->with('custom_status');
@@ -112,11 +126,38 @@ class SetOrderStatusObserverTest extends TestCase
         $event = $this->createMock(Event::class);
         $event->method('getData')->with('order')->willReturn($order);
 
-        $observerMock = $this->createMock(Observer::class);
-        $observerMock->method('getEvent')->willReturn($event);
+        $observerWrapper = $this->createMock(Observer::class);
+        $observerWrapper->method('getEvent')->willReturn($event);
 
         $observer = new SetOrderStatusObserver();
-        $observer->execute($observerMock);
+        $observer->execute($observerWrapper);
+    }
+}
+```
+
+### Testing ViewModels
+
+```php
+// Test/Unit/ViewModel/ProductInfoViewModelTest.php
+namespace MyVendor\MyModule\Test\Unit\ViewModel;
+
+use MyVendor\MyModule\ViewModel\ProductInfoViewModel;
+use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Api\Data\ProductInterface;
+use PHPUnit\Framework\TestCase;
+
+class ProductInfoViewModelTest extends TestCase
+{
+    public function testGetProductNameReturnsName(): void
+    {
+        $product = $this->createMock(ProductInterface::class);
+        $product->method('getName')->willReturn('My Product');
+
+        $repository = $this->createMock(ProductRepositoryInterface::class);
+        $repository->method('getById')->with(42)->willReturn($product);
+
+        $viewModel = new ProductInfoViewModel($repository);
+        $this->assertSame('My Product', $viewModel->getProductName(42));
     }
 }
 ```
@@ -125,33 +166,33 @@ class SetOrderStatusObserverTest extends TestCase
 
 ## Integration Tests
 
-### Area Code
+Integration tests live in `Test/Integration/` and extend one of the Magento test case base classes. They bootstrap the full Magento application with a dedicated test database configured in `dev/tests/integration/etc/install-config-mysql.php`.
 
-Integration tests that bootstrap Magento may require an area code to be set before executing code that reads area-specific configuration or design settings:
+### Running Integration Tests
+
+```bash
+cd dev/tests/integration
+../../../vendor/bin/phpunit --configuration phpunit.xml \
+    ../../../app/code/MyVendor/MyModule/Test/Integration/
+```
+
+### Setting the Area Code
+
+Tests that exercise area-specific code (design, configuration, templates) must set the area code:
 
 ```php
 protected function setUp(): void
 {
-    parent::setUp();
+    parent::setUp(); // always call parent first in integration tests
+
     $this->appState = $this->_objectManager->get(\Magento\Framework\App\State::class);
     $this->appState->setAreaCode(\Magento\Framework\App\Area::AREA_FRONTEND);
 }
 ```
 
-Available area codes: `AREA_FRONTEND`, `AREA_ADMINHTML`, `AREA_CRONTAB`, `AREA_WEBAPI_REST`, `AREA_WEBAPI_SOAP`, `AREA_GRAPHQL`.
+Available constants: `AREA_FRONTEND`, `AREA_ADMINHTML`, `AREA_CRONTAB`, `AREA_WEBAPI_REST`, `AREA_WEBAPI_SOAP`, `AREA_GRAPHQL`.
 
-### Setup
-
-Register the integration test suite in `dev/tests/integration/phpunit.xml`. Ensure the test DB is configured in `dev/tests/integration/etc/install-config-mysql.php`.
-
-Run with:
-
-```bash
-cd dev/tests/integration
-../../../vendor/bin/phpunit app/code/MyVendor/MyModule/Test/Integration/
-```
-
-### Data Fixtures
+### Data Fixtures — Legacy File Style
 
 ```php
 /**
@@ -176,23 +217,57 @@ $registry = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', true);
 
-// create fixture data here ...
+// create fixture data here (attribute EAV record, custom table rows, etc.) ...
 
 $registry->unregister('isSecureArea');
 ```
+
+### Data Fixtures — Modern PHP Attribute Style (AC 2.4.5+)
+
+AC 2.4.5 introduced PHP 8 attribute-based fixtures, which are more composable and type-safe:
+
+```php
+use Magento\TestFramework\Fixture\DataFixture;
+use Magento\Catalog\Test\Fixture\Product as ProductFixture;
+use Magento\Quote\Test\Fixture\GuestCart as GuestCartFixture;
+use Magento\Quote\Test\Fixture\AddProductToCart as AddProductToCartFixture;
+
+class QuoteTest extends \PHPUnit\Framework\TestCase
+{
+    #[
+        DataFixture(ProductFixture::class, as: 'p'),
+        DataFixture(GuestCartFixture::class, as: 'cart'),
+        DataFixture(AddProductToCartFixture::class, [
+            'cart_id'    => '$cart.id$',
+            'product_id' => '$p.id$',
+            'qty'        => 2,
+        ]),
+    ]
+    public function testCollectTotals(): void
+    {
+        // Fixtures are resolved and available via fixture registry
+        $cart = $this->fixtures->get('cart');
+        $this->assertNotNull($cart->getId());
+    }
+}
+```
+
+Prefer the PHP attribute style for new tests — the legacy DocBlock file fixtures are deprecated.
 
 ### Config Fixtures
 
 ```php
 /**
  * @magentoConfigFixture current_store my_module/general/enabled 1
- * @magentoConfigFixture current_store my_module/general/api_key test_key_123
+ * @magentoConfigFixture current_store my_module/general/api_key test_key_placeholder
  */
 public function testFeatureEnabledByConfig(): void
 {
     $this->assertTrue($this->config->isEnabled());
 }
 ```
+
+Config values set via `@magentoConfigFixture` are automatically restored after each test — use this instead of `scopeConfig->setValue()`.
 
 ### App Isolation
 
@@ -202,7 +277,7 @@ public function testFeatureEnabledByConfig(): void
  */
 class SomeConfigMutatingTest extends \Magento\TestFramework\TestCase\AbstractController
 {
-    // App state is reset before and after this test class
+    // Full application state (DI, config, registry) is reset before and after this class
 }
 ```
 
@@ -218,15 +293,15 @@ use Magento\TestFramework\TestCase\AbstractBackendController;
 class GridTest extends AbstractBackendController
 {
     protected $resource = 'MyVendor_MyModule::manage';
-    protected $uri = 'backend/my_module/grid/index';
+    protected $uri      = 'backend/my_module/grid/index';
 
-    public function testAclHasAccess(): void
+    public function testAclAllowsAccess(): void
     {
         $this->dispatch($this->uri);
         $this->assertNotSame(403, $this->getResponse()->getHttpResponseCode());
     }
 
-    public function testAclNoAccess(): void
+    public function testAclDeniesUnauthorizedAccess(): void
     {
         $this->_objectManager->get(\Magento\Backend\Model\Auth\Session::class)
             ->setCurrentRole($this->_noAccessRole);
@@ -245,6 +320,7 @@ class GridTest extends AbstractBackendController
 namespace MyVendor\MyModule\Test\Api;
 
 use Magento\TestFramework\TestCase\WebapiAbstract;
+use Magento\Framework\Webapi\Rest\Request;
 
 class ProductApiTest extends WebapiAbstract
 {
@@ -253,16 +329,29 @@ class ProductApiTest extends WebapiAbstract
     /**
      * @magentoApiDataFixture Magento/Catalog/_files/product_simple.php
      */
-    public function testGetProduct(): void
+    public function testGetProductReturnsSku(): void
     {
         $serviceInfo = [
             'rest' => [
                 'resourcePath' => self::RESOURCE_PATH . '/simple',
-                'httpMethod'   => \Magento\Framework\Webapi\Rest\Request::HTTP_METHOD_GET,
+                'httpMethod'   => Request::HTTP_METHOD_GET,
             ],
         ];
         $response = $this->_webApiCall($serviceInfo);
         $this->assertEquals('simple', $response['sku']);
+    }
+
+    public function testUnauthorizedAccessReturnsError(): void
+    {
+        $serviceInfo = [
+            'rest' => [
+                'resourcePath' => '/V1/customers/me',
+                'httpMethod'   => Request::HTTP_METHOD_GET,
+                'token'        => 'invalid_token',
+            ],
+        ];
+        $this->expectException(\Exception::class);
+        $this->_webApiCall($serviceInfo);
     }
 }
 ```
@@ -282,7 +371,7 @@ class ProductGraphQlTest extends GraphQlAbstract
     /**
      * @magentoApiDataFixture Magento/Catalog/_files/product_simple.php
      */
-    public function testProductQuery(): void
+    public function testProductQueryReturnsSku(): void
     {
         $query = <<<QUERY
         {
@@ -300,18 +389,22 @@ class ProductGraphQlTest extends GraphQlAbstract
         $this->assertEquals('simple', $response['products']['items'][0]['sku']);
     }
 
-    public function testUnauthorizedQueryReturnsError(): void
+    public function testCustomerQueryRequiresAuthentication(): void
     {
-        $query = <<<QUERY
-        {
-            customer {
-                email
-            }
-        }
-        QUERY;
-
         $this->expectException(\Magento\Framework\Exception\AuthorizationException::class);
-        $this->graphQlQuery($query);
+        $this->graphQlQuery('{ customer { email } }');
+    }
+
+    public function testCustomerQuerySucceedsWithToken(): void
+    {
+        $token    = $this->getCustomerToken('customer@example.com', '$ecret123');
+        $response = $this->graphQlQuery(
+            '{ customer { email } }',
+            [],
+            '',
+            ['Authorization' => 'Bearer ' . $token]
+        );
+        $this->assertEquals('customer@example.com', $response['customer']['email']);
     }
 }
 ```
@@ -320,7 +413,9 @@ class ProductGraphQlTest extends GraphQlAbstract
 
 ## MFTF (Magento Functional Testing Framework)
 
-MFTF tests live in `Test/Mftf/` and use XML-based test definitions:
+MFTF tests live in `Test/Mftf/` and use XML-based test definitions interpreted by Codeception.
+
+### Test Definition
 
 ```xml
 <!-- Test/Mftf/Test/MyModuleFeatureTest.xml -->
@@ -331,26 +426,76 @@ MFTF tests live in `Test/Mftf/` and use XML-based test definitions:
             <features value="MyModule"/>
             <stories value="Feature works on storefront"/>
             <title value="Customer can use my feature"/>
+            <description value="Verifies the feature is visible and functional for a logged-in customer"/>
             <severity value="CRITICAL"/>
             <group value="my_module"/>
         </annotations>
         <before>
             <createData entity="SimpleProduct" stepKey="createProduct"/>
+            <createData entity="Customer" stepKey="createCustomer"/>
         </before>
         <after>
             <deleteData createDataKey="createProduct" stepKey="deleteProduct"/>
+            <deleteData createDataKey="createCustomer" stepKey="deleteCustomer"/>
         </after>
         <amOnPage url="{{StorefrontHomePage.url}}" stepKey="goToHome"/>
         <waitForPageLoad stepKey="waitForHome"/>
+        <!-- additional steps -->
     </test>
 </tests>
 ```
 
-Run MFTF:
+### Running MFTF Tests
 
 ```bash
+# Run a single test by name
 vendor/bin/mftf run:test MyModuleFeatureTest
+
+# Run all tests in a group
 vendor/bin/mftf run:group my_module
+
+# Generate tests after editing XML
+vendor/bin/mftf generate:tests
+```
+
+### MFTF Page and Section Objects
+
+```xml
+<!-- Test/Mftf/Page/MyModulePage.xml -->
+<pages xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="urn:magento:mftf:Page/etc/PageObject.xsd">
+    <page name="MyModulePage" url="/my-module/feature" area="storefront">
+        <section name="MyModuleSection"/>
+    </page>
+</pages>
+```
+
+```xml
+<!-- Test/Mftf/Section/MyModuleSection.xml -->
+<sections xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="urn:magento:mftf:Page/etc/SectionObject.xsd">
+    <section name="MyModuleSection">
+        <element name="featureButton" type="button" selector="#my-module-feature-btn"/>
+        <element name="resultMessage" type="text" selector=".my-module-result"/>
+    </section>
+</sections>
+```
+
+---
+
+## Test Configuration
+
+Register custom integration tests in `dev/tests/integration/phpunit.xml`:
+
+```xml
+<!-- dev/tests/integration/phpunit.xml (excerpt) -->
+<testsuites>
+    <testsuite name="My Module Integration Tests">
+        <directory suffix="Test.php">
+            ../../../app/code/MyVendor/MyModule/Test/Integration
+        </directory>
+    </testsuite>
+</testsuites>
 ```
 
 ---
@@ -359,7 +504,8 @@ vendor/bin/mftf run:group my_module
 
 - [Magento 2 Unit Testing Guide](https://developer.adobe.com/commerce/testing/guide/unit/)
 - [Magento 2 Integration Testing Guide](https://developer.adobe.com/commerce/testing/guide/integration/)
+- [Integration Test Data Fixtures](https://developer.adobe.com/commerce/testing/guide/integration/attributes/data-fixture/)
 - [MFTF Documentation](https://developer.adobe.com/commerce/testing/functional-testing-framework/)
 - [Magento Webapi Testing](https://developer.adobe.com/commerce/testing/guide/web-api/)
 - [PHPUnit Documentation](https://docs.phpunit.de/)
-- [Magento Test Fixtures Reference](https://developer.adobe.com/commerce/testing/guide/integration/attributes/)
+- [Magento Test Fixture Annotations](https://developer.adobe.com/commerce/testing/guide/integration/attributes/)

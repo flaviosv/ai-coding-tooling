@@ -14,6 +14,7 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 - [ ] Classes don't accumulate unrelated utility methods over time (the "catch-all" class smell)
 - [ ] A change to one concern (e.g. logging format) does not require touching unrelated code
 - [ ] Large classes are flagged — size is a proxy for multiple responsibilities
+- [ ] Event handlers and observers are stateless — they carry no mutable instance state that persists across invocations
 
 **Common violations to flag:**
 - `UserService` that also handles email delivery, file uploads, and audit logging
@@ -83,11 +84,13 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 - [ ] Unit tests are possible without mocking internals — if you can't inject a fake, the dependency is inverted wrong
 - [ ] The direction of dependency matches the direction of abstraction: volatile (infrastructure) depends on stable (domain), not the reverse
 - [ ] No static calls to concrete utility classes inside domain logic
+- [ ] Service locator pattern is not used — calling a container to retrieve a dependency by name inside business logic violates DIP the same way `new` does
 
 **Common violations to flag:**
 - `OrderService` directly instantiating `MySQLOrderRepository` or `StripePaymentGateway`
 - Business logic importing and using a specific logger implementation instead of a logging interface
 - Infrastructure code (e.g. a database adapter) pulling in domain objects directly
+- Calling `Container::get('SomeService')` or equivalent inside a domain method instead of using constructor injection
 
 ---
 
@@ -101,3 +104,5 @@ Flag any of the following — they often indicate multiple SOLID violations at o
 - **Shotgun Surgery**: a single change requires edits across many unrelated files — violates SRP and OCP
 - **Refused Bequest**: a subclass ignores or breaks parent behavior — violates LSP
 - **Parallel Inheritance Hierarchies**: adding a subclass in one hierarchy always requires adding one in another — violates OCP and DIP
+- **Data Clumps**: groups of data items that always appear together but are never encapsulated in a type — signals a missing value object (violates SRP and OCP)
+- **Middle Man**: a class that does nothing but delegate every method call to another object — indicates unnecessary indirection or a broken abstraction boundary (violates DIP)

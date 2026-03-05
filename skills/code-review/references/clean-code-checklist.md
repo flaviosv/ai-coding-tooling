@@ -42,6 +42,8 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] Dependencies are explicit — no hidden globals or service locators
 - [ ] Interface segregation — no forcing callers to depend on methods they don't use
 - [ ] Law of Demeter respected — avoid deep method chains through unrelated objects (e.g. `obj.getA().getB().doThing()`). Each unit should have limited knowledge of other units
+- [ ] Modules and packages organized by domain or feature, not by technical layer — `models/`, `utils/`, `helpers/` catch-all directories are a structure smell
+- [ ] Value objects and data-transfer types are immutable — no public setters or mutable state on types whose purpose is to carry data
 
 ---
 
@@ -71,6 +73,7 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] Mutable state is minimized — prefer immutable data where practical
 - [ ] Global or shared mutable state is avoided or explicitly justified
 - [ ] Operations that look like queries do not have hidden mutations
+- [ ] Post-transaction side effects (emails, queue publishes, external calls) are triggered after the transaction commits — not inside it
 
 ---
 
@@ -89,6 +92,8 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] Error types are specific — avoid catching broad exceptions unless explicitly justified
 - [ ] No returning `null`/`nil`/`undefined` to signal absence when a typed result or exception is clearer
 - [ ] Error messages are actionable — they tell the caller what went wrong and ideally how to fix it
+- [ ] Error handling is centralized — not duplicated in every handler or caller that could reach the same failure point
+- [ ] Errors are wrapped with context before propagating — callers can identify where in the call chain the error originated
 
 ---
 

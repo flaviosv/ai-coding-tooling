@@ -1,11 +1,13 @@
-# Go Testing Guide
+# Go Reference — tests
 
-Applies to: Go projects using the standard `testing` package, optionally with `testify`.
-For Gin-specific handler testing, also load `gin-tests.md`.
+Applies to Go projects using the standard `testing` package, optionally with `testify`.
+For Gin-specific handler testing, also load `gin-tests.md` if present.
 
 ---
 
-## Basics
+## General Go Testing Patterns
+
+Universal testing conventions that apply across all supported Go versions (1.23+).
 
 ### Test File Structure
 
@@ -16,6 +18,7 @@ package mypackage_test
 import (
     "testing"
     "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
 )
 
 func TestItemValidation(t *testing.T) {
@@ -46,11 +49,34 @@ func TestItem(t *testing.T) {
 }
 ```
 
+### `require` vs `assert` — Critical Distinction
+
+- `assert` — records the failure but continues executing the test. Use for independent assertions.
+- `require` — stops the test immediately on failure. Use for setup steps and preconditions.
+
+```go
+func TestItemRepository_Get(t *testing.T) {
+    // Setup — use require: if DB or insert fails, all later assertions are meaningless
+    db := setupTestDB(t)
+    require.NoError(t, db.Create(&Item{ID: "id-1", Name: "Test"}).Error)
+
+    item, err := NewRepository(db).GetByID(context.Background(), "id-1")
+    require.NoError(t, err) // require: if this fails, item is nil and next line panics
+
+    // Multiple assertions on the returned value — assert is fine
+    assert.Equal(t, "id-1", item.ID)
+    assert.Equal(t, "Test", item.Name)
+    assert.True(t, item.IsActive)
+}
+```
+
+Rule of thumb: **`require` for preconditions and setup; `assert` for properties of the result.**
+
 ---
 
 ## Table-Driven Tests
 
-The idiomatic Go approach for covering multiple scenarios without code duplication.
+The idiomatic Go pattern for multiple scenarios without code duplication.
 
 ```go
 func TestPagination(t *testing.T) {
@@ -59,17 +85,19 @@ func TestPagination(t *testing.T) {
         limit   int
         offset  int
         wantErr bool
+        errMsg  string
     }{
         {name: "valid", limit: 50, offset: 0, wantErr: false},
-        {name: "limit too high", limit: 200, offset: 0, wantErr: true},
-        {name: "negative offset", limit: 50, offset: -1, wantErr: true},
+        {name: "limit too high", limit: 200, offset: 0, wantErr: true, errMsg: "exceeds maximum"},
+        {name: "negative offset", limit: 50, offset: -1, wantErr: true, errMsg: "cannot be negative"},
     }
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             _, err := NewPagination(tt.limit, tt.offset)
             if tt.wantErr {
-                assert.Error(t, err)
+                require.Error(t, err)
+                assert.Contains(t, err.Error(), tt.errMsg)
             } else {
                 assert.NoError(t, err)
             }
@@ -78,14 +106,46 @@ func TestPagination(t *testing.T) {
 }
 ```
 
-### Parallel Table-Driven Tests
+For complex scenarios with varying mock behaviour, use function fields:
 
 ```go
+tests := []struct {
+    name      string
+    setupMock func(m *MockRepository)
+    check     func(t *testing.T, result []Item, err error)
+}{
+    {
+        name: "returns items on success",
+        setupMock: func(m *MockRepository) {
+            m.ListFunc = func(ctx context.Context) ([]Item, error) {
+                return []Item{{Name: "A"}}, nil
+            }
+        },
+        check: func(t *testing.T, result []Item, err error) {
+            require.NoError(t, err)
+            assert.Len(t, result, 1)
+        },
+    },
+}
+```
+
+### Parallel Table-Driven Tests (Go 1.22+)
+
+```go
+// Good (Go 1.22+) — no tt := tt needed; loop variables are per-iteration
 for _, tt := range tests {
-    tt := tt // capture range variable (required before Go 1.22)
     t.Run(tt.name, func(t *testing.T) {
         t.Parallel()
-        assert.Equal(t, tt.want, Double(tt.input))
+        assert.Equal(t, tt.want, process(tt.input))
+    })
+}
+
+// Pre-1.22 — required tt := tt capture; remove in Go 1.22+ projects
+for _, tt := range tests {
+    tt := tt // remove this in Go 1.22+ projects
+    t.Run(tt.name, func(t *testing.T) {
+        t.Parallel()
+        assert.Equal(t, tt.want, process(tt.input))
     })
 }
 ```
@@ -121,7 +181,7 @@ type ItemRepository interface {
     GetByID(ctx context.Context, id string) (*Item, error)
 }
 
-// Hand-rolled test mock
+// Hand-rolled test mock — simple and transparent
 type MockItemRepository struct {
     ListFunc    func(ctx context.Context) ([]Item, error)
     GetByIDFunc func(ctx context.Context, id string) (*Item, error)
@@ -148,7 +208,7 @@ func TestUseCaseList(t *testing.T) {
         },
     }
     items, err := NewUseCase(mockRepo).List(context.Background())
-    assert.NoError(t, err)
+    require.NoError(t, err)
     assert.Len(t, items, 1)
 }
 ```
@@ -169,7 +229,7 @@ func TestWithMock(t *testing.T) {
 
     items, err := NewUseCase(mockRepo).List(context.Background())
 
-    assert.NoError(t, err)
+    require.NoError(t, err)
     assert.Len(t, items, 1)
     mockRepo.AssertExpectations(t)
 }
@@ -198,13 +258,44 @@ func TestItemRepository_List(t *testing.T) {
     mock.ExpectQuery(`SELECT \* FROM "items"`).WillReturnRows(rows)
 
     items, err := NewRepository(db).List(context.Background())
-    assert.NoError(t, err)
+    require.NoError(t, err)
     assert.Len(t, items, 2)
     assert.NoError(t, mock.ExpectationsWereMet())
 }
 ```
 
-### Integration Tests with a Real Test Database
+### Integration Tests with testcontainers-go (preferred)
+
+`testcontainers-go` spins up real Docker containers — more portable than requiring a pre-configured environment variable.
+
+```go
+import (
+    "github.com/testcontainers/testcontainers-go/modules/postgres"
+)
+
+func setupTestDB(t *testing.T) *gorm.DB {
+    t.Helper()
+
+    ctx := context.Background()
+    container, err := postgres.RunContainer(ctx,
+        postgres.WithDatabase("testdb"),
+        postgres.WithUsername("test"),
+        postgres.WithPassword("test"),
+    )
+    require.NoError(t, err)
+    t.Cleanup(func() { container.Terminate(ctx) })
+
+    dsn, err := container.ConnectionString(ctx, "sslmode=disable")
+    require.NoError(t, err)
+
+    db, err := gorm.Open(gormpostgres.Open(dsn), &gorm.Config{})
+    require.NoError(t, err)
+    require.NoError(t, db.AutoMigrate(&Item{}))
+    return db
+}
+```
+
+### Integration Tests with `TEST_DB_URL` (fallback)
 
 ```go
 func TestItemRepository_Integration(t *testing.T) {
@@ -212,11 +303,10 @@ func TestItemRepository_Integration(t *testing.T) {
         t.Skip("Skipping integration test in short mode")
     }
     db := setupTestDB(t)
-    defer cleanupTestDB(t, db)
 
-    _ = db.Create(&Item{Name: "Test", ID: "id-1"}).Error
+    require.NoError(t, db.Create(&Item{Name: "Test", ID: "id-1"}).Error)
     items, err := NewRepository(db).List(context.Background())
-    assert.NoError(t, err)
+    require.NoError(t, err)
     assert.Len(t, items, 1)
 }
 
@@ -229,18 +319,14 @@ func setupTestDB(t *testing.T) *gorm.DB {
     db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
     require.NoError(t, err)
     require.NoError(t, db.AutoMigrate(&Item{}))
+    t.Cleanup(func() { db.Exec("TRUNCATE TABLE items CASCADE") })
     return db
-}
-
-func cleanupTestDB(t *testing.T, db *gorm.DB) {
-    t.Helper()
-    db.Exec("TRUNCATE TABLE items CASCADE")
 }
 ```
 
 ---
 
-## Test Helpers & Fixtures
+## Test Helpers and Fixtures
 
 ### Functional Options Pattern
 
@@ -254,13 +340,22 @@ func newTestItem(opts ...func(*Item)) Item {
 }
 
 func withName(name string) func(*Item) { return func(i *Item) { i.Name = name } }
+func withInactive() func(*Item)        { return func(i *Item) { i.IsActive = false } }
 
 // Usage
 item := newTestItem()
-custom := newTestItem(withName("Custom"))
+custom := newTestItem(withName("Custom"), withInactive())
 ```
 
-Always call `t.Helper()` in helper functions so failures point to the calling test.
+Always call `t.Helper()` in helper functions so failures point to the calling test:
+
+```go
+func assertItemValid(t *testing.T, item Item) {
+    t.Helper()
+    assert.NoError(t, item.Validate())
+    assert.NotEmpty(t, item.ID)
+}
+```
 
 ### Global Setup / Teardown
 
@@ -281,9 +376,12 @@ func TestMain(m *testing.M) {
 func TestConcurrentAccess(t *testing.T) {
     var counter int32
     var wg sync.WaitGroup
-    for i := 0; i < 10; i++ {
+    for range 10 {
         wg.Add(1)
-        go func() { defer wg.Done(); atomic.AddInt32(&counter, 1) }()
+        go func() {
+            defer wg.Done()
+            atomic.AddInt32(&counter, 1)
+        }()
     }
     wg.Wait()
     assert.Equal(t, int32(10), counter)
@@ -317,8 +415,22 @@ func TestOperationRespectsTimeout(t *testing.T) {
 func BenchmarkProcess(b *testing.B) {
     data := setupTestData()
     b.ResetTimer()
-    for i := 0; i < b.N; i++ {
-        Process(data)
+    b.ReportAllocs()
+    for b.Loop() { // Go 1.24+: b.Loop() preferred over i < b.N
+        _ = Process(data)
+    }
+}
+
+// Sub-benchmarks for scaling behaviour
+func BenchmarkProcess_Sizes(b *testing.B) {
+    for _, size := range []int{10, 100, 1000, 10000} {
+        b.Run(fmt.Sprintf("size=%d", size), func(b *testing.B) {
+            data := generateData(size)
+            b.ResetTimer()
+            for b.Loop() {
+                _ = Process(data)
+            }
+        })
     }
 }
 ```
@@ -331,181 +443,61 @@ Run with: `go test -bench=. -benchmem`
 
 ```go
 assert.Equal(t, expected, actual)
+assert.NotEqual(t, unexpected, actual)
 assert.NotNil(t, obj)
+assert.Nil(t, obj)
 assert.NoError(t, err)
 assert.Error(t, err)
 assert.ErrorIs(t, err, target)
+assert.ErrorAs(t, err, &target)
 assert.Len(t, collection, n)
+assert.Empty(t, collection)
 assert.Contains(t, collection, element)
 assert.ElementsMatch(t, expected, actual) // same elements, any order
+assert.True(t, condition)
+assert.False(t, condition)
 ```
-
-### require vs assert — When to Use Each
-
-This is a critical distinction:
-
-- **`assert`** — records the failure but continues executing the test. Use for independent assertions where later assertions still make sense even if earlier ones fail.
-- **`require`** — stops the test immediately on failure. Use for setup steps and preconditions where continuing would cause panics or misleading failures.
-
-```go
-func TestItemRepository_Get(t *testing.T) {
-    // Setup — use require: if the DB or insert fails, all assertions below are meaningless
-    db := setupTestDB(t)
-    require.NoError(t, db.Create(&Item{ID: "id-1", Name: "Test"}).Error)
-
-    item, err := NewRepository(db).GetByID(context.Background(), "id-1")
-    require.NoError(t, err)  // require: if this fails, item is nil and the next line panics
-
-    // Multiple assertions on the returned value — assert is fine here
-    assert.Equal(t, "id-1", item.ID)
-    assert.Equal(t, "Test", item.Name)
-    assert.True(t, item.IsActive)
-}
-```
-
-Rule of thumb: **`require` for preconditions and setup; `assert` for validating properties of the result.**
 
 ---
 
 ## Fuzzing (Go 1.18+)
 
-Go has built-in fuzzing support. Use it to discover edge cases that structured tests miss:
+Built-in fuzzing to discover edge cases that structured tests miss.
 
 ```go
-// FuzzXxx functions are run by: go test -fuzz=FuzzParseDate
+// FuzzXxx functions run with: go test -fuzz=FuzzParseDate -fuzztime=30s
 func FuzzParseDate(f *testing.F) {
-    // Seed corpus — known good inputs the fuzzer starts from
+    // Seed corpus — known inputs the fuzzer starts from
     f.Add("2024-01-15")
     f.Add("2000-12-31")
-    f.Add("")  // edge case seed
+    f.Add("")        // edge case: empty input
+    f.Add("not-a-date")
 
     f.Fuzz(func(t *testing.T, input string) {
-        // The fuzz function must not panic on any input
-        // and must be deterministic (no global state)
+        // Must not panic on any input
         result, err := ParseDate(input)
         if err == nil {
-            // If parsing succeeded, the result must be valid
+            // If parsing succeeded, assert invariants on the result
             if result.Year() < 1000 || result.Year() > 9999 {
                 t.Errorf("ParseDate(%q) produced out-of-range year %d", input, result.Year())
             }
         }
-        // err != nil is acceptable — ParseDate may reject invalid input
+        // err != nil is acceptable — parsing may reject invalid input
     })
 }
 ```
 
-Run with: `go test -fuzz=FuzzParseDate -fuzztime=30s`
-
-Failing corpus inputs are saved to `testdata/fuzz/FuzzParseDate/` and become permanent regression tests.
+Failing inputs are saved to `testdata/fuzz/FuzzParseDate/` and become permanent regression tests.
 
 ---
 
-## testcontainers-go for Integration Tests
+## Go 1.23 Testing Patterns
 
-`testcontainers-go` spins up real Docker containers for integration tests — more portable than requiring a pre-configured `TEST_DB_URL`:
+### Testing Range-Over-Function Iterators
 
-```go
-import (
-    "github.com/testcontainers/testcontainers-go/modules/postgres"
-)
-
-func setupTestDB(t *testing.T) *gorm.DB {
-    t.Helper()
-
-    ctx := context.Background()
-    container, err := postgres.RunContainer(ctx,
-        postgres.WithDatabase("testdb"),
-        postgres.WithUsername("test"),
-        postgres.WithPassword("test"),
-    )
-    require.NoError(t, err)
-    t.Cleanup(func() { container.Terminate(ctx) })
-
-    dsn, err := container.ConnectionString(ctx, "sslmode=disable")
-    require.NoError(t, err)
-
-    db, err := gorm.Open(gormpostgres.Open(dsn), &gorm.Config{})
-    require.NoError(t, err)
-    require.NoError(t, db.AutoMigrate(&Item{}))
-    return db
-}
-```
-
-This replaces the `t.Skip("TEST_DB_URL not set")` pattern — every CI run gets a fresh, isolated database.
-
----
-
-## Go Version-Specific Testing Patterns
-
-### Go 1.21+ Testing
+Iterators must respect early termination. Test both full traversal and break.
 
 ```go
-// Good — slices.Equal for slice comparison; no reflect.DeepEqual needed
-import "slices"
-
-func TestGetNames(t *testing.T) {
-    got := getNames(items)
-    want := []string{"Alpha", "Beta", "Gamma"}
-    if !slices.Equal(got, want) {
-        t.Errorf("got %v, want %v", got, want)
-    }
-}
-
-// Good — maps.Equal for map comparison
-import "maps"
-
-func TestBuildIndex(t *testing.T) {
-    got := buildIndex(items)
-    want := map[string]int{"alpha": 1, "beta": 2}
-    if !maps.Equal(got, want) {
-        t.Errorf("got %v, want %v", got, want)
-    }
-}
-```
-
-### Go 1.22+ Testing
-
-```go
-// No more tt := tt needed in parallel table tests (Go 1.22+)
-// Loop variables are captured per-iteration automatically.
-
-// Old (pre-1.22) — required to avoid all subtests sharing the last tt
-for _, tt := range tests {
-    tt := tt  // remove this in Go 1.22+ projects
-    t.Run(tt.name, func(t *testing.T) {
-        t.Parallel()
-        assert.Equal(t, tt.want, process(tt.input))
-    })
-}
-
-// Good (Go 1.22+)
-for _, tt := range tests {
-    t.Run(tt.name, func(t *testing.T) {
-        t.Parallel()
-        assert.Equal(t, tt.want, process(tt.input))
-    })
-}
-```
-
-```go
-// Good — test net/http mux with method+path routing (Go 1.22+)
-func TestGetItemHandler(t *testing.T) {
-    mux := http.NewServeMux()
-    mux.HandleFunc("GET /items/{id}", handler.GetItem)
-
-    req := httptest.NewRequest(http.MethodGet, "/items/123", nil)
-    w := httptest.NewRecorder()
-    mux.ServeHTTP(w, req)
-
-    assert.Equal(t, http.StatusOK, w.Code)
-}
-```
-
-### Go 1.23+ Testing
-
-```go
-// Good — test range-over-function iterators for both full traversal and early break
-
 func TestActiveItemsIterator_FullTraversal(t *testing.T) {
     items := []Item{
         {Name: "A", IsActive: true},
@@ -529,16 +521,49 @@ func TestActiveItemsIterator_StopsOnBreak(t *testing.T) {
     var got []Item
     for item := range ActiveItems(items) {
         got = append(got, item)
-        break  // consumer stops after first item
+        break // consumer stops after first item
     }
-    assert.Len(t, got, 1)
+    assert.Len(t, got, 1) // B was never yielded
 }
 ```
 
-### Go 1.24+ Testing
+### `slices` and `maps` for Assertions
 
 ```go
-// Good — os.Root in tests to verify no path traversal escapes the sandbox
+// Good — type-safe slice comparison (Go 1.21+)
+import "slices"
+
+func TestGetNames(t *testing.T) {
+    got := getNames(items)
+    want := []string{"Alpha", "Beta", "Gamma"}
+    if !slices.Equal(got, want) {
+        t.Errorf("got %v, want %v", got, want)
+    }
+}
+
+// Good — map comparison (Go 1.21+)
+import "maps"
+
+func TestBuildIndex(t *testing.T) {
+    got := buildIndex(items)
+    want := map[string]int{"alpha": 1, "beta": 2}
+    if !maps.Equal(got, want) {
+        t.Errorf("got %v, want %v", got, want)
+    }
+}
+
+// Bad — reflect.DeepEqual is slow and gives poor error output
+if !reflect.DeepEqual(got, want) { ... }
+```
+
+---
+
+## Go 1.24 Testing Patterns
+
+### `os.Root` for Sandbox Tests
+
+```go
+// Good — verify that no path traversal escapes the sandbox
 func TestFileWriter_StaysInSandbox(t *testing.T) {
     root, err := os.OpenRoot(t.TempDir())
     require.NoError(t, err)
@@ -547,41 +572,74 @@ func TestFileWriter_StaysInSandbox(t *testing.T) {
     err = writer.WriteFile(root, "output.txt", []byte("data"))
     assert.NoError(t, err)
 
-    // Verify that escaping the sandbox is rejected
+    // Escaping the sandbox must be rejected
     err = writer.WriteFile(root, "../etc/passwd", []byte("malicious"))
     assert.Error(t, err)
 }
 ```
 
-### Go 1.25+ Testing
-
-> ⚠️ `testing/synctest` is not yet in a stable release (current stable: Go 1.24 as of Feb 2026). Apply only if running a pre-release build.
+### `b.Loop()` in Benchmarks
 
 ```go
-// Good — testing/synctest for deterministic concurrent tests (Go 1.25+)
-// Runs the test body in a "bubble" with a fake clock; time only advances when
-// all goroutines are blocked.
+// Good — b.Loop() preferred over i < b.N in Go 1.24+
+func BenchmarkProcessItems(b *testing.B) {
+    items := generateTestItems(1000)
+    b.ResetTimer()
+    b.ReportAllocs()
+    for b.Loop() {
+        _ = ProcessItems(items)
+    }
+}
+```
+
+### Testing `net/http` Route Patterns (Go 1.22+)
+
+```go
+func TestGetItemHandler(t *testing.T) {
+    mux := http.NewServeMux()
+    mux.HandleFunc("GET /items/{id}", handler.GetItem)
+
+    req := httptest.NewRequest(http.MethodGet, "/items/123", nil)
+    w := httptest.NewRecorder()
+    mux.ServeHTTP(w, req)
+
+    assert.Equal(t, http.StatusOK, w.Code)
+}
+```
+
+---
+
+## Go 1.25 Testing Patterns (upcoming)
+
+> `testing/synctest` is not yet in a stable release (current stable: Go 1.24, March 2026). Apply only on pre-release builds.
+
+### `testing/synctest` for Deterministic Concurrent Tests
+
+Runs the test body in a synthetic "bubble" with a fake clock. Time only advances when all goroutines are blocked. Eliminates real `time.Sleep` calls from timing-sensitive tests.
+
+```go
 import "testing/synctest"
 
+// Good — fake clock; executes instantly without real delay
 func TestCacheExpiry(t *testing.T) {
     synctest.Run(func() {
         cache := NewCache(5 * time.Second)
         cache.Set("key", "value")
 
-        time.Sleep(6 * time.Second) // fake sleep — instant, no real delay
+        time.Sleep(6 * time.Second) // fake — advances fake clock instantly
         assert.Nil(t, cache.Get("key"), "entry should have expired")
     })
 }
 ```
 
 ```go
-// Good — testing/synctest for testing timeout behaviour without real waits
+// Good — test timeout behaviour without real waits
 func TestOperationTimesOut(t *testing.T) {
     synctest.Run(func() {
         ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
         defer cancel()
 
-        time.Sleep(200 * time.Millisecond) // fake — advances fake clock instantly
+        time.Sleep(200 * time.Millisecond) // fake — no real delay
 
         err := SlowOperation(ctx)
         assert.ErrorIs(t, err, context.DeadlineExceeded)
@@ -589,25 +647,33 @@ func TestOperationTimesOut(t *testing.T) {
 }
 ```
 
-### Go 1.26+ Testing
+---
+
+## Go 1.26 Testing Patterns (upcoming)
+
+> Go 1.26 is not yet in a stable release (current stable: Go 1.24, March 2026).
+
+### `new(T, value)` for Cleaner Test Fixtures
 
 ```go
-// Good — new(T, value) for cleaner test fixture allocation (Go 1.26+)
+// Good (Go 1.26+) — allocate and initialise in one expression
 item := new(Item, Item{Name: "Test", IsActive: true})
 assert.Equal(t, "Test", item.Name)
 
-// Old approach
+// Old approach — still works
 item := &Item{Name: "Test", IsActive: true}
 ```
 
-```go
-// Good — run go fix modernizer in CI to catch outdated test patterns (Go 1.26+)
-// go fix -fix=modernize ./...
-//
-// Automatically updates test code:
-// - Removes unnecessary tt := tt loop captures
-// - Replaces reflect.DeepEqual(sliceA, sliceB) → slices.Equal(sliceA, sliceB)
-// - Replaces sort.Slice in test helpers → slices.SortFunc
+### `go fix -fix=modernize` in CI
+
+```bash
+# Run before submitting for review — catches outdated test patterns automatically
+go fix -fix=modernize ./...
+
+# Automatically updates test code:
+# - Removes tt := tt loop captures (unnecessary in Go 1.22+)
+# - reflect.DeepEqual(sliceA, sliceB) → slices.Equal(sliceA, sliceB)
+# - sort.Slice in test helpers → slices.SortFunc
 ```
 
 ---
@@ -616,15 +682,15 @@ item := &Item{Name: "Test", IsActive: true}
 
 - [Go Testing Package](https://pkg.go.dev/testing)
 - [Testify](https://github.com/stretchr/testify)
-- [go-sqlmock](https://github.com/DATA-DOG/go-sqlmock)
 - [Table-Driven Tests](https://go.dev/wiki/TableDrivenTests)
 - [Go Subtests and Sub-benchmarks](https://go.dev/blog/subtests)
-- [Go Testing Best Practices](https://go.dev/doc/tutorial/add-a-test)
-- [Go 1.22 Release Notes](https://go.dev/doc/go1.22)
-- [Go 1.23 Range Over Functions](https://go.dev/blog/range-functions)
-- [Go 1.24 Release Notes](https://go.dev/doc/go1.24)
-- [Go 1.25 Release Notes](https://go.dev/doc/go1.25)
+- [go-sqlmock](https://github.com/DATA-DOG/go-sqlmock)
+- [testcontainers-go](https://golang.testcontainers.org)
+- [Go Fuzzing](https://go.dev/doc/fuzz)
 - [testing/synctest package](https://pkg.go.dev/testing/synctest)
-- [Go 1.26 Release Notes](https://go.dev/doc/go1.26)
 - [slices package](https://pkg.go.dev/slices)
 - [maps package](https://pkg.go.dev/maps)
+- [Go 1.23 Release Notes](https://go.dev/doc/go1.23)
+- [Go 1.24 Release Notes](https://go.dev/doc/go1.24)
+- [Go 1.25 Release Notes](https://go.dev/doc/go1.25)
+- [Go 1.26 Release Notes](https://go.dev/doc/go1.26)

@@ -1,6 +1,6 @@
 # LangChain / LangGraph Performance Best Practices
 
-Applies to: LangChain 0.3+ and LangGraph 0.2+
+Applies to: LangChain 0.3+ / langchain-core 0.3+, LangGraph 0.2+
 
 ---
 
@@ -58,23 +58,43 @@ result_2 = chain.invoke(input_2)
 
 ### Stream User-Facing Responses
 
+Stream output as tokens arrive rather than waiting for the complete response. This is the single highest-impact latency improvement for interactive applications.
+
 ```python
 # Good — first token arrives fast, better UX
 async for chunk in chain.astream({"query": user_input}):
     yield chunk.content
 
-# Bad — user waits for full response
+# Bad — user waits for full response before seeing anything
 response = await chain.ainvoke({"query": user_input})
 return response.content
 ```
 
-### Use `astream_events` for Complex Chains
+### Use `astream_events` for Complex Chains and Graphs
 
 ```python
-# Good — stream intermediate steps from a graph
+# Good — stream intermediate steps with event metadata
 async for event in graph.astream_events(inputs, version="v2"):
     if event["event"] == "on_chat_model_stream":
-        print(event["data"]["chunk"].content, end="")
+        print(event["data"]["chunk"].content, end="", flush=True)
+    elif event["event"] == "on_tool_start":
+        print(f"\n[Calling tool: {event['name']}]")
+```
+
+### Use `stream_mode` on Graphs
+
+```python
+# stream_mode="messages" — stream individual LLM tokens as they are produced
+for token, metadata in graph.stream(
+    {"messages": [{"role": "user", "content": "What is the weather in SF?"}]},
+    stream_mode="messages",
+):
+    print(token.content, end="", flush=True)
+
+# stream_mode="updates" — receive state diffs after each node completes
+for chunk in graph.stream(inputs, stream_mode="updates"):
+    for node_name, node_output in chunk.items():
+        print(f"[{node_name}] produced update")
 ```
 
 ---
@@ -87,7 +107,7 @@ async for event in graph.astream_events(inputs, version="v2"):
 from langchain_core.globals import set_llm_cache
 from langchain_community.cache import SQLiteCache
 
-# Good — avoids redundant API calls
+# Good — avoids redundant API calls for identical prompts
 set_llm_cache(SQLiteCache(database_path=".langchain_cache.db"))
 ```
 
@@ -97,45 +117,50 @@ set_llm_cache(SQLiteCache(database_path=".langchain_cache.db"))
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import LocalFileStore
 
-# Good — embeddings computed once, cached on disk
+# Good — embeddings computed once, served from disk on subsequent calls
 store = LocalFileStore("./embedding_cache/")
 cached_embedder = CacheBackedEmbeddings.from_bytes_store(
     underlying_embeddings=embeddings,
     document_embedding_cache=store,
     namespace=embeddings.model,
 )
+
+# Bad — recomputing embeddings on every request
+docs = vectorstore.add_documents(documents)  # no cache backing
 ```
 
 ---
 
 ## Token Management
 
-### Set Appropriate `max_tokens`
+### Set Explicit `max_tokens`
 
 ```python
-# Good — bounded output, predictable cost
-llm = ChatOpenAI(model="gpt-4o", max_tokens=1024)
+# Good — bounded output, predictable cost and latency
+from langchain.chat_models import init_chat_model
 
-# Bad — unbounded, risk of excessive token usage
-llm = ChatOpenAI(model="gpt-4o")
+llm = init_chat_model("gpt-4o", max_tokens=1024)
+
+# Bad — unbounded generation, unpredictable latency and cost
+llm = init_chat_model("gpt-4o")
 ```
 
 ### Use Cheaper Models for Simple Tasks
 
 ```python
-# Good — route by complexity
-from langchain_core.runnables import RunnableParallel
+# Good — route by task complexity
+from langchain.chat_models import init_chat_model
 
-classifier = ChatOpenAI(model="gpt-4o-mini", max_tokens=10)
-generator = ChatOpenAI(model="gpt-4o", max_tokens=2048)
+classifier = init_chat_model("gpt-4o-mini", max_tokens=10)   # cheap, fast
+generator = init_chat_model("gpt-4o", max_tokens=2048)       # expensive, capable
 ```
 
-### Trim Message History
+### Trim Message History Before Sending
 
 ```python
 from langchain_core.messages import trim_messages
 
-# Good — prevent context window overflow
+# Good — prevent context window overflow and token waste
 trimmed = trim_messages(
     messages,
     max_tokens=4000,
@@ -143,6 +168,9 @@ trimmed = trim_messages(
     strategy="last",
     include_system=True,
 )
+
+# Bad — passing the entire conversation history with no limit
+response = llm.invoke(all_messages_ever)
 ```
 
 ---
@@ -151,31 +179,49 @@ trimmed = trim_messages(
 
 ### Keep State Minimal
 
+Large state objects bloat checkpoint size and increase serialization overhead on every node transition.
+
 ```python
-# Good — only essential data in state
+# Good — only essential references in state
+from typing import Annotated
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
 class AgentState(TypedDict):
-    messages: Annotated[list[BaseMessage], operator.add]
+    messages: Annotated[list, add_messages]
     current_step: str
 
-# Bad — storing large documents in state
+# Bad — storing large payloads in state
 class AgentState(TypedDict):
-    messages: Annotated[list[BaseMessage], operator.add]
-    all_documents: list[Document]  # Bloats checkpoint size
-    raw_html: str                  # Unnecessary in state
+    messages: Annotated[list, add_messages]
+    all_documents: list   # Bloats every checkpoint
+    raw_html: str         # Should be fetched on demand, not persisted in state
 ```
 
-### Use External Storage for Large Data
+### Store References, Not Large Objects
 
 ```python
-# Good — store reference, not content
+# Good — store IDs, fetch when needed
 class AgentState(TypedDict):
-    messages: Annotated[list[BaseMessage], operator.add]
-    document_ids: list[str]  # Fetch from store when needed
+    messages: Annotated[list, add_messages]
+    document_ids: list[str]
 
 def retrieve_node(state: AgentState) -> dict:
     docs = vector_store.get_by_ids(state["document_ids"])
     summary = summarize(docs)
-    return {"messages": [AIMessage(content=summary)]}
+    return {"messages": [{"role": "assistant", "content": summary}]}
+```
+
+### Use `InMemorySaver` for Testing, Persistent Savers for Production
+
+`InMemorySaver` / `MemorySaver` keep all state in process memory — fine for tests and short-lived sessions. For production, use a persistent saver (Postgres, Redis, SQLite) to avoid unbounded memory growth.
+
+```python
+from langgraph.checkpoint.memory import InMemorySaver
+
+# Test / development
+memory = InMemorySaver()
+app = graph.compile(checkpointer=memory)
 ```
 
 ---
@@ -185,16 +231,16 @@ def retrieve_node(state: AgentState) -> dict:
 ### Use Metadata Filtering Before Similarity Search
 
 ```python
-# Good — reduce search space first
+# Good — reduce the search space at the store level
 results = vectorstore.similarity_search(
     query,
     k=5,
     filter={"category": "technical", "year": 2024},
 )
 
-# Bad — search everything then filter in Python
+# Bad — retrieve many results, then filter in Python (data transferred unnecessarily)
 results = vectorstore.similarity_search(query, k=100)
-results = [r for r in results if r.metadata["category"] == "technical"]
+filtered = [r for r in results if r.metadata["category"] == "technical"]
 ```
 
 ### Set Appropriate Chunk Sizes
@@ -202,12 +248,25 @@ results = [r for r in results if r.metadata["category"] == "technical"]
 ```python
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# Good — balanced chunk size for retrieval quality
+# Good — balanced chunk size for retrieval quality vs. context efficiency
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200,
 )
 
-# Bad — chunks too large (poor retrieval precision) or too small (lost context)
+# Bad — chunks too large degrade precision; chunks too small lose context
 splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=0)
 ```
+
+---
+
+## Anti-Patterns
+
+- Calling `invoke()` in a loop instead of `batch()` — eliminates all concurrency benefits
+- Streaming disabled for interactive responses — forces the user to wait for full generation
+- Unbounded `max_tokens` on expensive models — unpredictable latency and cost spikes
+- Full document content stored in LangGraph state — bloats checkpoints on every node transition
+- Embeddings recomputed on every request without a `CacheBackedEmbeddings` layer
+- Post-retrieval Python filtering instead of vector store metadata filters — defeats index pushdown
+- `trim_messages` not applied when conversation history is unbounded — context overflow degrades quality and increases cost
+- Synchronous `chain.invoke()` called inside an async request handler — blocks the event loop

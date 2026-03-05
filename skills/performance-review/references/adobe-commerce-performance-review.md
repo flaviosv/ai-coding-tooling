@@ -11,51 +11,81 @@ Applies to: Adobe Commerce / Magento 2 (AC 2.4.x)
 ### Use Collections with Field Restrictions
 
 ```php
-// Good — fetches only needed columns
+// Good — fetches only needed columns; one query at the DB level
 $collection = $this->productCollectionFactory->create();
 $collection->addFieldToSelect(['entity_id', 'sku', 'name', 'status']);
 $collection->addFieldToFilter('status', Status::STATUS_ENABLED);
 
-// Bad — SELECT * loads all EAV attributes, very expensive
+// Bad — SELECT * loads all EAV attributes across many join tables; extremely expensive
 $collection = $this->productCollectionFactory->create();
 $collection->load();
 ```
 
-### Avoid Per-Item `load()` Inside Loops
+### Avoid Per-Item `load()` / Repository Calls Inside Loops
 
 ```php
-// Bad — 1 query per order item (N+1)
+// Bad — 1 repository call per order item (classic N+1)
 foreach ($orderItems as $item) {
     $product = $this->productRepository->getById($item->getProductId());
     $this->process($product);
 }
 
-// Good — batch load with collection
+// Good — batch load with a single collection query
 $productIds = array_column($orderItems, 'product_id');
 $collection = $this->productCollectionFactory->create();
 $collection->addFieldToFilter('entity_id', ['in' => $productIds]);
-$products = $collection->getItems(); // single query
+$collection->addFieldToSelect(['entity_id', 'sku', 'name', 'price']);
+$products = [];
+foreach ($collection as $product) {
+    $products[$product->getId()] = $product;
+}
 ```
 
 ### Use Repository API for Single-Record Access
 
 ```php
-// Good — uses identity map / cache layer
+// Good — uses the repository's identity-map layer; repeated calls for the same ID are free
 $product = $this->productRepository->getById($id);
 
-// Bad for repeated access — bypasses repository cache
+// Bad for repeated access — bypasses repository caching, always hits the DB
 $product = $this->productFactory->create()->load($id);
 ```
 
 ### Prefer `getSize()` for Count-Only Checks
 
 ```php
-// Good — COUNT(*) at DB level, does not load records
+// Good — issues COUNT(*) at the DB level; does not load any records
 if ($collection->getSize() > 0) { ... }
 
-// Bad — loads all records just to count
+// Bad — loads all records into memory just to count them
 if (count($collection->getItems()) > 0) { ... }
 ```
+
+### Use `SearchCriteriaBuilder` for Paginated Reads
+
+```php
+// Good — page size prevents unbounded result sets
+$criteria = $this->searchCriteriaBuilder
+    ->addFilter('status', 'active')
+    ->setPageSize(100)
+    ->setCurrentPage(1)
+    ->create();
+$results = $this->repository->getList($criteria);
+```
+
+---
+
+## EAV Attribute Loading
+
+```php
+// Good — load only the attributes you will actually use
+$collection->addAttributeToSelect(['name', 'price', 'special_price', 'image']);
+
+// Bad — joins every EAV attribute table; multiplies query count and memory
+$collection->addAttributeToSelect('*');
+```
+
+Note: Flat catalog tables (`catalog_product_flat_*`) were deprecated in Adobe Commerce 2.4.x and are scheduled for removal. Do not rely on flat table enablement as a performance strategy; use collection field restrictions and ensure indexers run on schedule instead.
 
 ---
 
@@ -69,27 +99,28 @@ use Magento\Framework\Serialize\SerializerInterface;
 
 class ConfigProvider
 {
-    private const CACHE_KEY = 'my_module_config';
-    private const CACHE_TAG = 'my_module';
-    private const CACHE_LIFETIME = 3600;
+    private const CACHE_KEY   = 'my_module_config_v1';
+    private const CACHE_TAG   = 'my_module';
+    private const CACHE_TTL   = 3600; // seconds
 
     public function __construct(
-        private readonly CacheInterface $cache,
+        private readonly CacheInterface      $cache,
         private readonly SerializerInterface $serializer,
     ) {}
 
     public function getConfig(): array
     {
         $cached = $this->cache->load(self::CACHE_KEY);
-        if ($cached) {
+        if ($cached !== false) {
             return $this->serializer->unserialize($cached);
         }
+
         $data = $this->computeExpensiveConfig();
         $this->cache->save(
             $this->serializer->serialize($data),
             self::CACHE_KEY,
             [self::CACHE_TAG],
-            self::CACHE_LIFETIME
+            self::CACHE_TTL
         );
         return $data;
     }
@@ -98,24 +129,42 @@ class ConfigProvider
 
 ### Full Page Cache (FPC) Compatibility
 
-Blocks rendered inside FPC must not read session, cookies, or customer-specific data directly:
+Blocks and ViewModels rendered inside FPC must never read session, customer, or cookie data directly — doing so causes a cache miss for every visitor:
 
 ```php
-// Bad — breaks FPC; customer data in a cacheable block
+// Bad — customer name in a cacheable block forces a cache miss for every request
 class MyBlock extends Template
 {
     public function getCustomerName(): string
     {
-        return $this->customerSession->getCustomerData()->getFirstname(); // FPC miss
+        // customerSession read invalidates FPC for this block
+        return $this->customerSession->getCustomerData()->getFirstname();
     }
 }
 
-// Good — keep the block cacheable; load customer-specific data client-side via sections
+// Good — keep the block cacheable; load customer-specific data client-side via sections API
 class MyBlock extends Template
 {
     public function getCacheLifetime(): ?int
     {
-        return 86400;
+        return 86400; // positive value = cacheable
+    }
+
+    // Customer name is fetched by Alpine.js / RequireJS from /customer/section/load
+}
+```
+
+### Block Identity for Granular Cache Invalidation
+
+```php
+use Magento\Framework\DataObject\IdentityInterface;
+
+class ProductListBlock extends Template implements IdentityInterface
+{
+    public function getIdentities(): array
+    {
+        // Invalidate only when these specific cache tags are cleaned
+        return [\Magento\Catalog\Model\Product::CACHE_TAG, \Magento\Catalog\Model\Category::CACHE_TAG];
     }
 }
 ```
@@ -124,132 +173,146 @@ class MyBlock extends Template
 
 ## Indexing
 
-Trigger re-indexing correctly — never call `reindexAll()` in production request cycles:
+Trigger re-indexing correctly — never call `reindexAll()` during a web or API request:
 
 ```php
-// Good — mark for partial reindex; indexer runs via cron
+// Good — mark the indexer as invalid; cron picks it up asynchronously
 $this->indexer->invalidate();
 
-// Bad — full synchronous reindex during a web request
-$this->indexer->reindexAll(); // blocks the request for minutes
+// Bad — synchronous full reindex blocks the web request for minutes in any non-trivial catalog
+$this->indexer->reindexAll();
 ```
 
-Configure indexers to **Update by Schedule** in production (Products, Categories, Price, Inventory).
+Configure indexers to **Update by Schedule** in production (Products, Categories, Price, Inventory) so mutations during import or mass-update do not block the request cycle.
 
 ---
 
 ## Message Queue for Heavy Operations
 
-Move non-blocking work to queue consumers:
+Move non-blocking work to queue consumers so the web request returns immediately:
 
 ```php
-// Good — publish to queue, return fast
+// Good — publish a lightweight message and return fast
 class OrderService
 {
     public function placeOrder(OrderInterface $order): void
     {
         $this->orderRepository->save($order);
-        $this->publisher->publish('my.module.order.placed', $order->getEntityId());
+        // Publisher sends only the entity ID — not the full object
+        $this->publisher->publish('my_module.order.placed', (string) $order->getEntityId());
     }
 }
 
-// Bad — heavy processing blocks the checkout response
+// Bad — heavy processing blocks checkout response; degrades conversion rate
 class OrderService
 {
     public function placeOrder(OrderInterface $order): void
     {
         $this->orderRepository->save($order);
-        $this->sendConfirmationEmail($order);   // slow
-        $this->updateErpSystem($order);         // very slow
-        $this->generateInvoicePdf($order);      // very slow
+        $this->sendConfirmationEmail($order);  // slow — external SMTP call
+        $this->updateErpSystem($order);        // very slow — external HTTP call
+        $this->generateInvoicePdf($order);     // very slow — PDF rendering
     }
 }
 ```
+
+Queue consumer definition (`etc/queue_consumer.xml`):
+
+```xml
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/consumer.xsd">
+    <consumer name="myModuleOrderConsumer"
+              queue="my_module.order.placed"
+              handler="MyVendor\MyModule\Consumer\OrderPlacedConsumer::process"
+              connection="db"
+              maxMessages="100"/>
+</config>
+```
+
+Keep consumers idempotent — the message broker may deliver a message more than once.
 
 ---
 
 ## Plugin (Interceptor) Performance
 
-Around plugins impose the highest overhead — prefer before/after:
+Around plugins impose the highest overhead of the three plugin types. Prefer before/after:
 
 ```php
-// Bad — around plugin just to modify result
+// Bad — around plugin used only to modify the return value; always calls $proceed()
 public function aroundGetName(ProductInterface $subject, callable $proceed): string
 {
     return strtoupper($proceed());
 }
 
-// Good — after plugin is sufficient
+// Good — after plugin is sufficient and costs less
 public function afterGetName(ProductInterface $subject, string $result): string
 {
     return strtoupper($result);
 }
 ```
 
-Use `disabled` in `di.xml` to turn off unused third-party plugins rather than leaving them active.
+Use `disabled` in `di.xml` to turn off unused third-party plugins:
 
----
-
-## EAV Attribute Loading
-
-Load only the attributes you need:
-
-```php
-// Good — addAttributeToSelect with specific attributes
-$collection->addAttributeToSelect(['name', 'price', 'special_price']);
-
-// Bad — loads every EAV attribute for every entity
-$collection->addAttributeToSelect('*');
+```xml
+<type name="Magento\Catalog\Model\Product">
+    <plugin name="unused_third_party_plugin" disabled="true"/>
+</type>
 ```
-
-Use flat tables (catalog flat product/category) when reading large product sets on the storefront. Note: flat table support is deprecated in Adobe Commerce 2.4.x and scheduled for removal. Prefer collection field restrictions and indexers instead.
 
 ---
 
 ## GraphQL Resolver Performance
 
-### Use `BatchContainerInterface` to Avoid N+1 in Resolvers
+### Batching to Avoid N+1 Resolver Calls
 
-Each GraphQL field resolver runs once per parent entity by default. Without batching, this causes N+1 queries:
+Each GraphQL field resolver is called once per parent entity by default. Without batching this causes N+1 queries:
 
 ```php
-// Bad — 1 query per product in the result set
+// Bad — one DB call per product in the response set
 class CategoryResolver implements ResolverInterface
 {
-    public function resolve(Field $field, $context, ResolveInfo $info, array $value = null, array $args = null)
+    public function resolve(Field $field, $context, ResolveInfo $info, array $value = null, array $args = null): mixed
     {
-        // Called once per product — N queries for N products
+        // Called N times for N products — N queries
         return $this->categoryRepository->getById($value['category_id']);
     }
 }
 
-// Good — batch with BatchContainerInterface (AC 2.4.4+)
-use Magento\GraphQl\Model\Query\ContextInterface;
+// Good — simple request-scoped in-memory cache (sufficient for most cases)
+class CategoryResolver implements ResolverInterface
+{
+    private array $categoryCache = [];
+
+    public function resolve(Field $field, $context, ResolveInfo $info, array $value = null, array $args = null): mixed
+    {
+        $id = $value['category_id'];
+        if (!isset($this->categoryCache[$id])) {
+            $this->categoryCache[$id] = $this->categoryRepository->getById($id);
+        }
+        return $this->categoryCache[$id];
+    }
+}
+
+// Best for large result sets — BatchServiceContractResolverInterface (AC 2.4.4+)
 use Magento\Framework\GraphQl\Query\Resolver\BatchServiceContractResolverInterface;
-use Magento\Framework\GraphQl\Query\Resolver\BatchRequestItemInterface;
 
 class CategoryBatchResolver implements BatchServiceContractResolverInterface
 {
     public function getServiceContract(): array
     {
+        // The batch service method receives ALL requested IDs in a single call
         return [CategoryBatchService::class, 'getCategories'];
     }
-    // The batch service receives all IDs in one call — single query
-}
-```
 
-For simpler cases, use a request-scoped in-memory cache keyed by entity ID:
-
-```php
-private array $cache = [];
-
-public function resolve(...): array
-{
-    $id = $value['category_id'];
-    if (!isset($this->cache[$id])) {
-        $this->cache[$id] = $this->categoryRepository->getById($id);
+    public function convertToMassGet(BatchRequestItemInterface $request): mixed
+    {
+        return $request->getValue()['category_id'];
     }
-    return $this->cache[$id];
+
+    public function convertFromMassGet(BatchRequestItemInterface $request, mixed $result): mixed
+    {
+        return $result;
+    }
 }
 ```
 
@@ -257,77 +320,93 @@ public function resolve(...): array
 
 ## HTTP & Infrastructure Performance
 
-- Enable Varnish with the bundled VCL for full page caching in production.
-- Use Redis for session storage and cache backend — not files.
-- Enable OPcache with `opcache.validate_timestamps=0` in production.
-- Use `bin/magento setup:static-content:deploy -f` with locale/theme targeting to minimize deploy size.
+- Enable Varnish with the Adobe Commerce-bundled VCL for full page caching in production.
+- Use Redis for both the session store and the cache backend — not the default file backends.
+- Enable OPcache with `opcache.validate_timestamps=0` and `opcache.revalidate_freq=0` in production to eliminate stat calls on every request.
+- Deploy static content with locale/theme targeting to minimize deploy size: `bin/magento setup:static-content:deploy -f en_US --theme Magento/luma`.
 
-### Redis Tuning
+### Redis Configuration
 
-Default Redis configuration is optimized for development. In production:
-
-```bash
-# redis.conf — recommended settings for AC cache backend
-maxmemory 2gb
-maxmemory-policy allkeys-lru   # evict least-recently-used keys when memory is full
-save ""                        # disable RDB snapshots for pure cache use
-```
+Use separate Redis instances (or at least separate logical databases) for cache and sessions to prevent session data being evicted under memory pressure:
 
 ```php
-// app/etc/env.php — separate Redis instances for cache and sessions
+// app/etc/env.php
 'cache' => [
     'frontend' => [
         'default' => [
             'backend' => 'Magento\\Framework\\Cache\\Backend\\Redis',
             'backend_options' => [
-                'server'   => '127.0.0.1',
-                'port'     => '6379',
-                'database' => '0',           // DB 0 for cache
+                'server'        => '127.0.0.1',
+                'port'          => '6379',
+                'database'      => '0',       // DB 0 for cache
                 'compress_data' => '1',
             ],
         ],
     ],
 ],
 'session' => [
-    'save'    => 'redis',
-    'redis'   => [
+    'save'  => 'redis',
+    'redis' => [
         'host'     => '127.0.0.1',
         'port'     => '6379',
-        'database' => '2',                   // separate DB for sessions
+        'database' => '2',                    // separate DB for sessions
     ],
 ],
 ```
 
-Use separate Redis instances (or at least separate databases) for cache and sessions to prevent session data being evicted under memory pressure.
+```
+# redis.conf — production cache instance
+maxmemory 2gb
+maxmemory-policy allkeys-lru   # evict LRU keys when full
+save ""                        # disable RDB snapshots for a pure cache instance
+```
 
 ---
 
 ## Cron Job Optimization
 
+Place heavy cron jobs in a dedicated group to prevent them from blocking the `default` group:
+
 ```xml
-<!-- etc/crontab.xml — heavy jobs in a separate cron group to avoid blocking the default group -->
-<config>
+<!-- etc/crontab.xml -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
     <group id="my_module_heavy">
-        <job name="my_module_sync_products" instance="MyVendor\MyModule\Cron\SyncProducts" method="execute">
+        <job name="my_module_sync_products"
+             instance="MyVendor\MyModule\Cron\SyncProducts"
+             method="execute">
             <schedule>0 2 * * *</schedule>
         </job>
     </group>
 </config>
 ```
 
-Always check for a running lock before re-entering a long-running cron:
+Use `LockManagerInterface` to prevent overlapping executions of long-running cron jobs:
 
 ```php
-public function execute(): void
+use Magento\Framework\Lock\LockManagerInterface;
+
+class SyncProducts
 {
-    if ($this->lockManager->isLocked(self::LOCK_NAME)) {
-        return; // previous run still active
-    }
-    $this->lockManager->lock(self::LOCK_NAME);
-    try {
-        $this->doWork();
-    } finally {
-        $this->lockManager->unlock(self::LOCK_NAME);
+    private const LOCK_NAME = 'my_module_sync_products';
+    private const LOCK_TTL  = 3600;
+
+    public function __construct(
+        private readonly LockManagerInterface $lockManager,
+    ) {}
+
+    public function execute(): void
+    {
+        if ($this->lockManager->isLocked(self::LOCK_NAME)) {
+            return; // previous run still active — skip this cycle
+        }
+
+        $this->lockManager->lock(self::LOCK_NAME, self::LOCK_TTL);
+        try {
+            $this->doWork();
+        } finally {
+            $this->lockManager->unlock(self::LOCK_NAME);
+        }
     }
 }
 ```
@@ -342,3 +421,4 @@ public function execute(): void
 - [Message Queues](https://developer.adobe.com/commerce/php/development/components/message-queues/)
 - [Full Page Caching](https://developer.adobe.com/commerce/php/development/cache/page/public-content/)
 - [Redis Configuration](https://experienceleague.adobe.com/docs/commerce-operations/configuration-guide/cache/redis/redis-session.html)
+- [GraphQL Batch Resolvers](https://developer.adobe.com/commerce/webapi/graphql/develop/resolvers/)

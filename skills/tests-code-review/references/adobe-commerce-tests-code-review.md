@@ -1,6 +1,6 @@
 # Adobe Commerce (Magento 2) Test Code Review Guide
 
-Supplements `test-review-checklist.md` and `php-tests-code-review.md` for projects using Adobe Commerce / Magento 2 (PHPUnit, Magento Integration Test Framework).
+Supplements `test-review-checklist.md` and `php-tests-code-review.md` for projects using Adobe Commerce / Magento 2 (PHPUnit, Magento Integration Test Framework, MFTF).
 
 > Covers Adobe Commerce / Magento 2 testing concerns only. PHP testing patterns are covered in `php-tests-code-review.md`.
 
@@ -8,65 +8,126 @@ Supplements `test-review-checklist.md` and `php-tests-code-review.md` for projec
 
 ## Unit Test Review Points
 
-### ❌ Using ObjectManager in Unit Tests
+### ObjectManager Must Not Appear in Unit Tests
 
 ```php
-// Bad — real ObjectManager couples the test to the full DI container
+// Bad — ObjectManager couples the test to the full DI container; unit tests must be isolated
 class MyServiceTest extends \PHPUnit\Framework\TestCase
 {
     public function testSomething(): void
     {
         $service = \Magento\Framework\App\ObjectManager::getInstance()
             ->create(MyService::class);
+        // ...
     }
 }
 
-// Good — inject mocks via constructor
+// Good — inject mocks via constructor; no Magento bootstrap needed
 class MyServiceTest extends \PHPUnit\Framework\TestCase
 {
     private MyService $service;
+    private ProductRepositoryInterface&MockObject $repositoryMock;
 
     protected function setUp(): void
     {
         $this->repositoryMock = $this->createMock(ProductRepositoryInterface::class);
-        $this->service = new MyService($this->repositoryMock);
+        $this->service        = new MyService($this->repositoryMock);
     }
 }
 ```
 
-### ❌ Testing Concrete Models Instead of Service Contracts
+### Mock Service Contract Interfaces, Not Concrete Models
 
 ```php
-// Bad — tests implementation detail, not the contract
+// Bad — mocks the implementation detail, not the contract; test breaks on internal refactors
 public function testGetProduct(): void
 {
     $product = $this->createMock(\Magento\Catalog\Model\Product::class);
 }
 
-// Good — test against the interface
+// Good — mock the interface; test remains valid even if Adobe changes the implementation
 public function testGetProduct(): void
 {
     $product = $this->createMock(\Magento\Catalog\Api\Data\ProductInterface::class);
 }
 ```
 
-### ❌ Not Resetting Registry State Between Tests
+### Registry State Must Be Cleaned Up Between Tests
 
 ```php
-// Bad — registry entry pollutes subsequent tests
+// Bad — registry entry set in one test leaks into subsequent tests
 class RegistryTest extends \PHPUnit\Framework\TestCase
 {
     public function testFirst(): void
     {
-        $this->registry->register('current_product', $product); // not cleaned up
+        $this->registry->register('current_product', $this->productMock);
+        // No tearDown — next test sees stale registry state
     }
-    // testSecond now has stale registry state
 }
 
-// Good — clean up in tearDown
+// Good — always unregister in tearDown
 protected function tearDown(): void
 {
+    parent::tearDown();
     $this->registry->unregister('current_product');
+}
+```
+
+### Plugin Tests Call the Method Directly
+
+Plugin tests must call the plugin's before/after/around method directly — not via the DI interceptor proxy. Testing through the proxy would bootstrap the full container and cease to be a unit test:
+
+```php
+class AfterGetNamePluginTest extends \PHPUnit\Framework\TestCase
+{
+    private AfterGetNamePlugin $plugin;
+
+    protected function setUp(): void
+    {
+        $this->plugin = new AfterGetNamePlugin();
+    }
+
+    public function testAfterGetNameTransformsToUppercase(): void
+    {
+        $subject = $this->createMock(ProductInterface::class);
+        $this->assertSame('MY PRODUCT', $this->plugin->afterGetName($subject, 'my product'));
+    }
+
+    public function testAfterGetNameHandlesEmptyString(): void
+    {
+        $subject = $this->createMock(ProductInterface::class);
+        $this->assertSame('', $this->plugin->afterGetName($subject, ''));
+    }
+}
+```
+
+### Observer Tests Do Not Fire the Real Event Dispatch
+
+```php
+// Bad — fires the event bus; slow and non-isolated
+public function testObserverBehaviour(): void
+{
+    $this->eventManager->dispatch('sales_order_save_after', ['order' => $this->orderMock]);
+    // can't assert what happened inside the observer
+}
+
+// Good — instantiate the observer directly with mocked dependencies
+class SendEmailOnOrderPlacedTest extends \PHPUnit\Framework\TestCase
+{
+    public function testExecuteSendsEmail(): void
+    {
+        $emailSenderMock = $this->createMock(EmailSenderInterface::class);
+        $emailSenderMock->expects($this->once())->method('send');
+
+        $observer    = new SendEmailOnOrderPlaced($emailSenderMock);
+        $orderMock   = $this->createMock(OrderInterface::class);
+        $eventMock   = $this->createMock(\Magento\Framework\Event::class);
+        $eventMock->method('getData')->with('order')->willReturn($orderMock);
+        $wrapperMock = $this->createMock(\Magento\Framework\Event\Observer::class);
+        $wrapperMock->method('getEvent')->willReturn($eventMock);
+
+        $observer->execute($wrapperMock);
+    }
 }
 ```
 
@@ -74,42 +135,49 @@ protected function tearDown(): void
 
 ## Integration Test Review Points
 
-### ❌ Missing `@magentoAppIsolation` on Tests That Modify Config
+### `parent::setUp()` Must Be Called First
+
+Adobe Commerce integration base classes (`AbstractController`, `AbstractBackendController`, `AbstractModule`) perform critical bootstrapping in `setUp()`. Omitting `parent::setUp()` silently breaks fixture loading and the `_objectManager` reference:
 
 ```php
-// Bad — config changes leak into subsequent tests
-class ConfigTest extends \Magento\TestFramework\TestCase\AbstractController
+// Bad — _objectManager is null; fixtures never load; test passes vacuously
+class MyIntegrationTest extends \Magento\TestFramework\TestCase\AbstractController
 {
-    public function testWithCustomConfig(): void
+    protected function setUp(): void
     {
-        $this->scopeConfig->setValue('my/path/value', '1');
+        // Missing parent::setUp() — nothing works correctly
+        $this->service = $this->_objectManager->get(MyService::class);
     }
 }
 
-// Good — isolate app state
-/**
- * @magentoAppIsolation enabled
- */
-class ConfigTest extends \Magento\TestFramework\TestCase\AbstractController
+// Good — parent::setUp() always runs first; parent::tearDown() always runs last
+class MyIntegrationTest extends \Magento\TestFramework\TestCase\AbstractController
 {
-    public function testWithCustomConfig(): void
+    protected function setUp(): void
     {
-        $this->scopeConfig->setValue('my/path/value', '1');
+        parent::setUp();
+        $this->service = $this->_objectManager->get(MyService::class);
+    }
+
+    protected function tearDown(): void
+    {
+        $this->registry->unregister('my_fixture_key');
+        parent::tearDown();
     }
 }
 ```
 
-### ❌ Missing `@magentoDataFixture` for Required Data
+### Missing `@magentoDataFixture` Causes Implicit Data Dependencies
 
 ```php
-// Bad — relies on pre-existing data in the test DB
+// Bad — relies on pre-existing data in the test database; test is environment-dependent
 public function testProductPage(): void
 {
-    $this->dispatch('/catalog/product/view/id/1'); // assumes product exists
+    $this->dispatch('/catalog/product/view/id/1'); // assumes product with ID 1 exists
     $this->assertResponseBodyContains('My Product');
 }
 
-// Good — declare the fixture
+// Good — declare the fixture; test is self-contained and reproducible
 /**
  * @magentoDataFixture Magento/Catalog/_files/product_simple.php
  */
@@ -121,37 +189,64 @@ public function testProductPage(): void
 }
 ```
 
-### ❌ Using `setValue()` Instead of `@magentoConfigFixture`
+### Use `@magentoConfigFixture` Instead of `setValue()`
 
 ```php
-// Bad — bypasses proper config scoping and may leak state
-public function testFeature(): void
+// Bad — scopeConfig->setValue() bypasses proper scoping; may leak state into other tests
+public function testFeatureEnabled(): void
 {
     $this->scopeConfig->setValue('my_module/general/enabled', 1);
+    $this->assertTrue($this->config->isEnabled());
 }
 
-// Good — scoped and automatically rolled back
+// Good — automatically scoped and rolled back after each test
 /**
  * @magentoConfigFixture current_store my_module/general/enabled 1
  */
-public function testFeature(): void
+public function testFeatureEnabled(): void
 {
     $this->assertTrue($this->config->isEnabled());
 }
 ```
 
-### ❌ Not Testing ACL / Authorization
+### Missing `@magentoAppIsolation` on Config-Mutating Tests
 
 ```php
-// Bad — only tests happy path
+// Bad — config mutations persist into subsequent test classes
+class ConfigMutatingTest extends \Magento\TestFramework\TestCase\AbstractController
+{
+    public function testWithCustomConfig(): void
+    {
+        $this->scopeConfig->setValue('my/path', 'custom_value');
+        // config leaks into other test classes that run after this one
+    }
+}
+
+// Good — full application state reset between test classes
+/**
+ * @magentoAppIsolation enabled
+ */
+class ConfigMutatingTest extends \Magento\TestFramework\TestCase\AbstractController
+{
+    public function testWithCustomConfig(): void
+    {
+        $this->scopeConfig->setValue('my/path', 'custom_value');
+    }
+}
+```
+
+### Admin Controllers Must Test Both Authorized and Unauthorized Access
+
+```php
+// Bad — only the happy path; ACL enforcement is untested
 public function testAdminGridLoads(): void
 {
     $this->dispatch('backend/my_module/grid/index');
     $this->assertResponseBodyContains('My Grid');
 }
 
-// Good — also test unauthorized access
-public function testAdminGridRequiresAcl(): void
+// Good — pair every access test with an unauthorized-access test
+public function testAdminGridDeniesUnauthorizedUser(): void
 {
     $this->_objectManager->get(\Magento\Backend\Model\Auth\Session::class)
         ->setCurrentRole($this->getRoleWithoutPermission());
@@ -160,126 +255,53 @@ public function testAdminGridRequiresAcl(): void
 }
 ```
 
----
-
-## Plugin Test Review Points
+### Prefer PHP Attribute Fixtures Over Legacy File Fixtures (AC 2.4.5+)
 
 ```php
-// Plugin tests call the plugin method directly — no need for DI proxy
-class AfterGetNamePluginTest extends \PHPUnit\Framework\TestCase
+// Deprecated — legacy file-based fixture (still works but no longer the standard)
+/**
+ * @magentoDataFixture Magento/Catalog/_files/product_simple.php
+ */
+public function testProductExists(): void { ... }
+
+// Current — PHP 8 attribute fixture (AC 2.4.5+); composable and type-safe
+use Magento\TestFramework\Fixture\DataFixture;
+use Magento\Catalog\Test\Fixture\Product as ProductFixture;
+
+#[DataFixture(ProductFixture::class, ['sku' => 'test-sku'], 'p')]
+public function testProductExists(): void
 {
-    private AfterGetNamePlugin $plugin;
-
-    protected function setUp(): void
-    {
-        $this->plugin = new AfterGetNamePlugin();
-    }
-
-    public function testAfterGetNameTransformsResult(): void
-    {
-        $subject = $this->createMock(ProductInterface::class);
-        $result = $this->plugin->afterGetName($subject, 'my product');
-        $this->assertSame('MY PRODUCT', $result);
-    }
-
-    public function testAfterGetNameHandlesEmptyString(): void
-    {
-        $subject = $this->createMock(ProductInterface::class);
-        $result = $this->plugin->afterGetName($subject, '');
-        $this->assertSame('', $result);
-    }
+    // $this->fixtures->get('p') gives the created product
 }
 ```
 
----
-
-## Observer / Event Test Review Points
-
-```php
-// Test observer logic directly — not by firing the real event dispatch
-class SendEmailOnOrderPlacedTest extends \PHPUnit\Framework\TestCase
-{
-    public function testExecuteSendsEmail(): void
-    {
-        $emailSenderMock = $this->createMock(EmailSenderInterface::class);
-        $emailSenderMock->expects($this->once())->method('send');
-
-        $observer = new SendEmailOnOrderPlaced($emailSenderMock);
-
-        $orderMock = $this->createMock(OrderInterface::class);
-        $eventMock = $this->createMock(\Magento\Framework\Event::class);
-        $eventMock->method('getData')->with('order')->willReturn($orderMock);
-        $observerMock = $this->createMock(\Magento\Framework\Event\Observer::class);
-        $observerMock->method('getEvent')->willReturn($eventMock);
-
-        $observer->execute($observerMock);
-    }
-}
-```
-
----
-
-## `parent::setUp()` / `parent::tearDown()` Review
-
-### ❌ Missing `parent::setUp()` in Integration Tests
-
-Adobe Commerce integration test base classes (e.g. `AbstractController`, `AbstractBackendController`) perform critical bootstrapping in `setUp()`. Failing to call `parent::setUp()` silently breaks the test environment:
-
-```php
-// Bad — Bootstrap state not initialized; fixtures may not load correctly
-class MyIntegrationTest extends \Magento\TestFramework\TestCase\AbstractController
-{
-    protected function setUp(): void
-    {
-        // Missing: parent::setUp()
-        $this->service = $this->_objectManager->get(MyService::class);
-    }
-}
-
-// Good
-class MyIntegrationTest extends \Magento\TestFramework\TestCase\AbstractController
-{
-    protected function setUp(): void
-    {
-        parent::setUp(); // always first in integration test setUp
-        $this->service = $this->_objectManager->get(MyService::class);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown(); // always last in tearDown
-        $this->registry->unregister('my_fixture_key');
-    }
-}
-```
+Flag legacy file fixtures in new tests as a quality finding (P2) and recommend migration.
 
 ---
 
 ## GraphQL Test Review Points
 
-### ❌ Not Testing GraphQL Authorization
-
-GraphQL endpoints must be tested for unauthenticated and unauthorized access — not just happy path:
+### Authorization Must Be Tested, Not Just the Happy Path
 
 ```php
-// Bad — only tests authenticated success case
+// Bad — only tests authenticated success; authorization failures go untested
 public function testProductQuery(): void
 {
-    $response = $this->graphQlQuery($query);
+    $response = $this->graphQlQuery('{ products(filter:{sku:{eq:"simple"}}){ items{ sku } } }');
     $this->assertNotEmpty($response['products']['items']);
 }
 
-// Good — also test unauthorized customer endpoint
-public function testCustomerQueryRequiresAuth(): void
+// Good — also assert that unauthenticated customer endpoints reject requests
+public function testCustomerQueryRequiresAuthentication(): void
 {
     $this->expectException(\Magento\Framework\Exception\AuthorizationException::class);
     $this->graphQlQuery('{ customer { email } }');
 }
 
-// Good — test with customer token
-public function testCustomerQueryWithToken(): void
+// Good — and that authenticated requests succeed
+public function testCustomerQuerySucceedsWithValidToken(): void
 {
-    $token = $this->getCustomerToken('customer@example.com', 'password');
+    $token    = $this->getCustomerToken('customer@example.com', '$ecret123');
     $response = $this->graphQlQuery(
         '{ customer { email } }',
         [],
@@ -294,30 +316,47 @@ public function testCustomerQueryWithToken(): void
 
 ## MFTF Test Review Points
 
-When reviewing MFTF test XML files:
-- [ ] `<annotations>` block present with `<features>`, `<stories>`, `<title>`, `<severity>`, `<group>`
-- [ ] `<before>` and `<after>` blocks clean up created data (`deleteData` for every `createData`)
-- [ ] Test does not rely on hard-coded product IDs or pre-existing data — uses `createData`
-- [ ] `<severity>` reflects actual business impact: CRITICAL for checkout/payment paths, AVERAGE for standard features
-- [ ] Test is assigned to a module group with `<group value="my_module"/>` — enables targeted runs
+When reviewing MFTF XML test files:
+
+- [ ] `<annotations>` block present with all required fields: `<features>`, `<stories>`, `<title>`, `<description>`, `<severity>`, `<group>`
+- [ ] `<before>` and `<after>` blocks are symmetric: every `createData` has a corresponding `deleteData` in `<after>`
+- [ ] No hard-coded entity IDs or hard-coded URLs — use `createData` and page/section objects
+- [ ] `<severity>` reflects actual business impact: `CRITICAL` for checkout/payment/authentication flows, `MAJOR` for primary user journeys, `AVERAGE` for standard feature paths, `MINOR` for cosmetic or low-risk paths
+- [ ] Test is assigned to a module group (`<group value="my_module"/>`) to enable targeted CI runs
+- [ ] Section selectors are defined in `Section` XML objects — not inline CSS strings in the test body
+- [ ] Page URLs are referenced via `Page` XML objects — not hardcoded strings
 
 ---
 
-## Checklist for Adobe Commerce Tests
+## Comprehensive Checklist for Adobe Commerce Tests
 
-- [ ] Unit tests inject mocks via constructor — no `ObjectManager::getInstance()`
-- [ ] Service contract interfaces mocked — not concrete model classes
-- [ ] `@magentoDataFixture` declared for all integration tests requiring data
-- [ ] `@magentoAppIsolation enabled` used when tests modify config or global registry
-- [ ] `@magentoConfigFixture` used for scoped config — not `setValue()`
-- [ ] Both authorized and unauthorized paths tested for Admin controllers
-- [ ] Plugin tests call the plugin method directly, not through the DI proxy
-- [ ] Observer tests instantiate the observer directly with mocked dependencies
+### Unit Tests
+- [ ] All dependencies mocked via constructor — no `ObjectManager::getInstance()` in unit tests
+- [ ] Service contract interfaces mocked — not concrete model classes (`Model\Product` vs `Api\Data\ProductInterface`)
+- [ ] Plugin tests call the plugin method directly — not via the interceptor proxy
+- [ ] Observer tests instantiate the observer directly with mocked dependencies — no event dispatch
 - [ ] `tearDown()` unregisters any registry entries set during tests
-- [ ] Repository mocks cover both success and `CouldNotSaveException` / `NoSuchEntityException` paths
-- [ ] `parent::setUp()` called first in integration test `setUp()`; `parent::tearDown()` called last in `tearDown()`
-- [ ] GraphQL tests cover unauthenticated and token-authenticated paths
-- [ ] MFTF tests have `<before>`/`<after>` cleanup and no hard-coded entity IDs
+- [ ] Repository mocks cover both success and failure paths (`CouldNotSaveException`, `NoSuchEntityException`)
+
+### Integration Tests
+- [ ] `parent::setUp()` called first in `setUp()`; `parent::tearDown()` called last in `tearDown()`
+- [ ] `@magentoDataFixture` (or PHP attribute `#[DataFixture]`) declared for all data requirements
+- [ ] `@magentoConfigFixture` used for scoped config — not `setValue()`
+- [ ] `@magentoAppIsolation enabled` on classes that modify config or global registry state
+- [ ] Both authorized and unauthorized paths tested for Admin controller routes
+- [ ] Area code set explicitly when testing area-scoped behaviour
+- [ ] New tests use PHP attribute-style fixtures (AC 2.4.5+) rather than legacy file fixtures
+
+### GraphQL Tests
+- [ ] Unauthenticated access tested for all customer-scoped queries and mutations
+- [ ] Token-authenticated requests tested for customer endpoints
+- [ ] Store-scoped headers tested where the resolver behaviour varies by store
+
+### MFTF Tests
+- [ ] `<before>`/`<after>` cleanup is complete — no orphaned fixture data
+- [ ] No hard-coded entity IDs, product SKUs, or URLs — all resolved via fixtures and page objects
+- [ ] Severity annotation accurately reflects business risk
+- [ ] Group annotation present for targeted test runs
 
 ---
 
@@ -325,6 +364,7 @@ When reviewing MFTF test XML files:
 
 - [Magento 2 Unit Testing](https://developer.adobe.com/commerce/testing/guide/unit/)
 - [Magento 2 Integration Testing](https://developer.adobe.com/commerce/testing/guide/integration/)
+- [Integration Test Fixture Annotations](https://developer.adobe.com/commerce/testing/guide/integration/attributes/)
+- [PHP Attribute Data Fixtures (AC 2.4.5+)](https://developer.adobe.com/commerce/testing/guide/integration/attributes/data-fixture/)
 - [MFTF Documentation](https://developer.adobe.com/commerce/testing/functional-testing-framework/)
 - [PHPUnit Documentation](https://docs.phpunit.de/)
-- [Magento Test Fixtures](https://developer.adobe.com/commerce/testing/guide/integration/attributes/)

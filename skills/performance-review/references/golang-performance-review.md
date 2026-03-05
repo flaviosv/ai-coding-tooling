@@ -1,42 +1,72 @@
-# Go Performance Best Practices
+# Go Reference — performance-review
 
-Applies to: Go 1.21+ projects.
+Supplements `performance-checklist.md` for Go projects.
 
 ---
 
-## Profiling
+## General Go Performance Patterns
 
-Always measure before optimising.
+Universal performance guidance that applies across all supported Go versions (1.23+).
 
-### pprof (HTTP endpoint)
+### Profiling — Always Measure First
 
 ```go
+// pprof HTTP endpoint — add to service startup
 import _ "net/http/pprof"
 
-// Register in main or init
-go func() {
-    log.Println(http.ListenAndServe("localhost:6060", nil))
-}()
+func main() {
+    go func() {
+        // Never expose on a public port
+        log.Println(http.ListenAndServe("localhost:6060", nil))
+    }()
+    // ...
+}
 ```
 
-Access profiles at:
-- `http://localhost:6060/debug/pprof/`
-- CPU: `go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30`
-- Heap: `go tool pprof http://localhost:6060/debug/pprof/heap`
+Collect profiles:
+```bash
+# CPU profile (30s)
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+
+# Heap profile
+go tool pprof http://localhost:6060/debug/pprof/heap
+
+# Goroutine count (leak detection)
+curl -s http://localhost:6060/debug/pprof/goroutine?debug=1
+```
 
 ### Benchmarks
 
 ```go
 func BenchmarkProcess(b *testing.B) {
     data := setupTestData()
-    b.ResetTimer()
-    for i := 0; i < b.N; i++ {
-        Process(data)
+    b.ResetTimer()    // exclude setup from measurement
+    b.ReportAllocs()  // report allocations per op
+    for b.Loop() {    // Go 1.24+: b.Loop() preferred over i < b.N
+        _ = Process(data)
     }
 }
 ```
 
-Run with: `go test -bench=. -benchmem`
+Run with: `go test -bench=. -benchmem -benchtime=5s`
+
+Compare before/after: `go test -bench=. -count=6 | tee new.txt && benchstat old.txt new.txt`
+
+### Escape Analysis
+
+```bash
+# Show which allocations escape to heap
+go build -gcflags='-m=2' ./...
+```
+
+Key signals:
+- `moved to heap` — value escapes; allocation is on the heap (GC pressure)
+- `does not escape` — stays on stack; no GC pressure
+
+Common causes of unintended heap escapes:
+- Storing a pointer into an interface (`interface{}` / `any`)
+- Returning a pointer to a local variable from a function
+- Passing a local pointer to a goroutine
 
 ---
 
@@ -47,61 +77,66 @@ Run with: `go test -bench=. -benchmem`
 ```go
 // Good — single allocation with known capacity
 items := make([]Item, 0, expectedCount)
+for _, x := range data {
+    items = append(items, process(x))
+}
 
-// Bad — repeated reallocations as capacity grows
+// Bad — repeated reallocations (doubling) as capacity grows
 var items []Item
 for _, x := range data {
     items = append(items, process(x))
 }
 ```
 
-### Use strings.Builder for String Concatenation
+### Use `strings.Builder` for String Assembly
 
 ```go
 // Good — single allocation
 var b strings.Builder
+b.Grow(estimatedSize) // optional: pre-size the buffer
 for _, s := range parts {
     b.WriteString(s)
 }
 result := b.String()
 
-// Bad — allocates a new string on every iteration
+// Bad — allocates a new string on every + operation
 result := ""
 for _, s := range parts {
     result += s
 }
 ```
 
-### Reuse Buffers in Hot Paths
+### Reuse Buffers in Hot Paths with `sync.Pool`
 
 ```go
-// Good — allocate once, reset per iteration
-var buf bytes.Buffer
-for _, item := range items {
-    buf.Reset()
-    buf.WriteString(item.Name)
-    process(buf.Bytes())
+var bufPool = sync.Pool{
+    New: func() any { return new(bytes.Buffer) },
 }
 
-// Bad — allocates a new buffer every iteration
-for _, item := range items {
-    var buf bytes.Buffer
-    buf.WriteString(item.Name)
-    process(buf.Bytes())
+func processRequest(data []byte) string {
+    buf := bufPool.Get().(*bytes.Buffer)
+    defer func() {
+        buf.Reset()
+        bufPool.Put(buf)
+    }()
+    buf.Write(data)
+    return buf.String()
 }
 ```
+
+Note: `sync.Pool` objects may be GC'd at any time. Never use it for items requiring explicit cleanup (file handles, DB connections).
 
 ### Pointer vs Value Receivers
 
 ```go
 // Use pointer receiver for:
 // 1. Structs that are modified
-// 2. Large structs (avoid copying)
+// 2. Large structs (avoid copying on every call)
 func (s *LargeStruct) Process() { ... }
 
 // Use value receiver for:
-// 1. Small, immutable structs
-// 2. Simple types
+// 1. Small, immutable structs (e.g. Point, Color)
+// 2. When the method should work on a copy
 func (p Point) Distance() float64 { ... }
 ```
 
@@ -112,20 +147,20 @@ func (p Point) Distance() float64 { ... }
 ### Map Lookups vs Linear Search
 
 ```go
-// Bad — O(n) per lookup
+// Bad — O(n) per lookup; fine for small n, terrible for large n
 func findByID(items []Item, id int) *Item {
-    for _, item := range items {
-        if item.ID == id {
-            return &item
+    for i := range items {
+        if items[i].ID == id {
+            return &items[i]
         }
     }
     return nil
 }
 
-// Good — O(1) lookup after O(n) build
-index := make(map[int]Item, len(items))
-for _, item := range items {
-    index[item.ID] = item
+// Good — O(1) lookup after O(n) build; use when queried repeatedly
+index := make(map[int]*Item, len(items))
+for i := range items {
+    index[items[i].ID] = &items[i]
 }
 item := index[id]
 ```
@@ -133,62 +168,56 @@ item := index[id]
 ### Cache Expensive Computations
 
 ```go
-// Bad — recomputes every iteration
-for i := 0; i < len(items); i++ {
+// Bad — recomputes on every iteration
+for i := range items {
     total += expensiveCalc(sharedData) * items[i].Value
 }
 
-// Good — compute once, reuse
+// Good — compute once, reuse in loop
 cached := expensiveCalc(sharedData)
-for i := 0; i < len(items); i++ {
+for i := range items {
     total += cached * items[i].Value
 }
 ```
 
 ---
 
-## Goroutines & Concurrency
+## Goroutines and Concurrency
 
 ### Avoid Goroutine Leaks
 
 ```go
-// Bad — goroutine blocked forever if ctx is never cancelled
-func leak() {
+// Bad — goroutine blocked forever if channel is never written to
+func leaky() {
     ch := make(chan int)
     go func() {
-        for {
-            select {
-            case v := <-ch:
-                process(v)
-            }
-        }
+        v := <-ch // blocks indefinitely
+        process(v)
     }()
 }
 
 // Good — always honour context cancellation
-func noLeak(ctx context.Context) {
+func safe(ctx context.Context) {
     ch := make(chan int)
     go func() {
-        for {
-            select {
-            case v := <-ch:
-                process(v)
-            case <-ctx.Done():
-                return
-            }
+        select {
+        case v := <-ch:
+            process(v)
+        case <-ctx.Done():
+            return
         }
     }()
 }
 ```
 
-### Worker Pool Pattern
+### Worker Pool Pattern (Bounded Concurrency)
 
 ```go
 func workerPool(ctx context.Context, jobs <-chan Job, numWorkers int) <-chan Result {
     results := make(chan Result)
     var wg sync.WaitGroup
 
-    for i := 0; i < numWorkers; i++ {
+    for range numWorkers {
         wg.Add(1)
         go func() {
             defer wg.Done()
@@ -214,79 +243,78 @@ func workerPool(ctx context.Context, jobs <-chan Job, numWorkers int) <-chan Res
 ### Channel Buffer Sizing
 
 ```go
-// Unbuffered — synchronisation point between goroutines
+// Unbuffered — synchronisation / hand-off between goroutines
 ch := make(chan int)
 
-// Buffered — async up to capacity; use when you know max pending work
+// Buffered — async up to capacity; use when you know the upper bound
 ch := make(chan int, 100)
 
-// Rule of thumb:
-// - Unbuffered for hand-off / rendezvous
-// - Buffered when you know the upper bound of pending items
-// - Don't over-buffer — wastes memory and hides backpressure
+// Over-buffering wastes memory and hides backpressure — don't set arbitrarily large buffers
+```
+
+### Excessive Goroutine Creation
+
+```go
+// Bad — goroutine overhead dominates for trivial work; scheduler thrashes
+for i := range 1_000_000 {
+    go func(n int) { _ = n * 2 }(i)
+}
+
+// Good — batch work or use a bounded worker pool
 ```
 
 ---
 
-## Database Performance (GORM)
+## Database Performance
 
-> **Note:** This section uses GORM as the example ORM. For projects using `database/sql` directly or `pgx`/`sqlc`, the same principles apply — use prepared statements, batch queries, select only needed columns, and configure connection pool limits via `sql.DB.SetMaxOpenConns` / `SetMaxIdleConns`.
-
-
+> Examples use GORM. For `database/sql`, `pgx`, or `sqlc`: same principles apply — use prepared statements, select only needed columns, configure connection pool limits.
 
 ### Avoid N+1 Queries
 
 ```go
-// Bad — N+1: one query per item to load its category
+// Bad — one query per item to load its association
 var items []Item
 db.Find(&items)
 for _, item := range items {
-    var category Category
     db.Where("id = ?", item.CategoryID).First(&category)
-    // Use category
 }
 
-// Good — single query with JOIN
+// Good — single join query
 db.Preload("Category").Find(&items)
 // or
 db.Joins("Category").Find(&items)
 ```
 
-### Select Only Needed Fields
+### Select Only Needed Columns
 
 ```go
-// Bad — SELECT * when only a few fields are needed
+// Bad — SELECT * transfers unused columns, decodes unused data
 db.Find(&items)
 
-// Good — only fetch the columns you need
+// Good — only fetch what you need
 db.Select("id", "name", "status").Find(&items)
 ```
 
-### Always Paginate List Queries
+### Paginate List Queries
 
 ```go
-// Good — bounded result set
+// Good — bounded result set prevents full-table scans
 db.Limit(pageSize).Offset(offset).Find(&items)
+// Prefer keyset pagination over OFFSET for large tables:
+db.Where("id > ?", lastSeenID).Limit(pageSize).Find(&items)
 ```
 
 ### Configure Connection Pool
 
 ```go
-sqlDB, _ := db.DB()
+sqlDB, err := db.DB()
+if err != nil {
+    return fmt.Errorf("getting sql.DB: %w", err)
+}
 sqlDB.SetMaxOpenConns(25)
 sqlDB.SetMaxIdleConns(10)
 sqlDB.SetConnMaxLifetime(5 * time.Minute)
-```
-
-### Use Prepared Statements for Repeated Queries
-
-```go
-stmt, _ := db.Prepare("SELECT * FROM items WHERE id = ?")
-defer stmt.Close()
-
-for _, id := range ids {
-    stmt.QueryRow(id)
-}
+sqlDB.SetConnMaxIdleTime(2 * time.Minute)
 ```
 
 ---
@@ -296,7 +324,7 @@ for _, id := range ids {
 ### Reuse the HTTP Client
 
 ```go
-// Bad — new client per request means no connection pooling
+// Bad — new client per request; no connection pooling; TCP handshake on every call
 func fetch(url string) {
     client := &http.Client{}
     client.Get(url)
@@ -311,10 +339,6 @@ var httpClient = &http.Client{
         IdleConnTimeout:     90 * time.Second,
     },
 }
-
-func fetch(url string) {
-    httpClient.Get(url)
-}
 ```
 
 ---
@@ -324,26 +348,27 @@ func fetch(url string) {
 ### Prefer Typed Structs Over `map[string]interface{}`
 
 ```go
-// Good — faster marshalling/unmarshalling
+// Good — compile-time field names, faster marshalling/unmarshalling
 type Response struct {
     ID   int    `json:"id"`
     Name string `json:"name"`
 }
 
-// Bad — dynamic map is slower
+// Bad — dynamic map: slower, no compile-time field names, allocates more
 var response map[string]interface{}
 ```
 
 ### Stream Large JSON Payloads
 
 ```go
+// Good — decodes one item at a time; constant memory regardless of payload size
 decoder := json.NewDecoder(resp.Body)
 for {
     var item Item
     if err := decoder.Decode(&item); err == io.EOF {
         break
     } else if err != nil {
-        return err
+        return fmt.Errorf("decoding item: %w", err)
     }
     process(item)
 }
@@ -356,17 +381,20 @@ for {
 ### `defer` Inside Loops
 
 ```go
-// Bad — defers accumulate until the function returns, not until the loop iteration ends
+// Bad — defers accumulate until the function returns; file handles stay open
 for _, path := range paths {
     f, _ := os.Open(path)
-    defer f.Close()  // Won't close until the enclosing function returns
+    defer f.Close() // closes after ALL iterations complete
     process(f)
 }
 
-// Good — wrap in an anonymous function so defer runs immediately
+// Good — anonymous function forces defer to run each iteration
 for _, path := range paths {
     func() {
-        f, _ := os.Open(path)
+        f, err := os.Open(path)
+        if err != nil {
+            return
+        }
         defer f.Close()
         process(f)
     }()
@@ -376,142 +404,25 @@ for _, path := range paths {
 ### Range Copies Values
 
 ```go
-// Bad — modifies a copy, not the original slice element
+// Bad — modifies a copy of the element, not the original
 for _, item := range items {
-    item.Name = "updated"  // Modifies a copy
+    item.Name = "updated" // modifies a copy
 }
 
-// Good — use the index
+// Good — use the index to modify in place
 for i := range items {
     items[i].Name = "updated"
 }
 ```
 
-### Excessive Goroutine Creation
-
-```go
-// Bad — goroutine overhead dominates for trivial work
-for i := 0; i < 1_000_000; i++ {
-    go func(n int) { _ = n * 2 }(i)
-}
-
-// Good — batch work or use a worker pool; only spawn goroutines for substantial work
-```
-
 ---
 
-## Object Pooling with sync.Pool
+## Go 1.23 Performance Features
 
-`sync.Pool` reduces GC pressure by reusing allocated objects in hot paths:
-
-```go
-// Good — pool buffers to avoid per-request allocation
-var bufPool = sync.Pool{
-    New: func() any {
-        return new(bytes.Buffer)
-    },
-}
-
-func processRequest(data []byte) string {
-    buf := bufPool.Get().(*bytes.Buffer)
-    defer func() {
-        buf.Reset()
-        bufPool.Put(buf)
-    }()
-    buf.Write(data)
-    return buf.String()
-}
-
-// Bad — allocates a new buffer on every call
-func processRequest(data []byte) string {
-    var buf bytes.Buffer
-    buf.Write(data)
-    return buf.String()
-}
-```
-
-Note: `sync.Pool` objects may be GC'd at any time. Do not use it for items that require explicit cleanup (e.g. file handles, DB connections).
-
----
-
-## Escape Analysis
-
-Use the compiler's escape analysis to understand which allocations go to the heap:
-
-```bash
-# -m=2 shows full escape analysis; -m is less verbose
-go build -gcflags='-m=2' ./...
-```
-
-Key messages to look for:
-- `moved to heap` — value escapes; this allocation is on the heap
-- `does not escape` — stays on stack; no GC pressure
-
-Common causes of unintended escapes:
-- Storing a pointer into an interface (`interface{}` / `any`)
-- Returning a pointer to a local variable
-- Passing a local pointer to a goroutine
-
-Reducing heap allocations in hot paths (serialization, request handling) can significantly lower GC pause times.
-
----
-
-## Go Version-Specific Performance Features
-
-### Go 1.21+ Performance
+### Range-Over-Function Iterators (Lazy Traversal)
 
 ```go
-// Good — slices.SortFunc is type-safe and avoids reflect overhead vs sort.Slice
-import (
-    "cmp"
-    "slices"
-)
-
-slices.SortFunc(items, func(a, b Item) int {
-    return cmp.Compare(a.Name, b.Name)
-})
-
-// Bad — sort.Slice uses interface{} boxing internally
-sort.Slice(items, func(i, j int) bool {
-    return items[i].Name < items[j].Name
-})
-```
-
-```go
-// Good — min/max built-ins avoid helper function overhead
-largest := max(a, b, c)
-
-// Bad — manual comparison chain
-largest := a
-if b > largest {
-    largest = b
-}
-if c > largest {
-    largest = c
-}
-```
-
-### Go 1.22+ Performance
-
-```go
-// Good — range over integer: idiomatic and avoids off-by-one errors
-for i := range 10 {
-    process(i)
-}
-
-// Old style — verbose
-for i := 0; i < 10; i++ {
-    process(i)
-}
-```
-
-In Go 1.22+, loop variables have per-iteration scope. Remove `tt := tt` copies in parallel table tests — they are unnecessary and add stack allocation overhead.
-
-### Go 1.23+ Performance
-
-```go
-// Good — range-over-function iterators allow lazy, allocation-free traversal
-// The iterator short-circuits when the consumer breaks early.
+// Good — lazy iterator; stops immediately when consumer breaks
 import "iter"
 
 func ActiveItems(items []Item) iter.Seq[Item] {
@@ -519,21 +430,21 @@ func ActiveItems(items []Item) iter.Seq[Item] {
         for _, item := range items {
             if item.IsActive {
                 if !yield(item) {
-                    return  // consumer broke early — stop immediately
+                    return // consumer broke — stop immediately
                 }
             }
         }
     }
 }
 
-// Caller — no intermediate slice allocated
+// Caller — no intermediate slice allocated; stops at first match
 for item := range ActiveItems(allItems) {
     if item.Name == target {
-        break  // iterator stops immediately
+        break
     }
 }
 
-// Bad — allocates full filtered slice even if caller only needs first match
+// Bad — builds full intermediate slice even if only first match is needed
 filtered := make([]Item, 0)
 for _, item := range allItems {
     if item.IsActive {
@@ -542,42 +453,97 @@ for _, item := range allItems {
 }
 ```
 
-### Go 1.24+ Performance
+### `slices` and `maps` Packages (Go 1.21+, idiomatic in 1.23)
 
 ```go
-// Good — weak pointers allow GC to reclaim cached values under memory pressure
+// Good — slices.SortFunc is type-safe and avoids reflect overhead vs sort.Slice
+import ("cmp"; "slices")
+
+slices.SortFunc(items, func(a, b Item) int {
+    return cmp.Compare(a.Name, b.Name)
+})
+
+// Bad — sort.Slice uses interface boxing internally
+sort.Slice(items, func(i, j int) bool {
+    return items[i].Name < items[j].Name
+})
+```
+
+```go
+// Good — min/max built-ins; no helper function overhead
+largest := max(a, b, c)
+
+// Bad — manual comparison chain
+largest := a
+if b > largest { largest = b }
+if c > largest { largest = c }
+```
+
+---
+
+## Go 1.24 Performance Features
+
+### `b.Loop()` for Accurate Benchmarks
+
+```go
+// Good — b.Loop() handles warmup and timing more accurately than i < b.N
+func BenchmarkProcess(b *testing.B) {
+    data := generateData()
+    b.ResetTimer()
+    for b.Loop() {
+        _ = Process(data)
+    }
+}
+```
+
+### Weak Pointers for GC-Friendly Caches
+
+```go
+// Good — cache values can be GC'd under memory pressure; no unbounded growth
 import "weak"
 
 type Cache struct {
+    mu      sync.Mutex
     entries map[string]weak.Pointer[ExpensiveObject]
 }
 
-func (c *Cache) Get(key string) *ExpensiveObject {
+func (c *Cache) Get(key string, compute func() *ExpensiveObject) *ExpensiveObject {
+    c.mu.Lock()
+    defer c.mu.Unlock()
     if ptr, ok := c.entries[key]; ok {
         if val := ptr.Value(); val != nil {
-            return val  // still alive
+            return val
         }
     }
-    val := computeExpensive(key)
+    val := compute()
     c.entries[key] = weak.Make(val)
     return val
 }
+
+// Bad — unbounded sync.Map cache grows forever under load
 ```
 
-> ⚠️ **Note:** Features in the following sections marked Go 1.25+ or Go 1.26+ are upcoming and not yet in a stable release. Current stable Go version is Go 1.24 (as of Feb 2026).
+---
 
-### Go 1.25+ Performance
+## Go 1.25 Performance Features (upcoming)
+
+> Go 1.25 is not yet in stable release (current stable: Go 1.24, March 2026). Apply only on pre-release builds.
+
+### Automatic GOMAXPROCS in Containers
+
+Go 1.25 auto-detects cgroup CPU limits in containers. No code change required. The runtime reads cgroup CPU bandwidth automatically.
+
+Previously required: `runtime.GOMAXPROCS(containerCPULimit)` via libraries like `automaxprocs`.
 
 ```go
-// Good — GOMAXPROCS now auto-detects cgroup CPU limits in containers (Go 1.25+)
-// No code change needed — the runtime reads cgroup CPU bandwidth automatically.
-// Previously required manual: runtime.GOMAXPROCS(containerCPULimit)
-// Now: runtime defaults correctly; use runtime.SetDefaultGOMAXPROCS() to restore
-// default behaviour if you override it.
+// Go 1.25+: GOMAXPROCS is set correctly automatically in containerised environments.
+// Only override if you have a specific reason:
+// runtime.SetDefaultGOMAXPROCS() — restores auto-detection if overridden
 ```
 
+### `runtime/trace.FlightRecorder` for In-Production Profiling
+
 ```go
-// Good — runtime/trace.FlightRecorder for low-overhead in-production trace capture
 import "runtime/trace"
 
 recorder := trace.NewFlightRecorder()
@@ -585,61 +551,70 @@ recorder.Start()
 
 // ... production request handling ...
 
-// Capture on anomaly (e.g. high latency detected)
+// Capture trace on anomaly (e.g. high-latency request detected)
 var buf bytes.Buffer
 if err := recorder.WriteTo(&buf); err == nil {
     saveTraceFile(buf.Bytes())
 }
 ```
 
-The experimental Green Tea GC (enabled by default in Go 1.26) begins in Go 1.25 as opt-in:
+### Green Tea GC (opt-in in 1.25, default in 1.26)
+
 ```bash
+# Opt-in in Go 1.25 — reduces GC overhead in GC-heavy workloads
 GOEXPERIMENT=greenteagc go run ./...
 ```
 
-### Go 1.26+ Performance
+---
 
-```go
-// Good — new(T, value) allocates and initialises in one expression (Go 1.26+)
-p := new(int, 42)          // *int pointing to 42
-q := new(Config, Config{   // *Config with fields set
-    Host:    "localhost",
-    Port:    5432,
-    Timeout: 30 * time.Second,
-})
+## Go 1.26 Performance Features (upcoming)
 
-// Old approach — two steps
-p := new(int)
-*p = 42
+> Go 1.26 is not yet in stable release (current stable: Go 1.24, March 2026). Apply only on pre-release builds.
+
+### Green Tea GC — Default in 1.26
+
+The Green Tea garbage collector is enabled by default in Go 1.26. No code changes required. It reduces GC stop-the-world pauses and improves throughput in allocation-heavy workloads.
+
+Check that no production code sets `GOGC=off` or excessively large `GOGC` values that were workarounds for old GC behaviour.
+
+### `go fix -fix=modernize` for Performance Anti-Pattern Detection
+
+```bash
+# Run in CI — auto-applies idiomatic upgrades that also improve performance
+go fix -fix=modernize ./...
+
+# Examples of what it fixes automatically:
+# - sort.Slice → slices.SortFunc (avoids reflect boxing)
+# - strings.Index(...) >= 0 → strings.Contains(...)
+# - reflect.DeepEqual on slices → slices.Equal
 ```
 
-The Green Tea garbage collector is enabled by default in Go 1.26, reducing GC overhead significantly in GC-heavy workloads. No code changes required.
+### `new(T, value)` Reduces Two-Step Allocation Patterns
 
 ```go
-// Good — go fix modernizer auto-applies idiomatic upgrades (Go 1.26+)
-// Run in CI or before code review to flag outdated patterns:
-// go fix -fix=modernize ./...
-//
-// Examples of what it fixes automatically:
-// - sort.Slice → slices.SortFunc
-// - strings.Index(...) >= 0 → strings.Contains(...)
-// - reflect.DeepEqual on slices → slices.Equal
+// Good (Go 1.26+) — single expression, compiler may optimise more aggressively
+p := new(Config, Config{Host: "localhost", Port: 5432, Timeout: 30 * time.Second})
+
+// Old — two steps
+p := new(Config)
+*p = Config{Host: "localhost", Port: 5432, Timeout: 30 * time.Second}
 ```
 
 ---
 
 ## Resources
 
-- [Go Performance Book](https://github.com/dgryski/go-perfbook)
 - [Profiling Go Programs](https://go.dev/blog/pprof)
-- [Effective Go](https://go.dev/doc/effective_go)
+- [Go Performance Book](https://github.com/dgryski/go-perfbook)
 - [Go Wiki: Performance](https://go.dev/wiki/Performance)
-- [Go 1.21 Release Notes](https://go.dev/doc/go1.21)
-- [Go 1.22 Release Notes](https://go.dev/doc/go1.22)
+- [Effective Go](https://go.dev/doc/effective_go)
+- [slices package](https://pkg.go.dev/slices)
+- [maps package](https://pkg.go.dev/maps)
+- [iter package](https://pkg.go.dev/iter)
+- [weak package](https://pkg.go.dev/weak)
+- [sync.Pool](https://pkg.go.dev/sync#Pool)
+- [runtime/trace FlightRecorder](https://pkg.go.dev/runtime/trace#FlightRecorder)
 - [Go 1.23 Release Notes](https://go.dev/doc/go1.23)
 - [Go 1.24 Release Notes](https://go.dev/doc/go1.24)
 - [Go 1.25 Release Notes](https://go.dev/doc/go1.25)
 - [Go 1.26 Release Notes](https://go.dev/doc/go1.26)
-- [runtime/trace FlightRecorder](https://pkg.go.dev/runtime/trace#FlightRecorder)
-- [slices package](https://pkg.go.dev/slices)
-- [iter package](https://pkg.go.dev/iter)

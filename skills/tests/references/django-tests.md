@@ -1,85 +1,78 @@
-# Django Testing Guide (pytest-django)
+# Django Testing Guide
 
 Applies to: Django projects using pytest and pytest-django.
+Supported version range: Django 4.2 LTS (base) → Django 5.2 LTS (latest).
 
 ---
 
-## Setup
+## General Django Testing Patterns
 
-Install `pytest-django` and configure `pytest.ini` (or `pyproject.toml`):
+Conventions that apply across all still-supported Django versions (4.2–5.2).
+
+### Setup
+
+Install `pytest-django` and configure `pytest.ini` or `pyproject.toml`:
 
 ```ini
+# pytest.ini
 [pytest]
 DJANGO_SETTINGS_MODULE = myproject.settings.test
-addopts = -rafEX
+addopts = -rafEX --strict-markers
 ```
 
----
+```toml
+# pyproject.toml
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "myproject.settings.test"
+addopts = "-rafEX --strict-markers"
+```
 
-## Database Access
+### Database Access
 
 Tests do not have database access by default. Mark tests that need it:
 
 ```python
 import pytest
 
+# Function-level: use the decorator
 @pytest.mark.django_db
 def test_item_creation():
     item = Item.objects.create(name="Test", category=category)
     assert item.pk is not None
 
-# Use the db fixture as an alternative
-def test_with_db_fixture(db):
-    ...
-
-# For tests that require real transactions
-@pytest.mark.django_db(transaction=True)
-def test_with_transactions():
-    ...
-```
-
----
-
-## APIClient for DRF Views
-
-Always use DRF's `APIClient` — not Django's built-in `Client` — for REST API tests:
-
-```python
-from rest_framework.test import APIClient
-import pytest
-
-@pytest.fixture
-def api_client():
-    return APIClient()
-
-@pytest.fixture
-def authenticated_client(api_client, user):
-    api_client.force_authenticate(user=user)
-    return api_client
-
+# Class-level: mark the class so all methods share it
 @pytest.mark.django_db
-def test_item_list(authenticated_client, item):
-    response = authenticated_client.get("/api/v1/items/")
-    assert response.status_code == 200
-    assert len(response.data["results"]) == 1
+class TestItemModel:
+    def test_str_returns_name(self, item):
+        assert str(item) == item.name
+
+# When the test exercises on_commit() callbacks, signals via transactions,
+# or Celery task dispatch: use transaction=True
+@pytest.mark.django_db(transaction=True)
+def test_on_commit_callback_fires(user):
+    with patch("myapp.signals.send_welcome_email") as mock_send:
+        user.email_verified = True
+        user.save()
+    mock_send.assert_called_once()
 ```
 
----
+### Fixtures — `conftest.py`
 
-## Model Fixtures
-
-Define model fixtures in `conftest.py` to avoid repeated setup across tests:
+Define model fixtures in `conftest.py` to avoid repeated inline `objects.create()` calls:
 
 ```python
-# conftest.py
+# tests/conftest.py
 import pytest
-from myapp.models import User, Category, Item
+from django.contrib.auth import get_user_model
+from myapp.models import Category, Item
+
+User = get_user_model()
 
 @pytest.fixture
 def user(db):
     return User.objects.create_user(
         email="test@example.com",
-        password="testpass123",
+        password="securepassword123",
     )
 
 @pytest.fixture
@@ -95,25 +88,108 @@ def item(db, category):
     )
 ```
 
----
+### `factory_boy` for Flexible Fixtures
 
-## Testing ViewSets
+[factory_boy](https://factoryboy.readthedocs.io/) generates model instances with sensible defaults, reducing fixture boilerplate and making tests declare only what varies:
+
+```bash
+pip install factory_boy
+```
+
+```python
+# tests/factories.py
+import factory
+from django.contrib.auth import get_user_model
+from myapp.models import Category, Item
+
+User = get_user_model()
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    password = factory.PostGenerationMethodCall("set_password", "securepassword123")
+
+class CategoryFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Category
+
+    name = factory.Faker("word")
+
+class ItemFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Item
+
+    name = factory.Faker("sentence", nb_words=3)
+    category = factory.SubFactory(CategoryFactory)
+    is_active = True
+```
+
+```python
+# Usage in tests — declare only what varies from defaults
+@pytest.mark.django_db
+def test_item_list_only_returns_active(authenticated_client):
+    ItemFactory(is_active=True)
+    ItemFactory(is_active=False)
+    response = authenticated_client.get("/api/v1/items/")
+    assert response.data["count"] == 1
+```
+
+### APIClient for DRF Views
+
+Always use DRF's `APIClient` — not Django's built-in `Client` — for REST API tests:
+
+```python
+from rest_framework.test import APIClient
+import pytest
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+@pytest.fixture
+def authenticated_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+```
+
+Use `force_authenticate` for most tests. Test the actual JWT/session authentication flow separately when needed:
+
+```python
+from rest_framework_simplejwt.tokens import RefreshToken
+
+@pytest.fixture
+def jwt_token(user):
+    return str(RefreshToken.for_user(user).access_token)
+
+def test_jwt_authentication(api_client, jwt_token):
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {jwt_token}")
+    response = api_client.get("/api/v1/items/")
+    assert response.status_code == 200
+```
+
+### Testing ViewSets
+
+Cover the full lifecycle: list, retrieve, create, update, delete, and edge cases for each:
 
 ```python
 @pytest.mark.django_db
 class TestItemViewSet:
 
-    def test_list_returns_200(self, authenticated_client, item):
+    def test_list_returns_200_and_paginated_results(self, authenticated_client, item):
         response = authenticated_client.get("/api/v1/items/")
         assert response.status_code == 200
+        assert "results" in response.data
+        assert "count" in response.data
 
     def test_list_excludes_inactive_items(self, authenticated_client, category, db):
-        active = Item.objects.create(name="Active", category=category, is_active=True)
-        inactive = Item.objects.create(name="Inactive", category=category, is_active=False)
+        active = ItemFactory(category=category, is_active=True)
+        ItemFactory(category=category, is_active=False)
         response = authenticated_client.get("/api/v1/items/")
-        ids = [i["id"] for i in response.data["results"]]
+        ids = [str(r["id"]) for r in response.data["results"]]
         assert str(active.pk) in ids
-        assert str(inactive.pk) not in ids
+        assert len(ids) == 1
 
     def test_create_returns_201_on_valid_data(self, authenticated_client, category):
         payload = {"name": "New Item", "category": category.pk}
@@ -131,9 +207,9 @@ class TestItemViewSet:
         assert response.status_code == 401
 ```
 
----
+### Testing Serializers in Isolation
 
-## Testing Serializers
+Test serializer validation and output without going through the HTTP layer:
 
 ```python
 @pytest.mark.django_db
@@ -141,156 +217,34 @@ class TestItemSerializer:
 
     def test_valid_data_passes_validation(self, category):
         data = {"name": "Test Item", "category": category.pk}
-        serializer = ItemSerializer(data=data)
-        assert serializer.is_valid()
+        s = ItemSerializer(data=data)
+        assert s.is_valid(), s.errors
 
     def test_empty_name_fails_validation(self, category):
         data = {"name": "", "category": category.pk}
-        serializer = ItemSerializer(data=data)
-        assert not serializer.is_valid()
-        assert "name" in serializer.errors
+        s = ItemSerializer(data=data)
+        assert not s.is_valid()
+        assert "name" in s.errors
+
+    def test_read_only_fields_not_writable(self, item):
+        s = ItemSerializer(item, data={"id": "override", "name": item.name})
+        s.is_valid()
+        assert s.validated_data.get("id") is None
 
     def test_output_contains_expected_fields(self, item):
-        serializer = ItemSerializer(item)
-        assert "id" in serializer.data
-        assert "name" in serializer.data
-        assert "is_active" in serializer.data
+        s = ItemSerializer(item)
+        assert "id" in s.data
+        assert "name" in s.data
+        assert "is_active" in s.data
+
+    def test_output_excludes_sensitive_fields(self, user):
+        s = UserSerializer(user)
+        assert "password" not in s.data
 ```
 
----
+### Detecting N+1 Queries
 
-## factory_boy for Model Fixtures
-
-[factory_boy](https://factoryboy.readthedocs.io/) generates model instances with sensible defaults, reducing fixture boilerplate:
-
-```bash
-pip install factory_boy
-```
-
-```python
-# tests/factories.py
-import factory
-from myapp.models import User, Category, Item
-
-class UserFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = User
-
-    email = factory.Sequence(lambda n: f"user{n}@example.com")
-    password = factory.PostGenerationMethodCall("set_password", "testpass123")
-
-class CategoryFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = Category
-
-    name = factory.Faker("word")
-
-class ItemFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = Item
-
-    name = factory.Faker("sentence", nb_words=3)
-    category = factory.SubFactory(CategoryFactory)
-    is_active = True
-```
-
-Usage in tests — cleaner than inline `.objects.create()`:
-
-```python
-@pytest.mark.django_db
-def test_item_list_only_returns_active(authenticated_client):
-    ItemFactory(is_active=True)
-    ItemFactory(is_active=False)
-    response = authenticated_client.get("/api/v1/items/")
-    assert len(response.data["results"]) == 1
-```
-
----
-
-## override_settings
-
-Use `@override_settings` for tests that need specific Django settings without modifying the test settings file:
-
-```python
-from django.test import override_settings
-
-@pytest.mark.django_db
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-def test_welcome_email_sent(user):
-    from django.core import mail
-    trigger_welcome_email(user)
-    assert len(mail.outbox) == 1
-    assert user.email in mail.outbox[0].to
-
-@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}})
-def test_feature_without_cache(authenticated_client):
-    response = authenticated_client.get("/api/v1/items/")
-    assert response.status_code == 200
-```
-
----
-
-## Testing Management Commands
-
-```python
-from django.core.management import call_command
-import io
-
-@pytest.mark.django_db
-def test_sync_products_command():
-    out = io.StringIO()
-    call_command("sync_products", verbosity=2, stdout=out)
-    assert "Synced" in out.getvalue()
-
-@pytest.mark.django_db
-def test_purge_expired_tokens_command():
-    ExpiredTokenFactory.create_batch(5)
-    call_command("purge_expired_tokens")
-    assert Token.objects.filter(is_expired=True).count() == 0
-```
-
----
-
-## Testing Async Views (Django 4.1+)
-
-```python
-import pytest
-
-@pytest.mark.django_db(transaction=True)  # async views need real transactions
-@pytest.mark.asyncio
-async def test_async_item_list(async_client, user):
-    from rest_framework_simplejwt.tokens import RefreshToken
-    token = str(RefreshToken.for_user(user).access_token)
-    response = await async_client.get(
-        "/api/v1/items/",
-        HTTP_AUTHORIZATION=f"Bearer {token}",
-    )
-    assert response.status_code == 200
-```
-
----
-
-## Testing Celery Tasks
-
-```python
-from unittest.mock import patch
-
-# Test task logic directly — don't run through the real Celery worker
-@pytest.mark.django_db
-def test_notification_task_creates_record(item):
-    send_notification_task(item_id=item.pk, message="Test")
-    assert Notification.objects.filter(item=item).count() == 1
-
-# Test that a view triggers the task (not what the task does)
-@patch("myapp.views.send_notification_task.delay")
-def test_view_triggers_notification_task(mock_task, authenticated_client, item):
-    authenticated_client.post(f"/api/v1/items/{item.pk}/notify/")
-    mock_task.assert_called_once_with(item.pk)
-```
-
----
-
-## Detecting N+1 Queries
+Use `CaptureQueriesContext` to assert fixed query counts in list views and serializers:
 
 ```python
 from django.test.utils import CaptureQueriesContext
@@ -299,7 +253,7 @@ from django.db import connection
 @pytest.mark.django_db
 def test_item_list_has_no_n_plus_1(authenticated_client, category, db):
     Item.objects.bulk_create([
-        Item(name=f"Item {i}", category=category) for i in range(10)
+        Item(name=f"Item {i}", category=category, is_active=True) for i in range(10)
     ])
 
     with CaptureQueriesContext(connection) as ctx:
@@ -312,36 +266,222 @@ def test_item_list_has_no_n_plus_1(authenticated_client, category, db):
     )
 ```
 
----
+### Testing Celery Tasks
 
-## Authentication Patterns
+Test task logic directly — do not run through the real Celery worker. Separate "task logic is correct" from "view dispatches task":
 
 ```python
-# Option 1: force_authenticate — recommended for unit/integration tests
-api_client.force_authenticate(user=user)
+from unittest.mock import patch
 
-# Option 2: JWT token — use when testing the authentication flow itself
-from rest_framework_simplejwt.tokens import RefreshToken
+# Test what the task does
+@pytest.mark.django_db
+def test_notification_task_creates_notification(item):
+    send_notification_task(item_id=item.pk, message="Hello")
+    assert Notification.objects.filter(item=item).count() == 1
 
-@pytest.fixture
-def jwt_token(user):
-    refresh = RefreshToken.for_user(user)
-    return str(refresh.access_token)
+# Test that the view dispatches the task (not what the task does)
+@patch("myapp.views.send_notification_task.delay")
+@pytest.mark.django_db
+def test_create_view_dispatches_notification_task(mock_delay, authenticated_client, category):
+    payload = {"name": "New Item", "category": category.pk}
+    response = authenticated_client.post("/api/v1/items/", payload)
+    assert response.status_code == 201
+    mock_delay.assert_called_once()
+```
 
-def test_with_jwt(api_client, jwt_token):
-    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {jwt_token}")
-    response = api_client.get("/api/v1/items/")
+### `override_settings`
+
+Scope settings changes to individual tests — never mutate `django.conf.settings` directly:
+
+```python
+from django.test import override_settings
+
+@pytest.mark.django_db
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_welcome_email_is_sent(user):
+    from django.core import mail
+    trigger_welcome_email(user)
+    assert len(mail.outbox) == 1
+    assert user.email in mail.outbox[0].to
+
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}})
+def test_endpoint_works_without_cache(authenticated_client):
+    response = authenticated_client.get("/api/v1/items/")
     assert response.status_code == 200
+```
+
+### Testing Management Commands
+
+```python
+from django.core.management import call_command
+import io
+
+@pytest.mark.django_db
+def test_sync_products_command_outputs_synced(db):
+    out = io.StringIO()
+    call_command("sync_products", verbosity=2, stdout=out)
+    assert "Synced" in out.getvalue()
+
+@pytest.mark.django_db
+def test_purge_expired_tokens_removes_expired_tokens(db):
+    TokenFactory.create_batch(5, is_expired=True)
+    TokenFactory.create_batch(3, is_expired=False)
+    call_command("purge_expired_tokens")
+    assert Token.objects.filter(is_expired=True).count() == 0
+    assert Token.objects.filter(is_expired=False).count() == 3
+```
+
+### Testing Permission Boundaries
+
+Always test that users can only access data they are authorized to see:
+
+```python
+@pytest.mark.django_db
+def test_item_list_only_returns_own_items(api_client, db):
+    user_a = UserFactory()
+    user_b = UserFactory()
+    item_a = ItemFactory(owner=user_a)
+    ItemFactory(owner=user_b)
+
+    api_client.force_authenticate(user=user_a)
+    response = api_client.get("/api/v1/items/")
+
+    ids = [str(r["id"]) for r in response.data["results"]]
+    assert str(item_a.pk) in ids
+    assert len(ids) == 1
+```
+
+---
+
+## Django 4.2 (LTS — base version)
+
+### Async View Testing
+
+Django 4.2 supports async views. Test them with `pytest-asyncio` and Django's `async_client`:
+
+```python
+import pytest
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.asyncio
+async def test_async_item_list(async_client, user):
+    from rest_framework_simplejwt.tokens import RefreshToken
+    token = str(RefreshToken.for_user(user).access_token)
+    response = await async_client.get(
+        "/api/v1/items/",
+        HTTP_AUTHORIZATION=f"Bearer {token}",
+    )
+    assert response.status_code == 200
+```
+
+Note: async views require `transaction=True` because async tests run in a different thread from the test database transaction.
+
+### `CONN_HEALTH_CHECKS` in Test Settings
+
+Set `CONN_HEALTH_CHECKS=False` in test settings to avoid health-check overhead on the test database:
+
+```python
+# settings/test.py
+DATABASES = {
+    "default": {
+        **DATABASES["default"],
+        "CONN_MAX_AGE": 0,         # Fresh connection per test is fine
+        "CONN_HEALTH_CHECKS": False,
+    }
+}
+```
+
+---
+
+## Django 5.0
+
+### `db_default` — Verify Database-Level Defaults in Tests
+
+When models use `db_default` (database-level defaults), verify that fields are populated after `save()`:
+
+```python
+@pytest.mark.django_db
+def test_order_created_at_is_set_by_database(db):
+    order = Order.objects.create(customer=UserFactory())
+    order.refresh_from_db()
+    assert order.created_at is not None
+```
+
+---
+
+## Django 5.1
+
+### `LoginRequiredMiddleware` Testing
+
+If `LoginRequiredMiddleware` is active, ensure views that should be public are annotated and tested:
+
+```python
+from django.views.decorators.login_required import login_not_required
+
+# views.py
+@login_not_required
+def public_health_check(request):
+    return JsonResponse({"status": "ok"})
+
+# tests
+@pytest.mark.django_db
+def test_health_check_accessible_without_auth(api_client):
+    response = api_client.get("/api/health/")
+    assert response.status_code == 200
+```
+
+---
+
+## Django 5.2 (LTS — latest version)
+
+### Composite Primary Key Fixtures
+
+Models with composite PKs require all PK fields to be specified in factories and fixtures:
+
+```python
+class TenantMembershipFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = TenantMembership
+
+    tenant_id = factory.Sequence(lambda n: n + 1)
+    user_id = factory.SubFactory(UserFactory, _id_only=True)
+
+@pytest.mark.django_db
+def test_tenant_membership_lookup(db):
+    membership = TenantMembershipFactory()
+    found = TenantMembership.objects.get(
+        tenant_id=membership.tenant_id,
+        user_id=membership.user_id,
+    )
+    assert found == membership
+```
+
+### Async Atomic Transactions in Tests
+
+When testing code that uses `transaction.aatomic()` (Django 5.2+), use `transaction=True`:
+
+```python
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.asyncio
+async def test_async_fund_transfer_is_atomic(db):
+    sender = await sync_to_async(AccountFactory)(balance=100)
+    receiver = await sync_to_async(AccountFactory)(balance=0)
+    await transfer_funds(sender.pk, receiver.pk, 50)
+    await sender.arefresh_from_db()
+    await receiver.arefresh_from_db()
+    assert sender.balance == 50
+    assert receiver.balance == 50
 ```
 
 ---
 
 ## Resources
 
-- [factory_boy Documentation](https://factoryboy.readthedocs.io/en/stable/)
 - [pytest-django Documentation](https://pytest-django.readthedocs.io/en/latest/)
+- [factory_boy Documentation](https://factoryboy.readthedocs.io/en/stable/)
 - [Django Testing Tools](https://docs.djangoproject.com/en/stable/topics/testing/tools/)
 - [DRF Testing](https://www.django-rest-framework.org/api-guide/testing/)
 - [CaptureQueriesContext](https://docs.djangoproject.com/en/stable/topics/testing/tools/#django.test.utils.CaptureQueriesContext)
-- [Django Test Database](https://docs.djangoproject.com/en/stable/topics/testing/overview/#the-test-database)
+- [Django Async Support](https://docs.djangoproject.com/en/stable/topics/async/)
 - [djangorestframework-simplejwt](https://django-rest-framework-simplejwt.readthedocs.io/en/latest/)
+- [Django 5.2 Release Notes](https://docs.djangoproject.com/en/5.2/releases/5.2/)
