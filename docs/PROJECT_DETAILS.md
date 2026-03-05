@@ -19,11 +19,17 @@ ai-coding-tooling/
 ├── AGENTS.global.md     # Global agent instructions (symlinked to ~/.claude/CLAUDE.md, etc.)
 ├── Makefile             # Automates symlink creation and removal
 ├── docs/                # Human-readable project documentation
+├── personal/            # Local-only personal skills (gitignored, auto-installed by make link)
 ├── extended/            # Project-local extensions for globally-installed skills
-│   └── coding-guidelines/
-│       ├── SKILL.md     # Symlinked as SKILL.extended.md into the installed skill directory
-│       └── reference/   # Symlinked as reference/ into the installed skill directory
+│   ├── coding-guidelines/
+│   │   ├── SKILL.md     # Loaded alongside parent skill; adds stack-specific coding style rules
+│   │   └── reference/   # Tech-specific style guides loaded at runtime
+│   ├── security-best-practices/
+│   │   └── reference/   # Tech-specific security reference files
+│   └── skill-architect/
+│       └── SKILL.md     # Adds guardrail design guidance and the extended/ pattern documentation
 └── skills/              # Skills owned by this project
+    ├── add-tech-reference/
     ├── code-review/
     ├── documentation/
     ├── evaluate-architecture/
@@ -41,6 +47,7 @@ ai-coding-tooling/
 | `global-agent-setup` | Bootstraps global agent config and installs all global skills |
 | `skill-global-installation` | Installs a skill globally and updates the Global Skills list in `~/.claude/CLAUDE.md` |
 | `evaluate-architecture` | Creates/updates the three project context files (PROJECT_DETAILS, CODING_STYLE, ARCHITECTURE) |
+| `add-tech-reference` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `documentation` | Syncs inline API docs and project `.md` files with the current git workspace state |
 | `code-review` | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security |
 | `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |

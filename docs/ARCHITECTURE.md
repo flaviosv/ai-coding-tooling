@@ -58,6 +58,13 @@ Create skills/<name>/SKILL.md
   → Run /skill-global-installation if it should be globally available
 ```
 
+### Adding a personal skill
+```
+Create personal/<name>/SKILL.md  (directory is gitignored)
+  → make link  (or make link-personal) symlinks it into ~/.claude/skills/
+  → Appears in agent skill list; never committed or listed in AGENTS.global.md
+```
+
 ### Installing a Tech Leads Club skill
 ```
 /skill-global-installation → npx @tech-leads-club/agent-skills install → CLAUDE.md updated

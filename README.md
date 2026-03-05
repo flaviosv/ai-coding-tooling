@@ -103,7 +103,7 @@ Installed globally by `/global-agent-setup`. Treated as read-only — do not edi
 
 | Skill | Description |
 |---|---|
-| **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. |
+| **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. Extended by `extended/skill-architect/SKILL.md`: adds guardrail design guidance into the workflow and documents the `extended/` pattern for modifying global skills. |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
 | **the-fool** | Challenges ideas and proposals — plays devil's advocate, runs pre-mortems, and stress-tests assumptions. |
