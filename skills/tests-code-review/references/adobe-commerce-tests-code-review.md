@@ -8,6 +8,41 @@ Supplements `test-review-checklist.md` and `php-tests-code-review.md` for projec
 
 ## Unit Test Review Points
 
+### Prefer ViewModel Tests Over Block Tests for Data Logic
+
+Unit tests that test data-retrieval methods on a Block class are a code smell — that logic should live in a ViewModel, not in the Block. Flag such tests as a quality finding and recommend extracting the data logic to a ViewModel.
+
+```php
+// Bad — testing data retrieval on a Block; Block should not own this logic
+class MyBlockTest extends \PHPUnit\Framework\TestCase
+{
+    public function testGetProductName(): void
+    {
+        $productRepository = $this->createMock(ProductRepositoryInterface::class);
+        $block = new MyBlock(..., $productRepository);
+        $this->assertSame('Widget', $block->getProductName(42)); // data logic in Block
+    }
+}
+
+// Good — data logic lives in a ViewModel; Block test only covers rendering decisions
+class ProductInfoViewModelTest extends \PHPUnit\Framework\TestCase
+{
+    public function testGetProductName(): void
+    {
+        $product = $this->createMock(ProductInterface::class);
+        $product->method('getName')->willReturn('Widget');
+
+        $repository = $this->createMock(ProductRepositoryInterface::class);
+        $repository->method('getById')->with(42)->willReturn($product);
+
+        $viewModel = new ProductInfoViewModel($repository);
+        $this->assertSame('Widget', $viewModel->getProductName(42));
+    }
+}
+```
+
+---
+
 ### ObjectManager Must Not Appear in Unit Tests
 
 ```php

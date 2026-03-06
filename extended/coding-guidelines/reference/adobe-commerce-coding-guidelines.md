@@ -245,6 +245,7 @@ class ProductExtendedData implements ResolverInterface
 
 - Define layout handles in `view/<area>/layout/` XML files
 - Use `<referenceBlock>` and `<referenceContainer>` to extend existing layouts — avoid `<block>` overrides that replace core blocks
+- **Prefer ViewModels over Block subclasses for all template data access.** Create a new Block subclass only when overriding rendering infrastructure (e.g., custom `toHtml()` logic). Data retrieval, formatting, and any logic consumed by a template belongs in a ViewModel — not in a Block method. If you find yourself adding a `getFoo()` method to a Block, extract it to a ViewModel instead.
 - Use ViewModels to pass data to templates — not Block methods that perform business logic:
 
 ```xml

@@ -58,4 +58,5 @@ Do this at every step where a skill is used — including auto-applied skills li
 ## Plan Mode
 
 - Make the plan extremely concise. Sacrifice grammar for the sake of concision.
+- Number all steps so they can be referenced in future prompts (e.g. "do step 3").
 - At the end of each plan, give me a list of unresolved questions to answer, if any.

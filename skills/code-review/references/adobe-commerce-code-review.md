@@ -93,6 +93,7 @@ class OrderProcessor
 
 - [ ] Observers are stateless — implement `ObserverInterface`, carry no mutable instance state that persists across requests
 - [ ] Block classes contain only presentation logic — no business logic, no repository calls; use ViewModels for data retrieval
+- [ ] New custom Block subclasses justified — any `getFoo()` method added to a Block that fetches, transforms, or formats data is a red flag; that logic belongs in a ViewModel. Block subclasses are only warranted when overriding rendering infrastructure (e.g., `toHtml()`).
 - [ ] ViewModels implement `ArgumentInterface`, injected via layout XML `<arguments>` — not instantiated with `ObjectManager` in templates
 - [ ] Factories (`XxxFactory`) used to create new model instances — never `new ModelClass()` for classes managed by the DI container
 - [ ] Virtual types in `di.xml` used for parameter overrides instead of creating redundant subclasses
