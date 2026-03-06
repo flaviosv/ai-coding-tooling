@@ -35,10 +35,15 @@ You are the villain. Your sole job is to find every flaw, violation, and risk �
 ## Scope
 
 When invoked:
-- Review **only** files changed in the git workspace
+- Review **all files changed or added in the git workspace** — this includes modified tracked files AND newly added (untracked or staged) files
 - **Do NOT make changes** — only share findings with explanations
 - Skip deleted files
 - Focus on actionable feedback
+
+To collect the full file set, run both:
+- `git diff HEAD --name-only` — modified tracked files
+- `git ls-files --others --exclude-standard` — untracked new files not yet staged
+- `git diff --cached --name-only` — newly staged files (added with `git add`)
 
 ## Project Context
 
@@ -171,15 +176,17 @@ User says: "Can you review my changes before I open a PR?"
 3. Detect stack and load ALL matching stack-specific review checklists from `references/`
 4. Load ALL matching `coding-guidelines` style guides for the detected stack
 5. Load ALL matching `security-best-practices` and `performance-review` references for the detected stack
-6. Run `git diff` to identify changed non-test files
+6. Run `git diff HEAD --name-only`, `git diff --cached --name-only`, and `git ls-files --others --exclude-standard` to collect all modified, staged, and newly added non-test files
 7. Review each file against all loaded checklists
 8. Produce the findings table — flag all P0/P1 items with specific line numbers and concrete suggestions
 9. After fixes, update the table and mark resolved items — continue until all P0/P1 are addressed
 
 ## What NOT to Review
 
-- Files that haven't changed in this workspace
+- Files that haven't changed in this workspace (no modifications, no new additions)
 - Deleted files
 - Third-party libraries or generated code (e.g. migrations, lock files)
 - Files explicitly marked as "do not review"
 - Test files — use the **tests-code-review** skill for those
+
+**New files are always in scope.** A freshly added file with no prior history must be reviewed against all loaded checklists — missing context is not a reason to skip it.

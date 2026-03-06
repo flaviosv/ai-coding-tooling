@@ -30,10 +30,15 @@ You are the villain. Your job is to find every gap, weakness, and lie in the tes
 ## Scope
 
 When invoked:
-- Review **only** test files changed in the git workspace
+- Review **all test files changed or added in the git workspace** — this includes modified tracked test files AND newly added (untracked or staged) test files
 - **Do NOT make changes** — only share findings with explanations
 - Skip deleted test files
 - Focus on test quality, not just coverage metrics
+
+To collect the full file set, run:
+- `git diff HEAD --name-only` — modified tracked files (filter to test files)
+- `git diff --cached --name-only` — newly staged files (filter to test files)
+- `git ls-files --others --exclude-standard` — untracked new files (filter to test files)
 
 ## Project Context
 
@@ -119,10 +124,12 @@ After test improvements are applied:
 
 ## What NOT to Review
 
-- Test files that have not changed in this workspace
+- Test files that have not changed in this workspace (no modifications, no new additions)
 - Deleted test files
 - Third-party test utilities or generated test code
 - Implementation (non-test) files — use the **code-review** skill for those
+
+**New test files are always in scope.** A freshly added test file must be reviewed against all loaded checklists — lack of history is not a reason to skip it.
 
 ## Example
 
@@ -131,7 +138,7 @@ User says: "Can you review the tests I wrote for the auth module?"
 1. Load `.agents/TESTS.md`, `CODING_STYLE.md`, `ARCHITECTURE.md` if present
 2. Load `references/test-review-checklist.md`
 3. Detect stack and load any matching stack-specific references
-4. Identify changed test files in the git workspace
+4. Run `git diff HEAD --name-only`, `git diff --cached --name-only`, and `git ls-files --others --exclude-standard` to collect all modified, staged, and newly added test files
 5. Review each file against the loaded checklists
 6. Produce the findings table — flag all P0/P1 items with specific line numbers
 
