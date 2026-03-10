@@ -1,62 +1,38 @@
-# Global AGENTS.md file
-
-This is a global AGENTS.md file, with the intent to be reused across all the AI coding projects.
-
 # Directives
 
-## Coding Guidelines (Auto-Apply)
+## Coding (Auto-Apply)
 
-Before writing, editing, or refactoring any code, **always** invoke the `coding-guidelines` skill.
-Do not wait to be asked. Load the skill, apply its rules, and use them as constraints for the entire task.
+Before any code work, **always** invoke `coding-guidelines`. No exceptions.
 This applies to all implementation work: new features, bug fixes, refactoring, and code changes of any kind.
 
-## Project Context Files
+## Session Start
 
-At the start of every session, if the following files exist in the project, read them before doing any work:
+If these files exist in the project, read them before doing any work:
 
 - `.agents/PROJECT_DETAILS.md` — tech stack, key libraries, project description
 - `.agents/CODING_STYLE.md` — naming conventions, patterns, formatting rules
 - `.agents/ARCHITECTURE.md` — system layers, data flow, key components
 
-These files are maintained by the **evaluate-architecture** skill. If they are missing or stale, suggest running it.
-
-# Global Skills
-
-- **skill-architect** (`skills/skill-architect/SKILL.md`): Expert guide for designing and building high-quality skills from scratch through structured conversation. Use when creating a new skill, automating a workflow, or asked to make agents do something consistently. Covers standalone skills and MCP-enhanced workflows. Source: [Tech Leads Club](https://techlead.club) — **Extended**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent skill; it adds guardrail design guidance into the workflow phases and documents the `extended/` pattern for modifying global skills.
-- **keybindings-help**: Use when the user wants to customize keyboard shortcuts, rebind keys, add chord bindings, or modify `~/.claude/keybindings.json`. Source: Native Claude Code skill.
-- **skill-global-installation** (`skills/skill-global-installation/SKILL.md`): Guides the installation of a new skill into the global Claude Code skills directory and keeps this Global Skills list up to date. Use when installing a skill globally or adding a skill to `~/.claude/skills/`. Source: This project (`ai-coding-tooling`).
-- **subagent-creator** (`skills/subagent-creator/SKILL.md`): Guide for creating AI subagents with isolated context for complex multi-step workflows. Use when users want to create a subagent, specialized agent, verifier, debugger, or orchestrator that requires isolated context and deep specialization. Works with any agent that supports subagent delegation. Triggers on "create subagent", "new agent", "specialized assistant", "create verifier". Source: [Tech Leads Club](https://techlead.club)
-- **technical-design-doc-creator** (`skills/technical-design-doc-creator/SKILL.md`): Creates comprehensive Technical Design Documents (TDD) following industry standards with mandatory sections, optional sections, and interactive gathering of missing information. Source: [Tech Leads Club](https://techlead.club)
-- **the-fool** (`skills/the-fool/SKILL.md`): Use when challenging ideas, plans, decisions, or proposals. Invoke to play devil's advocate, run a pre-mortem, red team, stress test assumptions, audit evidence quality, or find blind spots before committing. Source: [Tech Leads Club](https://techlead.club)
-- **web-design-guidelines** (`skills/web-design-guidelines/SKILL.md`): Review UI code for Web Interface Guidelines compliance. Use when asked to "review my UI", "check accessibility", "audit design", "review UX", or "check my site against best practices". Source: [Tech Leads Club](https://techlead.club)
-- **coding-guidelines** (`skills/coding-guidelines/SKILL.md`): Apply when writing, modifying, or reviewing code. Behavioral guidelines to reduce common LLM coding mistakes. Triggers on implementation tasks, code changes, refactoring, bug fixes, or feature development. Source: [Tech Leads Club](https://techlead.club) — **Extended**: if `extended/coding-guidelines/SKILL.md` exists (linked globally via `make link-extended`), load it alongside the parent skill; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/solid-guidelines.md` for OOP-style code.
-- **docs-writer** (`skills/docs-writer/SKILL.md`): Use this skill for writing, reviewing, and editing documentation (`/docs` directory or any .md file). Source: [Tech Leads Club](https://techlead.club)
-- **learning-opportunities** (`skills/learning-opportunities/SKILL.md`): Facilitates deliberate skill development during AI-assisted coding. Offers interactive learning exercises after architectural work (new files, schema changes, refactors). Use when completing features, making design decisions, or when user asks to understand code better. Triggers on "learning exercise", "help me understand", "teach me", "why does this work", or after creating new files/modules. Do not trigger during urgent debugging, quick fixes, or when user says "just ship it". Source: [Tech Leads Club](https://techlead.club)
-- **best-practices** (`skills/best-practices/SKILL.md`): Apply modern web development best practices for security, compatibility, and code quality. Use when asked to "apply best practices", "security audit", "modernize code", "code quality review", or "check for vulnerabilities". Source: [Tech Leads Club](https://techlead.club)
-- **security-best-practices** (`skills/security-best-practices/SKILL.md`): Perform language and framework specific security best-practice reviews and suggest improvements. Trigger only when the user explicitly requests security best practices guidance, a security review/report, or secure-by-default coding help. Trigger only for supported languages (python, javascript/typescript, go). Do not trigger for general code review, debugging, or non-security tasks. Source: [Tech Leads Club](https://techlead.club) — **Extended**: if `skills/security-best-practices/SKILL.extended.md` exists, load it alongside the parent skill; also load any matching files from `skills/security-best-practices/reference/` for the project's tech stack.
-- **evaluate-architecture** (`skills/evaluate-architecture/SKILL.md`): Creates or updates the three mandatory project context files: `PROJECT_DETAILS.md`, `CODING_STYLE.md`, and `ARCHITECTURE.md` inside `.agents/`. Use when setting up a new project, onboarding a project, or when context files are missing or stale. Source: This project (`ai-coding-tooling`).
-- **documentation** (`skills/documentation/SKILL.md`): Updates all project documentation by inspecting the git workspace for modified files. Updates inline API documentation (comments, annotations) in source files and related project context .md files. Uses the docs-writer skill for all .md file edits. Technology agnostic. Use when the user says "update docs", "generate docs", "api documentation", "document my changes", or "sync documentation". Source: This project (`ai-coding-tooling`).
-- **global-agent-setup** (`skills/global-agent-setup/SKILL.md`): Sets up global agent configuration by symlinking `AGENTS.global.md` to the agent's global config file and installing all global skills from the Tech Leads Club registry. Use when the user says "setup global agent", "install global skills", "run global-agent-setup", "initialize agent global config", or "setup my agent globally". Source: This project (`ai-coding-tooling`).
-- **code-review** (`skills/code-review/SKILL.md`): Perform comprehensive code reviews on implementation code changed in the git workspace. Reviews cover architecture, performance, code quality, API design, and security. Technology agnostic. Use when the user says "review my code", "code review", "check my code", "review my changes", or "review this PR". Do NOT use for test files — use tests-code-review for that. Source: This project (`ai-coding-tooling`).
-- **performance-review** (`skills/performance-review/SKILL.md`): Identify performance bottlenecks, memory issues, and optimization opportunities in any codebase. Technology agnostic. Use when the user says "performance review", "performance audit", "optimize performance", "slow code", or "performance bottleneck". Source: This project (`ai-coding-tooling`).
-- **tests** (`skills/tests/SKILL.md`): Write and maintain tests for any project. Covers unit tests, integration tests, TDD practices, and code coverage analysis. Technology agnostic. Use when the user says "write tests", "add tests", "missing tests", "TDD", "test coverage", "unit test", or "integration test". Source: This project (`ai-coding-tooling`).
-- **tests-code-review** (`skills/tests-code-review/SKILL.md`): Review test code quality, coverage patterns, and maintainability. Technology agnostic. Use when the user says "review tests", "test code review", "check tests", or "review test coverage". Do NOT use for writing new tests or reviewing implementation code. Source: This project (`ai-coding-tooling`).
-- **add-tech-reference** (`skills/add-tech-reference/SKILL.md`): Add technology-specific reference files across all skills in this project and extend any qualifying global skills. Use when the user says "add support for <technology>", "add a new technology reference", "add <tech> to the stack", or "onboard <framework>". Source: This project (`ai-coding-tooling`).
-
-## Personal Skills
-
-Skills in the `personal/` directory of `ai-coding-tooling` are auto-installed by `global-agent-setup` but are **not listed here** — they are local-only, gitignored, and discovered dynamically at install time. If you have personal skills installed, they will appear in your agent's skills directory alongside the global ones.
+If missing or stale, suggest running `evaluate-architecture`.
 
 ## Skill Transparency
 
-Whenever a skill is invoked as part of executing a task, explicitly announce it to the user before running it. Use the format:
+Before invoking any skill, announce it:
 
 > **Invoking skill:** `<skill-name>`
 
-Do this at every step where a skill is used — including auto-applied skills like `coding-guidelines`, skills triggered by other skills (e.g. `security-best-practices` loaded from within `code-review`), and any skill invoked mid-task. Never silently apply a skill without surfacing it to the user.
+Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 
 ## Plan Mode
 
-- Make the plan extremely concise. Sacrifice grammar for the sake of concision.
-- Number all steps so they can be referenced in future prompts (e.g. "do step 3").
-- At the end of each plan, give me a list of unresolved questions to answer, if any.
+- Extremely concise. Sacrifice grammar.
+- Number all steps.
+- List unresolved questions at the end.
+
+## Skill Overrides
+
+Three skills have extended versions that must be loaded alongside the base skill when present:
+
+- **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/solid-guidelines.md` for OOP-style code.
+- **security-best-practices**: if `SKILL.extended.md` exists, load it; also load matching files from `skills/security-best-practices/reference/` for the project's tech stack.
+- **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases and documents the `extended/` pattern.

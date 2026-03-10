@@ -7,7 +7,10 @@ DIR_TARGETS := .claude .cursor .windsurf .agent .gemini .agents
 MD_SOURCE := AGENTS.md
 MD_TARGETS := CLAUDE.md GEMINI.md
 
-.PHONY: link link-dirs link-md link-extended link-personal unlink unlink-dirs unlink-md unlink-extended unlink-personal
+STATUSLINE_SRC := $(PWD)/config/statusline-command.sh
+STATUSLINE_DEST := $(HOME)/.claude/statusline-command.sh
+
+.PHONY: link link-dirs link-md link-extended link-personal install-statusline unlink unlink-dirs unlink-md unlink-extended unlink-personal
 
 link: link-dirs link-md link-extended link-personal
 
@@ -85,6 +88,18 @@ link-personal:
 			ln -s "$$(pwd)/$$skill_dir" "$$dest" && echo "LINKED: $$skill_dir -> $$dest"; \
 		fi; \
 	done
+
+install-statusline:
+	@dest="$(STATUSLINE_DEST)"; \
+	if [ -e "$$dest" ] || [ -L "$$dest" ]; then \
+		if [ "$(FORCE)" = "1" ]; then \
+			cp "$(STATUSLINE_SRC)" "$$dest" && chmod +x "$$dest" && echo "INSTALLED (forced): $(STATUSLINE_SRC) -> $$dest"; \
+		else \
+			echo "SKIP: $$dest already exists (run with FORCE=1 to override)"; \
+		fi; \
+	else \
+		cp "$(STATUSLINE_SRC)" "$$dest" && chmod +x "$$dest" && echo "INSTALLED: $(STATUSLINE_SRC) -> $$dest"; \
+	fi
 
 unlink: unlink-dirs unlink-md unlink-extended unlink-personal
 

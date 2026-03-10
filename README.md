@@ -42,7 +42,24 @@ After the global skills are installed (step 3), link the extended skill files in
 make link-extended
 ```
 
-### 5. Remove symlinks
+### 5. Install the status line script
+
+Run this separately (not included in `make link`) to install the Claude Code status line script to `~/.claude/statusline-command.sh`. It displays the active model, effort level, current directory, git branch, context remaining, and token usage:
+
+```
+[Claude Sonnet 4.6 - **High**] 📁 my-project git:(main) | 82% | 4321 tokens
+```
+
+The script is copied from `config/statusline-command.sh`. If the destination already exists it is skipped:
+
+```bash
+make install-statusline          # skip if file already exists
+make install-statusline FORCE=1  # overwrite with the version from this repo
+```
+
+To customize the status line without losing your changes on the next `FORCE=1` run, edit `~/.claude/statusline-command.sh` directly — omit the `FORCE=1` flag and it will never be overwritten.
+
+### 6. Remove symlinks
 
 ```bash
 make unlink
