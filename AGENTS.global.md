@@ -2,8 +2,13 @@
 
 ## Coding (Auto-Apply)
 
-Before any code work, **always** invoke `coding-guidelines`. No exceptions.
-This applies to all implementation work: new features, bug fixes, refactoring, and code changes of any kind.
+Before any code work, invoke `coding-guidelines`. This applies to all implementation work: new features, bug fixes, refactoring, and code changes of any kind.
+
+**Do NOT invoke** `coding-guidelines` for:
+- Questions, explanations, or analysis (e.g. "how does X work?", "explain this code")
+- Documentation-only tasks (reading/writing markdown, comments)
+- Non-code tasks: planning, research, configuration review, Git operations, CLI commands
+- Conversational messages or clarifying questions
 
 ## Session Start
 
