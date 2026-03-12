@@ -1,7 +1,7 @@
 ---
 name: evaluate-architecture
 description: >
-  Creates or updates the two mandatory project context files: PROJECT_DETAILS.md and ARCHITECTURE.md. These files are auto-loaded by agents at the start of every session to provide project context. Use when setting up a new project, onboarding a project, or when the user says "update architecture docs", "refresh project context", "run evaluate-architecture", or "update project docs".
+  Creates or updates the two mandatory project context files: PROJECT_DETAILS.md and ARCHITECTURE.md. These files are auto-loaded by agents at the start of every session to provide project context. Use when setting up a new project, onboarding a project, or when the user says "update architecture docs", "refresh project context", "run evaluate-architecture", "update project docs", "onboard project", or "evaluate architecture".
 metadata:
   version: "1.0.0"
   triggers:
@@ -12,6 +12,8 @@ metadata:
     - "run evaluate-architecture"
     - "update project docs"
     - "create project docs"
+    - "onboard project"
+    - "evaluate architecture"
 ---
 
 # evaluate-architecture
@@ -20,10 +22,40 @@ Creates or updates the two mandatory project context files that agents load at t
 
 ## Output Files
 
-| File | Purpose |
-|------|---------|
-| `PROJECT_DETAILS.md` | Tech stack, project description, key libraries, environment config |
-| `ARCHITECTURE.md` | Concise architectural overview — layers, data flow, key components |
+PROJECT_DETAILS.md:
+- Overview of the project
+- Tech stack with versions
+- Key libraries
+- Setup, build, and test commands (the agent needs to know how to run the project)
+- Naming conventions (files, classes, tables, routes, branches)
+- Jobs/crons with frequency and purpose of each
+- Active feature flags or toggles
+- External integrations (third-party APIs, webhooks, SDKs) with the purpose of each
+- Known limitations or relevant tech debt
+- Documentation pattern
+
+ARCHITECTURE.md:
+- Architecture pattern
+- Layer responsabilities
+- Directory map with the semantic responsibility of each folder (not a full tree, but what each level means)
+- Main data flow — request enters where, passes through which layers, exits where
+- Dependency rules between layers (who can import whom, who can't)
+- Communication patterns between services/modules (REST, events, queues, gRPC)
+- Error handling strategy (where errors are caught, where they propagate, error format)
+- Auth strategy (middleware, guards, where the logic lives)
+- Key components and their roles
+- Data model (key entities and their relationships — not full schema, just the conceptual map)
+- External dependencies
+- Testing strategy / patterns
+- Notable patterns
+
+**Line budget:** Each output file must not exceed 500 lines — these are agent context files, not exhaustive documentation. If a section would push the file over budget, summarize more aggressively. Prefer a table row over a paragraph, a bullet over a table, and omission over filler.
+
+**No code samples** in the output files unless strictly necessary. These files describe architecture and project context — use prose, tables, and bullet lists. Code blocks are only justified for directory tree structures, ASCII diagrams, and exact commands the agent must run. Do not include code snippets, method signatures, SQL queries, or implementation examples.
+
+**No CI/CD or deployment information.** CI/CD pipelines, deployment configurations, release workflows, and infrastructure-as-code details are out of scope for these files.
+
+**ASCII diagrams are strongly encouraged** whenever they clarify structure — data flows, layer relationships, component interactions, entity relationships. Keep them simple (box-and-arrow style) and focused on the conceptual level.
 
 Default location: `.agents/` at the project root (e.g. `.agents/PROJECT_DETAILS.md`).
 
@@ -45,28 +77,38 @@ ls .agents/PROJECT_DETAILS.md .agents/ARCHITECTURE.md 2>/dev/null
 If any files exist, inform the user:
 > Found existing files: [list]. These will be **updated**, not replaced from scratch — existing content will be preserved and refined.
 
+**Update merge strategy:** When updating existing files:
+- Read the existing file first. Work section by section.
+- Update sections where the codebase evidence has changed (new dependencies, renamed directories, etc.).
+- Preserve sections the user manually added that are not part of the standard template — these represent intentional customization.
+- Never delete a section just because you cannot find evidence for it in this pass — the user may have added it from knowledge outside the codebase.
+- If a section's content is now inaccurate, replace the content but keep the heading.
+
 ### Step 1: Explore the codebase
 
-Use Glob and Read to gather context. Investigate in this order:
+Use Glob and Read to gather context. The examples below are common patterns — adapt your search to whatever language, framework, or tooling the project actually uses.
 
 **Tech stack detection:**
-- Look for `package.json`, `pyproject.toml`, `requirements.txt`, `Gemfile`, `go.mod`, `Cargo.toml`, `composer.json`
-- Look for `Dockerfile`, `docker-compose.yml` for infrastructure
-- Look for `.env.example`, `.env.sample`, or `README.md` for environment config
-- Look for CI config: `.github/workflows/`, `.gitlab-ci.yml`, `Makefile`
+- Look for dependency/package manifests (e.g. `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `composer.json`, `Gemfile`, `requirements.txt`)
+- Look for containerization and infrastructure config (e.g. `Dockerfile`, `docker-compose.yml`)
+- Look for environment config (e.g. `.env.example`, `.env.sample`, or `README.md`)
+- Look for build/task runner files (e.g. `Makefile`, `justfile`) — these often contain the most accurate build/test commands
+- Look for workspace/monorepo config (e.g. `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`)
 
 **Project structure:**
 - Read the top-level directory tree (one level deep)
-- Identify main source directories (e.g. `src/`, `app/`, `lib/`, `packages/`)
-- Identify test directories
+- Identify main source directories and test directories
+- Look for any additional config, scripts, or tooling directories relevant to the stack
 
 **Architecture:**
 - Look for existing architecture documentation
-- Read entry point files (e.g. `main.py`, `index.ts`, `app.py`, `server.ts`)
+- Read application entry points and bootstrap files
 - Identify layers: API, services, data access, background jobs, etc.
 - Identify external integrations: databases, queues, third-party APIs
+- Look for database schema/migration directories and ORM config
+- Look for API specification files (e.g. OpenAPI, GraphQL schemas, protobuf definitions)
 
-**Do not over-read.** 10–15 files is usually enough to produce accurate documentation. Prioritize breadth (get the shape of the project) over depth.
+**Do not over-read.** 10–15 files is usually enough for small/medium projects. For monorepos or large codebases, explore up to 25–30 files, focusing on one representative module per layer. Prioritize breadth (get the shape of the project) over depth.
 
 ---
 
@@ -76,9 +118,9 @@ Use Glob and Read to gather context. Investigate in this order:
 
 Create or update `.agents/PROJECT_DETAILS.md` (or the user-specified path).
 
-The file must include:
+The file must include the sections below. Every section is conditional — only include it if the codebase provides evidence for it:
 
-```markdown
+````markdown
 # Project Details
 
 ## Overview
@@ -93,7 +135,6 @@ The file must include:
 | Cache | ... |
 | Queue | ... |
 | Infrastructure | ... |
-| CI/CD | ... |
 
 ## Key Libraries
 | Library | Purpose |
@@ -105,18 +146,48 @@ The file must include:
 <top-level directory tree with brief annotations>
 ```
 
+## Commands
+| Task | Command |
+|------|---------|
+| Setup | ... |
+| Build | ... |
+| Test | ... |
+
+## Naming Conventions
+- Files: [convention, e.g. kebab-case]
+- Classes: [convention]
+- Database tables: [convention]
+- Routes: [convention]
+- Branches: [convention]
+
 ## Environment Configuration
 Key environment variables (from .env.example or similar):
 - `VAR_NAME` — description
 
 ## External Integrations
 - [Integration name]: [what it's used for]
-```
+
+## Jobs / Crons
+| Job | Frequency | Purpose |
+|-----|-----------|---------|
+| ... | ... | ... |
+
+## Feature Flags
+- `FLAG_NAME` — description and current state
+
+## Known Limitations / Tech Debt
+- [Item]: [brief description]
+
+## Documentation Pattern
+- [How docs are organized: Swagger/OpenAPI, inline code docs (JSDoc, PHPDoc, etc.), guides, ADRs, etc.]
+````
 
 **Principles:**
-- Keep it factual and scannable
-- No prose paragraphs — use tables and bullet lists
+- Must not exceed 500 lines
+- Keep it factual and scannable — no prose paragraphs, use tables and bullet lists
+- No code blocks except for directory trees and runnable commands
 - Only include what was actually found in the codebase; do not invent
+- Omit any section for which there is no evidence in the codebase
 
 ---
 
@@ -124,9 +195,9 @@ Key environment variables (from .env.example or similar):
 
 Create or update `.agents/ARCHITECTURE.md`.
 
-The file must include:
+The file must include the sections below. Every section is conditional — only include it if the codebase provides evidence for it:
 
-```markdown
+````markdown
 # Architecture
 
 ## Overview
@@ -136,6 +207,9 @@ The file must include:
 | Layer | Responsibility | Key Files/Dirs |
 |-------|---------------|----------------|
 | ... | ... | ... |
+
+## Dependency Rules
+- [who can import whom, who can't, e.g. "services never import controllers"]
 
 ## Request / Data Flow
 [ASCII diagram or numbered list showing how a typical request flows through the system]
@@ -149,10 +223,18 @@ HTTP Request
   → Database
 ```
 
+## Communication Patterns
+- [How services/modules communicate: REST, events, queues, gRPC, etc.]
+
 ## Key Components
 | Component | Role |
 |-----------|------|
 | ... | ... |
+
+## Data Model
+Key entities and their relationships (conceptual map, not full schema):
+- [Entity A] → has many → [Entity B]
+- [Entity C] → belongs to → [Entity A]
 
 ## External Dependencies
 | Service | How Used |
@@ -161,19 +243,30 @@ HTTP Request
 | Redis | Session cache + job queue |
 | S3 | File storage |
 
+## Error Handling Strategy
+- [Where errors are caught, where they propagate, error format]
+
+## Auth Strategy
+- [Middleware, guards, where the logic lives]
+
 ## Background Jobs
-[If applicable: list job types and their triggers]
+[List job types and their triggers]
+
+## Testing Strategy
+- [Test types used, frameworks, patterns, e.g. "Jest + Supertest for integration, no mocking of DB"]
 
 ## Notable Patterns
 - [Pattern 1, e.g. "Repository pattern for all DB access"]
 - [Pattern 2, e.g. "All external calls wrapped in service classes"]
-```
+````
 
 **Principles:**
-- Aim for ~50–100 lines total — enough to orient an agent, not a full system design doc
-- No implementation details (no method signatures, no SQL queries)
+- Must not exceed 500 lines — enough to orient an agent, not a full system design doc
+- No implementation details (no method signatures, no SQL queries, no code snippets)
+- No code blocks except for ASCII diagrams and directory trees
 - Focus on "how is the system structured" not "how does X work internally"
-- Keep diagrams simple (ASCII only)
+- ASCII diagrams are strongly encouraged — they make data flows, layer relationships, and component interactions much easier to grasp at a glance. Keep them simple and focused
+- Omit any section for which there is no evidence in the codebase
 
 ---
 

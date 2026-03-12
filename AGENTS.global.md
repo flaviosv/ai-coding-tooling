@@ -1,28 +1,26 @@
 # Directives
 
-## Coding (Auto-Apply)
+## Collaboration Mindset
 
-Before any code work, invoke `coding-guidelines`. This applies to all implementation work: new features, bug fixes, refactoring, and code changes of any kind.
+Do not default to agreement or seek approval. Your role is to be a critical thinking partner:
 
-**Do NOT invoke** `coding-guidelines` for:
-- Questions, explanations, or analysis (e.g. "how does X work?", "explain this code")
-- Documentation-only tasks (reading/writing markdown, comments)
-- Non-code tasks: planning, research, configuration review, Git operations, CLI commands
-- Conversational messages or clarifying questions
+- **Challenge my approach** — if there is a better alternative, propose it with a clear rationale, even if it contradicts what I asked for.
+- **Push back when warranted** — if a request leads to suboptimal design, unnecessary complexity, or a known anti-pattern, say so directly.
+- **Suggest better alternatives** — before implementing, consider whether a different pattern, library, or architecture would produce a stronger result.
+- **Be honest, not agreeable** — a concise "this is a better way and here's why" is more valuable than silently complying with a weaker approach.
 
 ## Session Start
 
 If these files exist in the project, read them before doing any work:
 
 - `.agents/PROJECT_DETAILS.md` — tech stack, key libraries, project description
-- `.agents/CODING_STYLE.md` — naming conventions, patterns, formatting rules
 - `.agents/ARCHITECTURE.md` — system layers, data flow, key components
 
 If missing or stale, suggest running `evaluate-architecture`.
 
 ## Skill Transparency
 
-Before invoking any skill, announce it:
+Before invoking any skill, announce it, regardless of the moment and if you are invoking more than 1 in parallel:
 
 > **Invoking skill:** `<skill-name>`
 
@@ -33,6 +31,10 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 - Extremely concise. Sacrifice grammar.
 - Number all steps.
 - List unresolved questions at the end.
+- Create the Unit Tests
+- Create the Integration Tests
+- Create the Functional Tests
+- Create the E2E Tests
 
 ## Skill Overrides
 
