@@ -1,9 +1,9 @@
 ---
 name: evaluate-architecture
 description: >
-  Creates or updates the two mandatory project context files: PROJECT_DETAILS.md and ARCHITECTURE.md. These files are auto-loaded by agents at the start of every session to provide project context. Use when setting up a new project, onboarding a project, or when the user says "update architecture docs", "refresh project context", "run evaluate-architecture", "update project docs", "onboard project", or "evaluate architecture".
+  Creates or updates the three mandatory project context files: PROJECT_DETAILS.md, ARCHITECTURE.md, and PIPELINE.md. These files are auto-loaded by agents at the start of every session to provide project context. Use when setting up a new project, onboarding a project, or when the user says "update architecture docs", "refresh project context", "run evaluate-architecture", "update project docs", "onboard project", or "evaluate architecture".
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   triggers:
     - "initial architecture"
     - "update architecture docs"
@@ -18,7 +18,7 @@ metadata:
 
 # evaluate-architecture
 
-Creates or updates the two mandatory project context files that agents load at the start of every session. These files give the agent just enough context to work effectively without bloating the context window.
+Creates or updates the three mandatory project context files that agents load at the start of every session. These files give the agent just enough context to work effectively without bloating the context window.
 
 ## Output Files
 
@@ -49,13 +49,27 @@ ARCHITECTURE.md:
 - Testing strategy / patterns
 - Notable patterns
 
+PIPELINE.md:
+- CI/CD platform and tooling
+- Pipeline stages and their purpose (lint, build, test, deploy, etc.)
+- Environment matrix (dev, staging, production) and promotion flow between them
+- Trigger rules (on push, on PR, on tag, scheduled, manual)
+- Quality gates (required checks, coverage thresholds, approvals before merge/deploy)
+- Build artifacts (what is produced, where it is stored)
+- Deployment strategy (blue/green, rolling, canary, direct)
+- Secrets management (how secrets are injected — vault, environment, CI variables — not the secrets themselves)
+- Rollback strategy (how to revert a bad deploy)
+- Infrastructure-as-code overview (Terraform, CDK, Pulumi, Helm — what manages what)
+- Monitoring and alerting tied to pipeline events (deploy notifications, failure alerts)
+- Data pipelines (ETL, streaming, batch processing — if present)
+
 **Line budget:** Each output file must not exceed 500 lines — these are agent context files, not exhaustive documentation. If a section would push the file over budget, summarize more aggressively. Prefer a table row over a paragraph, a bullet over a table, and omission over filler.
 
 **No code samples** in the output files unless strictly necessary. These files describe architecture and project context — use prose, tables, and bullet lists. Code blocks are only justified for directory tree structures, ASCII diagrams, and exact commands the agent must run. Do not include code snippets, method signatures, SQL queries, or implementation examples.
 
-**No CI/CD or deployment information.** CI/CD pipelines, deployment configurations, release workflows, and infrastructure-as-code details are out of scope for these files.
+**CI/CD and deployment information belongs exclusively in PIPELINE.md.** Do not duplicate pipeline, deployment, or release workflow details in PROJECT_DETAILS.md or ARCHITECTURE.md. Those files may reference PIPELINE.md but must not contain pipeline specifics.
 
-**ASCII diagrams are strongly encouraged** whenever they clarify structure — data flows, layer relationships, component interactions, entity relationships. Keep them simple (box-and-arrow style) and focused on the conceptual level.
+**ASCII diagrams are strongly encouraged** whenever they clarify structure — data flows, layer relationships, component interactions, entity relationships, pipeline stage flows. Keep them simple (box-and-arrow style) and focused on the conceptual level.
 
 Default location: `.agents/` at the project root (e.g. `.agents/PROJECT_DETAILS.md`).
 
@@ -71,7 +85,7 @@ If the user did not specify where to put the files, default to `.agents/`. If `.
 
 Check whether each file already exists:
 ```bash
-ls .agents/PROJECT_DETAILS.md .agents/ARCHITECTURE.md 2>/dev/null
+ls .agents/PROJECT_DETAILS.md .agents/ARCHITECTURE.md .agents/PIPELINE.md 2>/dev/null
 ```
 
 If any files exist, inform the user:
@@ -84,7 +98,15 @@ If any files exist, inform the user:
 - Never delete a section just because you cannot find evidence for it in this pass — the user may have added it from knowledge outside the codebase.
 - If a section's content is now inaccurate, replace the content but keep the heading.
 
-### Step 1: Explore the codebase
+### Step 1: Bootstrap analysis (Claude Code only)
+
+If you are running in **Claude Code**, run the `/init` command to get Claude's initial perspective on the project. This performs a holistic analysis of the codebase — purpose, tech stack, structure, and conventions.
+
+- Use the output **only as supporting context** for writing the output files in subsequent steps.
+- **Do not save the generated CLAUDE.md.** If `/init` writes a CLAUDE.md, discard or revert it — the analysis is consumed internally by this skill, not persisted.
+- If `/init` is unavailable (other AI coding tools, non-interactive mode), skip this step entirely — the manual exploration in Step 2 is sufficient.
+
+### Step 2: Explore the codebase
 
 Use Glob and Read to gather context. The examples below are common patterns — adapt your search to whatever language, framework, or tooling the project actually uses.
 
@@ -108,13 +130,20 @@ Use Glob and Read to gather context. The examples below are common patterns — 
 - Look for database schema/migration directories and ORM config
 - Look for API specification files (e.g. OpenAPI, GraphQL schemas, protobuf definitions)
 
+**Pipelines:**
+- Look for CI/CD configuration files (e.g. `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`, `.circleci/config.yml`, `bitbucket-pipelines.yml`, `azure-pipelines.yml`, `.buildkite/`)
+- Look for deployment configuration (e.g. `deploy/`, `k8s/`, `helm/`, `terraform/`, `cdk/`, `pulumi/`, `serverless.yml`, `fly.toml`, `render.yaml`, `vercel.json`, `netlify.toml`)
+- Look for release or version management config (e.g. `.releaserc`, `release.config.js`, `changesets/`, `.changeset/`)
+- Look for data pipeline definitions (e.g. `dags/`, `pipelines/`, Airflow, dbt, Spark configs)
+- Look for monitoring/alerting config tied to deploys (e.g. Datadog monitors, PagerDuty integrations, Slack webhook configs)
+
 **Do not over-read.** 10–15 files is usually enough for small/medium projects. For monorepos or large codebases, explore up to 25–30 files, focusing on one representative module per layer. Prioritize breadth (get the shape of the project) over depth.
 
 ---
 
 > **Formatting:** When writing or updating any of the output files, use the **docs-writer** skill to ensure consistent formatting, style, and link integrity across all documentation.
 
-### Step 2: Write PROJECT_DETAILS.md
+### Step 3: Write PROJECT_DETAILS.md
 
 Create or update `.agents/PROJECT_DETAILS.md` (or the user-specified path).
 
@@ -191,7 +220,7 @@ Key environment variables (from .env.example or similar):
 
 ---
 
-### Step 3: Write ARCHITECTURE.md
+### Step 4: Write ARCHITECTURE.md
 
 Create or update `.agents/ARCHITECTURE.md`.
 
@@ -270,13 +299,123 @@ Key entities and their relationships (conceptual map, not full schema):
 
 ---
 
-### Step 4: Confirm completion
+### Step 5: Write PIPELINE.md
+
+Create or update `.agents/PIPELINE.md` (or the user-specified path).
+
+The file must include the sections below. Every section is conditional — only include it if the codebase provides evidence for it:
+
+````markdown
+# Pipeline
+
+## Overview
+[1–2 sentences: CI/CD platform used, overall pipeline philosophy (e.g. trunk-based, GitFlow, monorepo-aware)]
+
+## CI/CD Platform
+| Attribute | Value |
+|-----------|-------|
+| Platform | [e.g. GitHub Actions, GitLab CI, Jenkins, CircleCI] |
+| Config location | [e.g. `.github/workflows/`] |
+| Runner type | [e.g. GitHub-hosted, self-hosted, hybrid] |
+
+## Pipeline Stages
+[ASCII diagram showing the pipeline flow, e.g.]
+```
+Push / PR
+  → Lint & Format Check
+  → Build
+  → Unit Tests
+  → Integration Tests
+  → Security Scan
+  → Deploy (staging)
+  → E2E Tests
+  → Deploy (production)
+```
+
+| Stage | Purpose | Trigger |
+|-------|---------|---------|
+| ... | ... | ... |
+
+## Trigger Rules
+| Event | Pipeline | Conditions |
+|-------|----------|------------|
+| Push to main | Full pipeline | Always |
+| Pull request | CI checks | Always |
+| Tag push | Release pipeline | `v*` pattern |
+| Schedule | Nightly tests | Cron |
+| Manual | Deploy to prod | Workflow dispatch |
+
+## Environment Matrix
+```
+feature branch → dev → staging → production
+```
+
+| Environment | Purpose | Promotion method |
+|-------------|---------|-----------------|
+| dev | ... | ... |
+| staging | ... | ... |
+| production | ... | ... |
+
+## Quality Gates
+- [Required checks before merge/deploy]
+- [Coverage thresholds]
+- [Required approvals]
+- [Automated security scans]
+
+## Build Artifacts
+| Artifact | Format | Storage |
+|----------|--------|---------|
+| ... | ... | ... |
+
+## Deployment Strategy
+- Strategy: [blue/green, rolling, canary, direct, etc.]
+- Tooling: [what orchestrates deploys — Argo, Flux, scripts, platform-native]
+- Rollback: [how to revert a bad deploy]
+
+## Secrets Management
+- [How secrets are injected — vault, CI environment variables, sealed secrets, etc.]
+- [Where secret references live — not the secrets themselves]
+
+## Infrastructure as Code
+| Tool | Scope |
+|------|-------|
+| [e.g. Terraform] | [e.g. AWS infrastructure] |
+| [e.g. Helm] | [e.g. Kubernetes deployments] |
+
+## Monitoring & Alerting
+- [Deploy notifications — where they go (Slack, email, etc.)]
+- [Failure alerts — who gets paged, via what]
+- [Post-deploy health checks]
+
+## Data Pipelines
+| Pipeline | Type | Schedule | Purpose |
+|----------|------|----------|---------|
+| ... | [ETL / streaming / batch] | ... | ... |
+
+## Notable Patterns
+- [Pattern 1, e.g. "Matrix builds for multiple Node versions"]
+- [Pattern 2, e.g. "Reusable workflow templates in `.github/workflows/shared/`"]
+````
+
+**Principles:**
+- Must not exceed 500 lines — enough to orient an agent, not a full ops runbook
+- No secrets, tokens, or sensitive values — only describe how secrets are managed, never include them
+- No code blocks except for ASCII diagrams and exact commands
+- Focus on "how does code get from commit to production" not internal implementation
+- ASCII diagrams are strongly encouraged for pipeline flows and environment promotion paths
+- Omit any section for which there is no evidence in the codebase
+- If the project has no CI/CD or pipeline configuration at all, **skip this file entirely** and note its absence in the completion report
+
+---
+
+### Step 6: Confirm completion
 
 After writing all files, report:
 
 ```
 ✓ .agents/PROJECT_DETAILS.md — [created | updated]
 ✓ .agents/ARCHITECTURE.md — [created | updated]
+✓ .agents/PIPELINE.md — [created | updated | skipped (no pipeline config found)]
 
 These files are automatically loaded by agents at the start of each session
 via the directive in AGENTS.global.md.
@@ -292,6 +431,7 @@ Run this skill again whenever:
 - Major new dependencies are added
 - The project structure significantly changes
 - A new architectural layer or pattern is introduced
+- CI/CD pipelines, deployment strategies, or environment configurations change
 - Onboarding a new developer or agent to the project
 
 These files should reflect the **current state of the codebase**, not aspirational design.

@@ -78,7 +78,7 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 | Skill | Description |
 |---|---|
 | **global-agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. |
-| **evaluate-architecture** ⭐ | Creates or updates the two mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`) inside `.agents/`. Run this when onboarding a new project or when context files are missing. |
+| **evaluate-architecture** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `.agents/`. Run this when onboarding a new project or when context files are missing. |
 | **add-tech-reference** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **documentation** | Updates all project documentation by inspecting the git workspace for modified files. Updates inline API docs and related `.md` files. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. |
@@ -89,7 +89,7 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 
 > ⭐ **Highlighted skills:**
 >
-> - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the two context files that all agents read at the start of every session, ensuring consistent project understanding.
+> - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the three context files that all agents read at the start of every session, ensuring consistent project understanding.
 > - **`add-tech-reference`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
 
 ### Personal Skills (`personal/`)

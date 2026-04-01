@@ -46,7 +46,7 @@ ai-coding-tooling/
 |-------|-------------|
 | `global-agent-setup` | Bootstraps global agent config and installs all global skills |
 | `skill-global-installation` | Installs a skill globally and updates the Global Skills list in `~/.claude/CLAUDE.md` |
-| `evaluate-architecture` | Creates/updates the two project context files (PROJECT_DETAILS, ARCHITECTURE) |
+| `evaluate-architecture` | Creates/updates the three project context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE) |
 | `add-tech-reference` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `documentation` | Syncs inline API docs and project `.md` files with the current git workspace state |
 | `code-review` | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security |

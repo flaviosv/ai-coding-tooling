@@ -27,8 +27,7 @@ This skill brings all project documentation in sync with the current state of th
 When invoked, this skill updates one or more of:
 
 1. **Inline API Documentation** — annotations, docstrings, and comments in source files
-2. **Architecture Documentation** — `ARCHITECTURE.md`
-3. **Project Details** — `PROJECT_DETAILS.md`
+2. **Agent Context files** —  files in .agents folder
 
 ---
 

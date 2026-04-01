@@ -15,6 +15,7 @@ If these files exist in the project, read them before doing any work:
 
 - `.agents/PROJECT_DETAILS.md` — tech stack, key libraries, project description
 - `.agents/ARCHITECTURE.md` — system layers, data flow, key components
+- `.agents/PIPELINE.md` — CI/CD stages, deployment strategy, environment promotion
 
 If missing or stale, suggest running `evaluate-architecture`.
 
