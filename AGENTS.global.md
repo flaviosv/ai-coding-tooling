@@ -47,3 +47,8 @@ Three skills have extended versions that must be loaded alongside the base skill
 - **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/solid-guidelines.md` for OOP-style code.
 - **security-best-practices**: if `SKILL.extended.md` exists, load it; also load matching files from `skills/security-best-practices/reference/` for the project's tech stack.
 - **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases and documents the `extended/` pattern.
+
+# Global Skills
+
+- **report-tech-debt** (`skills/report-tech-debt/SKILL.md`): Create, update, and resolve technical debt reports. Generates individual debt documentation in `docs/tech-debts/` and maintains an anti-pattern index in `.agents/TECH_DEBTS.md`. Use when the user says "report tech debt", "document tech debt", "add tech debt", "update tech debt", "resolve tech debt", or "mark tech debt as resolved". Source: This project (`ai-coding-tooling`).
+- **update-external-skill** (`skills/update-external-skill/SKILL.md`): Update externally installed skills by reinstalling them from their vendor registry and re-applying any extended skill symlinks. Use when the user says "update external skills", "update all skills", "update skill X", "reinstall skill", "upgrade skills", "refresh skills", or "check for skill updates". Source: This project (`ai-coding-tooling`).

@@ -86,6 +86,7 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 | **tests** | Writes and maintains tests — unit, integration, TDD, and coverage analysis. |
 | **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. |
 | **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `.agents/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
+| **update-external-skill** | Updates externally installed skills (Tech Leads Club and other vendors) by reinstalling them and re-applying extended skill symlinks. Vendor-agnostic — detects the vendor automatically via `references/vendors.md`. |
 | **skill-global-installation** | Guides installation of a new skill into the global Claude Code skills directory. |
 
 > ⭐ **Highlighted skills:**

@@ -38,7 +38,8 @@ ai-coding-tooling/
     ├── skill-global-installation/
     ├── tests/
     ├── tests-code-review/
-    └── report-tech-debt/
+    ├── report-tech-debt/
+    └── update-external-skill/
 ```
 
 ## Skills Owned by This Project
@@ -55,6 +56,7 @@ ai-coding-tooling/
 | `tests` | Writes and maintains tests covering unit tests, integration tests, TDD practices, and code coverage analysis |
 | `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability |
 | `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `.agents/TECH_DEBTS.md` |
+| `update-external-skill` | Updates externally installed skills from their vendor registry and re-applies extended skill symlinks |
 
 ## External Dependencies
 
