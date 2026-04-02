@@ -85,12 +85,14 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 | **performance-review** | Identifies performance bottlenecks, memory issues, and optimization opportunities. |
 | **tests** | Writes and maintains tests — unit, integration, TDD, and coverage analysis. |
 | **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. |
+| **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `.agents/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **skill-global-installation** | Guides installation of a new skill into the global Claude Code skills directory. |
 
 > ⭐ **Highlighted skills:**
 >
-> - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the three context files that all agents read at the start of every session, ensuring consistent project understanding.
+> - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the context files in `.agents/` that agents load progressively based on task relevance.
 > - **`add-tech-reference`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
+> - **`report-tech-debt`** — Documents known anti-patterns so agents avoid replicating them. The `.agents/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
 
 ### Personal Skills (`personal/`)
 

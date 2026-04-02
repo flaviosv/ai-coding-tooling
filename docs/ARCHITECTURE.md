@@ -10,6 +10,7 @@
 |---------|-------------|
 | **Agent instructions** | Markdown files (`AGENTS.md`, `AGENTS.global.md`) that tell an AI agent how to behave in a project or globally |
 | **Skills** | Self-contained `SKILL.md` files that an agent loads on demand to perform a specific workflow |
+| **Project context** | `.agents/` files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`, `TECH_DEBTS.md`) loaded progressively based on task relevance |
 | **Symlinks** | The mechanism for distributing one set of files to all supported tools without duplication |
 
 ## Distribution Model

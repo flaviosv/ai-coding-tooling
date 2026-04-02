@@ -9,15 +9,18 @@ Do not default to agreement or seek approval. Your role is to be a critical thin
 - **Suggest better alternatives** — before implementing, consider whether a different pattern, library, or architecture would produce a stronger result.
 - **Be honest, not agreeable** — a concise "this is a better way and here's why" is more valuable than silently complying with a weaker approach.
 
-## Session Start
+## Session Start — Project Context
 
-If these files exist in the project, read them before doing any work:
+The `.agents/` directory may contain context files about the project. Read only what is relevant to the current task.
 
-- `.agents/PROJECT_DETAILS.md` — tech stack, key libraries, project description
-- `.agents/ARCHITECTURE.md` — system layers, data flow, key components
-- `.agents/PIPELINE.md` — CI/CD stages, deployment strategy, environment promotion
+| File | Contents | When to load |
+|------|----------|--------------|
+| `.agents/PROJECT_DETAILS.md` | Tech stack, key libraries, project description | Understanding the project, choosing libraries, or onboarding |
+| `.agents/ARCHITECTURE.md` | System layers, data flow, key components | Writing, modifying, or reviewing code |
+| `.agents/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
+| `.agents/TECH_DEBTS.md` | Known tech debts and anti-patterns | Writing or reviewing code, to avoid replicating bad patterns |
 
-If missing or stale, suggest running `evaluate-architecture`.
+If none of these files exist, suggest running `evaluate-architecture`.
 
 ## Skill Transparency
 

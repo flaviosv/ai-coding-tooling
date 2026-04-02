@@ -37,7 +37,8 @@ ai-coding-tooling/
     ├── performance-review/
     ├── skill-global-installation/
     ├── tests/
-    └── tests-code-review/
+    ├── tests-code-review/
+    └── report-tech-debt/
 ```
 
 ## Skills Owned by This Project
@@ -53,6 +54,7 @@ ai-coding-tooling/
 | `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, TDD practices, and code coverage analysis |
 | `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability |
+| `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `.agents/TECH_DEBTS.md` |
 
 ## External Dependencies
 
