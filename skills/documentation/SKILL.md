@@ -74,15 +74,20 @@ For each modified source file:
 
 ### Step 3: Identify impacted project documentation
 
-Determine whether the changes affect any of the following files. Look for them in `docs/`, `.agents/`, or the project root — whichever the project uses:
+Discover which project documentation files exist and determine whether the code changes affect any of them.
 
-| File | Update when… |
-|------|-------------|
-| `ARCHITECTURE.md` | A new layer, component, pattern, or data flow was introduced or removed |
-| `PROJECT_DETAILS.md` | New dependencies, integrations, or environment variables were added or removed |
-| `README.md` / other `.md` files | Public-facing API, configuration, or usage behaviour changed |
+**Discovery locations (in order):**
 
-> If the project uses a `docs/` directory (symlinked into agent folders), edit files at their real source path (e.g. `docs/ARCHITECTURE.md`) rather than through the symlink.
+1. **`.agents/` directory** — list all `.md` files present. These are agent context files (e.g. `ARCHITECTURE.md`, `PROJECT_DETAILS.md`, `PIPELINE.md`, `CODING_STYLE.md`, `TESTS.md`, or any other file the project maintains there).
+2. **Project root** — check for AI context files: `README.md`, `AGENTS.md`, `CLAUDE.md`, and any other root-level `.md` files that serve as agent or project context.
+
+**For each discovered file:**
+
+1. Read the file to understand its scope and purpose.
+2. Compare against the detected code changes.
+3. Mark the file as impacted if the changes fall within its scope.
+
+> If the project uses a `docs/` directory symlinked into `.agents/`, edit files at their real source path (e.g. `docs/ARCHITECTURE.md`) rather than through the symlink.
 
 ---
 
@@ -104,8 +109,8 @@ Provide docs-writer with:
 After all updates, check that:
 
 - [ ] All modified source files with public symbols have updated inline documentation
-- [ ] Architecture docs reflect any new layers, components, or data flow changes
-- [ ] Project Details reflect any new dependencies or environment config
+- [ ] Every impacted `.agents/` context file has been updated to reflect the changes
+- [ ] Root-level AI context files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are still accurate
 - [ ] All documentation is consistent with the current implementation
 
 Then report:
@@ -131,8 +136,8 @@ If any file could not be updated (e.g. ambiguous change, insufficient context), 
 
 1. **Identify changes** — review git workspace
 2. **Update inline docs** — annotate modified public symbols in source files
-3. **Update ARCHITECTURE.md** — if patterns, layers, or data flow changed
-4. **Update PROJECT_DETAILS.md** — if dependencies or environment config changed
+3. **Discover context files** — scan `.agents/` and project root for all `.md` context files
+4. **Update impacted files** — update every context file whose scope overlaps with the changes
 5. **Verify** — confirm all docs are consistent and complete
 
 ---
