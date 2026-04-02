@@ -30,13 +30,27 @@ Use `package mypackage` (without `_test`) only when you need to test unexported 
 
 ### Basic Test Function
 
+Name test variables `got` (actual result) and `want` (expected result) — this is the convention used throughout the Go standard library. Error messages follow `"got %v, want %v"` format.
+
 ```go
 func TestAdd(t *testing.T) {
-    result := Add(2, 3)
-    if result != 5 {
-        t.Errorf("Add(2, 3) = %d; want %d", result, 5)
+    got := Add(2, 3)
+    want := 5
+    if got != want {
+        t.Errorf("Add(2, 3) = %d; want %d", got, want)
     }
 }
+```
+
+Never ignore errors with `_ = err` in test code — use `require.NoError` or `assert.NoError`. Silent error discard masks test failures.
+
+```go
+// Bad — error discarded; test may silently pass on failure
+result, _ := Parse(input)
+
+// Good — use require to stop the test on error
+result, err := Parse(input)
+require.NoError(t, err)
 ```
 
 ### Using testify/assert

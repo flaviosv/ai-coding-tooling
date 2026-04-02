@@ -346,6 +346,8 @@ t.Cleanup(func() {
 ### Assertions
 - [ ] `assert` for non-critical checks; `require` for setup preconditions
 - [ ] Not using `reflect.DeepEqual` — use `slices.Equal`, `maps.Equal`, or `assert.Equal` instead
+- [ ] No error values silently ignored (`_ = err`) in test code — use `require.NoError` or `assert.NoError`
+- [ ] Test variables use `got`/`want` naming convention for actual vs expected values
 
 ---
 

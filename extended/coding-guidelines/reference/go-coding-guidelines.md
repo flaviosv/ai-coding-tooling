@@ -18,6 +18,9 @@ Universal conventions that apply across all supported Go versions (1.23+).
 - **Constants**: PascalCase if exported, camelCase if unexported; avoid `ALL_CAPS`
 - **Acronyms**: keep consistent casing — `HTTPClient`, `URLParser`, `userID`, `parseHTML`
 - **Error variables**: prefix with `Err` — `ErrNotFound`, `ErrTimeout`
+- **Error strings**: lowercase, no trailing punctuation or newline — `errors.New("connection refused")` not `errors.New("Connection refused.")`
+- **Receiver names**: short (1–2 chars), consistent across all methods of the same type, derived from the type name — `s` for `Server`, `r` for `Request`, `u` for `User`. Never `self` or `this`.
+- **Constructors**: exported constructor functions use `NewXxx(...)` — `NewServer(...)`, `NewClient(...)`
 - **Test files**: suffix `_test.go`; test functions `TestXxx(t *testing.T)`
 - **Enumeration types**: implement `String() string` via `stringer` or manually so values are human-readable in logs
 
@@ -29,6 +32,7 @@ Universal conventions that apply across all supported Go versions (1.23+).
 - File names: lowercase with underscores for multi-word names — `user_service.go`
 - Order within a file: package declaration → imports → constants → vars → types → functions
 - Group imports: stdlib first, then external, then internal (blank line between groups)
+- Import aliases used only for genuine name collisions — not as stylistic preference or abbreviation
 
 ```go
 import (
@@ -41,6 +45,18 @@ import (
 
     "github.com/myorg/myapp/internal/domain"
 )
+
+// Good — alias required because two packages share the name "v1"
+import (
+    corev1 "k8s.io/api/core/v1"
+    appsv1 "k8s.io/api/apps/v1"
+)
+
+// Bad — alias used as abbreviation with no collision
+import (
+    ctx "context"         // wrong: no collision, just laziness
+    str "strings"        // wrong: same reason
+)
 ```
 
 ### Code Structure
@@ -48,6 +64,9 @@ import (
 - Keep functions short and focused on a single responsibility
 - Return early to reduce nesting — guard clauses over deeply nested conditionals
 - Prefer explicit over implicit; avoid `init()` unless necessary
+- Always use named fields in composite literals for exported types — `Config{Host: "localhost", Port: 5432}` not `Config{"localhost", 5432}`; positional literals break silently when fields are reordered
+- Declare empty slices as `var s []int` when nil is acceptable — `nil` slices are valid for `range`, `append`, and `len`; prefer `make([]T, 0, n)` only when capacity pre-allocation matters
+- Do not use dot-imports (`import . "pkg"`) — they pollute the local namespace and make identifier origins unclear; acceptable only in `_test.go` files for DSL-style testing packages
 - Use `context.Context` as the first parameter for functions that perform I/O or long work
 - Accept interfaces, return concrete types by default; return an interface only when the caller genuinely depends on behaviour rather than structure
 - Avoid naked returns in functions longer than a few lines
@@ -147,6 +166,26 @@ defer f.Close()
 - Do not use `interface{}` / `any` when a concrete type or typed interface expresses intent
 - Do not copy a `sync.Mutex` — always use a pointer receiver or embed by value in a struct
 - Do not ignore the second return value of map lookups when the zero value is ambiguous
+- Methods that require the caller to already hold a lock use a `Locked` suffix — `processLocked()`, `validateLocked()`. The public method acquires the lock; the internal one assumes it is already held. This makes lock discipline explicit at the call site.
+
+```go
+// Good — lock discipline is visible in naming
+func (s *Server) Shutdown() {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    s.shutdownLocked()
+}
+
+func (s *Server) shutdownLocked() {
+    // called with s.mu held
+    s.state = stateStopped
+}
+
+// Bad — unclear whether caller must hold the lock
+func (s *Server) shutdown() {
+    s.state = stateStopped
+}
+```
 
 ```go
 // Bad — err shadowing across sequential :=

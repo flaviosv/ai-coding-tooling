@@ -15,6 +15,7 @@ Universal conventions that apply across all supported Go versions (1.23+).
 - [ ] Errors wrapped with context: `fmt.Errorf("doing X: %w", err)`
 - [ ] Sentinel errors defined with `errors.New` or `fmt.Errorf` at package level; prefixed `Err`
 - [ ] `errors.Is` / `errors.As` used for error type/value checks — not string comparison
+- [ ] Error strings are lowercase and do not end with punctuation or newline (`"connection refused"` not `"Connection refused."`)
 - [ ] Panics avoided in library code; only acceptable in `main` for truly unrecoverable states
 
 ```go
@@ -49,6 +50,10 @@ if err.Error() == "not found" { ... }
 - [ ] `sync.Once` used for safe lazy initialisation of singletons — not manual double-checked locking
 - [ ] No `interface{}` / `any` where a concrete type or typed interface expresses intent
 - [ ] `context.Context` is the first parameter of functions that need it — never stored in structs
+- [ ] Receiver names are short (1–2 chars), consistent across all methods of the same type, derived from the type name — never `self` or `this`
+- [ ] Struct composite literals for exported types use named fields — not positional (`Config{Host: "x"}` not `Config{"x"}`)
+- [ ] No dot-imports (`import . "pkg"`)
+- [ ] Import aliases used only for genuine name collisions, not stylistic preference or abbreviation
 
 ```go
 // Good — context first, interface dependency injected
@@ -92,6 +97,7 @@ f.Close()
 - [ ] Package names are lowercase, single words, and describe what they provide
 - [ ] Circular dependencies absent
 - [ ] Public API surface is minimal — only export what callers need
+- [ ] Exported constructor functions follow `NewXxx(...)` naming convention (`NewServer`, `NewClient`, `NewRepository`)
 
 ### Security
 

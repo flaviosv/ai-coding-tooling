@@ -1,6 +1,6 @@
 # Project
 
-See [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) for the full project concept, architecture, and workflows.
+See [.agents/PROJECT_DETAILS.md](.agents/PROJECT_DETAILS.md) for the full project concept, architecture, and workflows.
 
 # Constraints
 

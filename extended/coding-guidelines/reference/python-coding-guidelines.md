@@ -3,6 +3,102 @@
 <!-- General section covers conventions that apply across ALL still-supported Python versions (3.9–3.14) -->
 ## General Python Coding Patterns
 
+### Formatting
+
+- **Indentation**: 4 spaces per level — never tabs
+
+- **Line length**: 79 characters max for code; 72 for docstrings and comments. With a project-configured formatter (Black, Ruff) a limit of 88–99 is acceptable if set consistently in `pyproject.toml`.
+
+- **Blank lines**: 2 blank lines before and after top-level definitions (classes, functions); 1 blank line between methods inside a class; use blank lines sparingly inside functions to separate logical steps.
+
+```python
+# Good
+class UserService:
+    def get_user(self, user_id: int) -> User:
+        ...
+
+    def delete_user(self, user_id: int) -> None:
+        ...
+
+
+class OrderService:
+    ...
+```
+
+- **One import per line** — never `import os, sys`
+
+```python
+# Good
+import os
+import sys
+
+# Bad
+import os, sys
+```
+
+- **Whitespace around operators**: one space on each side of binary operators (`=`, `+`, `==`, etc.); no spaces around `=` in keyword arguments or default values
+
+```python
+# Good
+result = x + y
+def connect(host: str, port: int = 5432) -> None: ...
+
+# Bad
+result=x+y
+def connect(host: str, port: int=5432) -> None: ...
+```
+
+- **Whitespace after commas and colons**: always one space after `,` and `:` in slices/dicts; no space before them
+
+```python
+# Good
+coords = (1, 2, 3)
+mapping = {"key": "value"}
+chunk = data[1:10]
+
+# Bad
+coords = (1 , 2 , 3)
+mapping = {"key" : "value"}
+chunk = data[1 : 10]
+```
+
+- **No trailing whitespace** on any line
+
+- **No semicolons** — never separate two statements with `;` on one line
+
+```python
+# Bad
+x = 1; y = 2
+```
+
+- **`None` comparisons** — always use `is` / `is not`, never `==` / `!=`
+
+```python
+# Good
+if result is None: ...
+if result is not None: ...
+
+# Bad
+if result == None: ...
+if result != None: ...
+```
+
+- **Boolean comparisons** — test truthiness directly; never compare to `True` or `False` with `==`
+
+```python
+# Good
+if items: ...
+if not active: ...
+
+# Bad
+if items == True: ...
+if active == False: ...
+```
+
+- **String quotes** — choose either single or double quotes and apply them consistently across the entire codebase. PEP 8 has no preference; the project standard wins.
+
+---
+
 ### Naming Conventions
 
 - **Modules and packages**: lowercase with underscores (`user_service.py`, `auth_utils/`)
