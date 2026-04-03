@@ -31,7 +31,7 @@ ai-coding-tooling/
 └── skills/              # Skills owned by this project
     ├── tech-reference-add/
     ├── code-review/
-    ├── documentation/
+    ├── documentation-upsert/
     ├── evaluate-architecture/
     ├── global-agent-setup/
     ├── performance-review/
@@ -50,7 +50,7 @@ ai-coding-tooling/
 | `skill-global-installation` | Installs a skill globally and updates the Global Skills list in `~/.claude/CLAUDE.md` |
 | `evaluate-architecture` | Creates/updates the three project context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE) |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
-| `documentation` | Syncs inline API docs and project `.md` files with the current git workspace state |
+| `documentation-upsert` | Syncs inline API docs and project `.md` files with the current git workspace state. Detects new packages and scaffolds context via evaluate-architecture package mode |
 | `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security |
 | `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, TDD practices, and code coverage analysis |

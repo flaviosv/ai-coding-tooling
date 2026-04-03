@@ -78,9 +78,9 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 | Skill | Description |
 |---|---|
 | **global-agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. |
-| **evaluate-architecture** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Run this when onboarding a new project or when context files are missing. |
+| **evaluate-architecture** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Also supports package mode for evaluating individual packages/modules, generating a scoped `CLAUDE.md` inside the package directory. Run this when onboarding a new project or when context files are missing. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
-| **documentation** | Updates all project documentation by inspecting the git workspace for modified files. Updates inline API docs and related `.md` files. |
+| **documentation-upsert** | Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation. Updates inline API docs, root context files, and base `docs/` files. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. |
 | **performance-review** | Identifies performance bottlenecks, memory issues, and optimization opportunities. |
 | **tests** | Writes and maintains tests — unit, integration, TDD, and coverage analysis. |

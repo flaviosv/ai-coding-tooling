@@ -77,6 +77,13 @@ Create extended/<skill-name>/SKILL.md (and/or reference/ files)
   → make link-extended (or make link) symlinks them into ~/.claude/skills/<skill-name>/
 ```
 
+### Evaluating a new package
+```
+New package detected by documentation-upsert (or user runs evaluate-architecture in package mode)
+  → Analyze package manifest, structure, public API, and dependencies
+  → Generate <package-path>/CLAUDE.md with scoped context for agents
+```
+
 ## Design Principles
 
 - **Tool-agnostic** — instructions and skills work across all supported AI assistants

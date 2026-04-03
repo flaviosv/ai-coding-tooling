@@ -1,9 +1,9 @@
 ---
 name: evaluate-architecture
 description: >
-  Creates or updates the three mandatory project context files: PROJECT_DETAILS.md, ARCHITECTURE.md, and PIPELINE.md. These files are auto-loaded by agents at the start of every session to provide project context. Use when setting up a new project, onboarding a project, or when the user says "update architecture docs", "refresh project context", "run evaluate-architecture", "update project docs", "onboard project", or "evaluate architecture".
+  Creates or updates the three mandatory project context files: PROJECT_DETAILS.md, ARCHITECTURE.md, and PIPELINE.md. These files are auto-loaded by agents at the start of every session to provide project context. Also supports package mode for evaluating individual packages/modules within a project, generating a scoped CLAUDE.md inside the package directory. Use when setting up a new project, onboarding a project, or when the user says "update architecture docs", "refresh project context", "run evaluate-architecture", "update project docs", "onboard project", "evaluate architecture", "evaluate package", or "package architecture".
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   triggers:
     - "initial architecture"
     - "update architecture docs"
@@ -14,6 +14,9 @@ metadata:
     - "create project docs"
     - "onboard project"
     - "evaluate architecture"
+    - "evaluate package"
+    - "evaluate architecture for package"
+    - "package architecture"
 ---
 
 # evaluate-architecture
@@ -74,6 +77,136 @@ PIPELINE.md:
 Default location: `docs/` at the project root (e.g. `docs/PROJECT_DETAILS.md`).
 
 > If the user specifies a different location (e.g. `docs/`), use that instead.
+
+---
+
+## Package Mode
+
+Triggered when invoked with a specific package/module path (e.g. "evaluate architecture for `packages/auth`") or called by the **documentation-upsert** skill when a new package is detected.
+
+In package mode, the skill produces a **single `CLAUDE.md`** inside the package directory instead of the full `docs/` file set. The analysis is scoped exclusively to the package but goes deeper than project-level evaluation — internal structure, public API surface, dependency graph, and integration points with the parent project.
+
+### When to use
+
+- Called by **documentation-upsert** when a new package is detected in the git diff.
+- Called directly by the user: "evaluate architecture for `<path>`", "evaluate package `<path>`", "package architecture `<path>`".
+
+### Scope constraints
+
+- Analyze ONLY files within the given package directory.
+- Go deeper than project-level: map internal structure, enumerate public API surface, trace dependency graph, document integration boundaries.
+- Do NOT create `PROJECT_DETAILS.md`, `ARCHITECTURE.md`, or `PIPELINE.md` — package mode produces only `CLAUDE.md`.
+- Apply the same quality standards and principles as project-level files (factual, scannable, no code snippets unless strictly necessary, ASCII diagrams encouraged).
+
+### Output: `<package-path>/CLAUDE.md`
+
+**Line budget:** Up to 500 lines — same as project-level context files. Use the depth that the package warrants. A small utility package may need 50 lines; a complex domain module may need 400+.
+
+The CLAUDE.md must include the sections below. Every section is conditional — only include it if the package provides evidence for it:
+
+````markdown
+# <Package Name>
+
+## Purpose
+[What this package does, why it exists, and what problem it solves within the larger project]
+
+## Architecture
+[Internal structure, layers, patterns used within the package]
+[ASCII diagram encouraged if the package has multiple internal layers or components]
+
+## Key Components
+| Component | Role |
+|-----------|------|
+| ... | ... |
+
+## Public API
+[Exported interfaces, functions, types, and their contracts]
+[This is the package's boundary — what consumers depend on]
+
+## Internal Design
+[Implementation details that matter for maintainers: algorithms, state management, concurrency patterns, caching strategies]
+[Only include what would be non-obvious to someone reading the code for the first time]
+
+## Data Model
+[Key entities, schemas, or data structures internal to the package]
+[Entity relationships if applicable]
+
+## Dependencies
+### Internal
+[Other project packages this depends on and why]
+
+### External
+[Third-party libraries and their purpose within this package]
+
+## Integration Points
+[How this package connects to the rest of the project]
+[What imports this package, what events/messages it produces or consumes]
+
+## Error Handling
+[How errors are produced, propagated, and expected to be handled by callers]
+
+## Constraints
+[Rules, invariants, things to watch out for]
+[Performance considerations, thread safety, ordering guarantees]
+
+## Conventions
+[Naming, file organization, patterns specific to this package]
+[Anything that deviates from project-wide conventions]
+
+## Testing Strategy
+[How this package is tested: unit, integration, fixtures, mocks]
+[Key test scenarios and edge cases]
+````
+
+### Package Mode Steps
+
+#### PM Step 1: Validate package path
+
+Confirm the path exists and looks like a package in the context of this project. Load `docs/PROJECT_DETAILS.md` and `docs/ARCHITECTURE.md` if available to understand the project's module conventions.
+
+What constitutes a valid package depends on the tech stack — a Go package is a directory with `.go` files under an existing `go.mod`, a Magento module has `registration.php` + `etc/module.xml`, a Django app has `models.py`/`views.py`, etc. Reason from the project's actual structure and conventions rather than a fixed checklist.
+
+If the path does not appear to be a meaningful package boundary, inform the caller and stop.
+
+#### PM Step 2: Explore the package
+
+- Read any manifest or entry-point files for metadata (name, version, dependencies).
+- List the directory tree (2–3 levels deep).
+- Read entry points, main source files, and key modules (cap at 15–20 files).
+- Identify public API surface (exported symbols, interfaces, types).
+- Identify internal patterns (layers, abstractions, data flow within the package).
+
+**Do not over-read.** 15–20 files is usually enough. For very large packages, focus on entry points, public interfaces, and one representative file per internal layer.
+
+#### PM Step 3: Analyze integration points
+
+- How does this package relate to the parent project?
+- What other project packages import this one? (`grep` for import/require statements referencing this package path.)
+- What does this package import from the rest of the project?
+- Identify boundary interfaces — the contracts between this package and its consumers.
+
+#### PM Step 4: Write `<package-path>/CLAUDE.md`
+
+Create or update the CLAUDE.md using the template above. Apply the same principles as project-level files:
+- Factual and scannable — tables and bullets over prose.
+- No code blocks except ASCII diagrams and exact commands.
+- Conditional sections — omit any section with no evidence.
+- ASCII diagrams encouraged for internal architecture and data flow.
+
+> **Delegate to `docs-writer`** for the `.md` file write to ensure consistent formatting.
+
+**Update merge strategy** (same as project-level): if a CLAUDE.md already exists, read it first, preserve manually-added sections, update sections where evidence changed, never delete unverified sections.
+
+#### PM Step 5: Report
+
+```
+Package architecture evaluated:
+  ✓ <package-path>/CLAUDE.md — [created | updated]
+    Sections: [list of sections included]
+    Lines: [count]
+```
+
+If the package could not be fully evaluated (e.g. insufficient source files, ambiguous structure), report what was generated and flag gaps.
 
 ---
 
@@ -432,6 +565,7 @@ Run this skill again whenever:
 - The project structure significantly changes
 - A new architectural layer or pattern is introduced
 - CI/CD pipelines, deployment strategies, or environment configurations change
+- A new package/module is added to the project (use package mode for the new package)
 - Onboarding a new developer or agent to the project
 
 These files should reflect the **current state of the codebase**, not aspirational design.
