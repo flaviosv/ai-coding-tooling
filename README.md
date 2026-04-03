@@ -78,22 +78,22 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 | Skill | Description |
 |---|---|
 | **global-agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. |
-| **evaluate-architecture** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `.agents/`. Run this when onboarding a new project or when context files are missing. |
-| **add-tech-reference** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
+| **evaluate-architecture** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Run this when onboarding a new project or when context files are missing. |
+| **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **documentation** | Updates all project documentation by inspecting the git workspace for modified files. Updates inline API docs and related `.md` files. |
-| **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. |
+| **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. |
 | **performance-review** | Identifies performance bottlenecks, memory issues, and optimization opportunities. |
 | **tests** | Writes and maintains tests — unit, integration, TDD, and coverage analysis. |
 | **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. |
-| **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `.agents/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
+| **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **update-external-skill** | Updates externally installed skills (Tech Leads Club and other vendors) by reinstalling them and re-applying extended skill symlinks. Vendor-agnostic — detects the vendor automatically via `references/vendors.md`. |
 | **skill-global-installation** | Guides installation of a new skill into the global Claude Code skills directory. |
 
 > ⭐ **Highlighted skills:**
 >
-> - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the context files in `.agents/` that agents load progressively based on task relevance.
-> - **`add-tech-reference`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
-> - **`report-tech-debt`** — Documents known anti-patterns so agents avoid replicating them. The `.agents/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
+> - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/` that agents load progressively based on task relevance.
+> - **`tech-reference-add`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
+> - **`report-tech-debt`** — Documents known anti-patterns so agents avoid replicating them. The `docs/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
 
 ### Personal Skills (`personal/`)
 
@@ -113,9 +113,9 @@ The `personal/` directory is gitignored — nothing inside it is tracked or comm
 
 | MCP Server | Purpose | Used by |
 |---|---|---|
-| **[Context7](https://context7.com)** | Fetches up-to-date documentation and code examples for any library. Provides authoritative raw material when generating technology-specific reference files. | `add-tech-reference` (Step 7) |
+| **[Context7](https://context7.com)** | Fetches up-to-date documentation and code examples for any library. Provides authoritative raw material when generating technology-specific reference files. | `tech-reference-add` (Step 7) |
 
-Context7 is optional but strongly recommended. When available, `add-tech-reference` queries it for official documentation to ground reference files in current best practices rather than relying solely on LLM training data. If unavailable, the skill falls back to the agent's own knowledge.
+Context7 is optional but strongly recommended. When available, `tech-reference-add` queries it for official documentation to ground reference files in current best practices rather than relying solely on LLM training data. If unavailable, the skill falls back to the agent's own knowledge.
 
 ### Source: [Tech Leads Club](https://techlead.club)
 

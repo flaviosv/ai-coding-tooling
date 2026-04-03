@@ -38,7 +38,7 @@ Guidelines for writing, maintaining, and running tests across any technology sta
 
 Before writing any tests, check whether the project has a test conventions file:
 
-- `.agents/TESTS.md` — project-specific conventions, base classes, fixtures, naming patterns
+- `docs/TESTS.md` — project-specific conventions, base classes, fixtures, naming patterns
 
 If this file exists, follow it precisely. It takes precedence over the generic guidance below.
 
@@ -46,7 +46,7 @@ Then load the reference files:
 
 1. Always load `references/testing-patterns.md` — generic patterns and structure
 2. Always load `references/coverage-guide.md` — coverage goals and what not to test
-3. Identify the project's language and framework from `.agents/PROJECT_DETAILS.md`
+3. Identify the project's language and framework from `docs/PROJECT_DETAILS.md`
 4. Load **all** matching technology-specific reference files from `references/`. Reference files
    follow the naming convention `<language>-*` and `<framework>-*`. If the stack is Python + Django,
    load both `python-tests.md` AND `django-tests.md`. Combine all loaded files.
@@ -124,16 +124,16 @@ Before considering a feature or fix complete:
 
 User says: "Write tests for the new payment processor module."
 
-1. Check `.agents/TESTS.md` for project conventions
+1. Check `docs/TESTS.md` for project conventions
 2. Load `references/testing-patterns.md` and `references/coverage-guide.md`
-3. Detect stack from `.agents/PROJECT_DETAILS.md` and load ALL matching stack-specific references
+3. Detect stack from `docs/PROJECT_DETAILS.md` and load ALL matching stack-specific references
 4. Write unit tests for the payment processor's core logic in isolation
 5. Write integration tests for the database and external service interactions
 6. Verify the completion checklist before finishing
 
 ## When No Test Conventions File Exists
 
-If `.agents/TESTS.md` is not present:
+If `docs/TESTS.md` is not present:
 - Follow the generic patterns from `references/testing-patterns.md`
 - Infer naming conventions from existing test files in the project
 - If no existing tests exist, apply the patterns directly and note the assumption

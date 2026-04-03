@@ -42,7 +42,7 @@ When explicitly requested, produce a comprehensive performance report across the
 Always load the generic performance baseline:
 - `references/performance-checklist.md`
 
-Then identify the project's language and framework from `.agents/PROJECT_DETAILS.md` and load
+Then identify the project's language and framework from `docs/PROJECT_DETAILS.md` and load
 **all** matching technology-specific reference files from the same `references/` directory.
 
 Reference files follow the naming convention `<language>-<framework>-*.md`. Load every file that
@@ -105,7 +105,7 @@ Write the report to `performance_review_report.md` or a user-specified location.
 User says: "Can you do a performance audit of the orders module?"
 
 1. Load `references/performance-checklist.md`
-2. Detect stack from `.agents/PROJECT_DETAILS.md` (e.g. Python + Django)
+2. Detect stack from `docs/PROJECT_DETAILS.md` (e.g. Python + Django)
 3. Load ALL matching stack-specific files: `references/python-performance-review.md` AND `references/django-performance-review.md`
 4. Scan changed or scoped files for issues
 5. Produce a structured report written to `performance_review_report.md` with findings grouped by P0/P1/P2/P3

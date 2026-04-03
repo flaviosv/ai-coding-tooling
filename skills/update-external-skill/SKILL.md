@@ -130,11 +130,11 @@ Actions:
 
 ### Example 3: User tries to update a local project skill
 
-User says: "Update add-tech-reference"
+User says: "Update tech-reference-add"
 
 Actions:
-1. `~/.claude/skills/add-tech-reference` is a symlink → error:
-   > `add-tech-reference` is a local project symlink. It is always current — no update needed.
+1. `~/.claude/skills/tech-reference-add` is a symlink → error:
+   > `tech-reference-add` is a local project symlink. It is always current — no update needed.
 
 ### Example 4: Unknown vendor
 

@@ -23,7 +23,7 @@ This file is always loaded together with the parent `SKILL.md`. Both must be act
 
 ## Reference Files
 
-Detect the project's tech stack from `.agents/PROJECT_DETAILS.md` (if present) or from the files
+Detect the project's tech stack from `docs/PROJECT_DETAILS.md` (if present) or from the files
 being edited. Then check both reference locations and load all matching files:
 
 1. **Parent skill's `reference/` directory** — contains language and framework-specific review
@@ -47,7 +47,7 @@ If no matching reference file exists for the detected stack in either location, 
 > Neither the parent skill's `reference/` directory nor this extension's `reference/` directory contains matching guidelines.
 >
 > **Choose how to proceed:**
-> 1. 🛠️ **Add support** — run the `add-tech-reference` skill to generate guidelines for this stack, then retry.
+> 1. 🛠️ **Add support** — run the `tech-reference-add` skill to generate guidelines for this stack, then retry.
 > 2. ⚠️ **Proceed without stack-specific rules** — base behavioral guidelines only will apply. Tech-specific naming, idioms, and patterns will NOT be enforced.
 >
 > _Reply with **1** or **2** to continue._

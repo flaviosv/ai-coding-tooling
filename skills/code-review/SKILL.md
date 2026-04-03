@@ -1,192 +1,255 @@
 ---
 name: code-review
 description: >
-  Perform comprehensive code reviews on implementation code changed in the git workspace. Reviews
-  cover architecture, performance, code quality, API design, and security. Technology agnostic —
-  adapts to the project's stack using context files. Use when the user says "review my code",
-  "code review", "check my code", "review my changes", or "review this PR". Do NOT use for
-  reviewing test files — use the tests-code-review skill for that.
+  Perform comprehensive code reviews on implementation code. Reviews local workspace changes by
+  default, or a GitHub PR when a PR number is provided. Covers architecture, performance, code
+  quality, API design, and security. Technology agnostic — adapts to the project's stack using
+  context files. Use when the user says "review my code", "code review", "check my code",
+  "review my changes", "review this PR", or "review PR #123". Do NOT use for reviewing test
+  files — use the tests-code-review skill for that.
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   triggers:
     - "review my code"
     - "code review"
     - "check my code"
     - "review my changes"
     - "review this PR"
+    - "review PR #123"
 ---
 
 # Code Review
 
-Perform comprehensive code reviews on changes in the git workspace.
+Comprehensive code reviews. Local workspace by default; GitHub PR when explicitly requested.
 
 ## Reviewer Stance
 
-You are the villain. Your sole job is to find every flaw, violation, and risk — not to encourage.
+You are the villain. Find every flaw, violation, and risk — not encourage.
 
-- Be relentless. Assume the code is guilty until proven innocent.
-- Every principle violated is worth flagging — there are no "minor" issues.
-- If something looks wrong, treat it as wrong until the author justifies it.
-- Flag issues even if they might be intentional — surface them regardless.
-- Do not soften language. State problems directly with file, line number, and consequence.
-- Never sign off on changes that violate core principles just because the violation is small.
-- Your job is to make the author uncomfortable enough to write better code next time.
+- Be relentless. Code is guilty until proven innocent.
+- Every principle violated is worth flagging — no "minor" issues.
+- Flag issues even if possibly intentional — surface them regardless.
+- State problems directly: file, line number, consequence.
+- Never sign off on violations just because they are small.
 
-## Scope
+## Guardrails
 
-When invoked:
-- Review **all files changed or added in the git workspace** — this includes modified tracked files AND newly added (untracked or staged) files
-- **Do NOT make changes** — only share findings with explanations
-- Skip deleted files
-- Focus on actionable feedback
+### Review Modes
 
-To collect the full file set, run both:
-- `git diff HEAD --name-only` — modified tracked files
-- `git ls-files --others --exclude-standard` — untracked new files not yet staged
-- `git diff --cached --name-only` — newly staged files (added with `git add`)
+- **Local workspace** (default): review all changed/added files in git workspace.
+- **GitHub PR**: review only the PR diff from GitHub. Do NOT review local workspace files.
+- User must explicitly provide a PR number to activate GitHub PR mode.
 
-## Project Context
+### What NOT to Review
 
-Before reviewing, load the following project context files if they exist:
+- Deleted files
+- Third-party libraries or generated code (migrations, lock files)
+- Files explicitly marked as "do not review"
+- Test files — use **tests-code-review** skill
 
-- `.agents/PROJECT_DETAILS.md` — tech stack, dependencies, environment config
-- `.agents/CODING_STYLE.md` — naming conventions, patterns, formatting rules
-- `.agents/ARCHITECTURE.md` — system layers, data flow, key components
+**New files are always in scope.** A freshly added file must be reviewed against all loaded checklists.
 
-Use this context to evaluate whether changes are consistent with the project's established patterns.
+### GitHub PR Constraints
 
-## Review Checklist
+- **Never post comments to GitHub automatically.** Present all findings locally first in the same table format as a local review.
+- Only post to GitHub when the user explicitly selects which findings to post.
+- All posted comments must be in **pending review** state — never submit the review.
+- The user reviews and submits manually on GitHub.
 
-Always load the following **mandatory** baseline checklists for every review:
+## Step 1: Determine Review Mode
 
-1. `references/review-checklist.md` — generic baseline covering architecture, code quality, documentation, security, and performance
-2. `references/clean-code-checklist.md` — clean code principles covering naming, functions, classes, control flow, side effects, and abstraction boundaries
-3. `references/solid-principles.md` — SOLID design principles covering SRP, OCP, LSP, ISP, DIP, and common cross-cutting smells
+Parse the user's request:
 
-Then identify the project's language and framework from `PROJECT_DETAILS.md` and load **all**
-matching technology-specific review checklists from `references/`. Reference files follow the naming
-convention `<language>-<framework>-code-review.md`. If the stack uses multiple layers (e.g.
-Python + Django, or Go + Gin), load every file that matches — combining them all.
+- **No PR number** → local workspace mode. Proceed to Step 2.
+- **PR number provided** (e.g. "review PR #123", "code review PR 456") → GitHub PR mode.
 
-Additionally, load all matching coding style guides from the `coding-guidelines` skill's `reference/`
-directory (global: `~/.claude/skills/coding-guidelines/reference/`, project:
-`.agents/skills/coding-guidelines/reference/`). Files follow the naming convention
-`<language>-coding-guidelines.md` and `<language>-<framework>-coding-guidelines.md`. Load every file that
-matches the detected stack — these are authoritative style expectations and any deviation is a finding.
+For **GitHub PR mode**:
 
-The dedicated security and performance workflows below layer additional depth on top of all loaded checklists.
+1. Extract the PR number from the user's message.
+2. Check if GitHub MCP tools are available in the current session (search for tools matching `github`, `pull_request`, `gh`). MCP is preferred — it respects per-project configuration.
+3. Fetch PR metadata and diff:
+   - **MCP available**: use the GitHub MCP tools to get PR details, changed files, and diff content.
+   - **MCP unavailable**: fall back to `gh` CLI:
+     ```bash
+     gh pr view <number> --json title,body,baseRefName,headRefName,files
+     gh pr diff <number>
+     ```
+4. If both MCP and `gh` fail, report the error and stop.
 
-## Review Areas
+## Step 2: Load Project Context
 
-Apply the villain stance to **every area below** — do not moderate tone based on area type. A naming violation is as worth flagging as a security hole.
+Load these files if they exist:
+
+| File | Purpose |
+|------|---------|
+| `docs/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
+| `docs/ARCHITECTURE.md` | System layers, data flow, key components |
+| `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag reviewed code that replicates these |
+
+## Step 3: Load Review Checklists
+
+**Mandatory baselines** (always load):
+
+1. `references/review-checklist.md` — generic baseline (architecture, code quality, security, performance, docs)
+2. `references/clean-code-checklist.md` — clean code principles (naming, functions, classes, control flow, side effects, abstractions)
+3. `references/solid-principles.md` — SOLID design principles and cross-cutting smells
+
+**Tech-specific checklists**: detect language/framework from `PROJECT_DETAILS.md`, load ALL matching `<language>-<framework>-code-review.md` from `references/`.
+
+**Coding-guidelines style guides**: load ALL matching files from the `coding-guidelines` skill's `reference/` directory (global: `~/.claude/skills/coding-guidelines/reference/`, project: `.agents/skills/coding-guidelines/reference/`). Pattern: `<language>-coding-guidelines.md`, `<language>-<framework>-coding-guidelines.md`. Deviations are findings.
+
+**Security references**: load matching files from `security-best-practices` skill's `references/` directory (global or project).
+
+**Performance references**: load `performance-review` skill's `references/performance-checklist.md` and matching tech-specific files.
+
+## Step 4: Collect Changed Files
+
+**Local workspace mode**:
+
+```bash
+git diff HEAD --name-only                    # modified tracked files
+git diff --cached --name-only                # staged files
+git ls-files --others --exclude-standard     # untracked new files
+```
+
+**GitHub PR mode**: parse file paths from the diff fetched in Step 1.
+
+In both modes: skip deleted files, test files, and generated code.
+
+## Step 5: Review All Files
+
+Apply the villain stance to **every area**. A naming violation is as worth flagging as a security hole.
 
 ### Architecture & Design
 
-Hunt for structural violations:
-- Does this break the layers defined in `ARCHITECTURE.md`? Flag it.
-- Does this introduce a pattern that doesn't belong in this layer? Flag it.
-- Does this blur responsibility boundaries between modules? Flag it.
-- Does this couple things that should be independent? Flag it.
+- Breaks layers in `ARCHITECTURE.md`? Flag it.
+- Pattern doesn't belong in this layer? Flag it.
+- Blurs responsibility boundaries? Flag it.
+- Couples things that should be independent? Flag it.
 
 ### Scope & Simplicity
 
-Every line that wasn't asked for is a violation. This enforces the coding-guidelines principles of **Simplicity First** and **Surgical Changes**:
+Every line not asked for is a violation:
 
-- Flag any line that does not trace directly to the stated task
-- Flag speculative abstractions, extra configurability, or unrequested refactoring
-- Flag adjacent code "cleaned up" that wasn't part of the task
-- Flag dead code introduced or orphaned by these changes
-- Flag over-engineering: if 50 lines would do, 200 lines is a defect
+- Code that doesn't trace to the stated task
+- Speculative abstractions, extra configurability, unrequested refactoring
+- Adjacent code "cleaned up" outside the task
+- Dead code introduced or orphaned
+- Over-engineering: if 50 lines suffice, 200 is a defect
 
 ### Code Quality
 
-Confront every style and quality deviation against all loaded references — `CODING_STYLE.md`, the coding-guidelines style guides, and the clean-code checklist:
-- Wrong naming? Flag it with the rule it breaks.
-- Unnecessary complexity or duplication? Flag it.
-- Missing comment on non-obvious logic? Flag it.
-- Misuse of a language idiom or framework pattern? Flag it.
-- Using an outdated approach when a modern one applies? Flag it.
+Confront every deviation against all loaded references — coding-guidelines style guides and the clean-code checklist:
 
-### Security Review
+- Wrong naming → flag with the rule it breaks
+- Unnecessary complexity or duplication → flag
+- Missing comment on non-obvious logic → flag
+- Misuse of language idiom or framework pattern → flag
+- Outdated approach when modern one applies → flag
 
-Treat every changed file as potentially dangerous until proven otherwise.
+### Tech Debt Recurrence
 
-**Workflow:**
-1. Load the generic security baseline from `references/review-checklist.md`
-2. Identify the project's language and framework from `PROJECT_DETAILS.md`
-3. Load all matching reference files from the `security-best-practices` skill:
-   - Location: `~/.claude/skills/security-best-practices/references/` (global) or `.agents/skills/security-best-practices/references/` (project)
-   - Load all files matching the detected stack (e.g. `python-django-web-server-security.md`, `javascript-typescript-react-web-frontend-security.md`)
-   - Also load the `<language>-general-<stack>-security.md` file if present
-4. Apply both sources together — the generic checklist sets the baseline, the framework-specific references deepen it
-5. Scope findings strictly to the changed files
-6. Report every security finding — there is no such thing as a "minor" security issue
+If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts. Code that introduces or replicates a listed anti-pattern → **Critical / P0** with reference to the specific debt entry.
 
-### Performance Review
+### Security
 
-Assume every changed file has a performance problem until you've proven it doesn't.
+1. Apply generic security baseline from `references/review-checklist.md`
+2. Apply all loaded `security-best-practices` references
+3. Scope to changed files only
+4. Every security finding is worth reporting
 
-**Workflow:**
-1. Load the generic performance baseline from the `performance-review` skill: `references/performance-checklist.md`
-2. Identify the project's language and framework from `PROJECT_DETAILS.md`
-3. Load any matching technology-specific reference files from the `performance-review` skill's `references/` directory
-4. Apply both sources together
-5. Scope findings strictly to the changed files
-6. Flag every inefficiency — N+1 queries, unnecessary allocations, missing indexes, blocking calls
+### Performance
 
+1. Apply generic performance baseline from `performance-review` references
+2. Apply all loaded tech-specific performance references
+3. Scope to changed files only
+4. Flag every inefficiency: N+1 queries, unnecessary allocations, missing indexes, blocking calls
 
-## Output Format
-
-Present findings as a table with all mandatory columns:
+## Step 6: Present Findings
 
 | # | Severity | Priority | Title | Type | File:Line | Explanation |
 |---|----------|----------|-------|------|-----------|-------------|
 
-**Severity Levels:** Critical, High, Medium, Low
+**Severity:** Critical, High, Medium, Low
 
-**Priority Levels:**
-- P0 — must fix before merging
-- P1 — should fix soon
-- P2 — nice to have / minor improvement
+**Priority:** P0 (must fix before merging), P1 (should fix soon), P2 (nice to have)
 
-**Type categories:** Security, Performance, Architecture, Code Quality, Documentation
+**Type:** Security, Performance, Architecture, Code Quality, Documentation, Tech Debt
 
-## Iterative Review
+Format for CLI readability. Provide specific line numbers. Suggest concrete solutions. Keep explanations concise.
 
-After fixes are applied:
-- Update the table to show which items are resolved
-- Mark fixed items with a checkmark
-- Re-review only the changed code
-- Continue until all P0/P1 items are addressed
+## Step 7: Iterative Review
 
-## Output Guidelines
+After fixes:
 
-- Format output for CLI readability
-- Keep table width appropriate for a terminal window
-- Provide specific line numbers
-- Suggest concrete solutions when possible
-- Keep explanations concise and actionable
+1. Update the table — mark fixed items with ✓
+2. Re-review only changed code
+3. Continue until all P0/P1 addressed
 
-## Example
+## Step 8: Post to GitHub (GitHub PR mode only)
 
-User says: "Can you review my changes before I open a PR?"
+Runs **only** when the user explicitly requests after reviewing findings locally.
 
-1. Load `.agents/PROJECT_DETAILS.md`, `CODING_STYLE.md`, `ARCHITECTURE.md` if present
-2. Load `references/review-checklist.md` and `references/clean-code-checklist.md` (mandatory baselines)
-3. Detect stack and load ALL matching stack-specific review checklists from `references/`
-4. Load ALL matching `coding-guidelines` style guides for the detected stack
-5. Load ALL matching `security-best-practices` and `performance-review` references for the detected stack
-6. Run `git diff HEAD --name-only`, `git diff --cached --name-only`, and `git ls-files --others --exclude-standard` to collect all modified, staged, and newly added non-test files
-7. Review each file against all loaded checklists
-8. Produce the findings table — flag all P0/P1 items with specific line numbers and concrete suggestions
-9. After fixes, update the table and mark resolved items — continue until all P0/P1 are addressed
+### 8a. User Selects Findings
 
-## What NOT to Review
+Wait for user to specify which findings to post:
+- By number: "post 1, 3, 5"
+- By filter: "post all", "post all P0", "post all Critical"
 
-- Files that haven't changed in this workspace (no modifications, no new additions)
-- Deleted files
-- Third-party libraries or generated code (e.g. migrations, lock files)
-- Files explicitly marked as "do not review"
-- Test files — use the **tests-code-review** skill for those
+### 8b. Create Pending Review Comments
 
-**New files are always in scope.** A freshly added file with no prior history must be reviewed against all loaded checklists — missing context is not a reason to skip it.
+Use GitHub MCP tools if available (preferred), fall back to `gh` CLI.
+
+**Using GitHub MCP**: use the MCP tool for creating pull request reviews. Pass selected comments as inline review comments with `PENDING` event.
+
+**Using `gh` CLI fallback**:
+
+```bash
+gh api repos/{owner}/{repo}/pulls/{number}/reviews \
+  --input - <<'EOF'
+{
+  "event": "PENDING",
+  "comments": [
+    {"path": "<file>", "line": <line>, "body": "**[Severity/Priority]** Title\n\nExplanation\n\n**Suggestion:** fix"}
+  ]
+}
+EOF
+```
+
+Parse `{owner}/{repo}` from `gh repo view --json nameWithOwner -q '.nameWithOwner'`.
+
+### 8c. Confirm Result
+
+Report:
+- Number of comments added to pending review
+- Link to the PR
+- Reminder: "Review is pending — submit manually on GitHub."
+
+**Never submit the review.** No `APPROVE`, `REQUEST_CHANGES`, or `COMMENT` event. Pending only.
+
+## Examples
+
+### Example 1: Local workspace review
+
+User: "review my code"
+
+1. No PR number → local mode
+2. Load context: `PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `TECH_DEBTS.md`
+3. Load baselines + tech-specific checklists
+4. `git diff HEAD --name-only` + `git diff --cached --name-only` + `git ls-files --others --exclude-standard`
+5. Review each file against all checklists
+6. Present findings table
+7. After fixes → update table, continue until P0/P1 resolved
+
+### Example 2: GitHub PR review
+
+User: "review PR #42"
+
+1. PR #42 → GitHub mode
+2. Check for GitHub MCP → use it or fall back to `gh pr view 42` + `gh pr diff 42`
+3. Load context and checklists (same as local)
+4. Review PR diff only — ignore workspace
+5. Present findings table in terminal
+6. User: "post 1, 3, 5 to GitHub"
+7. Create pending review with 3 comments via MCP or `gh api`
+8. Report: "3 comments added to pending review on PR #42. Submit manually on GitHub."

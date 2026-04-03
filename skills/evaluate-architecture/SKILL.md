@@ -71,7 +71,7 @@ PIPELINE.md:
 
 **ASCII diagrams are strongly encouraged** whenever they clarify structure — data flows, layer relationships, component interactions, entity relationships, pipeline stage flows. Keep them simple (box-and-arrow style) and focused on the conceptual level.
 
-Default location: `.agents/` at the project root (e.g. `.agents/PROJECT_DETAILS.md`).
+Default location: `docs/` at the project root (e.g. `docs/PROJECT_DETAILS.md`).
 
 > If the user specifies a different location (e.g. `docs/`), use that instead.
 
@@ -81,11 +81,11 @@ Default location: `.agents/` at the project root (e.g. `.agents/PROJECT_DETAILS.
 
 ### Step 0: Confirm file location
 
-If the user did not specify where to put the files, default to `.agents/`. If `.agents/` does not exist, create it.
+If the user did not specify where to put the files, default to `docs/`. If `docs/` does not exist, create it.
 
 Check whether each file already exists:
 ```bash
-ls .agents/PROJECT_DETAILS.md .agents/ARCHITECTURE.md .agents/PIPELINE.md 2>/dev/null
+ls docs/PROJECT_DETAILS.md docs/ARCHITECTURE.md docs/PIPELINE.md 2>/dev/null
 ```
 
 If any files exist, inform the user:
@@ -145,7 +145,7 @@ Use Glob and Read to gather context. The examples below are common patterns — 
 
 ### Step 3: Write PROJECT_DETAILS.md
 
-Create or update `.agents/PROJECT_DETAILS.md` (or the user-specified path).
+Create or update `docs/PROJECT_DETAILS.md` (or the user-specified path).
 
 The file must include the sections below. Every section is conditional — only include it if the codebase provides evidence for it:
 
@@ -222,7 +222,7 @@ Key environment variables (from .env.example or similar):
 
 ### Step 4: Write ARCHITECTURE.md
 
-Create or update `.agents/ARCHITECTURE.md`.
+Create or update `docs/ARCHITECTURE.md`.
 
 The file must include the sections below. Every section is conditional — only include it if the codebase provides evidence for it:
 
@@ -301,7 +301,7 @@ Key entities and their relationships (conceptual map, not full schema):
 
 ### Step 5: Write PIPELINE.md
 
-Create or update `.agents/PIPELINE.md` (or the user-specified path).
+Create or update `docs/PIPELINE.md` (or the user-specified path).
 
 The file must include the sections below. Every section is conditional — only include it if the codebase provides evidence for it:
 
@@ -413,9 +413,9 @@ feature branch → dev → staging → production
 After writing all files, report:
 
 ```
-✓ .agents/PROJECT_DETAILS.md — [created | updated]
-✓ .agents/ARCHITECTURE.md — [created | updated]
-✓ .agents/PIPELINE.md — [created | updated | skipped (no pipeline config found)]
+✓ docs/PROJECT_DETAILS.md — [created | updated]
+✓ docs/ARCHITECTURE.md — [created | updated]
+✓ docs/PIPELINE.md — [created | updated | skipped (no pipeline config found)]
 
 These files are automatically loaded by agents at the start of each session
 via the directive in AGENTS.global.md.

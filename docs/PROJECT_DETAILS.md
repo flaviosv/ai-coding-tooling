@@ -29,7 +29,7 @@ ai-coding-tooling/
 │   └── skill-architect/
 │       └── SKILL.md     # Adds guardrail design guidance and the extended/ pattern documentation
 └── skills/              # Skills owned by this project
-    ├── add-tech-reference/
+    ├── tech-reference-add/
     ├── code-review/
     ├── documentation/
     ├── evaluate-architecture/
@@ -49,13 +49,13 @@ ai-coding-tooling/
 | `global-agent-setup` | Bootstraps global agent config and installs all global skills |
 | `skill-global-installation` | Installs a skill globally and updates the Global Skills list in `~/.claude/CLAUDE.md` |
 | `evaluate-architecture` | Creates/updates the three project context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE) |
-| `add-tech-reference` | Adds technology-specific reference files across all skills and extends qualifying global skills |
+| `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `documentation` | Syncs inline API docs and project `.md` files with the current git workspace state |
-| `code-review` | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security |
+| `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security |
 | `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, TDD practices, and code coverage analysis |
 | `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability |
-| `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `.agents/TECH_DEBTS.md` |
+| `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
 | `update-external-skill` | Updates externally installed skills from their vendor registry and re-applies extended skill symlinks |
 
 ## External Dependencies

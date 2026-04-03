@@ -23,7 +23,7 @@ This file is always loaded together with the parent `SKILL.md`. Both must be act
 
 ## Reference Files
 
-Detect the project's tech stack from `.agents/PROJECT_DETAILS.md` (if present) or from the files
+Detect the project's tech stack from `docs/PROJECT_DETAILS.md` (if present) or from the files
 being edited. Then check both reference locations and load all matching files:
 
 1. **Parent skill's `references/` directory** — contains language and framework-specific security

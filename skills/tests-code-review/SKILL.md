@@ -44,16 +44,16 @@ To collect the full file set, run:
 
 Before reviewing, load the following if they exist:
 
-- `.agents/TESTS.md` — project-specific test conventions, base classes, naming patterns
-- `.agents/CODING_STYLE.md` — naming conventions that apply to test code too
-- `.agents/ARCHITECTURE.md` — understand which layers the changed tests cover
+- `docs/TESTS.md` — project-specific test conventions, base classes, naming patterns
+- `docs/CODING_STYLE.md` — naming conventions that apply to test code too
+- `docs/ARCHITECTURE.md` — understand which layers the changed tests cover
 
 ## Review References
 
 Always load:
 - `references/test-review-checklist.md` — generic quality checklist
 
-Then identify the project's language and framework from `.agents/PROJECT_DETAILS.md` and load
+Then identify the project's language and framework from `docs/PROJECT_DETAILS.md` and load
 **all** matching technology-specific reference files from `references/`. Reference files follow the
 naming convention `<language>-*` and `<framework>-*`. If the stack is Python + Django, load both
 `python-tests-code-review.md` AND `django-tests-code-review.md`. Combine all loaded files —
@@ -135,7 +135,7 @@ After test improvements are applied:
 
 User says: "Can you review the tests I wrote for the auth module?"
 
-1. Load `.agents/TESTS.md`, `CODING_STYLE.md`, `ARCHITECTURE.md` if present
+1. Load `docs/TESTS.md`, `CODING_STYLE.md`, `ARCHITECTURE.md` if present
 2. Load `references/test-review-checklist.md`
 3. Detect stack and load any matching stack-specific references
 4. Run `git diff HEAD --name-only`, `git diff --cached --name-only`, and `git ls-files --others --exclude-standard` to collect all modified, staged, and newly added test files

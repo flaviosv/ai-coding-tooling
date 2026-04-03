@@ -27,7 +27,7 @@ This skill brings all project documentation in sync with the current state of th
 When invoked, this skill updates one or more of:
 
 1. **Inline API Documentation** — annotations, docstrings, and comments in source files
-2. **Agent Context files** —  files in .agents folder
+2. **Agent Context files** —  files in docs folder
 
 ---
 
@@ -78,7 +78,7 @@ Discover which project documentation files exist and determine whether the code 
 
 **Discovery locations (in order):**
 
-1. **`.agents/` directory** — list all `.md` files present. These are agent context files (e.g. `ARCHITECTURE.md`, `PROJECT_DETAILS.md`, `PIPELINE.md`, `CODING_STYLE.md`, `TESTS.md`, or any other file the project maintains there).
+1. **`docs/` directory** — list all `.md` files present. These are agent context files (e.g. `ARCHITECTURE.md`, `PROJECT_DETAILS.md`, `PIPELINE.md`, `CODING_STYLE.md`, `TESTS.md`, or any other file the project maintains there).
 2. **Project root** — check for AI context files: `README.md`, `AGENTS.md`, `CLAUDE.md`, and any other root-level `.md` files that serve as agent or project context.
 
 **For each discovered file:**
@@ -87,7 +87,7 @@ Discover which project documentation files exist and determine whether the code 
 2. Compare against the detected code changes.
 3. Mark the file as impacted if the changes fall within its scope.
 
-> If the project uses a `docs/` directory symlinked into `.agents/`, edit files at their real source path (e.g. `docs/ARCHITECTURE.md`) rather than through the symlink.
+> Context files live directly in `docs/`. Edit them at their real path (e.g. `docs/ARCHITECTURE.md`).
 
 ---
 
@@ -109,7 +109,7 @@ Provide docs-writer with:
 After all updates, check that:
 
 - [ ] All modified source files with public symbols have updated inline documentation
-- [ ] Every impacted `.agents/` context file has been updated to reflect the changes
+- [ ] Every impacted `docs/` context file has been updated to reflect the changes
 - [ ] Root-level AI context files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are still accurate
 - [ ] All documentation is consistent with the current implementation
 
@@ -136,7 +136,7 @@ If any file could not be updated (e.g. ambiguous change, insufficient context), 
 
 1. **Identify changes** — review git workspace
 2. **Update inline docs** — annotate modified public symbols in source files
-3. **Discover context files** — scan `.agents/` and project root for all `.md` context files
+3. **Discover context files** — scan `docs/` and project root for all `.md` context files
 4. **Update impacted files** — update every context file whose scope overlaps with the changes
 5. **Verify** — confirm all docs are consistent and complete
 

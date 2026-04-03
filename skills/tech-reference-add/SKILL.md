@@ -1,5 +1,5 @@
 ---
-name: add-tech-reference
+name: tech-reference-add
 description: >
   Add technology-specific reference files across all skills in this project and extend any global
   skills that qualify. Use when the user says "add support for <technology>", "add a new technology
@@ -316,7 +316,7 @@ metadata:
 ---
 ```
 
-The body should instruct the agent to detect the project's tech stack from `.agents/PROJECT_DETAILS.md` and load all matching files from both the parent skill's reference directory and this extension's `reference/` directory, following the naming convention observed in Step 2.
+The body should instruct the agent to detect the project's tech stack from `docs/PROJECT_DETAILS.md` and load all matching files from both the parent skill's reference directory and this extension's `reference/` directory, following the naming convention observed in Step 2.
 
 **8b. Create the reference directory and first tech file**
 
@@ -349,7 +349,7 @@ If Step 8 only added reference files inside an already-existing `extended/<skill
 Output a summary of everything created:
 
 ```
-## add-tech-reference: <Technology> added
+## tech-reference-add: <Technology> added
 
 ### New reference files
 - skills/<skill-name>/references/<prefix>-<skill-name>.md
