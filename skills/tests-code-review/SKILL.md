@@ -4,143 +4,246 @@ description: >
   Review test code quality, coverage patterns, and maintainability. Ensures tests are clear,
   independent, and provide meaningful coverage. Technology agnostic — adapts to the project's
   stack using context files. Use when the user says "review tests", "test code review",
-  "check tests", or "review test coverage". Do NOT use for writing new tests — use the tests
-  skill for that. Do NOT use for reviewing implementation code — use the code-review skill.
+  "check tests", "review test coverage", "review my tests", "review tests on PR #123",
+  or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
+  Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   triggers:
     - "review tests"
     - "test code review"
     - "check tests"
     - "review test coverage"
     - "review my tests"
+    - "review tests on PR #123"
 ---
 
 # Test Code Review
 
-You are the villain. Your job is to find every gap, weakness, and lie in the test suite.
+Comprehensive test code reviews. Local workspace by default; GitHub PR when explicitly requested.
+
+## Reviewer Stance
+
+You are the villain. Find every gap, weakness, and lie in the test suite — not encourage.
 
 - Be relentless. Weak tests are worse than no tests — they create false confidence.
 - Every missing case, every flawed assertion, every poorly isolated test is a finding.
 - If a test could pass even when the code is broken, that IS a broken test — flag it.
-- Do not soften language. State problems directly with file, line number, and consequence.
+- State problems directly: file, line number, consequence.
 - Never sign off on a test suite that would fail to catch real bugs.
-- Your job is to make the author uncomfortable enough to write trustworthy tests.
 
-## Scope
+## Guardrails
 
-When invoked:
-- Review **all test files changed or added in the git workspace** — this includes modified tracked test files AND newly added (untracked or staged) test files
-- **Do NOT make changes** — only share findings with explanations
-- Skip deleted test files
-- Focus on test quality, not just coverage metrics
+### Review Modes
 
-To collect the full file set, run:
-- `git diff HEAD --name-only` — modified tracked files (filter to test files)
-- `git diff --cached --name-only` — newly staged files (filter to test files)
-- `git ls-files --others --exclude-standard` — untracked new files (filter to test files)
+- **Local workspace** (default): review all changed/added test files in git workspace.
+- **GitHub PR**: review only test files in the PR diff from GitHub. Do NOT review local workspace files.
+- User must explicitly provide a PR number to activate GitHub PR mode.
 
-## Project Context
+### What NOT to Review
 
-Before reviewing, load the following if they exist:
+- Deleted test files
+- Implementation (non-test) files — use **code-review** skill
+- Third-party test utilities or generated test code
+- Test files that have not changed in this workspace (no modifications, no new additions)
 
-- `docs/TESTS.md` — project-specific test conventions, base classes, naming patterns
-- `docs/CODING_STYLE.md` — naming conventions that apply to test code too
-- `docs/ARCHITECTURE.md` — understand which layers the changed tests cover
+**New test files are always in scope.** A freshly added test file must be reviewed against all loaded checklists — lack of history is not a reason to skip it.
 
-## Review References
+### GitHub PR Constraints
 
-Always load:
-- `references/test-review-checklist.md` — generic quality checklist
+- **Never post comments to GitHub automatically.** Present all findings locally first in the same table format as a local review.
+- Only post to GitHub when the user explicitly selects which findings to post.
+- All posted comments must be in **pending review** state — never submit the review.
+- The user reviews and submits manually on GitHub.
 
-Then identify the project's language and framework from `docs/PROJECT_DETAILS.md` and load
-**all** matching technology-specific reference files from `references/`. Reference files follow the
-naming convention `<language>-*` and `<framework>-*`. If the stack is Python + Django, load both
-`python-tests-code-review.md` AND `django-tests-code-review.md`. Combine all loaded files —
-the generic checklist sets the baseline, stack-specific references deepen it.
+## Step 1: Determine Review Mode
 
-## Quality Dimensions
+Parse the user's request:
 
-### 1. Clarity and Readability
+- **No PR number** → local workspace mode. Proceed to Step 2.
+- **PR number provided** (e.g. "review tests on PR #123", "check tests PR 42") → GitHub PR mode.
+
+For **GitHub PR mode**:
+
+1. Extract the PR number from the user's message.
+2. Check if GitHub MCP tools are available in the current session (search for tools matching `github`, `pull_request`, `gh`). MCP is preferred — it respects per-project configuration.
+3. Fetch PR metadata and diff:
+   - **MCP available**: use the GitHub MCP tools to get PR details, changed files, and diff content.
+   - **MCP unavailable**: fall back to `gh` CLI:
+     ```bash
+     gh pr view <number> --json title,body,baseRefName,headRefName,files
+     gh pr diff <number>
+     ```
+4. If both MCP and `gh` fail, report the error and stop.
+
+## Step 2: Load Project Context
+
+Load these files if they exist:
+
+| File | Purpose |
+|------|---------|
+| `docs/ARCHITECTURE.md` | Understand which layers the changed tests cover |
+| `docs/CODING_STYLE.md` | Naming conventions that apply to test code too |
+| `docs/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
+| `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag test code that replicates these |
+| `docs/TESTS.md` | Project-specific test conventions, base classes, naming patterns |
+
+## Step 3: Load Review Checklists
+
+**Mandatory baseline** (always load):
+
+1. `references/test-review-checklist.md` — generic test quality checklist (structure, coverage, isolation, determinism, maintainability, test doubles, anti-patterns)
+
+**Tech-specific checklists**: detect language/framework from `PROJECT_DETAILS.md`, load ALL matching `<language>-*` and `<framework>-*` from `references/`. If the stack is Python + Django, load both `python-tests-code-review.md` AND `django-tests-code-review.md`. Combine all loaded files — the generic checklist sets the baseline, stack-specific references deepen it.
+
+**Test-writing references**: load ALL matching files from the `tests` skill's `references/` directory (global: `~/.claude/skills/tests/references/`, project: `.agents/skills/tests/references/`). Pattern: `<language>-tests.md`, `<framework>-tests.md`. These contain test-writing patterns, conventions, and anti-patterns per stack — deviations are findings.
+
+## Step 4: Collect Changed Files
+
+**Local workspace mode**:
+
+```bash
+git diff HEAD --name-only                    # modified tracked files (filter to test files)
+git diff --cached --name-only                # staged files (filter to test files)
+git ls-files --others --exclude-standard     # untracked new files (filter to test files)
+```
+
+**GitHub PR mode**: parse file paths from the diff fetched in Step 1, filter to test files.
+
+In both modes: skip deleted files, non-test files, and generated test code.
+
+## Step 5: Review All Test Files
+
+Apply the villain stance to **every dimension**. A naming violation is as worth flagging as a missing assertion.
+
+### Clarity and Readability
+
 - Test names describe the scenario and expected outcome — a failing name explains itself
-- Arrange-Act-Assert structure is visible
+- Arrange-Act-Assert structure is clearly visible
 - Each test is focused on one behaviour
 - Test code reads as documentation of how the system is meant to work
 
-### 2. Coverage and Completeness
+### Coverage and Completeness
+
 - Happy path is tested
 - Error paths and failure scenarios are tested
-- Edge cases are covered (null, empty, boundary values, invalid input)
-- Integration points are tested where appropriate
+- Edge cases are covered (null, empty, zero, boundary values, invalid input)
+- Integration points are tested where the change touches component interactions
+- Access-controlled paths tested for both authorized and unauthorized cases
 
-### 3. Independence and Isolation
+### Independence and Isolation
+
 - Tests do not share mutable state
 - Each test can run in any order and in isolation
 - External dependencies are mocked appropriately in unit tests
 - Any written state (database, filesystem) is reset between tests
 - Tests are deterministic — no random values, no time-dependent assertions
 
-### 4. Maintainability
+### Maintainability
+
 - Common setup is extracted into helpers or shared setup — not copy-pasted
 - Data-driven tests used for similar cases instead of duplicated test bodies
 - Tests are easy to update as the code evolves
 - Mocks are minimal and focused — not mocking the thing under test
 
-### 5. Performance
+### Performance
+
 - Unit tests have no I/O and run fast
 - Integration tests are clearly marked or separated
 - No unnecessary delays (`sleep`, polling, busy-wait)
 
-## Output Format
+### Tech Debt Recurrence
 
-Present findings as a table with all mandatory columns:
+If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts. Test code that introduces or replicates a listed anti-pattern → **Critical / P0** with reference to the specific debt entry.
+
+## Step 6: Present Findings
 
 | # | Severity | Priority | Title | Type | File:Line | Explanation |
 |---|----------|----------|-------|------|-----------|-------------|
 
-**Severity Levels:** Critical, High, Medium, Low
+**Severity:** Critical, High, Medium, Low
 
-**Priority Levels:**
-- P0 — must fix (broken or missing tests on critical paths)
-- P1 — should fix (quality, missing coverage)
-- P2 — nice to have (style, refactoring opportunities)
+**Priority:** P0 (must fix — broken or missing tests on critical paths), P1 (should fix — quality, missing coverage), P2 (nice to have — style, refactoring opportunities)
 
-**Type categories:** Coverage, Quality, Pattern, Performance, Isolation
+**Type:** Coverage, Isolation, Pattern, Performance, Quality
 
-## Iterative Review
+Format for CLI readability. Provide specific line numbers. Suggest concrete improvements ("add a test case for null input"). Reference similar patterns from existing tests where helpful.
 
-After test improvements are applied:
-- Update the table to show which items are resolved
-- Mark fixed items with a checkmark
-- Re-review only the changed test code
-- Continue until all P0/P1 items are addressed
+## Step 7: Iterative Review
 
-## Output Guidelines
+After fixes:
 
-- Format output for CLI readability
-- Provide specific line numbers
-- Suggest concrete improvements ("add a test case for null input")
-- Reference similar patterns from existing tests where helpful
+1. Update the table — mark fixed items with ✓
+2. Re-review only changed test code
+3. Continue until all P0/P1 addressed
 
-## What NOT to Review
+## Step 8: Post to GitHub (GitHub PR mode only)
 
-- Test files that have not changed in this workspace (no modifications, no new additions)
-- Deleted test files
-- Third-party test utilities or generated test code
-- Implementation (non-test) files — use the **code-review** skill for those
+Runs **only** when the user explicitly requests after reviewing findings locally.
 
-**New test files are always in scope.** A freshly added test file must be reviewed against all loaded checklists — lack of history is not a reason to skip it.
+### 8a. User Selects Findings
 
-## Example
+Wait for user to specify which findings to post:
+- By number: "post 1, 3, 5"
+- By filter: "post all", "post all P0", "post all Critical"
 
-User says: "Can you review the tests I wrote for the auth module?"
+### 8b. Create Pending Review Comments
 
-1. Load `docs/TESTS.md`, `CODING_STYLE.md`, `ARCHITECTURE.md` if present
-2. Load `references/test-review-checklist.md`
-3. Detect stack and load any matching stack-specific references
-4. Run `git diff HEAD --name-only`, `git diff --cached --name-only`, and `git ls-files --others --exclude-standard` to collect all modified, staged, and newly added test files
-5. Review each file against the loaded checklists
-6. Produce the findings table — flag all P0/P1 items with specific line numbers
+Use GitHub MCP tools if available (preferred), fall back to `gh` CLI.
+
+**Using GitHub MCP**: use the MCP tool for creating pull request reviews. Pass selected comments as inline review comments with `PENDING` event.
+
+**Using `gh` CLI fallback**:
+
+```bash
+gh api repos/{owner}/{repo}/pulls/{number}/reviews \
+  --input - <<'EOF'
+{
+  "event": "PENDING",
+  "comments": [
+    {"path": "<file>", "line": <line>, "body": "**[Severity/Priority]** Title\n\nExplanation\n\n**Suggestion:** fix"}
+  ]
+}
+EOF
+```
+
+Parse `{owner}/{repo}` from `gh repo view --json nameWithOwner -q '.nameWithOwner'`.
+
+### 8c. Confirm Result
+
+Report:
+- Number of comments added to pending review
+- Link to the PR
+- Reminder: "Review is pending — submit manually on GitHub."
+
+**Never submit the review.** No `APPROVE`, `REQUEST_CHANGES`, or `COMMENT` event. Pending only.
+
+## Examples
+
+### Example 1: Local workspace review
+
+User: "review my tests"
+
+1. No PR number → local mode
+2. Load context: `PROJECT_DETAILS.md`, `TESTS.md`, `CODING_STYLE.md`, `ARCHITECTURE.md`, `TECH_DEBTS.md`
+3. Load baseline + tech-specific checklists + test-writing references from `tests` skill
+4. `git diff HEAD --name-only` + `git diff --cached --name-only` + `git ls-files --others --exclude-standard` → filter to test files
+5. Review each test file against all loaded checklists
+6. Present findings table
+7. After fixes → update table, continue until P0/P1 resolved
+
+### Example 2: GitHub PR review
+
+User: "review tests on PR #42"
+
+1. PR #42 → GitHub mode
+2. Check for GitHub MCP → use it or fall back to `gh pr view 42` + `gh pr diff 42`
+3. Load context and checklists (same as local)
+4. Review test files in PR diff only — ignore workspace
+5. Present findings table in terminal
+6. User: "post 1, 3, 5 to GitHub"
+7. Create pending review with 3 comments via MCP or `gh api`
+8. Report: "3 comments added to pending review on PR #42. Submit manually on GitHub."
 
 ## When No Stack-Specific References Exist
 

@@ -38,11 +38,11 @@ ai-coding-tooling/
     ├── report-tech-debt/
     ├── skill-alias/
     ├── skill-installation/
+    ├── skill-update/
     ├── tech-reference-add/
     ├── tests/
     ├── tests-code-review/
-    ├── tests-tdd/
-    └── update-external-skill/
+    └── tests-tdd/
 ```
 
 ## Skills Owned by This Project
@@ -58,11 +58,11 @@ ai-coding-tooling/
 | `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
 | `skill-alias` | Creates slash-command aliases for existing skills by generating thin delegator skills |
 | `skill-installation` | Installs a skill into the agent's global skills directory and updates the Global Skills list in the agent's global config file |
+| `skill-update` | Updates externally installed skills from their vendor registry and re-applies extended skill symlinks |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, and code coverage analysis |
-| `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability |
+| `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes |
 | `tests-tdd` | Test-Driven Development behavioral principles — red-green-refactor cycle and test-first methodology |
-| `update-external-skill` | Updates externally installed skills from their vendor registry and re-applies extended skill symlinks |
 
 ## External Dependencies
 
