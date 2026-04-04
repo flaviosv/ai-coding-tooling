@@ -88,19 +88,31 @@ Load these files if they exist:
 
 ## Step 3: Load Review Checklists
 
-**Mandatory baselines** (always load):
+> **CONSTRAINT: Load ONLY stack-relevant references.**
+> Detect the tech stack from `docs/PROJECT_DETAILS.md`. Reference files use the naming convention
+> `<tech-prefix>-<purpose>.md`. A file is **tech-specific** if its name starts with a known prefix
+> (e.g., `python-`, `django-`, `golang-`, `gin-`). A file is **generic** if it has no tech prefix
+> (e.g., `review-checklist.md`, `solid-principles.md`). Load ONLY:
+> - Generic files (always)
+> - Tech-specific files whose prefix matches the detected stack
+>
+> **Skip all non-matching tech-specific files.** If the project uses Python + Django, do NOT load
+> `golang-code-review.md`, `php-code-review.md`, etc. If `docs/PROJECT_DETAILS.md` is missing or
+> has no Tech Stack section, do NOT load any tech-specific references — load only generic files.
+
+**Mandatory baselines** (always load — these are generic):
 
 1. `references/review-checklist.md` — generic baseline (architecture, code quality, security, performance, docs)
 2. `references/clean-code-checklist.md` — clean code principles (naming, functions, classes, control flow, side effects, abstractions)
 3. `references/solid-principles.md` — SOLID design principles and cross-cutting smells
 
-**Tech-specific checklists**: detect language/framework from `PROJECT_DETAILS.md`, load ALL matching `<language>-<framework>-code-review.md` from `references/`.
+**Tech-specific checklists**: load ONLY matching `<language>-<framework>-code-review.md` from `references/` whose prefix matches the detected stack.
 
-**Coding-guidelines style guides**: load ALL matching files from the `coding-guidelines` skill's `reference/` directory (global: `~/.claude/skills/coding-guidelines/reference/`, project: `.agents/skills/coding-guidelines/reference/`). Pattern: `<language>-coding-guidelines.md`, `<language>-<framework>-coding-guidelines.md`. Deviations are findings.
+**Coding-guidelines style guides**: load ONLY matching files from the `coding-guidelines` skill's `reference/` directory (global: `~/.claude/skills/coding-guidelines/reference/`, project: `.agents/skills/coding-guidelines/reference/`). Pattern: `<language>-coding-guidelines.md`, `<language>-<framework>-coding-guidelines.md`. Skip non-matching. Deviations are findings.
 
-**Security references**: load matching files from `security-best-practices` skill's `references/` directory (global or project).
+**Security references**: load ONLY matching files from `security-best-practices` skill's `references/` directory (global or project). Skip non-matching.
 
-**Performance references**: load `performance-review` skill's `references/performance-checklist.md` and matching tech-specific files.
+**Performance references**: load `performance-review` skill's `references/performance-checklist.md` (generic — always) and ONLY matching tech-specific files. Skip non-matching.
 
 ## Step 4: Collect Changed Files
 

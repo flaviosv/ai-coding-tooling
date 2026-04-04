@@ -30,6 +30,18 @@ If a project contains context files in `.agents/` (e.g. `PROJECT_DETAILS.md`, `A
 
 If confirmed: move the files to `docs/`, delete `.agents/` if it becomes empty. If declined: continue using the files where they are for this session.
 
+## File Deduplication
+
+When a skill or directive instructs you to load a `.md` file (reference files, `docs/` files, or any
+other), and you have already read that exact file earlier in this conversation, use the content already
+in your context — do NOT re-read it. Re-read only when:
+
+- You detect the file was modified during this session (e.g., via Edit or Write tool)
+- The user explicitly states the file has changed
+
+After a re-read, the updated content becomes the cached version — do not re-read again unless another
+trigger occurs.
+
 ## Skill Transparency
 
 Before invoking any skill, announce it, regardless of the moment and if you are invoking more than 1 in parallel:

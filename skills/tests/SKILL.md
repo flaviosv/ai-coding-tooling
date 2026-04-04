@@ -44,12 +44,19 @@ If this file exists, follow it precisely. It takes precedence over the generic g
 
 Then load the reference files:
 
-1. Always load `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules
-2. Always load `references/coverage-guide.md` — coverage goals and what not to test
+> **CONSTRAINT: Load ONLY stack-relevant references.**
+> Reference files use `<tech-prefix>-<purpose>.md` naming. A file is tech-specific if its name
+> starts with a known prefix (e.g., `python-`, `django-`). A file is generic if it has no tech
+> prefix (e.g., `testing-patterns.md`). Skip all non-matching tech-specific files.
+> If `docs/PROJECT_DETAILS.md` is missing or has no Tech Stack section, do NOT load any
+> tech-specific references — load only generic files.
+
+1. Always load `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules (generic)
+2. Always load `references/coverage-guide.md` — coverage goals and what not to test (generic)
 3. Identify the project's language and framework from `docs/PROJECT_DETAILS.md`
-4. Load **all** matching technology-specific reference files from `references/`. Reference files
-   follow the naming convention `<language>-*` and `<framework>-*`. If the stack is Python + Django,
-   load both `python-tests.md` AND `django-tests.md`. Combine all loaded files.
+4. Load ONLY matching technology-specific reference files from `references/` whose prefix matches
+   the detected stack. If the stack is Python + Django, load `python-tests.md` AND `django-tests.md`.
+   Skip all other tech-specific files (e.g., `golang-tests.md`, `php-tests.md`).
 
 If no matching technology-specific reference file exists for the detected stack, STOP and output:
 

@@ -23,20 +23,27 @@ This file is always loaded together with the parent `SKILL.md`. Both must be act
 
 ## Reference Files
 
-Detect the project's tech stack from `docs/PROJECT_DETAILS.md` (if present) or from the files
-being edited. Then check both reference locations and load all matching files:
+> **CONSTRAINT: Load ONLY stack-relevant references.**
+> Reference files use `<tech-prefix>-<purpose>.md` naming. A file is tech-specific if its name
+> starts with a known prefix (e.g., `python-`, `django-`, `go-`, `gin-`). A file is generic if it
+> has no tech prefix (e.g., `solid-guidelines.md`). Skip all non-matching tech-specific files.
+> If `docs/PROJECT_DETAILS.md` is missing or has no Tech Stack section, do NOT load any
+> tech-specific references — load only generic files (e.g., `solid-guidelines.md`).
+
+Detect the project's tech stack from `docs/PROJECT_DETAILS.md`. Then check both reference
+locations and load ONLY matching files:
 
 1. **Parent skill's `reference/` directory** — contains language and framework-specific review
-   checklists (e.g. `golang-code-review.md`, `python-django-code-review.md`). Load every
-   file whose name matches the detected stack to inform style expectations.
+   checklists (e.g. `golang-code-review.md`, `python-django-code-review.md`). Load ONLY files
+   whose tech prefix matches the detected stack. Skip non-matching files.
 
 2. **This extension's `reference/` directory** — contains language and framework-specific coding
-   style guides (e.g. `go-coding-guidelines.md`, `php-adobe-commerce-coding-guidelines.md`). Load every file
-   that matches the detected stack.
+   style guides (e.g. `go-coding-guidelines.md`, `php-adobe-commerce-coding-guidelines.md`). Load ONLY files
+   whose tech prefix matches the detected stack. Skip non-matching files.
 
 Reference files in both directories follow the naming convention `<language>-<framework>-*.md` or
-`<language>-*.md`. Load all files that match — if the project uses multiple layers, load every
-matching file from both locations.
+`<language>-*.md`. Load ONLY files that match the detected stack — if the project uses Python + Django,
+load `python-*` and `django-*` files from both locations. Skip all other tech-specific files.
 
 If no matching reference file exists for the detected stack in either location, STOP immediately before proceeding with any coding task. Output the following alert and wait for the user's response:
 

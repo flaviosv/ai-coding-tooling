@@ -39,15 +39,23 @@ When explicitly requested, produce a comprehensive performance report across the
 
 ### Step 1: Load references
 
+> **CONSTRAINT: Load ONLY stack-relevant references.**
+> Reference files use `<tech-prefix>-<purpose>.md` naming. A file is tech-specific if its name
+> starts with a known prefix (e.g., `python-`, `django-`). A file is generic if it has no tech
+> prefix (e.g., `performance-checklist.md`). Skip all non-matching tech-specific files.
+> If `docs/PROJECT_DETAILS.md` is missing or has no Tech Stack section, do NOT load any
+> tech-specific references — load only generic files.
+
 Always load the generic performance baseline:
-- `references/performance-checklist.md`
+- `references/performance-checklist.md` (generic — always load)
 
 Then identify the project's language and framework from `docs/PROJECT_DETAILS.md` and load
-**all** matching technology-specific reference files from the same `references/` directory.
+ONLY matching technology-specific reference files from the same `references/` directory.
 
-Reference files follow the naming convention `<language>-<framework>-*.md`. Load every file that
-matches the detected stack — for example, if the stack is Python + Django, load both
-`python-performance-review.md` and `django-performance-review.md`.
+Reference files follow the naming convention `<language>-<framework>-*.md`. Load only files that
+match the detected stack — for example, if the stack is Python + Django, load
+`python-performance-review.md` and `django-performance-review.md`. Skip all other tech-specific
+files (e.g., `golang-performance-review.md`, `php-performance-review.md`).
 
 Apply all loaded sources together — the generic checklist sets the baseline, technology-specific
 references deepen it.
