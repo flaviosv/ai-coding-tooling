@@ -77,21 +77,21 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 
 | Skill | Description |
 |---|---|
-| **global-agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. |
-| **evaluate-architecture** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Also supports package mode for evaluating individual packages/modules, generating a scoped `CLAUDE.md` inside the package directory. Run this when onboarding a new project or when context files are missing. |
-| **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
-| **documentation-upsert** | Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation. Updates inline API docs, root context files, and base `docs/` files. |
+| **architecture-evaluate** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Also supports package mode for evaluating individual packages/modules, generating a scoped `CLAUDE.md` inside the package directory. Run this when onboarding a new project or when context files are missing. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. |
+| **documentation-upsert** | Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation. Updates inline API docs, root context files, and base `docs/` files. |
+| **global-agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. |
 | **performance-review** | Identifies performance bottlenecks, memory issues, and optimization opportunities. |
+| **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
+| **skill-global-installation** | Guides installation of a new skill into the global Claude Code skills directory. |
+| **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **tests** | Writes and maintains tests — unit, integration, TDD, and coverage analysis. |
 | **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. |
-| **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **update-external-skill** | Updates externally installed skills (Tech Leads Club and other vendors) by reinstalling them and re-applying extended skill symlinks. Vendor-agnostic — detects the vendor automatically via `references/vendors.md`. |
-| **skill-global-installation** | Guides installation of a new skill into the global Claude Code skills directory. |
 
 > ⭐ **Highlighted skills:**
 >
-> - **`evaluate-architecture`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/` that agents load progressively based on task relevance.
+> - **`architecture-evaluate`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/` that agents load progressively based on task relevance.
 > - **`tech-reference-add`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
 > - **`report-tech-debt`** — Documents known anti-patterns so agents avoid replicating them. The `docs/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
 
@@ -123,13 +123,13 @@ Installed globally by `/global-agent-setup`. Treated as read-only — do not edi
 
 | Skill | Description |
 |---|---|
+| **best-practices** | Applies modern web development best practices for security, compatibility, and code quality. |
+| **coding-guidelines** | Behavioral guidelines to reduce common LLM coding mistakes. Applied when writing or reviewing code. |
+| **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
+| **learning-opportunities** | Facilitates deliberate skill development through interactive exercises after architectural work. |
+| **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |
 | **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. Extended by `extended/skill-architect/SKILL.md`: adds guardrail design guidance into the workflow and documents the `extended/` pattern for modifying global skills. |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
 | **the-fool** | Challenges ideas and proposals — plays devil's advocate, runs pre-mortems, and stress-tests assumptions. |
 | **web-design-guidelines** | Reviews UI code for accessibility, design, and best-practices compliance. |
-| **coding-guidelines** | Behavioral guidelines to reduce common LLM coding mistakes. Applied when writing or reviewing code. |
-| **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
-| **learning-opportunities** | Facilitates deliberate skill development through interactive exercises after architectural work. |
-| **best-practices** | Applies modern web development best practices for security, compatibility, and code quality. |
-| **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |

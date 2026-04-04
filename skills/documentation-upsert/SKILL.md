@@ -1,7 +1,7 @@
 ---
 name: documentation-upsert
 description: >
-  Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation via evaluate-architecture package mode. Updates inline API documentation, root context files (CLAUDE.md, README.md, AGENTS.md), and base docs/ files. Uses the docs-writer skill for all .md file edits. Technology agnostic. Use when the user says "update docs", "generate docs", "api documentation", "document my changes", "sync documentation", or "document recent changes". Do NOT use for creating documentation from scratch — use evaluate-architecture for that.
+  Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation via architecture-evaluate package mode. Updates inline API documentation, root context files (CLAUDE.md, README.md, AGENTS.md), and base docs/ files. Uses the docs-writer skill for all .md file edits. Technology agnostic. Use when the user says "update docs", "generate docs", "api documentation", "document my changes", "sync documentation", or "document recent changes". Do NOT use for creating documentation from scratch — use architecture-evaluate for that.
 metadata:
   version: "4.0.0"
   triggers:
@@ -28,12 +28,12 @@ Brings all project documentation in sync with the current state of the codebase 
 
 - Only update documentation for what actually changed in the git diff.
 - New package detection applies only to directories that appear as newly created in the git diff.
-- Do not create documentation from scratch for the entire project — that is evaluate-architecture's job.
+- Do not create documentation from scratch for the entire project — that is architecture-evaluate's job.
 
 ### Delegation
 
 - All `.md` file edits must go through the **docs-writer** skill — no exceptions.
-- New package scaffolding is delegated to **evaluate-architecture** in package mode.
+- New package scaffolding is delegated to **architecture-evaluate** in package mode.
 
 ### docs/ Traversal
 
@@ -98,14 +98,14 @@ If no new packages are detected (or the user confirms none), skip to Step 4.
 
 ## Step 3: Scaffold New Package Context
 
-**Always ask for user confirmation before invoking evaluate-architecture.** Package detection can produce false positives — the user must confirm before any scaffolding happens.
+**Always ask for user confirmation before invoking architecture-evaluate.** Package detection can produce false positives — the user must confirm before any scaffolding happens.
 
 For each candidate new package:
 
 1. Present findings and ask for confirmation:
-   > "I detected what looks like a new package: `<path>`. Should I run evaluate-architecture to generate a `CLAUDE.md` for it?"
-2. If the user confirms, invoke evaluate-architecture in **package mode** with the package path:
-   > **Invoking skill:** `evaluate-architecture` (package mode for `<path>`)
+   > "I detected what looks like a new package: `<path>`. Should I run architecture-evaluate to generate a `CLAUDE.md` for it?"
+2. If the user confirms, invoke architecture-evaluate in **package mode** with the package path:
+   > **Invoking skill:** `architecture-evaluate` (package mode for `<path>`)
 3. Wait for the package `CLAUDE.md` to be generated before continuing.
 4. If the user declines, skip and continue to Step 4.
 
@@ -176,7 +176,7 @@ Provide docs-writer with:
 After all updates, check that:
 
 - [ ] All modified source files with public symbols have updated inline documentation
-- [ ] New packages have a `CLAUDE.md` generated via evaluate-architecture package mode
+- [ ] New packages have a `CLAUDE.md` generated via architecture-evaluate package mode
 - [ ] Root-level context files are still accurate
 - [ ] Every impacted `docs/` base file has been updated
 - [ ] All `.md` edits were delegated to docs-writer
@@ -186,7 +186,7 @@ Then report:
 ```
 Documentation upsert complete:
 
-New packages scaffolded (via evaluate-architecture):
+New packages scaffolded (via architecture-evaluate):
   ✓ <path>/CLAUDE.md — created
 
 Inline docs updated:
@@ -221,8 +221,8 @@ User: "document my changes"
 
 1. `git diff HEAD --name-only --diff-filter=A` → new files under `app/code/Vendor/Shipping/`
 2. Project is Magento 2 (from PROJECT_DETAILS.md). New directory has `registration.php` + `etc/module.xml` → matches existing module pattern in `app/code/Vendor/`
-3. Ask: "I detected what looks like a new Magento module: `app/code/Vendor/Shipping/`. Should I run evaluate-architecture to generate a CLAUDE.md for it?"
-4. User: "yes" → invoke evaluate-architecture package mode → generates `app/code/Vendor/Shipping/CLAUDE.md`
+3. Ask: "I detected what looks like a new Magento module: `app/code/Vendor/Shipping/`. Should I run architecture-evaluate to generate a CLAUDE.md for it?"
+4. User: "yes" → invoke architecture-evaluate package mode → generates `app/code/Vendor/Shipping/CLAUDE.md`
 5. Update inline docs in modified source files
 6. Base docs/: `docs/ARCHITECTURE.md` — impacted (new module in the system)
 7. Delegate `docs/ARCHITECTURE.md` update to docs-writer

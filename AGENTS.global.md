@@ -20,7 +20,7 @@ The `docs/` directory may contain context files about the project. Read only wha
 | `docs/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
 | `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns | Writing or reviewing code, to avoid replicating bad patterns |
 
-If none of these files exist, suggest running `evaluate-architecture`.
+If none of these files exist, suggest running `architecture-evaluate`.
 
 ### Legacy `.agents/` Migration
 
@@ -46,6 +46,7 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 - Write detailed specs upfront to reduce ambiguity
 - Make the plan extremely concise. Sacrifice grammar for the sake of concision.
 - At the end of each plan, give me a list of unresolved questions to answer, if any.
+- Be detailed in your plan, i need to understand the details
 - Number all steps.
 - Create the Unit Tests if applicable
 - Create the Integration Tests if applicable
@@ -100,6 +101,10 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
+## Markdown Formatting
+
+- **Alphabetical ordering**: All markdown tables and bullet lists that enumerate items (skills, dependencies, components, files, etc.) must be sorted alphabetically by the primary column or item name. Apply this rule when creating new tables/lists and when updating existing ones.
 
 ## Skill Overrides
 

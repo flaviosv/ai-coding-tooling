@@ -79,7 +79,7 @@ Create extended/<skill-name>/SKILL.md (and/or reference/ files)
 
 ### Evaluating a new package
 ```
-New package detected by documentation-upsert (or user runs evaluate-architecture in package mode)
+New package detected by documentation-upsert (or user runs architecture-evaluate in package mode)
   → Analyze package manifest, structure, public API, and dependencies
   → Generate <package-path>/CLAUDE.md with scoped context for agents
 ```
