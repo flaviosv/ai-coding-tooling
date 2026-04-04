@@ -1,5 +1,5 @@
 ---
-name: skill-installation
+name: skill-install
 description: >
   Install a skill into the agent's global skills directory and update the Global Skills list in the agent's global config file. Use when the user says "install this skill globally", "add this skill to global skills", "install skill", "skill-global-installation", or when a new skill folder is being placed under the agent's skills directory. After installation, always update the global config's Global Skills list. Do NOT trigger for agent setup or unrelated configuration tasks.
 metadata:
@@ -21,10 +21,6 @@ Install a skill into the agent's global skills directory using the appropriate m
 
 - Only write to `<skills-dir>` (the agent's global skills directory) and `<config-path>` (the agent's global config file).
 - Never touch project source files, other config files, or any path outside these two locations.
-
-### Self-installation restriction
-
-Never install `skill-installation` itself via symlink. This skill must always be installed via `npx` or copied manually. If the user asks to install `skill-installation` as a local symlink, refuse and explain this restriction.
 
 ### On collision: target path exists
 
@@ -69,8 +65,6 @@ npx @tech-leads-club/agent-skills install --skill <skill-name> --agent <npx-agen
 If the command fails, report the error output and stop. Do not fall back to a manual copy.
 
 ## Step 2b: Install from local project (symlink)
-
-**Do not use this step for `skill-installation`** — see the self-installation restriction guardrail.
 
 Determine the absolute path to the skill folder in the local project. Then create a symlink:
 
@@ -123,15 +117,7 @@ Actions:
 4. Read symlinked `SKILL.md` frontmatter
 5. Append to `# Global Skills` in `~/.gemini/GEMINI.md`
 
-### Example 3: Attempting to symlink skill-installation
-
-User says: "Install skill-installation from my local project"
-
-Actions:
-1. Skill name is `skill-installation` → self-installation restriction applies
-2. Refuse: "skill-installation cannot be installed via symlink. Use `npx @tech-leads-club/agent-skills install --skill skill-installation --agent <npx-agent-id> --global` instead."
-
-### Example 4: Skill already in list
+### Example 3: Skill already in list
 
 If `name` from frontmatter matches an existing entry in `# Global Skills`, update the description in place rather than adding a duplicate.
 

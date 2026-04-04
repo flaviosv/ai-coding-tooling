@@ -8,7 +8,7 @@ description: >
   skills", "refresh skills", or "check for skill updates". Detects vendor automatically
   from references/vendors.md. Does NOT update local project-sourced or personal symlinked
   skills — those are symlinks and always current. Do NOT trigger for "install skill"
-  (use skill-installation) or "setup global agent" (use agent-setup).
+  (use skill-install) or "setup global agent" (use agent-setup).
 metadata:
   version: "2.0.0"
   triggers:

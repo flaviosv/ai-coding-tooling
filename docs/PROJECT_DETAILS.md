@@ -37,7 +37,7 @@ ai-coding-tooling/
     ├── performance-review/
     ├── report-tech-debt/
     ├── skill-alias/
-    ├── skill-installation/
+    ├── skill-install/
     ├── skill-update/
     ├── tech-reference-add/
     ├── tests/
@@ -57,7 +57,7 @@ ai-coding-tooling/
 | `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |
 | `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
 | `skill-alias` | Creates slash-command aliases for existing skills by generating thin delegator skills |
-| `skill-installation` | Installs a skill into the agent's global skills directory and updates the Global Skills list in the agent's global config file |
+| `skill-install` | Installs a skill into the agent's global skills directory and updates the Global Skills list in the agent's global config file |
 | `skill-update` | Updates externally installed skills from their vendor registry and re-applies extended skill symlinks |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, and code coverage analysis |

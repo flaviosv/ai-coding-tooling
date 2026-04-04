@@ -63,7 +63,7 @@
 | skills/performance-review/references/python-performance-review.md | 413 |
 | skills/report-tech-debt/SKILL.md | 151 |
 | skills/skill-alias/SKILL.md | 187 |
-| skills/skill-installation/SKILL.md | 151 |
+| skills/skill-install/SKILL.md | 151 |
 | skills/skill-update/SKILL.md | 196 |
 | skills/skill-update/references/vendors.md | 49 |
 | skills/tech-reference-add/SKILL.md | 372 |
@@ -181,7 +181,7 @@ Overall project total: **18,871 lines**
 | skills/performance-review/references/python-performance-review.md | 413 | 358 | −55 |
 | skills/report-tech-debt/SKILL.md | 151 | 148 | −3 |
 | skills/skill-alias/SKILL.md | 187 | 187 | 0 |
-| skills/skill-installation/SKILL.md | 151 | 150 | −1 |
+| skills/skill-install/SKILL.md | 151 | 150 | −1 |
 | skills/skill-update/SKILL.md | 196 | 196 | 0 |
 | skills/skill-update/references/vendors.md | 49 | 44 | −5 |
 | skills/tech-reference-add/SKILL.md | 372 | 327 | −45 |

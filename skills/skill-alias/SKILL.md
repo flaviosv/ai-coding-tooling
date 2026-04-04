@@ -141,7 +141,7 @@ Ask the user: "Should `<new-name>` be available as a global skill?"
 2. Confirm config files have the new entry in correct alphabetical position
 3. Inform user of next steps:
    - Run `make link` to create local symlinks
-   - Run `/skill-installation` to install globally on current agent
+   - Run `/skill-install` to install globally on current agent
    - Run `/agent-setup` to reinstall all global skills (if setting up fresh)
 
 ## Examples

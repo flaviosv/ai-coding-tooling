@@ -29,7 +29,7 @@ Repository (single source of truth)
 
 | Source | Location | Install method |
 |--------|----------|---------------|
-| This project | `skills/<name>/` | Symlinked via `make link` or `skill-installation` |
+| This project | `skills/<name>/` | Symlinked via `make link` or `skill-install` |
 | Tech Leads Club | `~/.claude/skills/<name>/` | Installed via `npx @tech-leads-club/agent-skills` |
 
 ## Extended Skills
@@ -52,7 +52,7 @@ git clone → make link → /agent-setup (in Claude Code)
 ```
 Create skills/<name>/SKILL.md
   → Register in AGENTS.md and/or AGENTS.global.md
-  → Run /skill-installation if it should be globally available
+  → Run /skill-install if it should be globally available
 ```
 
 ### Adding a personal skill
@@ -64,7 +64,7 @@ Create personal/<name>/SKILL.md  (directory is gitignored)
 
 ### Installing a Tech Leads Club skill
 ```
-/skill-installation → npx @tech-leads-club/agent-skills install → CLAUDE.md updated
+/skill-install → npx @tech-leads-club/agent-skills install → CLAUDE.md updated
 ```
 
 ### Creating a skill alias

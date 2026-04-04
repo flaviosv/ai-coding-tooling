@@ -85,7 +85,7 @@ Maintained here and installed globally via `make link` / `/agent-setup`. These a
 | **performance-review** | Identifies performance bottlenecks, memory issues, and optimization opportunities. |
 | **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **skill-alias** | Creates slash-command aliases for existing skills by generating thin delegator skills. The original skill remains unchanged. |
-| **skill-installation** | Installs a skill into the agent's global skills directory and updates the Global Skills list. Multi-agent — resolves paths via agent reference files. |
+| **skill-install** | Installs a skill into the agent's global skills directory and updates the Global Skills list. Multi-agent — resolves paths via agent reference files. |
 | **skill-update** | Updates externally installed skills (Tech Leads Club and other vendors) by reinstalling them and re-applying extended skill symlinks. Supports a single skill, a set, or all externals. Vendor-agnostic — detects the vendor automatically via `references/vendors.md`. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **tests** | Writes and maintains tests — unit, integration, and coverage analysis. |
