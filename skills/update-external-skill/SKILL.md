@@ -1,7 +1,7 @@
 ---
 name: update-external-skill
 description: >
-  Update externally installed skills by reinstalling them from their vendor registry and re-applying any extended skill symlinks. Use when the user says "update external skills", "update all skills", "update skill X", "reinstall skill X", "upgrade skills", "refresh skills", or "check for skill updates". Detects vendor automatically from references/vendors.md. Does NOT update local project-sourced or personal symlinked skills — those are symlinks and always current. Do NOT trigger for "install skill" (use skill-global-installation) or "setup global agent" (use global-agent-setup).
+  Update externally installed skills by reinstalling them from their vendor registry and re-applying any extended skill symlinks. Use when the user says "update external skills", "update all skills", "update skill X", "reinstall skill X", "upgrade skills", "refresh skills", or "check for skill updates". Detects vendor automatically from references/vendors.md. Does NOT update local project-sourced or personal symlinked skills — those are symlinks and always current. Do NOT trigger for "install skill" (use skill-installation) or "setup global agent" (use agent-setup).
 ---
 
 # update-external-skill
@@ -18,7 +18,7 @@ If the user did not specify which agent to update skills for, ask:
 
 Wait for the answer before proceeding. Store it as `<agent>`.
 
-Load the agent reference file from `skills/global-agent-setup/references/<agent>.md`. It contains `<skills-dir>` (the global skills directory) and `<npx-agent-id>`. If no reference file exists, ask the user for both values directly.
+Load the agent reference file from `skills/agent-setup/references/<agent>.md`. It contains `<skills-dir>` (the global skills directory) and `<npx-agent-id>`. If no reference file exists, ask the user for both values directly.
 
 ### Step 1: Load the vendor registry
 
@@ -109,7 +109,7 @@ Summarize:
 User says: "Update all external skills"
 
 Actions:
-1. Agent is `claude-code` → load `skills/global-agent-setup/references/claude-code.md` → skills dir is `~/.claude/skills/`, npx id is `claude-code`
+1. Agent is `claude-code` → load `skills/agent-setup/references/claude-code.md` → skills dir is `~/.claude/skills/`, npx id is `claude-code`
 2. Load `references/vendors.md`
 3. Scan `~/.claude/skills/` → find real dirs (e.g. `skill-architect`, `coding-guidelines`, `best-practices`, …); skip symlinks
 4. Match each real dir to a vendor via `.skill-meta.json` presence → all are Tech Leads Club

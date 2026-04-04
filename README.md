@@ -29,7 +29,7 @@ Existing files or symlinks are skipped — nothing is overwritten.
 Open this project in Claude Code and run:
 
 ```
-/global-agent-setup
+/agent-setup
 ```
 
 This will symlink `AGENTS.global.md` to the agent's global config file and install all global skills.
@@ -73,20 +73,23 @@ Skills are reusable agent instructions that extend AI coding tools with speciali
 
 ### Source: This Project (`ai-coding-tooling`)
 
-Maintained here and installed globally via `make link` / `/global-agent-setup`. These are the only skills you should modify:
+Maintained here and installed globally via `make link` / `/agent-setup`. These are the only skills you should modify:
 
 | Skill | Description |
 |---|---|
+| **agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. Multi-agent — supports Claude Code, Gemini CLI, and others via agent reference files. |
 | **architecture-evaluate** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Also supports package mode for evaluating individual packages/modules, generating a scoped `CLAUDE.md` inside the package directory. Run this when onboarding a new project or when context files are missing. |
+| **code** | Apply coding guidelines when writing code. Thin delegator to `coding-guidelines` (TLC). Pairs with `code-review` for the `/code` + `/code-review` naming pattern. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. |
 | **documentation-upsert** | Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation. Updates inline API docs, root context files, and base `docs/` files. |
-| **global-agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. |
 | **performance-review** | Identifies performance bottlenecks, memory issues, and optimization opportunities. |
 | **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
-| **skill-global-installation** | Guides installation of a new skill into the global Claude Code skills directory. |
+| **skill-alias** | Creates slash-command aliases for existing skills by generating thin delegator skills. The original skill remains unchanged. |
+| **skill-installation** | Installs a skill into the agent's global skills directory and updates the Global Skills list. Multi-agent — resolves paths via agent reference files. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
-| **tests** | Writes and maintains tests — unit, integration, TDD, and coverage analysis. |
+| **tests** | Writes and maintains tests — unit, integration, and coverage analysis. |
 | **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. |
+| **tests-tdd** | Test-Driven Development methodology — red-green-refactor cycle and test-first principles. |
 | **update-external-skill** | Updates externally installed skills (Tech Leads Club and other vendors) by reinstalling them and re-applying extended skill symlinks. Vendor-agnostic — detects the vendor automatically via `references/vendors.md`. |
 
 > ⭐ **Highlighted skills:**
@@ -94,6 +97,14 @@ Maintained here and installed globally via `make link` / `/global-agent-setup`. 
 > - **`architecture-evaluate`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/` that agents load progressively based on task relevance.
 > - **`tech-reference-add`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
 > - **`report-tech-debt`** — Documents known anti-patterns so agents avoid replicating them. The `docs/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
+
+### Skill Aliases
+
+Aliases are thin delegators that provide shorter slash commands for existing skills. The original skill remains unchanged and fully functional. Created via `/skill-alias`.
+
+| Alias | Original Skill | Description |
+|---|---|---|
+| **code** | `coding-guidelines` | Short command for `/coding-guidelines`. Pairs with `/code-review`. |
 
 ### Personal Skills (`personal/`)
 
@@ -105,7 +116,7 @@ personal/
     SKILL.md
 ```
 
-`/global-agent-setup` and `make link` both auto-discover and install everything in `personal/` via symlink. Personal skills installed via `make link` are removed with `make unlink`. These skills are labeled `Personal (local-only)` in the `/global-agent-setup` install summary and are never listed in `AGENTS.global.md`.
+`/agent-setup` and `make link` both auto-discover and install everything in `personal/` via symlink. Personal skills installed via `make link` are removed with `make unlink`. These skills are labeled `Personal (local-only)` in the `/agent-setup` install summary and are never listed in `AGENTS.global.md`.
 
 The `personal/` directory is gitignored — nothing inside it is tracked or committed.
 
@@ -119,7 +130,7 @@ Context7 is optional but strongly recommended. When available, `tech-reference-a
 
 ### Source: [Tech Leads Club](https://techlead.club)
 
-Installed globally by `/global-agent-setup`. Treated as read-only — do not edit these directly:
+Installed globally by `/agent-setup`. Treated as read-only — do not edit these directly:
 
 | Skill | Description |
 |---|---|

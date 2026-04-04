@@ -18,14 +18,14 @@
 ```
 Repository (single source of truth)
   ├── AGENTS.md  ──────────────────────► CLAUDE.md, GEMINI.md (project root)
-  ├── AGENTS.global.md  ───────────────► ~/.claude/CLAUDE.md (global, via global-agent-setup)
+  ├── AGENTS.global.md  ───────────────► ~/.claude/CLAUDE.md (global, via agent-setup)
   ├── skills/  ────────────────────────► .claude/skills/, .cursor/skills/, .gemini/skills/, etc.
   └── extended/<skill>/
         ├── SKILL.md  ───────────────► ~/.claude/skills/<skill>/SKILL.extended.md
         └── reference/  ─────────────► ~/.claude/skills/<skill>/reference/
 ```
 
-`make link` creates all project-level symlinks (including extended skill files). `/global-agent-setup` handles the global ones.
+`make link` creates all project-level symlinks (including extended skill files). `/agent-setup` handles the global ones.
 
 ## Skill Sources
 
@@ -33,7 +33,7 @@ Skills come from two sources:
 
 | Source | Location | Install method |
 |--------|----------|---------------|
-| This project | `skills/<name>/` | Symlinked via `make link` or `skill-global-installation` |
+| This project | `skills/<name>/` | Symlinked via `make link` or `skill-installation` |
 | Tech Leads Club | `~/.claude/skills/<name>/` | Installed via `npx @tech-leads-club/agent-skills` |
 
 ## Extended Skills
@@ -49,14 +49,14 @@ The `extended/` directory holds project-local additions to globally-installed sk
 
 ### Bootstrapping a new machine
 ```
-git clone → make link → /global-agent-setup (in Claude Code)
+git clone → make link → /agent-setup (in Claude Code)
 ```
 
 ### Adding a new skill
 ```
 Create skills/<name>/SKILL.md
   → Register in AGENTS.md and/or AGENTS.global.md
-  → Run /skill-global-installation if it should be globally available
+  → Run /skill-installation if it should be globally available
 ```
 
 ### Adding a personal skill
@@ -68,7 +68,14 @@ Create personal/<name>/SKILL.md  (directory is gitignored)
 
 ### Installing a Tech Leads Club skill
 ```
-/skill-global-installation → npx @tech-leads-club/agent-skills install → CLAUDE.md updated
+/skill-installation → npx @tech-leads-club/agent-skills install → CLAUDE.md updated
+```
+
+### Creating a skill alias
+```
+/skill-alias → generates skills/<new-name>/SKILL.md (thin delegator)
+  → Registers in AGENTS.md, AGENTS.global.md, README.md
+  → Original skill remains unchanged
 ```
 
 ### Extending a globally-installed skill

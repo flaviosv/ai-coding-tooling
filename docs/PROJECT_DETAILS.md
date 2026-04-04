@@ -29,16 +29,19 @@ ai-coding-tooling/
 │   └── skill-architect/
 │       └── SKILL.md     # Adds guardrail design guidance and the extended/ pattern documentation
 └── skills/              # Skills owned by this project
+    ├── agent-setup/
     ├── architecture-evaluate/
+    ├── code/
     ├── code-review/
     ├── documentation-upsert/
-    ├── global-agent-setup/
     ├── performance-review/
     ├── report-tech-debt/
-    ├── skill-global-installation/
+    ├── skill-alias/
+    ├── skill-installation/
     ├── tech-reference-add/
     ├── tests/
     ├── tests-code-review/
+    ├── tests-tdd/
     └── update-external-skill/
 ```
 
@@ -46,16 +49,19 @@ ai-coding-tooling/
 
 | Skill | Description |
 |-------|-------------|
+| `agent-setup` | Bootstraps global agent config and installs all global skills for any supported agent |
 | `architecture-evaluate` | Creates/updates the three project context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE) |
+| `code` | Alias for `coding-guidelines` — applies behavioral and tech-specific coding guidelines. Delegator to the TLC skill |
 | `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security |
 | `documentation-upsert` | Syncs inline API docs and project `.md` files with the current git workspace state. Detects new packages and scaffolds context via architecture-evaluate package mode |
-| `global-agent-setup` | Bootstraps global agent config and installs all global skills |
 | `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |
 | `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
-| `skill-global-installation` | Installs a skill globally and updates the Global Skills list in `~/.claude/CLAUDE.md` |
+| `skill-alias` | Creates slash-command aliases for existing skills by generating thin delegator skills |
+| `skill-installation` | Installs a skill into the agent's global skills directory and updates the Global Skills list in the agent's global config file |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
-| `tests` | Writes and maintains tests covering unit tests, integration tests, TDD practices, and code coverage analysis |
+| `tests` | Writes and maintains tests covering unit tests, integration tests, and code coverage analysis |
 | `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability |
+| `tests-tdd` | Test-Driven Development behavioral principles — red-green-refactor cycle and test-first methodology |
 | `update-external-skill` | Updates externally installed skills from their vendor registry and re-applies extended skill symlinks |
 
 ## External Dependencies

@@ -1,17 +1,17 @@
 ---
 name: tests
 description: >
-  Write and maintain tests for any project. Covers unit tests, integration tests, test-driven
-  development practices, and code coverage analysis. Technology agnostic — adapts to the project's
-  stack using context files. Use when the user says "write tests", "add tests", "missing tests",
-  "TDD", "test coverage", "unit test", or "integration test". Do NOT use for reviewing existing
-  test quality — use the tests-code-review skill for that. Do NOT use just to run tests.
+  Write and maintain tests for any project. Covers unit tests, integration tests, and code
+  coverage analysis. Technology agnostic — adapts to the project's stack using context files.
+  Use when the user says "write tests", "add tests", "missing tests", "test coverage", "unit test",
+  or "integration test". Do NOT use for reviewing existing test quality — use the tests-code-review
+  skill for that. Do NOT use for TDD methodology — use the tests-tdd skill. Do NOT use just to
+  run tests.
 metadata:
   version: "1.0.0"
   triggers:
     - "write tests"
     - "test coverage"
-    - "TDD"
     - "unit test"
     - "integration test"
     - "add tests"
@@ -24,7 +24,7 @@ Guidelines for writing, maintaining, and running tests across any technology sta
 
 ## Testing Philosophy
 
-- Write tests before implementation when fixing bugs (TDD)
+- For test-first methodology (red-green-refactor), use the **tests-tdd** skill
 - Write tests alongside or immediately after implementation when adding features
 - Tests define success criteria and enable confident refactoring
 - Focus on meaningful tests over coverage metrics
@@ -44,13 +44,26 @@ If this file exists, follow it precisely. It takes precedence over the generic g
 
 Then load the reference files:
 
-1. Always load `references/testing-patterns.md` — generic patterns and structure
+1. Always load `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules
 2. Always load `references/coverage-guide.md` — coverage goals and what not to test
 3. Identify the project's language and framework from `docs/PROJECT_DETAILS.md`
 4. Load **all** matching technology-specific reference files from `references/`. Reference files
    follow the naming convention `<language>-*` and `<framework>-*`. If the stack is Python + Django,
    load both `python-tests.md` AND `django-tests.md`. Combine all loaded files.
 
+If no matching technology-specific reference file exists for the detected stack, STOP and output:
+
+---
+> ⚠️ **No tech-specific test reference found for: [detected stack]**
+>
+> No matching reference file was found in `references/`. Generic testing principles will apply,
+> but stack-specific patterns (fixtures, assertion styles, framework idioms) will NOT be enforced.
+>
+> **Options:**
+> 1. Run `tech-reference-add` to generate test guidelines for this stack, then retry.
+> 2. Proceed with generic principles only.
+>
+> _Reply with **1** or **2** to continue._
 ---
 
 ## Test Types
@@ -79,22 +92,7 @@ Test multiple scenarios using the testing framework's parametrize feature.
 
 ---
 
-## TDD Workflow
-
-### Bug fixes
-1. Write a failing test that reproduces the bug
-2. Fix the bug
-3. Verify the test now passes and no regressions introduced
-
-### New features
-1. Write tests for expected behaviour — they should fail
-2. Implement the minimum code to make tests pass
-3. Refactor if needed — tests must still pass
-
-### Refactoring
-1. Run existing tests — all must pass (establish baseline)
-2. Refactor
-3. Run tests again — behaviour must be unchanged
+> For TDD methodology (red-green-refactor, test-first workflows), see the **tests-tdd** skill.
 
 ---
 
@@ -131,14 +129,7 @@ User says: "Write tests for the new payment processor module."
 5. Write integration tests for the database and external service interactions
 6. Verify the completion checklist before finishing
 
-## When No Test Conventions File Exists
-
-If `docs/TESTS.md` is not present:
-- Follow the generic patterns from `references/testing-patterns.md`
-- Infer naming conventions from existing test files in the project
-- If no existing tests exist, apply the patterns directly and note the assumption
-
 ## References
 
-- `references/testing-patterns.md` — test organisation, naming, mocking, parametrize, setup/teardown
+- `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules, anti-patterns
 - `references/coverage-guide.md` — coverage goals, what to test, what to skip

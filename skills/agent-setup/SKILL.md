@@ -1,20 +1,44 @@
 ---
-name: global-agent-setup
+name: agent-setup
 description: >
-  Sets up global agent configuration by symlinking AGENTS.global.md to the agent's global config file and installing all global skills from the Tech Leads Club registry. Use when the user says "setup global agent", "install global skills", "run global-agent-setup", "initialize agent global config", or "setup my agent globally". Asks which agent to target if not specified. Do NOT trigger for general skill installation, project setup, or unrelated configuration tasks.
+  Sets up global agent configuration by symlinking AGENTS.global.md to the agent's global config file and installing all global skills from the Tech Leads Club registry. Use when the user says "setup global agent", "setup agent", "install global skills", "run agent-setup", "run global-agent-setup", "initialize agent global config", or "setup my agent globally". Asks which agent to target if not specified. Do NOT trigger for general skill installation, project setup, or unrelated configuration tasks.
+metadata:
+  version: "2.0.0"
+  triggers:
+    - "setup global agent"
+    - "setup agent"
+    - "install global skills"
+    - "run agent-setup"
+    - "run global-agent-setup"
+    - "initialize agent global config"
+    - "setup my agent globally"
 ---
 
-# global-agent-setup
+# Agent Setup
 
 Sets up the global agent configuration by symlinking this project's `AGENTS.global.md` to the agent's global config file and installing all global skills from the Tech Leads Club registry.
 
-## Important: Manual Use Only
+## Guardrails
 
-This is a local setup tool for the `ai-coding-tooling` project. It is **not available via npx or any package registry**. It must be run manually by opening this project in your agent and invoking it directly (e.g. "run global-agent-setup"). Do not attempt to install it as a global skill.
+### Scope
 
-## Instructions
+This is a local setup tool for the `ai-coding-tooling` project. It is **not available via npx or any package registry**. It must be run manually by opening this project in your agent and invoking it directly (e.g. "run agent-setup"). Do not attempt to install it as a global skill.
 
-### Step 0: Resolve the target agent
+Only modify the agent's global config path, skills directory, and extended/personal skill links. Never modify project source files.
+
+### Config file exists
+
+If the global config file already exists at `<config-path>`, **stop immediately**. Never overwrite existing configuration. Report the error and instruct the user to remove it manually before re-running.
+
+### Never auto-delete
+
+Never remove existing symlinks, files, or directories without user confirmation. If a collision is found, report it and stop — or skip and log as "already present". Do not delete or overwrite automatically.
+
+### Sequential processing
+
+Process skills sequentially (not in parallel) so errors are isolated and traceable. If any individual install fails, report the error and continue with remaining skills.
+
+## Step 0: Resolve the target agent
 
 If the user did not specify which agent to set up, ask:
 
@@ -22,14 +46,14 @@ If the user did not specify which agent to set up, ask:
 
 Wait for the answer before proceeding. Store it as `<agent>`.
 
-**Load agent-specific reference:** Check if a file exists at `skills/global-agent-setup/references/<agent>.md`. If it exists, read it now — it contains the config file path, skills directory, npx agent identifier, native skills to skip, and any agent-specific caveats. Use that information for all subsequent steps.
+**Load agent-specific reference:** Check if a file exists at `skills/agent-setup/references/<agent>.md`. If it exists, read it now — it contains the config file path, skills directory, npx agent identifier, native skills to skip, and any agent-specific caveats. Use that information for all subsequent steps.
 
 If no reference file exists for the agent, ask the user for:
 - The global config file path (e.g. `~/.someagent/SOMEAGENT.md`)
 - The global skills directory path (e.g. `~/.someagent/skills/`)
 - The npx `--agent` identifier (e.g. `someagent`)
 
-### Step 1: Check if the global config file already exists
+## Step 1: Check if the global config file already exists
 
 Run the following check using Bash (substitute the actual resolved path):
 
@@ -43,7 +67,7 @@ If the output is `EXISTS`, **stop immediately** and report an error to the user:
 
 Do NOT proceed with any further steps if the file exists.
 
-### Step 2: Ensure required directories exist, then create the symlink
+## Step 2: Ensure required directories exist, then create the symlink
 
 Some agents require their config directory and/or skills directory to be created first. Check the agent reference file — if it specifies a `mkdir` step, run it before symlinking.
 
@@ -57,7 +81,7 @@ This must be run from the root of the project (where `AGENTS.global.md` lives). 
 
 If the symlink creation fails, report the error and stop.
 
-### Step 3: Install global skills
+## Step 3: Install global skills
 
 Read `AGENTS.global.md` at the project root using the **Read tool** (not grep or bash) to ensure no lines are truncated. Extract every skill entry from the `# Global Skills` section. Process each skill sequentially (not in parallel) so errors are easy to trace.
 
@@ -77,7 +101,7 @@ For each skill entry, check its `Source:` field and act accordingly:
 
 If any individual install fails, report which skill failed and its error output, then continue with the remaining skills. Summarize all successes, skips, and failures at the end.
 
-### Step 4: Install extended skills
+## Step 4: Install extended skills
 
 After all global skills are installed, check for an `extended/` directory at the project root. If it exists, process each subdirectory inside it. Each subdirectory represents an extended version of an existing skill — its name matches the parent skill's name.
 
@@ -101,7 +125,7 @@ Refer to the agent reference file for any agent-specific notes on extended skill
 
 If any individual symlink fails, report it and continue with the remaining extensions.
 
-### Step 5: Install personal skills
+## Step 5: Install personal skills
 
 After extended skills are installed, check for a `personal/` directory at the project root. If it exists, scan it for subdirectories — each one is a personal (local-only) skill.
 
@@ -118,7 +142,7 @@ Label each installed personal skill as `Personal (local-only)` in the summary. T
 
 If `personal/` does not exist, skip this step silently.
 
-### Step 6: Confirm completion
+## Step 6: Confirm completion
 
 Report to the user:
 
@@ -133,10 +157,10 @@ Report to the user:
 
 ### Example 1: Known agent specified upfront
 
-User says: "Run global-agent-setup for claude-code"
+User says: "Run agent-setup for claude-code"
 
 Actions:
-1. Agent is `claude-code` → load `skills/global-agent-setup/references/claude-code.md`
+1. Agent is `claude-code` → load `skills/agent-setup/references/claude-code.md`
 2. Config path is `~/.claude/CLAUDE.md`, skills dir is `~/.claude/skills/`, npx id is `claude-code`
 3. Check `~/.claude/CLAUDE.md` → not found
 4. Create symlink from `$(pwd)/AGENTS.global.md` → `~/.claude/CLAUDE.md`
@@ -146,10 +170,10 @@ Actions:
 
 ### Example 2: Known agent — Gemini CLI
 
-User says: "Run global-agent-setup for gemini-cli"
+User says: "Run agent-setup for gemini-cli"
 
 Actions:
-1. Agent is `gemini-cli` → load `skills/global-agent-setup/references/gemini-cli.md`
+1. Agent is `gemini-cli` → load `skills/agent-setup/references/gemini-cli.md`
 2. Config path is `~/.gemini/GEMINI.md`, skills dir is `~/.gemini/skills/`, npx id is `gemini`
 3. Reference specifies `mkdir -p ~/.gemini && mkdir -p ~/.gemini/skills` before symlinking
 4. Check `~/.gemini/GEMINI.md` → not found
@@ -159,7 +183,7 @@ Actions:
 
 ### Example 3: Unknown agent
 
-User says: "Run the global-agent-setup for cursor"
+User says: "Run agent-setup for cursor"
 
 Actions:
 1. Agent is `cursor` → no reference file found
@@ -168,7 +192,7 @@ Actions:
 
 ### Example 4: Config file already exists
 
-User says: "Setup global agent for claude-code"
+User says: "Setup agent for claude-code"
 
 Actions:
 1. Load `references/claude-code.md`, config path is `~/.claude/CLAUDE.md`
