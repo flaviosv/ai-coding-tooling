@@ -6,8 +6,6 @@ Supplements the generic `review-checklist.md` for PHP 8.2–8.5 projects. Covers
 
 ## General PHP Patterns
 
-Universal conventions that apply across all PHP 8.2–8.5 projects, regardless of version:
-
 - `declare(strict_types=1)` at the top of every PHP file — prevents silent type coercion
 - PSR-1 naming (`PascalCase` classes, `camelCase` methods, `UPPER_CASE` constants) and PSR-4 autoloading
 - All parameters and return types declared — avoid `mixed` unless genuinely unknown
@@ -18,10 +16,6 @@ Universal conventions that apply across all PHP 8.2–8.5 projects, regardless o
 - `random_bytes()` / `sodium_*` for cryptography — never `rand()`, `md5()`, or `sha1()`
 - `hash_equals()` for timing-safe comparison of secrets and tokens
 - All dependencies injected via constructor — never `new ClassName()` inside service methods
-
-See the version-specific sections below (PHP 8.2–8.5) and domain checklists (Type Safety, Code Quality, PSR Standards, OOP & Design, Security, etc.).
-
----
 
 ## Type Safety
 
@@ -35,8 +29,6 @@ See the version-specific sections below (PHP 8.2–8.5) and domain checklists (T
 - [ ] DNF types (`(A&B)|null`) used when combining intersection and union (PHP 8.2+)
 - [ ] `never` return type applied to methods that always throw or exit
 
----
-
 ## PHP 8.2 Features
 
 - [ ] `readonly` classes used for pure value/DTO objects — all properties implicitly immutable, no need to declare each one individually (PHP 8.2+)
@@ -44,16 +36,12 @@ See the version-specific sections below (PHP 8.2–8.5) and domain checklists (T
 - [ ] DNF types (`(Countable&Iterator)|null`) used when combining intersection and union types
 - [ ] No reliance on implicit dynamic properties on non-`stdClass` objects — requires `#[AllowDynamicProperties]`; flag any class that sets undefined properties without it
 
----
-
 ## PHP 8.3 Features
 
 - [ ] `#[Override]` attribute applied to methods intentionally overriding a parent — catches rename mismatches at static-analysis time (PHP 8.3+)
 - [ ] `json_validate()` used for JSON format validation instead of `json_decode` + error check — avoids allocating the decoded structure just to validate (PHP 8.3+)
 - [ ] Typed class constants declared with explicit types (`const int MAX = 100`) — avoids implicit coercion and enables static-analysis validation (PHP 8.3+)
 - [ ] `mb_str_split()` and `mb_*` functions used when processing multibyte character strings
-
----
 
 ## PHP 8.4 Features
 
@@ -67,7 +55,7 @@ See the version-specific sections below (PHP 8.2–8.5) and domain checklists (T
 - [ ] Hand-rolled null-check lazy-initialization patterns replaced with native lazy objects via `ReflectionClass::newLazyGhost()` or `newLazyProxy()` (PHP 8.4+)
 
 ```php
-// PHP 8.4 — lazy ghost: same class, initialized on first property access
+// Good — PHP 8.4 lazy ghost: same class, initialized on first property access
 $lazy = (new \ReflectionClass(HeavyService::class))
     ->newLazyGhost(function (HeavyService $service): void {
         $service->__construct(/* real dependencies */);
@@ -85,8 +73,6 @@ class Container
 }
 ```
 
----
-
 ## PHP 8.5 Features
 
 - [ ] `array_first()` / `array_last()` used instead of `reset()` / `end()` — they do not mutate the internal array pointer (PHP 8.5+)
@@ -98,8 +84,6 @@ class Container
 - [ ] Backtick operator not used — deprecated in PHP 8.5; use `shell_exec()` explicitly
 - [ ] Non-canonical casts `(boolean)`, `(integer)`, `(double)` not used — deprecated in PHP 8.5
 - [ ] `__sleep()` / `__wakeup()` replaced with `__serialize()` / `__unserialize()` — soft-deprecated in PHP 8.5
-
----
 
 ## Code Quality
 
@@ -114,8 +98,6 @@ class Container
 - [ ] No dead code, unused `use` statements, or debug artifacts (`var_dump`, `print_r`, `die`)
 - [ ] `sprintf()` or string interpolation used for multi-part strings over concatenation chains
 
----
-
 ## PSR Standards Compliance
 
 - [ ] **PSR-1**: Class names in `PascalCase`, methods in `camelCase`, constants in `UPPER_CASE`
@@ -128,8 +110,6 @@ class Container
 - [ ] **PSR-14**: Event dispatcher uses `Psr\EventDispatcher\EventDispatcherInterface` when applicable
 - [ ] **PSR-15**: HTTP middleware implements `Psr\Http\Server\MiddlewareInterface`
 
----
-
 ## OOP & Design
 
 - [ ] Interfaces type-hinted in constructor parameters — not concrete classes
@@ -141,8 +121,6 @@ class Container
 - [ ] Backed enums (`enum Status: string`) used for closed sets of values — not class constants
 - [ ] PHP 8.0+ attributes (`#[Attribute]`) used for metadata — not docblock annotations in new code
 
----
-
 ## Error Handling
 
 - [ ] Domain-specific exception types used — not generic `\Exception` or `\RuntimeException`
@@ -150,8 +128,6 @@ class Container
 - [ ] No silent catch-and-ignore (`catch (\Exception $e) {}`) — log or rethrow
 - [ ] `try/catch/finally` not used for flow control — only for genuine exceptional conditions
 - [ ] `@throws` documented for exceptions that callers must handle
-
----
 
 ## Security
 
@@ -164,23 +140,17 @@ class Container
 - [ ] `session_regenerate_id(true)` called after successful login to prevent session fixation
 - [ ] `composer audit` runs in CI — no known vulnerabilities in dependencies; `composer.lock` committed
 
----
-
 ## Testing Readiness
 
 - [ ] Code is written to be testable: dependencies injected, no hidden global state
 - [ ] Pure functions and value objects have no side effects — straightforward to unit test
 - [ ] Classes using `static` methods or globals are isolated behind interfaces for testability
 
----
-
 ## Documentation
 
 - [ ] Public methods and interfaces have PHPDoc blocks with `@param` and `@return`
 - [ ] Complex algorithms have inline comments explaining the "why" — not the "what"
 - [ ] `@throws` documented for methods that propagate exceptions callers must handle
-
----
 
 ## Anti-Patterns
 
@@ -211,23 +181,3 @@ $container->get(UserService::class);
 - [ ] `isset()` and `array_key_exists()` not used interchangeably — `isset()` returns `false` for keys with `null` value; `array_key_exists()` returns `true`
 - [ ] No dynamic variable variables (`$$var`) in application code — defeats static analysis
 - [ ] No `intval()`, `strval()`, `floatval()` — use type casting `(int)`, `(string)`, `(float)` or typed parameters
-
----
-
-## Resources
-
-- [PHP 8.2 Release Notes](https://www.php.net/releases/8.2/en.php)
-- [PHP 8.3 Release Notes](https://www.php.net/releases/8.3/en.php)
-- [PHP 8.4 Release Notes](https://www.php.net/releases/8.4/en.php)
-- [PHP 8.5 Release Notes](https://www.php.net/releases/8.5/en.php)
-- [PHP The Right Way](https://phptherightway.com/)
-- [PER Coding Style](https://www.php-fig.org/per/coding-style/)
-- [PSR-3 Logger Interface](https://www.php-fig.org/psr/psr-3/)
-- [PSR-4 Autoloading Standard](https://www.php-fig.org/psr/psr-4/)
-- [PSR-6 Cache Interface](https://www.php-fig.org/psr/psr-6/)
-- [PSR-7 HTTP Message Interface](https://www.php-fig.org/psr/psr-7/)
-- [PSR-11 Container Interface](https://www.php-fig.org/psr/psr-11/)
-- [PSR-14 Event Dispatcher](https://www.php-fig.org/psr/psr-14/)
-- [PSR-15 HTTP Handlers](https://www.php-fig.org/psr/psr-15/)
-- [PHP 8.4 Lazy Objects RFC](https://wiki.php.net/rfc/lazy-objects)
-- [Magento 2 Coding Standards](https://developer.adobe.com/commerce/php/coding-standards/) *(for Adobe Commerce projects)*

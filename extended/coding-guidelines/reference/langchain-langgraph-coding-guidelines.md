@@ -6,8 +6,6 @@ Applies to: LangChain 0.3+ / langchain-core 0.3+, LangGraph 0.2+
 
 ## General LangChain / LangGraph Patterns
 
-Rules that apply across all supported versions.
-
 ### Chain Composition
 
 - Use LCEL (LangChain Expression Language) for all chain composition — `LLMChain`, `SequentialChain`, `SimpleSequentialChain`, and `ConversationChain` are deprecated; never use them in new code
@@ -17,10 +15,7 @@ Rules that apply across all supported versions.
 - Prefer `RunnableLambda` over raw Python lambdas for named, debuggable, and traceable steps
 
 ```python
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
-
-# Good — clear, composable LCEL with named steps
+# Good
 retrieval_chain = (
     RunnablePassthrough.assign(context=retriever | format_docs)
     | prompt
@@ -42,9 +37,7 @@ chain = LLMChain(llm=llm, prompt=prompt)
 - Never interpolate user input directly into system prompt strings — always use `("human", "{variable}")` placeholders
 
 ```python
-from langchain_core.prompts import ChatPromptTemplate
-
-# Good — separated, typed, safe
+# Good
 CLASSIFY_PROMPT = ChatPromptTemplate.from_messages([
     ("system", "Classify the user message into one of: {categories}. Respond with only the category name."),
     ("human", "{message}"),
@@ -63,9 +56,7 @@ prompt = f"Classify this: {user_message}"
 - Use `with_structured_output()` with a Pydantic model for structured responses — not manual JSON-parsing prompts
 
 ```python
-from langchain.chat_models import init_chat_model
-
-# Good — configurable, bounded, injectable
+# Good
 def get_llm(model: str = "gpt-4o", temperature: float = 0.0) -> BaseChatModel:
     return init_chat_model(
         model,
@@ -88,9 +79,6 @@ llm = ChatOpenAI(model="gpt-4o")  # no bounds, scattered across files
 - Validate all tool inputs at the function boundary — never trust that the LLM will supply safe values
 
 ```python
-from langchain_core.tools import tool
-from pydantic import BaseModel, Field
-
 class SearchInput(BaseModel):
     query: str = Field(description="The search query to execute")
     max_results: int = Field(default=5, description="Maximum number of results to return", ge=1, le=20)
@@ -111,9 +99,7 @@ def search_knowledge_base(query: str, max_results: int = 5) -> str:
 - Use `RetryPolicy` on `add_node()` for nodes with transient failures — not hand-rolled retry loops inside node bodies
 
 ```python
-from langchain_core.runnables import RunnableWithFallbacks
-
-# Good — resilient chain with retry and fallback
+# Good
 chain = (
     prompt
     | llm.with_retry(stop_after_attempt=3)
@@ -130,19 +116,13 @@ chain = (
 - Tool functions: `snake_case` action verbs — `search_documents`, `calculate_price`, `fetch_user_profile`
 - Config keys in `configurable`: `snake_case` — `thread_id`, `max_retries`, `user_id`
 
----
-
 ## LangChain 0.3
-
-Everything in the General section plus the following additions and clarifications specific to the 0.3 API surface.
 
 ### Use `init_chat_model` for Provider-Agnostic LLM Instantiation
 
 `init_chat_model` (introduced in 0.2, stabilized in 0.3) replaces direct imports of provider-specific classes and makes provider switching trivial.
 
 ```python
-from langchain.chat_models import init_chat_model
-
 # Good — provider-agnostic, easy to switch
 llm = init_chat_model("gpt-4o", temperature=0.0, max_tokens=1024)
 llm_claude = init_chat_model("claude-sonnet-4-5-20250929", temperature=0.0)
@@ -157,15 +137,9 @@ llm = ChatOpenAI(model="gpt-4o")
 The `add_messages` reducer from `langgraph.graph.message` correctly handles merging message lists, deduplication by ID, and update-by-ID semantics. Use it in preference to `operator.add` for message fields.
 
 ```python
-from typing import Annotated
-from typing_extensions import TypedDict
-from langgraph.graph.message import add_messages
-
 class State(TypedDict):
     messages: Annotated[list, add_messages]  # Use add_messages, not operator.add
 ```
-
----
 
 ## LangGraph 0.2+
 
@@ -177,12 +151,7 @@ class State(TypedDict):
 - Never use mutable default values in state field definitions
 
 ```python
-from typing import Annotated
-from typing_extensions import TypedDict
-from langgraph.graph.message import add_messages
-import operator
-
-# Good — typed, reduced, minimal
+# Good
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
     current_step: str
@@ -204,10 +173,7 @@ state = {"messages": [], "step": "start"}
 - Limit individual graphs to ~10 nodes — use subgraphs for larger, compositionally distinct workflows
 
 ```python
-from typing import Literal
-from langgraph.graph import START, END, StateGraph
-
-# Good — clear routing, named function, explicit terminals
+# Good
 def should_continue(state: AgentState) -> Literal["tools", "end"]:
     last_message = state["messages"][-1]
     if last_message.tool_calls:
@@ -234,8 +200,6 @@ graph.add_conditional_edges("agent", lambda s: "tools" if s["messages"][-1].tool
 - Review what data ends up in checkpoints — avoid storing secrets or PII in graph state
 
 ```python
-from langgraph.checkpoint.memory import InMemorySaver
-
 # Testing
 memory = InMemorySaver()
 app = workflow.compile(checkpointer=memory)
@@ -262,8 +226,6 @@ src/
 │   └── calculator.py        # Calculator tool
 └── config.py                # LLM factory functions and model configuration
 ```
-
----
 
 ## Anti-Patterns
 

@@ -75,7 +75,7 @@ ai-coding-tooling/
 | Tool | Config File | Skills Directory |
 |------|-------------|-----------------|
 | Claude Code | `CLAUDE.md` | `.claude/skills/` |
-| Gemini CLI | `GEMINI.md` | `.gemini/skills/` |
 | Cursor | — | `.cursor/skills/` |
-| Windsurf | — | `.windsurf/skills/` |
+| Gemini CLI | `GEMINI.md` | `.gemini/skills/` |
 | Generic agents | `AGENTS.md` | `.agents/skills/`, `.agent/skills/` |
+| Windsurf | — | `.windsurf/skills/` |

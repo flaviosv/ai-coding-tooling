@@ -17,8 +17,6 @@ Guidelines for applying SOLID principles when writing or modifying code. These a
 - Keep entity/model classes as data containers: field definitions, constraints, and identity. Push orchestration, calculation, and side-effect logic into service classes
 - Cross-cutting concerns (logging, authentication, rate limiting, tracing) must live in dedicated layers (middleware, decorators, interceptors) — never embedded in domain or service code
 
----
-
 ## O — Open/Closed Principle
 
 **Extend behavior by adding code, not by changing existing code.**
@@ -29,8 +27,6 @@ Guidelines for applying SOLID principles when writing or modifying code. These a
 - Use interfaces, abstract classes, or composition points to allow extension without patching
 - Prefer adding a new implementation (plugin, strategy, handler, observer) over modifying an existing one to support a new case
 - When the framework provides a composition mechanism (plugins, interceptors, middleware, decorators), use it instead of subclassing or modifying core classes — composition hooks are explicit OCP enforcement
-
----
 
 ## L — Liskov Substitution Principle
 
@@ -43,8 +39,6 @@ Guidelines for applying SOLID principles when writing or modifying code. These a
 - Prefer composition over inheritance by default; only inherit when the subtype genuinely is a behavioral specialization of the parent, not merely a code reuse opportunity
 - Use explicit override markers (annotations, decorators, or attributes) on every method that overrides a parent method — they catch contract drift at the point of change before it reaches runtime
 
----
-
 ## I — Interface Segregation Principle
 
 **Keep interfaces small and focused. Don't force clients to depend on what they don't use.**
@@ -55,8 +49,6 @@ Guidelines for applying SOLID principles when writing or modifying code. These a
 - A class that depends on 10 methods but uses 2 is a coupling liability
 - Define interfaces at the point of consumption (the caller's package/module), not at the point of production (the implementation's package) — this keeps interfaces minimal and caller-driven, and avoids forcing producers to implement more than any single caller needs
 - Single-method or small-method-count interfaces are a design signal of correctness, not a sign of over-engineering
-
----
 
 ## D — Dependency Inversion Principle
 
@@ -70,8 +62,6 @@ Guidelines for applying SOLID principles when writing or modifying code. These a
 - Use factory functions or factory classes for creating instances of DI-managed objects — factories are the correct DIP mechanism when object construction requires runtime parameters that cannot be injected upfront
 - Assemble the full dependency graph in a single composition root (main function, application bootstrap, DI container configuration) — never scatter wiring logic across service classes
 - Volatile configuration (external service URLs, model names, timeouts, feature flags) must be externalized and injected, not hardcoded inside modules
-
----
 
 ## Application Rules
 

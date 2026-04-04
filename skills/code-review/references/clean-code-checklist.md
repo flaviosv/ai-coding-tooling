@@ -16,8 +16,6 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] No abbreviations unless universally understood in the domain (`url`, `id`, `api`)
 - [ ] No encoding type into names unless required by the language (`strName`, `arrItems`)
 
----
-
 ## Functions
 
 - [ ] Functions do one thing — if you can describe it with "and", it does too much
@@ -29,8 +27,6 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] No more than 3 parameters where avoidable — consider a parameter object for more
 - [ ] Early returns used to avoid deeply nested conditionals (guard clauses)
 - [ ] Cyclomatic complexity is low — flag functions with many `if`/`else`/`switch` branches (aim for ≤ 10); consider extracting into smaller functions
-
----
 
 ## Classes & Modules
 
@@ -45,8 +41,6 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] Modules and packages organized by domain or feature, not by technical layer — `models/`, `utils/`, `helpers/` catch-all directories are a structure smell
 - [ ] Value objects and data-transfer types are immutable — no public setters or mutable state on types whose purpose is to carry data
 
----
-
 ## Comments
 
 - [ ] No comments that restate what the code already says
@@ -54,8 +48,6 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] No misleading or outdated comments — comments that contradict the code are worse than none
 - [ ] Comments explain *why*, not *what* — the code explains what, comments explain the intent or constraint
 - [ ] TODO/FIXME comments reference a ticket or issue — not open-ended
-
----
 
 ## Control Flow
 
@@ -65,8 +57,6 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] No magic numbers — numeric literals that carry meaning are named constants
 - [ ] No magic strings — string literals used as flags or identifiers are constants or enums
 
----
-
 ## Side Effects & State
 
 - [ ] Functions with side effects are clearly separated from pure computation
@@ -75,16 +65,12 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] Operations that look like queries do not have hidden mutations
 - [ ] Post-transaction side effects (emails, queue publishes, external calls) are triggered after the transaction commits — not inside it
 
----
-
 ## Boundaries & Abstractions
 
 - [ ] No leaking internal implementation details through public interfaces
 - [ ] Abstractions represent domain concepts, not just technical layers
 - [ ] No inappropriate intimacy — classes don't reach into each other's internals
 - [ ] Dependency direction flows toward stability — volatile code depends on stable code, not the reverse
-
----
 
 ## Error Handling
 
@@ -95,15 +81,11 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 - [ ] Error handling is centralized — not duplicated in every handler or caller that could reach the same failure point
 - [ ] Errors are wrapped with context before propagating — callers can identify where in the call chain the error originated
 
----
-
 ## DRY & Duplication
 
 - [ ] No copy-pasted logic — duplicated code is extracted into a shared function or module
 - [ ] Shared logic is not duplicated across layers (e.g. same validation in controller and service)
 - [ ] Duplication of structure (not logic) is acceptable — don't abstract prematurely
-
----
 
 ## Formatting & Consistency
 

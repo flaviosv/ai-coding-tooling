@@ -8,20 +8,18 @@ Supplements `test-review-checklist.md` for PHP 8.2–8.5 projects using PHPUnit 
 
 ## General PHP Test Review Patterns
 
-Review patterns that apply across all PHP 8.2–8.5 projects using PHPUnit 11 or 12, regardless of version.
-
 ### Review Points
 
 #### ❌ Missing Return Types on Test Data Providers
 
 ```php
-// Bad — no return type on data provider, no named keys
+// Bad — no return type, no named keys
 public function provideValidEmails(): array
 {
     return [['user@example.com'], ['admin@test.org']];
 }
 
-// Good — typed return, named datasets, #[DataProvider] attribute (PHPUnit 10+)
+// Good — typed return, named datasets, #[DataProvider] attribute
 #[\PHPUnit\Framework\Attributes\DataProvider('provideValidEmails')]
 public function testValidEmailPasses(string $email): void { ... }
 
@@ -34,16 +32,11 @@ public static function provideValidEmails(): array
 }
 ```
 
----
-
 #### ❌ Using `@annotation` Instead of Attributes (PHPUnit 10+)
 
 ```php
 // Bad — deprecated docblock annotations; removed or erroring in PHPUnit 11+
-/**
- * @dataProvider provideEmails
- * @covers \MyApp\Validator::validate
- */
+/** @dataProvider provideEmails */
 public function testValidate(string $email): void { ... }
 
 // Good — PHP 8.x native attributes
@@ -52,47 +45,40 @@ public function testValidate(string $email): void { ... }
 public function testValidate(string $email): void { ... }
 ```
 
----
-
 #### ❌ Using `createMock()` When `createStub()` Is Appropriate (PHPUnit 11+)
 
 `createMock()` is a strict mock that implicitly verifies call expectations. `createStub()` is a pure stub — it returns configured values with no verification. Using `createMock()` without expectations misleads readers about test intent.
 
 ```php
-// Bad — createMock() used with no expectation; reader expects an assertion on the mock
+// Bad — createMock() with no expectation
 $logger = $this->createMock(LoggerInterface::class);
 $service = new OrderService($logger);
-$service->processOrder($order); // logging is incidental here; why is it a mock?
+$service->processOrder($order);
 
-// Good — createStub() makes intent explicit: the logger is just a required dependency
+// Good — createStub() makes intent explicit
 $logger = $this->createStub(LoggerInterface::class);
 $service = new OrderService($logger);
 $service->processOrder($order);
 
-// Good — createMock() only when you assert the interaction IS the behaviour under test
+// Good — createMock() only when asserting interaction IS the behaviour under test
 $logger = $this->createMock(LoggerInterface::class);
 $logger->expects($this->once())
     ->method('error')
     ->with($this->stringContains('payment failed'));
-
 $service = new OrderService($logger);
-$service->processOrder($failingOrder); // assert the error was logged
+$service->processOrder($failingOrder);
 ```
-
----
 
 #### ❌ Unaddressed Deprecation Failures in Test Output (PHPUnit 11+)
 
-PHPUnit 11+ treats `E_DEPRECATED` and `E_USER_DEPRECATED` as test failures by default. A test suite that "passes" while emitting deprecation warnings is giving false confidence — those deprecations will become fatal errors in a future PHP version.
+PHPUnit 11+ treats `E_DEPRECATED` and `E_USER_DEPRECATED` as test failures by default. A suite that "passes" while emitting deprecation warnings gives false confidence — those deprecations will become fatal errors in a future PHP version.
 
 ```php
-// Bad — test passes under PHPUnit 10 but fails under PHPUnit 11+
-// because the service internally calls a deprecated API
+// Bad — passes under PHPUnit 10 but fails under 11+
 public function testUserService(): void
 {
     $result = (new UserService())->createUser($data);
     $this->assertNotNull($result->getId());
-    // PHPUnit 11: FAIL — E_USER_DEPRECATED emitted during createUser()
 }
 
 // Good — explicitly expect the deprecation while migration is in progress
@@ -104,21 +90,16 @@ public function testUserService(): void
 }
 ```
 
----
-
 #### ❌ Broad `#[IgnoreDeprecations]` on Entire Test Class
 
-Suppressing deprecations at the class level silently swallows new deprecations as they appear. Apply `#[IgnoreDeprecations]` at the method level with a documented justification.
+Apply `#[IgnoreDeprecations]` at the method level with a documented justification. Class-level suppression silently swallows new deprecations as they appear.
 
 ```php
-// Bad — blanket suppression; new deprecations will silently pass without detection
+// Bad — blanket suppression; new deprecations pass undetected
 #[\PHPUnit\Framework\Attributes\IgnoreDeprecations]
-class UserServiceTest extends TestCase
-{
-    // All deprecations swallowed — a new one introduced next sprint goes unnoticed
-}
+class UserServiceTest extends TestCase { }
 
-// Good — method-level suppression with a reason and tracking reference
+// Good — method-level with reason and tracking reference
 #[\PHPUnit\Framework\Attributes\IgnoreDeprecations]
 public function testCompatibilityWithLegacyAdapter(): void
 {
@@ -128,19 +109,17 @@ public function testCompatibilityWithLegacyAdapter(): void
 }
 ```
 
----
-
 #### ❌ Asserting on Wrong Level of Abstraction
 
 ```php
-// Bad — one test covers too many concerns; a single failure gives no signal about root cause
+// Bad — one test covers too many concerns
 public function testUserCreation(): void
 {
     $user = $this->service->create(['name' => 'Alice', 'email' => 'alice@example.com']);
     $this->assertNotNull($user->getId());
     $this->assertEquals('Alice', $user->getName());
-    $this->assertDatabaseHas('users', ['email' => 'alice@example.com']); // integration concern in a unit test
-    $this->assertEmailSent('alice@example.com');                         // side-effect concern
+    $this->assertDatabaseHas('users', ['email' => 'alice@example.com']);
+    $this->assertEmailSent('alice@example.com');
 }
 
 // Good — focused, one concern per test
@@ -157,19 +136,16 @@ public function testCreateSendsWelcomeEmail(): void
 }
 ```
 
----
-
 #### ❌ Mocking the System Under Test
 
 ```php
-// Bad — partial mock of the class under test hides real behaviour
+// Bad — partial mock hides real behaviour
 $service = $this->getMockBuilder(UserService::class)
-    ->onlyMethods(['validateEmail'])
-    ->getMock();
+    ->onlyMethods(['validateEmail'])->getMock();
 $service->method('validateEmail')->willReturn(true);
-$service->create($data); // testing a mock, not the real class
+$service->create($data);
 
-// Good — mock only external dependencies; instantiate the real class under test
+// Good — mock only external dependencies
 $repositoryMock = $this->createMock(UserRepositoryInterface::class);
 $service        = new UserService($repositoryMock);
 $service->create($data);
@@ -177,23 +153,14 @@ $service->create($data);
 
 `getMockBuilder(...)->onlyMethods(...)` on the **system under test** is a red flag — always flag it.
 
----
-
 #### ❌ Tests with Hidden Order Dependency
 
 ```php
 // Bad — testB depends on state set by testA; fails when run in isolation
-public function testA(): void
-{
-    $this->cache->set('key', 'value');
-}
+public function testA(): void { $this->cache->set('key', 'value'); }
+public function testB(): void { $this->assertEquals('value', $this->cache->get('key')); }
 
-public function testB(): void
-{
-    $this->assertEquals('value', $this->cache->get('key')); // fragile: relies on testA
-}
-
-// Good — each test sets up its own state independently
+// Good — each test sets up its own state
 public function testCacheReturnsStoredValue(): void
 {
     $this->cache->set('key', 'value');
@@ -201,41 +168,36 @@ public function testCacheReturnsStoredValue(): void
 }
 ```
 
----
-
 #### ❌ Not Testing Exception Messages or Codes
 
 ```php
-// Bad — only checks the exception type; any InvalidArgumentException passes
+// Bad — only checks exception type
 $this->expectException(\InvalidArgumentException::class);
 $this->validator->validate('bad input');
 
-// Good — verify the exception carries meaningful diagnostic information
+// Good — verify diagnostic information
 $this->expectException(\InvalidArgumentException::class);
 $this->expectExceptionMessage('Email must not be empty');
 $this->validator->validate('');
 ```
 
----
-
 #### ❌ Not Using `#[TestWith]` for Simple Inline Data (PHPUnit 11+)
 
-A separate `provideXxx()` method with 2–3 trivial entries is unnecessary overhead. `#[TestWith]` is cleaner for small, self-contained invariant cases.
+`#[TestWith]` is cleaner for small, self-contained invariant cases (2–5 entries). Use `#[DataProvider]` for dynamically generated data, named datasets that need clear failure labels, or more than ~5 cases.
 
 ```php
-// Unnecessary — a static provider method for 3 trivial arithmetic cases
+// Bad — separate provider for 3 trivial cases
 #[\PHPUnit\Framework\Attributes\DataProvider('provideSums')]
 public function testAdd(int $a, int $b, int $expected): void
 {
     $this->assertSame($expected, $a + $b);
 }
-
 public static function provideSums(): array
 {
     return [[0, 0, 0], [1, 0, 1], [1, 1, 2]];
 }
 
-// Better — inline for small invariant cases
+// Good — inline for small invariant cases
 #[\PHPUnit\Framework\Attributes\TestWith([0, 0, 0])]
 #[\PHPUnit\Framework\Attributes\TestWith([1, 0, 1])]
 #[\PHPUnit\Framework\Attributes\TestWith([1, 1, 2])]
@@ -244,10 +206,6 @@ public function testAdd(int $a, int $b, int $expected): void
     $this->assertSame($expected, $a + $b);
 }
 ```
-
-Use `#[DataProvider]` for dynamically generated data, named datasets that need clear failure labels, or more than ~5 cases.
-
----
 
 ### Readonly Class Test Patterns (PHP 8.2+)
 
@@ -268,17 +226,14 @@ class MoneyTest extends TestCase
         $this->assertSame(1000, $money->amount);
         $this->assertSame('USD', $money->currency);
     }
-
     public function testReadonlyPropertyCannotBeModified(): void
     {
         $money = new Money(1000, 'USD');
         $this->expectException(\Error::class);
-        $money->amount = 2000; // readonly violation
+        $money->amount = 2000;
     }
 }
 ```
-
----
 
 ### Enum Test Patterns (PHP 8.1+)
 
@@ -295,13 +250,11 @@ class StatusTest extends TestCase
     {
         $this->assertSame(Status::Active, Status::from('active'));
     }
-
     public function testFromInvalidValueThrows(): void
     {
         $this->expectException(\ValueError::class);
         Status::from('unknown');
     }
-
     public function testTryFromReturnsNullOnInvalidValue(): void
     {
         $this->assertNull(Status::tryFrom('unknown'));
@@ -309,38 +262,29 @@ class StatusTest extends TestCase
 }
 ```
 
----
-
 ### Partial Mocking Anti-Pattern
 
 ```php
-// Bad — onlyMethods() on the class under test hides real behaviour
+// Bad — onlyMethods() on the class under test
 $service = $this->getMockBuilder(UserService::class)
-    ->onlyMethods(['sendEmail'])
-    ->getMock();
+    ->onlyMethods(['sendEmail'])->getMock();
 $service->method('sendEmail')->willReturn(true);
-$service->register($data); // testing a partial mock, not UserService
+$service->register($data);
 
-// Good — extract email sending behind an interface; mock that instead
+// Good — extract behind an interface; mock that instead
 $mailerMock = $this->createMock(MailerInterface::class);
 $mailerMock->expects($this->once())->method('send');
 $service = new UserService($mailerMock);
 $service->register($data);
 ```
 
----
-
 ### Mutation Testing Awareness
 
-When reviewing tests for completeness, ask:
-- Do assertions actually fail if the logic is broken? High coverage with trivial or missing assertions is meaningless.
-- Consider recommending `infection/infection` when line coverage is high but confidence in the suite is low.
+When reviewing tests for completeness, ask: Do assertions actually fail if the logic is broken? High coverage with trivial or missing assertions is meaningless. Consider recommending `infection/infection` when line coverage is high but confidence in the suite is low.
 
 ```bash
 vendor/bin/infection --min-msi=80
 ```
-
----
 
 ### Checklist for PHP Tests
 
@@ -362,41 +306,25 @@ vendor/bin/infection --min-msi=80
 - [ ] `#[TestWith]` used for 2–5 simple inline cases — `#[DataProvider]` for larger/named/generated sets (PHPUnit 11+)
 - [ ] `createMockForIntersectionOfInterfaces()` used for intersection type dependencies — not complex workarounds (PHPUnit 11+)
 
----
-
 ## PHP 8.5 Test Review Points
 
-### ❌ Not Asserting on `#[\NoDiscard]` Return Values
+#### ❌ Not Asserting on `#[\NoDiscard]` Return Values
 
 ```php
-// Bad — silently discards a return value marked #[\NoDiscard]; emits a notice at runtime
-$validator->validate($input); // return value not captured or asserted
+// Bad — silently discards a #[\NoDiscard] return value
+$validator->validate($input);
 
 // Good — capture and assert
 $result = $validator->validate($input);
 $this->assertTrue($result->isValid());
 ```
 
-### ❌ Using `reset()` / `end()` Instead of `array_first()` / `array_last()`
+#### ❌ Using `reset()` / `end()` Instead of `array_first()` / `array_last()`
 
 ```php
-// Bad — reset()/end() mutate the internal array pointer; subtle in chained assertion calls
+// Bad — reset()/end() mutate internal array pointer
 $first = reset($items);
 
 // Good — PHP 8.5+: side-effect free
 $first = array_first($items);
 ```
-
----
-
-## Resources
-
-- [PHPUnit 12 Documentation](https://docs.phpunit.de/en/12.5/)
-- [PHPUnit 11 Migration Guide](https://phpunit.de/announcements/phpunit-11.html)
-- [PHPUnit 12 Migration Guide](https://phpunit.de/announcements/phpunit-12.html)
-- [PHP 8.2 readonly classes](https://www.php.net/releases/8.2/en.php)
-- [PHP 8.4 Release Notes](https://www.php.net/releases/8.4/en.php)
-- [PHP 8.5 Release Notes](https://www.php.net/releases/8.5/en.php)
-- [PHP Enums](https://www.php.net/manual/en/language.enumerations.php)
-- [PHP Fibers](https://www.php.net/manual/en/language.fibers.php)
-- [infection/infection Mutation Testing](https://infection.github.io/)

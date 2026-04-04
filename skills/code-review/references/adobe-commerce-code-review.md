@@ -21,8 +21,6 @@ Supplements the generic `review-checklist.md` and `php-code-review.md` for proje
 - [ ] Admin routes use `ScopeConfigInterface` for configuration reads — not direct `env.php` access in business logic
 - [ ] `\Magento\Framework\Exception\*` typed exceptions thrown from service layer — never `\Exception` directly, which leaks stack traces
 
----
-
 ## Performance
 
 - [ ] Collections use `addFieldToSelect()` with an explicit field list — never `addFieldToSelect('*')` which loads all EAV attributes
@@ -36,11 +34,7 @@ Supplements the generic `review-checklist.md` and `php-code-review.md` for proje
 - [ ] Indexer `reindexAll()` never called during a web request — mark as `invalidate()` and let cron handle it
 - [ ] GraphQL resolvers use batching (`BatchServiceContractResolverInterface`) or a request-scoped cache to avoid N+1 resolver calls
 
----
-
 ## Architecture & Design
-
-Examples of correct DI wiring and plugin usage:
 
 ```xml
 <!-- etc/di.xml — correct plugin declaration with sortOrder -->
@@ -87,8 +81,6 @@ class OrderProcessor
 - [ ] `<sequence>` declarations in `etc/module.xml` are accurate — missing sequences cause random load-order failures
 - [ ] Extension attributes (`etc/extension_attributes.xml`) used to add data to existing core entities — never modifying core `Api/Data` interfaces
 
----
-
 ## Code Quality
 
 - [ ] Observers are stateless — implement `ObserverInterface`, carry no mutable instance state that persists across requests
@@ -103,8 +95,6 @@ class OrderProcessor
 - [ ] `__()` translation function used for all user-visible strings — no hardcoded English text in PHP or templates
 - [ ] Layout handle scope correct — module-specific layouts use module-specific handles, not `default.xml`
 
----
-
 ## Adobe Commerce Best Practices
 
 - [ ] `di.xml` plugins have a clear `sortOrder` to avoid conflicts with other plugins on the same method
@@ -118,25 +108,9 @@ class OrderProcessor
 - [ ] Message payloads in queues contain only entity IDs — not serialized full objects, which bloat the queue and break on schema changes
 - [ ] Plugins intercept only public methods — no plugin targeting protected or private methods (they are silently ignored, creating an invisible bug)
 
----
-
 ## Documentation
 
 - [ ] Public interfaces and service contract methods have complete PHPDoc blocks (`@param`, `@return`, `@throws`)
 - [ ] `@api` annotation present on stable public interfaces in `Api/`
 - [ ] Complex business logic has inline comments explaining the "why", not the "what"
 - [ ] `README.md` or module `docs/` updated if the public API or module configuration changes
-
----
-
-## Resources
-
-- [Adobe Commerce Developer Documentation](https://developer.adobe.com/commerce/docs/)
-- [Magento 2 Coding Standards](https://developer.adobe.com/commerce/php/coding-standards/)
-- [Service Contracts](https://developer.adobe.com/commerce/php/development/components/service-contracts/)
-- [Plugins (Interceptors)](https://developer.adobe.com/commerce/php/development/components/plugins/)
-- [Declarative Schema](https://developer.adobe.com/commerce/php/development/components/declarative-schema/)
-- [Dependency Injection](https://developer.adobe.com/commerce/php/development/components/dependency-injection/)
-- [Extension Attributes](https://developer.adobe.com/commerce/php/development/components/add-attributes/)
-- [Adobe Commerce Security Best Practices](https://experienceleague.adobe.com/docs/commerce-operations/security-and-compliance/overview.html)
-- [Message Queues](https://developer.adobe.com/commerce/php/development/components/message-queues/)

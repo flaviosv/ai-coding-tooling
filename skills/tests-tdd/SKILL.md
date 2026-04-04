@@ -56,8 +56,6 @@ Behavioral principles for test-first development. Apply regardless of language o
 - If you feel the urge to write implementation first and "add tests later", stop. That is the moment TDD matters most.
 - TDD is not about testing — it is about design. The tests force you to think about the interface before the implementation.
 
----
-
 ## When to Apply TDD
 
 ### Bug fixes
@@ -75,15 +73,11 @@ Behavioral principles for test-first development. Apply regardless of language o
 2. Refactor
 3. Run tests again — behavior must be unchanged
 
----
-
 ## When NOT to Apply TDD
 
 - **Spiking / prototyping** — exploring a new library or API to learn how it works. Throw the spike away and TDD the real implementation.
 - **Trivial code** — getters, setters, simple data classes with no logic. Tests add noise without value.
 - **UI exploration** — visual layout, styling, design iteration. TDD the behavior behind the UI, not the pixels.
-
----
 
 ## Tech-Specific Patterns
 

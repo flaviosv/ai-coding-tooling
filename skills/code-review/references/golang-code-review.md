@@ -7,8 +7,6 @@ For Gin-specific handler review, also load `gin-code-review.md` if present.
 
 ## General Go Patterns
 
-Universal conventions that apply across all supported Go versions (1.23+).
-
 ### Error Handling
 
 - [ ] Errors returned, not swallowed — `_ = err` only with explicit justification comment
@@ -19,7 +17,7 @@ Universal conventions that apply across all supported Go versions (1.23+).
 - [ ] Panics avoided in library code; only acceptable in `main` for truly unrecoverable states
 
 ```go
-// Good — wraps with context so stack trace is meaningful
+// Good
 func loadConfig(path string) (*Config, error) {
     data, err := os.ReadFile(path)
     if err != nil {
@@ -86,7 +84,7 @@ defer f.Close()
 // Bad — no defer; cleanup may be skipped on early return
 f, err := os.Open(path)
 if err != nil { return err }
-// ... long function body with multiple return paths ...
+// ...
 f.Close()
 ```
 
@@ -137,8 +135,6 @@ db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM users WHERE id = %s", userID))
 
 ## Go 1.23
 
-Patterns and features available as of Go 1.23 (the older of the two currently supported releases).
-
 ### Concurrency
 
 - [ ] Goroutines respect context cancellation — `select` on `ctx.Done()`
@@ -166,10 +162,9 @@ func worker(ctx context.Context, jobs <-chan Job) {
 
 // Bad — goroutine has no exit path
 func leakyWorker(jobs <-chan Job) {
-    for job := range jobs {
+    for job := range jobs { // leaks if jobs is never closed
         process(job)
     }
-    // leaks if jobs is never closed
 }
 ```
 
@@ -194,8 +189,6 @@ if err := g.Wait(); err != nil {
 
 ```go
 // Good — iter.Seq for lazy, allocation-free traversal
-import "iter"
-
 func ActiveItems(items []Item) iter.Seq[Item] {
     return func(yield func(Item) bool) {
         for _, item := range items {
@@ -258,8 +251,6 @@ log.Printf("request completed: %s %s %d %dms", r.Method, r.URL.Path, statusCode,
 
 ## Go 1.24
 
-Only what is new in Go 1.24 compared to Go 1.23.
-
 ### Filesystem Sandboxing
 
 - [ ] `os.Root` used for sandboxed filesystem access when path traversal must be restricted
@@ -271,7 +262,6 @@ if err != nil {
     return fmt.Errorf("opening upload root: %w", err)
 }
 defer root.Close()
-
 // All operations are scoped to /var/data/uploads; path traversal is rejected
 f, err := root.Open(userProvidedFilename)
 if err != nil {
@@ -287,7 +277,7 @@ f, err := os.Open(filepath.Join("/var/data/uploads", userProvidedFilename))
 - [ ] `b.Loop()` used in benchmarks instead of `for i := 0; i < b.N; i++` (Go 1.24+)
 
 ```go
-// Good — b.Loop() is preferred in Go 1.24+
+// Good
 func BenchmarkProcess(b *testing.B) {
     data := setupData()
     b.ResetTimer()
@@ -309,7 +299,6 @@ for i := 0; i < b.N; i++ {
 ```go
 // Good — generic alias for a type-safe set
 type Set[K comparable] = map[K]bool
-
 // Usage: Set[string], Set[int] — no wrapper type needed
 ```
 
@@ -387,20 +376,3 @@ p := new(Config)
 # Good — run before merging to auto-fix outdated patterns
 go fix -fix=modernize ./...
 ```
-
----
-
-## Resources
-
-- [Effective Go](https://go.dev/doc/effective_go)
-- [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
-- [Go 1.23 Release Notes](https://go.dev/doc/go1.23)
-- [Go 1.24 Release Notes](https://go.dev/doc/go1.24)
-- [Go 1.25 Release Notes](https://go.dev/doc/go1.25)
-- [Go 1.26 Release Notes](https://go.dev/doc/go1.26)
-- [slices package](https://pkg.go.dev/slices)
-- [maps package](https://pkg.go.dev/maps)
-- [iter package](https://pkg.go.dev/iter)
-- [weak package](https://pkg.go.dev/weak)
-- [log/slog package](https://pkg.go.dev/log/slog)
-- [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)

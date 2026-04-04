@@ -2,13 +2,11 @@
 
 Applies to: PHP 8.2–8.5 projects using PHPUnit 11 or 12. Framework-specific testing guides live in separate files.
 
-> **PHPUnit versions:** PHPUnit 10 is EOL (ended Feb 2025). PHPUnit 11 requires PHP 8.2+ and is the minimum floor. PHPUnit 12 (Feb 2025) is the recommended version for new projects.
-
 ---
 
-## General PHP Testing Patterns
+> **PHPUnit versions:** PHPUnit 10 is EOL (ended Feb 2025). PHPUnit 11 requires PHP 8.2+ and is the minimum floor. PHPUnit 12 (Feb 2025) is the recommended version for new projects.
 
-Patterns and conventions that apply across all PHP 8.2–8.5 projects using PHPUnit 11 or 12, regardless of version.
+## General PHP Testing Patterns
 
 ### Setup
 
@@ -54,8 +52,6 @@ Key PHPUnit 12 config attributes:
 - `failOnDeprecation="true"` — treat `E_DEPRECATED` / `E_USER_DEPRECATED` as test failures (default in PHPUnit 11+)
 - `failOnPhpunitDeprecation="true"` — treat internal PHPUnit deprecations as failures (surfaces migration issues early)
 
----
-
 ### Unit Tests
 
 #### Constructor Injection
@@ -63,41 +59,31 @@ Key PHPUnit 12 config attributes:
 ```php
 // tests/Unit/Service/InvoiceServiceTest.php
 namespace Tests\Unit\Service;
-
 use App\Service\InvoiceService;
 use App\Repository\InvoiceRepositoryInterface;
-use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\MockObject\MockObject;
-
 class InvoiceServiceTest extends TestCase
 {
     private InvoiceService $service;
     private InvoiceRepositoryInterface&MockObject $repository;
-
     protected function setUp(): void
     {
         $this->repository = $this->createMock(InvoiceRepositoryInterface::class);
         $this->service    = new InvoiceService($this->repository);
     }
-
     public function testCreateSavesInvoice(): void
     {
         $this->repository->expects($this->once())->method('save');
         $this->service->create(['amount' => 1000, 'currency' => 'USD']);
     }
-
     public function testCreateThrowsWhenRepositoryFails(): void
     {
         $this->repository->method('save')
             ->willThrowException(new \RuntimeException('DB error'));
-
         $this->expectException(\RuntimeException::class);
         $this->service->create(['amount' => 1000, 'currency' => 'USD']);
     }
 }
 ```
-
----
 
 ### Test Doubles: Stubs vs Mocks (PHPUnit 11+)
 
@@ -108,7 +94,6 @@ PHPUnit 11 formalized the distinction between stubs and mocks. Use the right too
 // Use when you only need a dependency to return something; you are NOT testing the interaction.
 $stub = $this->createStub(LoggerInterface::class);
 $stub->method('info')->willReturn(null);
-
 $service = new OrderService($stub);
 $service->process($order); // logging is a side-effect here; we are not asserting on it
 
@@ -118,7 +103,6 @@ $mock = $this->createMock(MailerInterface::class);
 $mock->expects($this->once())
     ->method('send')
     ->with($this->equalTo('user@example.com'));
-
 $service = new RegistrationService($mock);
 $service->register(['email' => 'user@example.com']); // asserts send() was called exactly once
 ```
@@ -126,21 +110,15 @@ $service->register(['email' => 'user@example.com']); // asserts send() was calle
 #### Intersection Type Mocks
 
 ```php
-use App\Repository\UserRepositoryInterface;
-use App\Repository\CacheableInterface;
-
 // When the type hint is an intersection (UserRepositoryInterface&CacheableInterface),
-// use createMockForIntersectionOfInterfaces() instead of createMock()
+// use createMockForIntersectionOfInterfaces()
 $mock = $this->createMockForIntersectionOfInterfaces([
     UserRepositoryInterface::class,
     CacheableInterface::class,
 ]);
-
 $mock->method('findById')->willReturn($user);
 $mock->method('isCached')->willReturn(true);
 ```
-
----
 
 ### Data Providers
 
@@ -154,13 +132,11 @@ class EmailValidatorTest extends TestCase
     {
         $this->assertTrue((new EmailValidator())->isValid($email));
     }
-
     #[\PHPUnit\Framework\Attributes\DataProvider('provideInvalidEmails')]
     public function testInvalidEmailFails(string $email): void
     {
         $this->assertFalse((new EmailValidator())->isValid($email));
     }
-
     public static function provideValidEmails(): array
     {
         return [
@@ -169,7 +145,6 @@ class EmailValidatorTest extends TestCase
             'plus-addressing' => ['user+tag@example.com'],
         ];
     }
-
     public static function provideInvalidEmails(): array
     {
         return [
@@ -187,7 +162,6 @@ For 2–5 simple cases where a separate provider method adds unnecessary overhea
 
 ```php
 use PHPUnit\Framework\Attributes\TestWith;
-
 class MathTest extends TestCase
 {
     #[TestWith([0, 0, 0])]
@@ -202,8 +176,6 @@ class MathTest extends TestCase
 ```
 
 Use `#[DataProvider]` for large, named, or dynamically generated datasets. Use `#[TestWith]` for small, invariant inline cases.
-
----
 
 ### Testing Deprecated Code (PHPUnit 11+)
 
@@ -223,7 +195,6 @@ public function testLegacyMethodEmitsDeprecation(): void
 
 ```php
 use PHPUnit\Framework\Attributes\IgnoreDeprecations;
-
 #[IgnoreDeprecations]
 public function testServiceWithLegacyAdapter(): void
 {
@@ -237,7 +208,6 @@ public function testServiceWithLegacyAdapter(): void
 
 ```php
 use PHPUnit\Framework\Attributes\IgnoreDeprecations;
-
 #[IgnoreDeprecations]
 class LegacyAdapterTest extends TestCase
 {
@@ -246,14 +216,11 @@ class LegacyAdapterTest extends TestCase
 }
 ```
 
----
-
 ### Conditional Skipping by Version (PHPUnit 11+)
 
 ```php
 use PHPUnit\Framework\Attributes\RequiresPhp;
 use PHPUnit\Framework\Attributes\RequiresPhpunit;
-
 class ArrayHelpersTest extends TestCase
 {
     #[RequiresPhp('>= 8.5')]
@@ -261,7 +228,6 @@ class ArrayHelpersTest extends TestCase
     {
         $this->assertSame(1, array_first([1, 2, 3]));
     }
-
     #[RequiresPhpunit('^12')]
     public function testFeatureRequiringPhpUnit12(): void
     {
@@ -270,15 +236,12 @@ class ArrayHelpersTest extends TestCase
 }
 ```
 
----
-
 ### Disabling the Error Handler (PHPUnit 12)
 
 When testing code that sets its own error handler, use `#[WithoutErrorHandler]` to prevent PHPUnit's error handler from intercepting errors first:
 
 ```php
 use PHPUnit\Framework\Attributes\WithoutErrorHandler;
-
 class CustomErrorHandlerTest extends TestCase
 {
     #[WithoutErrorHandler]
@@ -289,16 +252,12 @@ class CustomErrorHandlerTest extends TestCase
             $received = $errstr;
             return true;
         });
-
         trigger_error('test error', E_USER_WARNING);
         restore_error_handler();
-
         $this->assertSame('test error', $received);
     }
 }
 ```
-
----
 
 ### Testing Readonly Classes (PHP 8.2+)
 
@@ -310,25 +269,21 @@ readonly class Address
         public string $city,
         public string $country,
     ) {}
-
     public function withCity(string $city): self
     {
         return new self($this->street, $city, $this->country);
     }
 }
-
 class AddressTest extends TestCase
 {
     public function testWithCityReturnsNewInstance(): void
     {
         $original = new Address('Main St', 'London', 'GB');
         $updated  = $original->withCity('Manchester');
-
         $this->assertNotSame($original, $updated);
         $this->assertSame('London', $original->city);     // original unchanged
         $this->assertSame('Manchester', $updated->city);
     }
-
     public function testPropertiesAreImmutable(): void
     {
         $address = new Address('Main St', 'London', 'GB');
@@ -338,8 +293,6 @@ class AddressTest extends TestCase
 }
 ```
 
----
-
 ### Testing Enums (PHP 8.1+)
 
 ```php
@@ -348,7 +301,6 @@ enum Priority: int
     case Low    = 1;
     case Medium = 5;
     case High   = 10;
-
     public function label(): string
     {
         return match ($this) {
@@ -358,33 +310,27 @@ enum Priority: int
         };
     }
 }
-
 class PriorityTest extends TestCase
 {
     public function testFromValidValue(): void
     {
         $this->assertSame(Priority::High, Priority::from(10));
     }
-
     public function testFromInvalidValueThrows(): void
     {
         $this->expectException(\ValueError::class);
         Priority::from(99);
     }
-
     public function testTryFromReturnsNull(): void
     {
         $this->assertNull(Priority::tryFrom(99));
     }
-
     public function testLabelReturnsCorrectString(): void
     {
         $this->assertSame('High Priority', Priority::High->label());
     }
 }
 ```
-
----
 
 ### Testing Typed Class Constants (PHP 8.3+)
 
@@ -394,22 +340,18 @@ class Config
     const int    MAX_RETRIES     = 3;
     const string DEFAULT_LOCALE  = 'en_GB';
 }
-
 class ConfigTest extends TestCase
 {
     public function testMaxRetriesIsThree(): void
     {
         $this->assertSame(3, Config::MAX_RETRIES);
     }
-
     public function testDefaultLocaleIsEnGb(): void
     {
         $this->assertSame('en_GB', Config::DEFAULT_LOCALE);
     }
 }
 ```
-
----
 
 ### Testing Property Hooks (PHP 8.4+)
 
@@ -424,13 +366,11 @@ class Temperature
             $this->celsius = $value;
         }
     }
-
     // Virtual property — no backing field; computed on read
     public float $fahrenheit {
         get => $this->celsius * 9 / 5 + 32;
     }
 }
-
 class TemperatureTest extends TestCase
 {
     public function testValidTemperatureSet(): void
@@ -440,7 +380,6 @@ class TemperatureTest extends TestCase
         $this->assertSame(100.0, $t->celsius);
         $this->assertSame(212.0, $t->fahrenheit); // virtual property
     }
-
     public function testBelowAbsoluteZeroThrows(): void
     {
         $t = new Temperature();
@@ -450,8 +389,6 @@ class TemperatureTest extends TestCase
     }
 }
 ```
-
----
 
 ### Testing Fibers (PHP 8.1+)
 
@@ -464,18 +401,14 @@ class FiberTest extends TestCase
             $input = \Fiber::suspend('waiting');
             return "got: $input";
         });
-
         $suspended = $fiber->start();
         $this->assertSame('waiting', $suspended);
-
         $fiber->resume('hello');
         $this->assertTrue($fiber->isTerminated());
         $this->assertSame('got: hello', $fiber->getReturn());
     }
 }
 ```
-
----
 
 ### Exception Testing
 
@@ -485,12 +418,9 @@ public function testThrowsWithCorrectMessage(): void
     $this->expectException(\InvalidArgumentException::class);
     $this->expectExceptionMessage('Email must not be empty');
     $this->expectExceptionCode(422);
-
     (new EmailValidator())->validate('');
 }
 ```
-
----
 
 ### setUp vs setUpBeforeClass
 
@@ -506,7 +436,6 @@ class InvoiceServiceTest extends TestCase
         $this->repository = $this->createMock(InvoiceRepositoryInterface::class);
         $this->service    = new InvoiceService($this->repository);
     }
-
     public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
@@ -516,8 +445,6 @@ class InvoiceServiceTest extends TestCase
 ```
 
 Avoid `setUpBeforeClass()` for mutable objects — shared state causes test-order coupling.
-
----
 
 ### Mocking Final Classes
 
@@ -536,28 +463,21 @@ composer require --dev dg/bypass-finals
 
 2. **Wrapper / interface** (preferred when you own the code) — introduce an interface and mock that instead of the final class.
 
----
-
 ### Integration Tests with Real Database
 
 ```php
 // tests/Integration/Repository/InvoiceRepositoryTest.php
 namespace Tests\Integration\Repository;
-
 use App\Repository\InvoiceRepository;
-use PHPUnit\Framework\TestCase;
-
 class InvoiceRepositoryTest extends TestCase
 {
     private \PDO $pdo;
     private InvoiceRepository $repository;
-
     protected function setUp(): void
     {
         if (!getenv('TEST_DB_HOST')) {
             $this->markTestSkipped('Integration DB not configured');
         }
-
         $this->pdo = new \PDO(
             'mysql:host=' . getenv('TEST_DB_HOST') . ';dbname=' . getenv('TEST_DB_NAME'),
             getenv('TEST_DB_USER'),
@@ -567,12 +487,10 @@ class InvoiceRepositoryTest extends TestCase
         $this->pdo->beginTransaction(); // each test runs in its own transaction
         $this->repository = new InvoiceRepository($this->pdo);
     }
-
     protected function tearDown(): void
     {
         $this->pdo->rollBack(); // always rolls back — leaves DB clean
     }
-
     public function testSaveAndFindById(): void
     {
         $id      = $this->repository->save(['amount' => 1000, 'currency' => 'USD']);
@@ -581,8 +499,6 @@ class InvoiceRepositoryTest extends TestCase
     }
 }
 ```
-
----
 
 ### Mutation Testing
 
@@ -597,8 +513,6 @@ vendor/bin/infection --min-msi=80 --min-covered-msi=90
 - **Covered MSI** — MSI restricted to code your tests actually execute.
 
 High line coverage with low MSI reveals tests that execute code without meaningfully asserting on it.
-
----
 
 ### Test Organization
 
@@ -617,25 +531,18 @@ tests/
 - **Unit tests**: pure logic, no I/O, no DB, all external dependencies stubbed/mocked.
 - **Integration tests**: real DB, real filesystem — stub only external services.
 
----
-
 ### Running Tests
 
 ```bash
 # All tests
 vendor/bin/phpunit
-
 # Specific suite
 vendor/bin/phpunit --testsuite Unit
-
 # Specific file
 vendor/bin/phpunit tests/Unit/Service/InvoiceServiceTest.php
-
 # With coverage (requires Xdebug or PCOV)
 XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-html coverage/
 ```
-
----
 
 ## PHP 8.5 Testing Patterns
 
@@ -650,7 +557,6 @@ class SlugifierTest extends TestCase
             |> trim(...)
             |> strtolower(...)
             |> (fn($s) => str_replace(' ', '-', $s));
-
         $this->assertSame('hello-world', $slugify('  Hello World  '));
     }
 }
@@ -666,14 +572,12 @@ readonly class Order
         public string $status,
     ) {}
 }
-
 class CloneWithTest extends TestCase
 {
     public function testCloneWithChangesStatus(): void
     {
         $original = new Order('ord-1', 'pending');
         $updated  = clone($original, ['status' => 'shipped']);
-
         $this->assertSame('pending', $original->status); // original unchanged
         $this->assertSame('shipped', $updated->status);
         $this->assertSame('ord-1', $updated->id);         // other fields preserved
@@ -692,7 +596,6 @@ class ValidatorTest extends TestCase
         $result = (new Validator())->validate('valid@example.com');
         $this->assertTrue($result->isValid());
     }
-
     public function testInvalidReturnsFailureResult(): void
     {
         $result = (new Validator())->validate('');
@@ -706,7 +609,6 @@ class ValidatorTest extends TestCase
 
 ```php
 use Uri\Rfc3986\Uri;
-
 class UriParserTest extends TestCase
 {
     public function testExtractsHost(): void
@@ -714,7 +616,6 @@ class UriParserTest extends TestCase
         $uri = new Uri('https://example.com/path?q=1');
         $this->assertSame('example.com', $uri->getHost());
     }
-
     public function testInvalidUriThrows(): void
     {
         $this->expectException(\Uri\InvalidUriException::class);
@@ -722,17 +623,3 @@ class UriParserTest extends TestCase
     }
 }
 ```
-
----
-
-## Resources
-
-- [PHPUnit 12 Documentation](https://docs.phpunit.de/en/12.5/)
-- [PHPUnit 11 Migration Guide](https://phpunit.de/announcements/phpunit-11.html)
-- [PHPUnit 12 Migration Guide](https://phpunit.de/announcements/phpunit-12.html)
-- [PHP 8.3 Typed Constants](https://www.php.net/releases/8.3/en.php)
-- [PHP 8.4 Property Hooks](https://www.php.net/releases/8.4/en.php)
-- [PHP 8.5 Release Notes](https://www.php.net/releases/8.5/en.php)
-- [PHP Enums](https://www.php.net/manual/en/language.enumerations.php)
-- [PHP Fibers](https://www.php.net/manual/en/language.fibers.php)
-- [infection/infection Mutation Testing](https://infection.github.io/)

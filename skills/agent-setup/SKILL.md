@@ -16,8 +16,6 @@ metadata:
 
 # Agent Setup
 
-Sets up the global agent configuration by symlinking this project's `AGENTS.global.md` to the agent's global config file and installing all global skills from the Tech Leads Club registry.
-
 ## Guardrails
 
 ### Scope
@@ -70,8 +68,6 @@ Do NOT proceed with any further steps if the file exists.
 ## Step 2: Ensure required directories exist, then create the symlink
 
 Some agents require their config directory and/or skills directory to be created first. Check the agent reference file — if it specifies a `mkdir` step, run it before symlinking.
-
-Then run:
 
 ```bash
 ln -s "$(pwd)/AGENTS.global.md" <config-path>

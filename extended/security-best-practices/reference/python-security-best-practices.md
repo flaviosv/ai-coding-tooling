@@ -15,8 +15,6 @@ This document covers security patterns that apply to **all Python code**, regard
 Framework-specific files reference "general Python security rules" — this is that file.
 Do not repeat patterns already covered by framework-specific files.
 
----
-
 ## 1) Injection Prevention
 
 ### PY-SEC-001: Never pass user-controlled input to `subprocess` with `shell=True`
@@ -32,12 +30,11 @@ Required:
 - SHOULD use `subprocess.run(..., check=True)` to raise on non-zero exit codes.
 
 ```python
-# Bad — command injection via filename
-import subprocess
+# Bad
 filename = request.data["file"]
 subprocess.run(f"convert {filename} output.pdf", shell=True)
 
-# Good — list form; no shell expansion
+# Good
 subprocess.run(["convert", filename, "output.pdf"], check=True)
 ```
 
@@ -55,11 +52,11 @@ Required:
 - SHOULD use a purpose-built parser or schema validation (Pydantic, marshmallow) for structured input.
 
 ```python
-# Bad — arbitrary code execution
+# Bad
 formula = request.data["formula"]
 result = eval(formula)
 
-# Good — safe literal parsing only
+# Good
 import ast
 config_value = ast.literal_eval(config_string)  # only for trusted constant strings
 ```
@@ -76,10 +73,10 @@ Required:
 - MUST NOT use f-strings, `%` formatting, or `.format()` to interpolate values into SQL strings.
 
 ```python
-# Bad — SQL injection via string interpolation
+# Bad
 cursor.execute(f"SELECT * FROM users WHERE username = '{username}'")
 
-# Good — parameterized
+# Good
 cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
 
 # Good — ORM (Django/SQLAlchemy)
@@ -98,15 +95,12 @@ Required:
 - MUST NOT use `yaml.load(data)` without `Loader=yaml.SafeLoader`.
 
 ```python
-# Bad — RCE via !!python/object constructor in YAML payload
-import yaml
+# Bad
 data = yaml.load(user_yaml)
 
 # Good
 data = yaml.safe_load(user_yaml)
 ```
-
----
 
 ## 2) Deserialization
 
@@ -124,10 +118,10 @@ Required:
 - MUST apply schema validation to all deserialized data before use.
 
 ```python
-# Bad — arbitrary code execution via crafted pickle payload
+# Bad
 data = pickle.loads(request.body)
 
-# Good — JSON + schema validation
+# Good
 import json
 from pydantic import BaseModel
 
@@ -137,8 +131,6 @@ class Payload(BaseModel):
 
 data = Payload(**json.loads(request.body))
 ```
-
----
 
 ## 3) Cryptography
 
@@ -156,14 +148,14 @@ Required:
   (`os.urandom` is acceptable directly; `uuid4` is acceptable only for identifiers, not secrets.)
 
 ```python
-# Bad — predictable; seeded from system time
+# Bad
 import random, string
 token = "".join(random.choices(string.ascii_letters + string.digits, k=32))
 
 # Good
 import secrets
-token = secrets.token_urlsafe(32)   # URL-safe base64, 32 bytes of entropy
-api_key = secrets.token_hex(24)      # hex string, 24 bytes of entropy
+token = secrets.token_urlsafe(32)
+api_key = secrets.token_hex(24)
 ```
 
 ### PY-SEC-007: Never use MD5 or SHA-1 for password hashing or security purposes
@@ -180,7 +172,7 @@ Required:
 - MUST use `hashlib.sha256` or stronger for non-password integrity checks.
 
 ```python
-# Bad — MD5 for password storage
+# Bad
 import hashlib
 stored = hashlib.md5(password.encode()).hexdigest()
 
@@ -206,17 +198,15 @@ Required:
 - MUST NOT use `==`, `!=`, or `in` for these comparisons.
 
 ```python
-# Bad — timing attack vulnerability
+# Bad
 if user_token == stored_token:
     ...
 
-# Good — constant-time comparison
+# Good
 import hmac
 if hmac.compare_digest(user_token.encode(), stored_token.encode()):
     ...
 ```
-
----
 
 ## 4) Secrets and Credentials
 
@@ -235,14 +225,14 @@ Required:
 - MUST NOT log or print credential values at any log level.
 
 ```python
-# Bad — credential in source
+# Bad
 DB_PASSWORD = "s3cr3t"
 API_KEY = "sk-prod-..."
 
 # Bad — silent fallback hides missing config
 api_key = os.getenv("API_KEY", "dev-key-123")
 
-# Good — fail loudly if the secret is absent
+# Good
 import os
 DB_PASSWORD = os.environ["DB_PASSWORD"]
 API_KEY = os.environ["API_KEY"]
@@ -261,14 +251,12 @@ Required:
 - MUST ensure that `repr()` and `str()` of domain objects do not expose credential fields.
 
 ```python
-# Bad — password visible in logs
+# Bad
 logger.error(f"Login failed for user {username} with password {password}")
 
-# Good — redact sensitive fields
+# Good
 logger.error(f"Login failed for user {username}")
 ```
-
----
 
 ## 5) Input Validation
 
@@ -286,11 +274,11 @@ Required:
 - MUST reject input that fails validation with a specific error — never silently coerce or ignore.
 
 ```python
-# Bad — unchecked dict access
+# Bad
 def create_order(data: dict) -> Order:
     return Order(user_id=data["user_id"], amount=data["amount"])
 
-# Good — Pydantic validates types and ranges at the boundary
+# Good
 from pydantic import BaseModel, Field, PositiveFloat
 
 class CreateOrderInput(BaseModel):
@@ -317,7 +305,7 @@ Required:
 # Bad — path traversal: ../../etc/passwd
 open(os.path.join("/uploads", user_path))
 
-# Good — resolve and validate
+# Good
 from pathlib import Path
 
 UPLOAD_ROOT = Path("/uploads").resolve()
@@ -328,8 +316,6 @@ def safe_open(user_path: str) -> Path:
         raise PermissionError("Access denied: path outside upload directory")
     return resolved
 ```
-
----
 
 ## 6) Assert Abuse
 
@@ -346,18 +332,16 @@ Required:
 - MUST use explicit `if` conditions with `raise` to enforce security invariants.
 
 ```python
-# Bad — silently disabled with python -O
+# Bad
 assert user.is_authenticated, "Must be logged in"
 assert len(password) >= 8, "Password too short"
 
-# Good — always enforced
+# Good
 if not user.is_authenticated:
     raise PermissionError("Must be logged in")
 if len(password) < 8:
     raise ValueError("Password must be at least 8 characters")
 ```
-
----
 
 ## 7) Dependency Security
 
@@ -375,7 +359,7 @@ Required:
 - MUST NOT merge dependency updates without reviewing the changelog for security-relevant changes.
 
 ```bash
-# Good — run in CI pipeline
+# Good
 pip audit
 # or
 safety check -r requirements.txt

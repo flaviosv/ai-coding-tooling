@@ -13,8 +13,6 @@ Technology-specific checklists extend this file.
 - [ ] Appropriate data structures used for the access pattern (e.g. set/map for lookups, not list scan)
 - [ ] String concatenation inside loops replaced with a buffer or join approach — repeated concatenation causes repeated allocations
 
----
-
 ## Memory Management
 
 - [ ] No resource leaks — connections, file handles, streams, and buffers are properly closed
@@ -23,8 +21,6 @@ Technology-specific checklists extend this file.
 - [ ] Iterators or lazy sequences used when data is consumed once
 - [ ] Expensive objects or resources initialized lazily rather than eagerly on every request — defer construction until first use
 - [ ] Reusable buffers or object pools used in hot paths rather than allocating fresh instances per request
-
----
 
 ## Database & Storage
 
@@ -37,8 +33,6 @@ Technology-specific checklists extend this file.
 - [ ] Existence and count checks performed at the data layer — not by fetching all records into memory
 - [ ] Filtering, sorting, and aggregation pushed to the data layer — not performed in application code after loading a full result set
 
----
-
 ## I/O & Network
 
 - [ ] Blocking I/O is not on hot synchronous paths where async is possible
@@ -49,16 +43,12 @@ Technology-specific checklists extend this file.
 - [ ] Request cancellation signals propagated to all downstream I/O calls — downstream work does not outlive a cancelled or disconnected client
 - [ ] Inbound request and payload sizes bounded to prevent unbounded memory consumption under load
 
----
-
 ## Async & Concurrency
 
 - [ ] Heavy or long-running operations deferred to background jobs or queues
 - [ ] Bulk operations used instead of per-item loops (e.g. bulk insert/update)
 - [ ] Independent operations run in parallel where safe to do so
 - [ ] Async code does not block the event loop
-
----
 
 ## Caching & Memoization
 
@@ -67,15 +57,11 @@ Technology-specific checklists extend this file.
 - [ ] Redundant external calls (API, DB) eliminated with appropriate caching
 - [ ] Cached values are minimal representations (IDs, summaries) rather than large raw objects — oversized cache entries waste memory and increase serialization overhead
 
----
-
 ## Serialization & Data Transfer
 
 - [ ] Typed, schema-bound structures used for serialization rather than generic maps or dictionaries — typed structures serialize faster and avoid runtime field reflection
 - [ ] Only the fields required by the consumer are included in serialized payloads — no wildcard or select-all patterns when a subset suffices
 - [ ] Large payloads streamed incrementally rather than buffered fully in memory before sending
-
----
 
 ## Profiling & Measurement
 
@@ -84,12 +70,9 @@ Technology-specific checklists extend this file.
 - [ ] Benchmarks or load tests exist to quantify the before/after impact of performance changes
 - [ ] Profiling endpoints or debug tools are not exposed on public-facing interfaces in production
 
----
-
 ## General Principles
 
 1. **Measure before optimising** — profile to confirm the bottleneck before changing anything
 2. **Hot path first** — optimise code that runs frequently or handles high-volume requests
 3. **Trade-offs** — consider performance vs readability; do not sacrifice clarity without clear gain
-4. **Scalability** — prefer stateless design, background processing, and circuit breakers for
-   external dependencies
+4. **Scalability** — prefer stateless design, background processing, and circuit breakers for external dependencies

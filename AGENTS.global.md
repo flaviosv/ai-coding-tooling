@@ -39,8 +39,7 @@ in your context — do NOT re-read it. Re-read only when:
 - You detect the file was modified during this session (e.g., via Edit or Write tool)
 - The user explicitly states the file has changed
 
-After a re-read, the updated content becomes the cached version — do not re-read again unless another
-trigger occurs.
+After a re-read, the updated content becomes the cached version — do not re-read again unless another trigger occurs.
 
 ## Skill Transparency
 
@@ -74,39 +73,43 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 - One tack per subagent for focused execution
 
 ## Self-Improvement Loop
+
 - After ANY correction from the user: update `docs/LESSONS.md` with the pattern
     - Update the docs in the project folder, not the global one
 - Write rules for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
 
-## Verificaton Before Done
+## Verification Before Done
+
 - Never mark a task complete without proving it works
 - Diff behavior between main and your changes when relevant
 - Ask yourself: "Would a staff engineer approve this?"
 - Run tests, check logs, demonstrate correctness
-    - Ask for approval for such tasks 
+    - Ask for approval for such tasks
 
 ## Demand Elegance (Balanced)
+
 - For non-trivial changes: pause and ask "is there a more elegant way?"
 - If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
 - Skip this for simple, obvious fixes – don't over-engineer
 - Challenge your own work before presenting it
 
 ## Autonomous Bug Fixing
+
 - When given a bug report: just fix it. Don't ask for hand-holding
 - Point at logs, errors, failing tests – then resolve them
 - Zero context switching required from the user
 - Go fix failing CI tests without being told how
 
-  ## Task Management
+## Task Management
 
-    1. **Plan First**: Write plan to `docs/tasks/todo.md` with checkable items
-    2. **Verify Plan**: Check in before starting implementation
-    3. **Track Progress**: Mark items complete as you go
-    4. **Explain Changes**: High-level summary at each step
-    5. **Document Results**: Add review section to `docs/tasks/todo.md`
-    6. **Capture Lessons**: Update `docs/tasks/lessons.md` after corrections
+1. **Plan First**: Write plan to `docs/tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `docs/tasks/todo.md`
+6. **Capture Lessons**: Update `docs/tasks/lessons.md` after corrections
 
 ## Core Principles
 
@@ -123,8 +126,9 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 Three skills have extended versions that must be loaded alongside the base skill when present:
 
 - **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/solid-guidelines.md` for OOP-style code.
+- **docs-writer**: if `extended/docs-writer/SKILL.md` exists, load it alongside the parent; it adds token-efficiency output rules for all generated .md content.
 - **security-best-practices**: if `SKILL.extended.md` exists, load it; also load matching files from `skills/security-best-practices/reference/` for the project's tech stack.
-- **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases and documents the `extended/` pattern.
+- **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases and documents the `extended/` pattern; also enforces token-efficiency rules for generated skill and reference files via `templates/token-efficiency-rules.md`.
 
 # Global Skills
 

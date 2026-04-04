@@ -7,24 +7,19 @@ For Gin-specific handler test review, also load `gin-tests-code-review.md` if pr
 
 ## General Go Test Review Patterns
 
-Universal test quality expectations that apply across all supported Go versions (1.23+).
-
 ### Test Structure
 
 #### Black-Box Testing by Default
 
 ```go
-// Bad — same package without justification; tests unexported state
+// Bad — same package; tests unexported state
 package mypackage
-
 func TestInternalCounter(t *testing.T) {
-    obj := &myObject{}
-    assert.Equal(t, 0, obj.internalCounter) // testing private state
+    assert.Equal(t, 0, (&myObject{}).internalCounter)
 }
 
-// Good — black-box by default; test via the public API
+// Good — black-box by default; test via public API
 package mypackage_test
-
 func TestItemValidation(t *testing.T) {
     item := Item{Name: "Test"}
     assert.NoError(t, item.Validate())
@@ -36,38 +31,29 @@ Use `package foo` (without `_test`) only when testing private functions is genui
 #### Test Names
 
 ```go
-// Bad — name tells you nothing about the scenario or expected outcome
+// Bad
 func TestItem(t *testing.T) {}
 func TestCase1(t *testing.T) {}
 
-// Good — top-level name identifies component + method; subtests describe scenario
+// Good — top-level identifies component + method; subtests describe scenario
 func TestItemHandlerList(t *testing.T) {
     t.Run("returns 200 and items on success", func(t *testing.T) { ... })
     t.Run("returns 500 when use case fails", func(t *testing.T) { ... })
     t.Run("returns empty list when no items found", func(t *testing.T) { ... })
 }
-
 // Also acceptable — verbose single-function naming
 func TestItem_Validate_EmptyName_ReturnsError(t *testing.T) {}
 ```
 
----
-
 ## Table-Driven Tests
-
-### Copy-Pasted Test Cases
 
 ```go
 // Bad — repeated structure, brittle, hard to extend
 func TestPagination(t *testing.T) {
     _, err1 := NewPagination(50, 0)
     assert.NoError(t, err1)
-
     _, err2 := NewPagination(200, 0)
     assert.Error(t, err2)
-
-    _, err3 := NewPagination(50, -1)
-    assert.Error(t, err3)
 }
 
 // Good — table-driven with descriptive case names and error message assertions
@@ -83,7 +69,6 @@ func TestPagination_Validation(t *testing.T) {
         {name: "limit too high", limit: 200, offset: 0, wantErr: true, errMsg: "exceeds maximum"},
         {name: "negative offset", limit: 50, offset: -1, wantErr: true, errMsg: "cannot be negative"},
     }
-
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             _, err := NewPagination(tt.limit, tt.offset)
@@ -98,11 +83,7 @@ func TestPagination_Validation(t *testing.T) {
 }
 ```
 
-Use table-driven tests for: 3+ similar cases, multiple status codes, multiple validation rules, or edge cases (nil, empty, zero, boundary values).
-
-For complex scenarios with varying mock behaviour, use function fields in the table struct.
-
----
+Use table-driven tests for: 3+ similar cases, multiple status codes, multiple validation rules, or edge cases (nil, empty, zero, boundary values). For complex scenarios with varying mock behaviour, use function fields in the table struct.
 
 ## Arrange-Act-Assert
 
@@ -116,10 +97,8 @@ func TestUseCaseList(t *testing.T) {
         },
     }
     useCase := NewUseCase(mockRepo)
-
     // Act
     items, err := useCase.List(context.Background())
-
     // Assert
     require.NoError(t, err)
     assert.Len(t, items, 1)
@@ -127,20 +106,18 @@ func TestUseCaseList(t *testing.T) {
 }
 ```
 
----
-
 ## Mocking
 
 ### Over-Complex Mocks
 
 ```go
-// Bad — tracking every call adds noise; rarely asserted on
+// Bad — tracking every call; rarely asserted on
 type MockRepository struct {
     ListCallCount   int
     ListCallHistory []context.Context
 }
 
-// Good — simple and focused; only add fields you actually assert on
+// Good — only add fields you actually assert on
 type MockItemRepository struct {
     ListFunc func(ctx context.Context) ([]Item, error)
 }
@@ -156,32 +133,20 @@ func (m *MockItemRepository) List(ctx context.Context) ([]Item, error) {
 
 ```go
 // Bad — hits a real DB in a unit test
-func TestUseCaseList(t *testing.T) {
-    repo := NewRepository(setupRealDatabase())
-    useCase := NewUseCase(repo)
-    // ...
-}
+repo := NewRepository(setupRealDatabase())
 
-// Good — mock the interface for unit tests; real DB only in integration tests
-func TestUseCaseList(t *testing.T) {
-    mockRepo := &MockItemRepository{...}
-    useCase := NewUseCase(mockRepo)
-    // ...
-}
+// Good — mock the interface; real DB only in integration tests
+mockRepo := &MockItemRepository{...}
+useCase := NewUseCase(mockRepo)
 ```
-
----
 
 ## Database Tests
 
-### No Isolation and No Cleanup
-
 ```go
-// Bad — no isolation, leaves data, may hit the wrong DB
+// Bad — no isolation, leaves data, may hit wrong DB
 func TestRepository(t *testing.T) {
-    db := getProductionDB() // wrong
+    db := getProductionDB()
     NewRepository(db).Create(&Item{Name: "Test"})
-    // depends on previous test state
 }
 
 // Good — isolated, skippable, cleaned up
@@ -191,11 +156,8 @@ func TestItemRepository_Integration(t *testing.T) {
     }
     db := setupTestDB(t) // uses testcontainers or TEST_DB_URL
     // t.Cleanup registered inside setupTestDB
-    // ...
 }
 ```
-
----
 
 ## Context Usage
 
@@ -211,18 +173,14 @@ func TestOperationRespectsTimeout(t *testing.T) {
     assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
-// Bad — nil context or abusing context.TODO()
-items, err := useCase.List(nil) // nil context causes a panic in most implementations
+// Bad — nil context causes panic in most implementations
+items, err := useCase.List(nil)
 ```
-
----
 
 ## Test Helpers
 
-### Copy-Pasted Setup
-
 ```go
-// Bad — duplicated literal across tests; change in one place breaks another
+// Bad — duplicated literal across tests
 func TestA(t *testing.T) { item := Item{Name: "Test Item", ID: "id-1"} }
 func TestB(t *testing.T) { item := Item{Name: "Test Item", ID: "id-1"} }
 
@@ -236,7 +194,7 @@ func newTestItem(opts ...func(*Item)) Item {
 }
 ```
 
-Always call `t.Helper()` in helper functions so failures point to the calling test, not the helper:
+Always call `t.Helper()` in helper functions so failures point to the calling test:
 
 ```go
 func assertItemValid(t *testing.T, item Item) {
@@ -246,14 +204,12 @@ func assertItemValid(t *testing.T, item Item) {
 }
 ```
 
----
-
 ## Common Anti-Patterns
 
 ### `time.Sleep` for Synchronisation
 
 ```go
-// Bad — slow and non-deterministic; test may fail on a slow CI machine
+// Bad — slow and non-deterministic
 go doWork()
 time.Sleep(1 * time.Second)
 assert.True(t, workDone)
@@ -297,25 +253,20 @@ Always run: `go test -race ./...`
 ### Not Cleaning Up Resources
 
 ```go
-// Bad — file never closed or removed; leaks in the test runner
+// Bad — file never closed or removed
 f, _ := os.Create("test.txt")
 
 // Good — register cleanup immediately after creation
 f, err := os.Create("test.txt")
 require.NoError(t, err)
-t.Cleanup(func() {
-    f.Close()
-    os.Remove("test.txt")
-})
+t.Cleanup(func() { f.Close(); os.Remove("test.txt") })
 ```
-
----
 
 ## Checklist for Go Tests
 
 ### Structure
 - [ ] Black-box `_test` package used by default
-- [ ] Test names identify component + method; subtests name the scenario and outcome
+- [ ] Test names identify component + method; subtests name scenario and outcome
 - [ ] Table-driven tests used for 3+ similar cases
 - [ ] Arrange-Act-Assert sections clearly separated
 - [ ] `t.Helper()` called in all helper functions
@@ -345,11 +296,9 @@ t.Cleanup(func() {
 
 ### Assertions
 - [ ] `assert` for non-critical checks; `require` for setup preconditions
-- [ ] Not using `reflect.DeepEqual` — use `slices.Equal`, `maps.Equal`, or `assert.Equal` instead
-- [ ] No error values silently ignored (`_ = err`) in test code — use `require.NoError` or `assert.NoError`
-- [ ] Test variables use `got`/`want` naming convention for actual vs expected values
-
----
+- [ ] Not using `reflect.DeepEqual` — use `slices.Equal`, `maps.Equal`, or `assert.Equal`
+- [ ] No error values silently ignored (`_ = err`) — use `require.NoError` or `assert.NoError`
+- [ ] Test variables use `got`/`want` naming convention
 
 ## Go 1.23 Test Review Points
 
@@ -358,17 +307,15 @@ t.Cleanup(func() {
 Iterators using `iter.Seq` / `iter.Seq2` must call `return` when `yield` returns `false`. Reviews must confirm both full traversal and early-break are tested.
 
 ```go
-// Bad — only tests full traversal; misses the early-stop contract
+// Bad — only tests full traversal; misses early-stop contract
 func TestActiveItems(t *testing.T) {
     items := []Item{{Name: "A", IsActive: true}, {Name: "B", IsActive: true}}
     var got []Item
-    for item := range ActiveItems(items) {
-        got = append(got, item)
-    }
+    for item := range ActiveItems(items) { got = append(got, item) }
     assert.Len(t, got, 2)
 }
 
-// Good — also test that the iterator stops when consumer breaks
+// Good — also tests iterator stops when consumer breaks
 func TestActiveItems_StopsOnBreak(t *testing.T) {
     items := []Item{{Name: "A", IsActive: true}, {Name: "B", IsActive: true}}
     var got []Item
@@ -376,80 +323,58 @@ func TestActiveItems_StopsOnBreak(t *testing.T) {
         got = append(got, item)
         break
     }
-    assert.Len(t, got, 1) // only first item; B was never yielded
+    assert.Len(t, got, 1)
 }
 ```
 
 ### `reflect.DeepEqual` on Slices/Maps
 
 ```go
-// Bad — reflect.DeepEqual is slow, gives poor error output, and can produce
-// false results for types with unexported fields
-if !reflect.DeepEqual(got, want) {
-    t.Errorf("got %v, want %v", got, want)
-}
+// Bad — slow, poor error output, false results with unexported fields
+if !reflect.DeepEqual(got, want) { t.Errorf("got %v, want %v", got, want) }
 
 // Good — type-safe comparisons (Go 1.21+)
-import "slices"
-if !slices.Equal(got, want) {
-    t.Errorf("got %v, want %v", got, want)
-}
-
-import "maps"
-if !maps.Equal(gotMap, wantMap) {
-    t.Errorf("got %v, want %v", gotMap, wantMap)
-}
+if !slices.Equal(got, want) { t.Errorf("got %v, want %v", got, want) }
+if !maps.Equal(gotMap, wantMap) { t.Errorf("got %v, want %v", gotMap, wantMap) }
 ```
-
----
 
 ## Go 1.24 Test Review Points
 
-### `b.Loop()` in Benchmarks
+### `b.Loop()` in Benchmarks (Go 1.24+)
 
 ```go
-// Bad — old style; b.Loop() is preferred in Go 1.24+
-for i := 0; i < b.N; i++ {
-    _ = Process(data)
-}
+// Bad — old style
+for i := 0; i < b.N; i++ { _ = Process(data) }
 
 // Good (Go 1.24+)
-for b.Loop() {
-    _ = Process(data)
-}
+for b.Loop() { _ = Process(data) }
 ```
 
-**Benchmark checklist items:**
+**Benchmark checklist:**
 - [ ] `b.ResetTimer()` called after expensive setup
 - [ ] `b.ReportAllocs()` called when tracking memory efficiency
 - [ ] `b.Loop()` used instead of `i < b.N` (Go 1.24+)
-- [ ] Benchmark result is used (assign to `_`) — prevents compiler elimination
+- [ ] Benchmark result assigned to `_` — prevents compiler elimination
 - [ ] Sub-benchmarks test scaling behaviour across input sizes
 
-### `t.Cleanup` with `os.Root`
+### `t.Cleanup` with `os.Root` (Go 1.24+)
 
 ```go
-// Bad — os.Root handle not closed; OS-level file descriptor leak
-func TestFileAccess(t *testing.T) {
-    root, _ := os.OpenRoot(t.TempDir())
-    // ... test body ... root.Close() forgotten
-}
+// Bad — os.Root handle not closed
+root, _ := os.OpenRoot(t.TempDir())
 
 // Good — always register cleanup
-func TestFileAccess(t *testing.T) {
-    root, err := os.OpenRoot(t.TempDir())
-    require.NoError(t, err)
-    t.Cleanup(func() { root.Close() })
-    // ... test body ...
-}
+root, err := os.OpenRoot(t.TempDir())
+require.NoError(t, err)
+t.Cleanup(func() { root.Close() })
 ```
 
 ### Unnecessary Loop Variable Capture (Go 1.22+)
 
 ```go
-// Bad — tt := tt is a pre-1.22 workaround; unnecessary and misleading in Go 1.22+ projects
+// Bad — tt := tt is a pre-1.22 workaround; unnecessary in Go 1.22+
 for _, tt := range tests {
-    tt := tt // remove this in Go 1.22+ projects
+    tt := tt // remove this
     t.Run(tt.name, func(t *testing.T) {
         t.Parallel()
         assert.Equal(t, tt.want, process(tt.input))
@@ -465,26 +390,22 @@ for _, tt := range tests {
 }
 ```
 
----
-
 ## Go 1.25 Test Review Points (upcoming)
 
-> `testing/synctest` is not yet in a stable release (current stable: Go 1.24, March 2026). Apply only on pre-release builds.
+> `testing/synctest` not yet stable (current: Go 1.24, March 2026). Apply only on pre-release builds.
 
 ### `time.Sleep` in Timing-Sensitive Tests
 
 ```go
-// Bad — real sleep makes tests slow and timing-dependent; flaky on CI
+// Bad — real sleep makes tests slow and flaky
 func TestCacheExpiry(t *testing.T) {
     cache := NewCache(1 * time.Second)
     cache.Set("key", "value")
-    time.Sleep(2 * time.Second) // slow and flaky
+    time.Sleep(2 * time.Second)
     assert.Nil(t, cache.Get("key"))
 }
 
 // Good — testing/synctest with fake clock (Go 1.25+)
-import "testing/synctest"
-
 func TestCacheExpiry(t *testing.T) {
     synctest.Run(func() {
         cache := NewCache(1 * time.Second)
@@ -495,109 +416,57 @@ func TestCacheExpiry(t *testing.T) {
 }
 ```
 
-```go
-// Bad — real timeout delay in test
-func TestRequestTimesOut(t *testing.T) {
-    ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-    defer cancel()
-    time.Sleep(200 * time.Millisecond) // real wait; test takes 200ms+
-    err := doRequest(ctx)
-    assert.ErrorIs(t, err, context.DeadlineExceeded)
-}
+Same pattern applies to `context.WithTimeout` tests — wrap in `synctest.Run` so `time.Sleep` uses the fake clock.
 
-// Good — fake clock, instant execution (Go 1.25+)
-func TestRequestTimesOut(t *testing.T) {
-    synctest.Run(func() {
-        ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-        defer cancel()
-        time.Sleep(200 * time.Millisecond) // fake — no real delay
-        err := doRequest(ctx)
-        assert.ErrorIs(t, err, context.DeadlineExceeded)
-    })
-}
-```
-
-**Checklist additions for Go 1.25+ projects:**
+**Checklist for Go 1.25+:**
 - [ ] `testing/synctest` used for time-dependent concurrent tests — not `time.Sleep`
-
----
 
 ## Go 1.26 Test Review Points (upcoming)
 
-> Go 1.26 is not yet in a stable release (current stable: Go 1.24, March 2026).
+> Go 1.26 not yet stable (current: Go 1.24, March 2026).
 
 ### `go fix -fix=modernize` Before Review
 
-Go 1.26 ships a `go fix` modernizer that auto-updates outdated patterns. Test code reviews should confirm this has been run before submission.
+Go 1.26 ships a modernizer that auto-updates outdated patterns. Reviews should confirm this ran before submission.
 
 ```bash
-# Run before submitting for review
 go fix -fix=modernize ./...
 ```
 
-Patterns it fixes in test code automatically:
-- `reflect.DeepEqual(sliceA, sliceB)` → `slices.Equal(sliceA, sliceB)`
-- `tt := tt` loop captures → removed
-- `sort.Slice` in test helpers → `slices.SortFunc`
+Patterns it fixes: `reflect.DeepEqual` -> `slices.Equal`, `tt := tt` captures removed, `sort.Slice` -> `slices.SortFunc`.
 
-### `new(T, value)` in Test Fixtures
+### `new(T, value)` in Test Fixtures (Go 1.26+)
 
 ```go
-// Bad — two-step allocation in test setup
+// Bad — two-step allocation
 config := new(ServerConfig)
 *config = ServerConfig{Host: "localhost", Port: 8080}
 
-// Good (Go 1.26+) — allocate and initialise in one expression
+// Good (Go 1.26+)
 config := new(ServerConfig, ServerConfig{Host: "localhost", Port: 8080})
 ```
 
-**Checklist additions for Go 1.26+ projects:**
+**Checklist for Go 1.26+:**
 - [ ] `go fix -fix=modernize ./...` run before review — outdated test patterns auto-fixed
-
----
 
 ## Fuzzing Review
 
 ```go
-// Good — seed corpus covers known edge cases; fuzz function asserts invariants only
+// Good — seed corpus covers edge cases; fuzz asserts invariants only
 func FuzzParseInput(f *testing.F) {
-    // Seed corpus: include empty, boundary, and tricky inputs
     f.Add("")
     f.Add("valid input")
     f.Add("null\x00byte")
-    f.Add(strings.Repeat("a", 10000)) // large input
-
+    f.Add(strings.Repeat("a", 10000))
     f.Fuzz(func(t *testing.T, input string) {
-        // Must not panic on any input
         result, err := ParseInput(input)
-        if err == nil {
-            // Assert invariants — not exact output values
-            _ = result
-        }
+        if err == nil { _ = result }
     })
 }
 ```
 
-**Fuzzing checklist items:**
+**Fuzzing checklist:**
 - [ ] Seed corpus (`f.Add()`) includes empty input, boundary values, and known-tricky inputs
 - [ ] Fuzz function asserts invariants only — not exact output values
-- [ ] Corpus files under `testdata/fuzz/FuzzXxx/` are committed to source control
-- [ ] Run with `-fuzz` flag in CI for a bounded duration: `go test -fuzz=FuzzParseInput -fuzztime=30s`
-
----
-
-## Resources
-
-- [Go Testing Package](https://pkg.go.dev/testing)
-- [Testify](https://github.com/stretchr/testify)
-- [Table-Driven Tests](https://go.dev/wiki/TableDrivenTests)
-- [Go Subtests](https://go.dev/blog/subtests)
-- [Go Fuzzing](https://go.dev/doc/fuzz)
-- [go-sqlmock](https://github.com/DATA-DOG/go-sqlmock)
-- [testing/synctest package](https://pkg.go.dev/testing/synctest)
-- [slices package](https://pkg.go.dev/slices)
-- [maps package](https://pkg.go.dev/maps)
-- [Go 1.23 Release Notes](https://go.dev/doc/go1.23)
-- [Go 1.24 Release Notes](https://go.dev/doc/go1.24)
-- [Go 1.25 Release Notes](https://go.dev/doc/go1.25)
-- [Go 1.26 Release Notes](https://go.dev/doc/go1.26)
+- [ ] Corpus files under `testdata/fuzz/FuzzXxx/` committed to source control
+- [ ] Run with `-fuzz` flag in CI: `go test -fuzz=FuzzParseInput -fuzztime=30s`

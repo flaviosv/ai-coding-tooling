@@ -20,8 +20,6 @@ Use this as a baseline — technology-specific checklists extend this file.
 - [ ] File uploads validated for type, size, and path — traversal and arbitrary write prevented
 - [ ] Dependency vulnerability scanning runs in CI — not just at install time
 
----
-
 ## Performance
 
 - [ ] No unbounded data fetches (pagination or limits applied)
@@ -31,8 +29,6 @@ Use this as a baseline — technology-specific checklists extend this file.
 - [ ] Caching applied where data is expensive to compute and changes infrequently
 - [ ] Resource leaks avoided — connections, file handles, and streams are properly closed
 - [ ] Heavy or long-running operations deferred (async, queue, background job) where appropriate
-
----
 
 ## Architecture & Design
 
@@ -46,8 +42,6 @@ Use this as a baseline — technology-specific checklists extend this file.
 - [ ] Dependencies are injected — business logic does not construct concrete services or infrastructure objects inline
 - [ ] Middleware and interceptor responsibilities are narrow — each handles one cross-cutting concern and does not leak into adjacent layers
 
----
-
 ## Scope & Simplicity
 
 Aligns with the **Simplicity First** and **Surgical Changes** principles from coding-guidelines.
@@ -60,8 +54,6 @@ Aligns with the **Simplicity First** and **Surgical Changes** principles from co
 - [ ] Code volume is proportional to the problem — if a simpler solution exists, flag it
 - [ ] Every changed line traces to a stated requirement — flag anything that doesn't
 
----
-
 ## Code Quality
 
 - [ ] Code is readable — intent is clear without needing comments to explain what it does
@@ -72,8 +64,6 @@ Aligns with the **Simplicity First** and **Surgical Changes** principles from co
 - [ ] No debug artifacts left behind (`print`, `console.log`, `TODO: remove`, etc.)
 - [ ] Complex or non-obvious logic has an explanatory comment
 
----
-
 ## Documentation
 
 - [ ] Public functions, methods, and classes have documentation (docstring, JSDoc, etc.)
@@ -81,8 +71,6 @@ Aligns with the **Simplicity First** and **Surgical Changes** principles from co
 - [ ] Inline comments explain *why*, not just *what*
 - [ ] `README` or usage docs updated if behaviour, configuration, or setup changed
 - [ ] Exceptions or errors that callers must handle are documented in the function signature or docstring
-
----
 
 ## Tests
 

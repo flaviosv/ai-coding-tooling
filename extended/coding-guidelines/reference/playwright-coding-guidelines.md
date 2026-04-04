@@ -20,22 +20,19 @@ Sourced from the official Playwright documentation and best-practices guide.
 - **Page Object classes**: PascalCase with `Page` suffix — `LoginPage`, `DashboardPage`, `CheckoutPage`
 
 ```typescript
-// Good naming — declarative, describes system behaviour
+// Good — declarative, describes system behaviour
 test.describe('Checkout', () => {
   test('adds shipping address and proceeds to payment', async ({ page }) => { ... });
   test('shows error banner when card is declined', async ({ page }) => { ... });
   test('applies a valid promo code and reduces the total', async ({ page }) => { ... });
 });
 
-// Bad naming — imperative; describes test actions, not system behaviour
+// Bad — imperative; describes test actions, not system behaviour
 test.describe('Test checkout', () => {
   test('test add address', async ({ page }) => { ... });
-  test('test declined card', async ({ page }) => { ... });
-  test('test promo code', async ({ page }) => { ... });
+  // ...
 });
 ```
-
----
 
 ### File Organization
 
@@ -63,8 +60,6 @@ playwright.config.ts
   user.json
   admin.json
 ```
-
----
 
 ### Locator Conventions
 
@@ -96,8 +91,7 @@ export class LoginPage {
 export class LoginPage {
   async login(email: string, password: string) {
     await this.page.getByLabel('Email').fill(email);
-    await this.page.getByLabel('Password').fill(password);
-    await this.page.getByRole('button', { name: 'Sign in' }).click();
+    // ...
   }
 }
 ```
@@ -109,8 +103,6 @@ Locator priority order (most to least resilient):
 3. `getByPlaceholder` / `getByText` — visible text when role/label unavailable
 4. `getByTestId` — explicit data attribute for components with no natural ARIA role
 5. CSS / XPath — last resort; flag in review
-
----
 
 ### Async/Await Discipline
 
@@ -130,16 +122,12 @@ await expect(page.getByText('Error')).toBeVisible();
 
 Enforce this rule statically: enable `@typescript-eslint/no-floating-promises` in `eslint.config.ts`.
 
----
-
 ### Configuration
 
 All test-wide settings belong in `playwright.config.ts`. Never hardcode base URLs, timeouts, or browser options in test files.
 
 ```typescript
 // playwright.config.ts — standard configuration pattern
-import { defineConfig, devices } from '@playwright/test';
-
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -163,8 +151,6 @@ export default defineConfig({
 });
 ```
 
----
-
 ### Assertions Style
 
 Use web-first assertions (`expect(locator).*`) exclusively. Never check state imperatively.
@@ -182,8 +168,6 @@ expect(text).toContain('Success');
 // Bad — isVisible() resolves immediately; fails under any render delay
 expect(await page.getByText('Welcome').isVisible()).toBe(true);
 ```
-
----
 
 ### Anti-Patterns
 
@@ -212,14 +196,3 @@ await page.getByLabel('Password').fill('Admin@123');
 // Bad — new browser launched inside a test; defeats the worker model
 const browser = await chromium.launch();
 ```
-
----
-
-## Resources
-
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
-- [Playwright Locators](https://playwright.dev/docs/locators)
-- [Page Object Model](https://playwright.dev/docs/pom)
-- [Test Fixtures](https://playwright.dev/docs/test-fixtures)
-- [Playwright Configuration](https://playwright.dev/docs/test-configuration)
-- [Web-First Assertions](https://playwright.dev/docs/test-assertions)

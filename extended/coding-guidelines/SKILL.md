@@ -19,48 +19,21 @@ metadata:
 
 ## How to Use This Extension
 
-This file is always loaded together with the parent `SKILL.md`. Both must be active simultaneously.
+Load this file alongside the parent `SKILL.md`. Both must be active simultaneously.
 
 ## Reference Files
 
-> **CONSTRAINT: Load ONLY stack-relevant references.**
-> Reference files use `<tech-prefix>-<purpose>.md` naming. A file is tech-specific if its name
-> starts with a known prefix (e.g., `python-`, `django-`, `go-`, `gin-`). A file is generic if it
-> has no tech prefix (e.g., `solid-guidelines.md`). Skip all non-matching tech-specific files.
-> If `docs/PROJECT_DETAILS.md` is missing or has no Tech Stack section, do NOT load any
-> tech-specific references — load only generic files (e.g., `solid-guidelines.md`).
+Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
 
-Detect the project's tech stack from `docs/PROJECT_DETAILS.md`. Then check both reference
-locations and load ONLY matching files:
+Detect the project's tech stack from `docs/PROJECT_DETAILS.md`. Then check both reference locations and load ONLY matching files:
 
-1. **Parent skill's `reference/` directory** — contains language and framework-specific review
-   checklists (e.g. `golang-code-review.md`, `python-django-code-review.md`). Load ONLY files
-   whose tech prefix matches the detected stack. Skip non-matching files.
+1. **Parent skill's `reference/` directory** — contains language and framework-specific review checklists (e.g. `golang-code-review.md`, `python-django-code-review.md`). Load ONLY files whose tech prefix matches the detected stack. Skip non-matching files.
 
-2. **This extension's `reference/` directory** — contains language and framework-specific coding
-   style guides (e.g. `go-coding-guidelines.md`, `php-adobe-commerce-coding-guidelines.md`). Load ONLY files
-   whose tech prefix matches the detected stack. Skip non-matching files.
+2. **This extension's `reference/` directory** — contains language and framework-specific coding style guides (e.g. `go-coding-guidelines.md`, `php-adobe-commerce-coding-guidelines.md`). Load ONLY files whose tech prefix matches the detected stack. Skip non-matching files.
 
-Reference files in both directories follow the naming convention `<language>-<framework>-*.md` or
-`<language>-*.md`. Load ONLY files that match the detected stack — if the project uses Python + Django,
-load `python-*` and `django-*` files from both locations. Skip all other tech-specific files.
+Reference files in both directories follow the naming convention `<language>-<framework>-*.md` or `<language>-*.md`. Load ONLY files that match the detected stack — if the project uses Python + Django, load `python-*` and `django-*` files from both locations. Skip all other tech-specific files.
 
-If no matching reference file exists for the detected stack in either location, STOP immediately before proceeding with any coding task. Output the following alert and wait for the user's response:
-
----
-🚨🔴 **UNSUPPORTED TECH STACK — ACTION REQUIRED** 🔴🚨
-
-> ❌ No tech-specific reference files were found for the detected stack: **[detected stack]**
-> Neither the parent skill's `reference/` directory nor this extension's `reference/` directory contains matching guidelines.
->
-> **Choose how to proceed:**
-> 1. 🛠️ **Add support** — run the `tech-reference-add` skill to generate guidelines for this stack, then retry.
-> 2. ⚠️ **Proceed without stack-specific rules** — base behavioral guidelines only will apply. Tech-specific naming, idioms, and patterns will NOT be enforced.
->
-> _Reply with **1** or **2** to continue._
----
-
-Do not apply any coding guidelines or make any code changes until the user replies. If they choose option 2, proceed using only the parent skill's behavioral guidelines and note at the top of your response that no stack-specific rules are in effect.
+If no matching reference file exists for the detected stack in either location, STOP immediately and apply [Unsupported Tech Stack Alert](../../templates/unsupported-tech-stack-alert.md).
 
 ## SOLID Principles
 

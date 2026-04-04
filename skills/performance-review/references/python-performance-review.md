@@ -1,6 +1,7 @@
 # Python Reference — performance-review
 
-<!-- General section covers conventions that apply across ALL still-supported Python versions (3.9–3.14) -->
+---
+
 ## General Python Performance Patterns
 
 ### Avoid Unnecessary Work
@@ -12,11 +13,10 @@
 def get_names(items):
     return (item.name for item in items)
 
-# Use when you need to iterate once
 for name in get_names(items):
     process(name)
 
-# Bad — creates full list in memory
+# Bad
 def get_names(items):
     return [item.name for item in items]
 ```
@@ -28,7 +28,7 @@ def get_names(items):
 if any(item.is_active for item in items):
     ...
 
-# Bad — evaluates everything
+# Bad
 if True in [item.is_active for item in items]:
     ...
 ```
@@ -39,10 +39,9 @@ if True in [item.is_active for item in items]:
 
 ```python
 # Good — single allocation
-parts = ["Hello", " ", "World"]
-result = "".join(parts)
+result = "".join(["Hello", " ", "World"])
 
-# Bad — creates new string each iteration
+# Bad — new string each iteration
 result = ""
 for part in parts:
     result += part
@@ -54,7 +53,7 @@ for part in parts:
 # Good — fastest option in Python 3.6+
 label = f"Item: {item.name} ({item.id})"
 
-# Acceptable — but slower than f-strings
+# Acceptable — but slower
 label = "Item: {} ({})".format(item.name, item.id)
 
 # Avoid — old style
@@ -73,7 +72,7 @@ if item_id in active_ids:
 
 # Bad — O(n) lookup
 active_ids = [item.id for item in items if item.is_active]
-if item_id in active_ids:  # Linear scan
+if item_id in active_ids:
     ...
 ```
 
@@ -97,8 +96,8 @@ most_common = category_counts.most_common(5)
 ```python
 from functools import cache, lru_cache
 
-# Good — cache the result of an expensive pure function
-@cache  # equivalent to @lru_cache(maxsize=None)
+# Good — cache expensive pure function
+@cache
 def compute_fibonacci(n: int) -> int:
     if n < 2:
         return n
@@ -113,14 +112,12 @@ def fetch_exchange_rate(currency: str) -> float:
 **Memory leak risk with instance methods:** `@cache` on an instance method captures `self` as a cache key, preventing GC of the instance. Use module-level functions or `functools.cached_property` for instance-level caching:
 
 ```python
-# Bad — prevents GC of self (memory leak for long-lived instance caches)
+# Bad — prevents GC of self
 class RateCalculator:
     @cache
     def get_rate(self, currency: str) -> float: ...
 
-# Good — cached_property for per-instance lazy computation (no GC issue)
-import functools
-
+# Good — cached_property for per-instance lazy computation
 class RateCalculator:
     @functools.cached_property
     def default_rate(self) -> float:
@@ -132,10 +129,10 @@ class RateCalculator:
 #### Avoid `import *`
 
 ```python
-# Bad — imports everything, pollutes namespace, slower startup
+# Bad — pollutes namespace, slower startup
 from mymodule import *
 
-# Good — explicit imports
+# Good
 from mymodule import specific_function
 ```
 
@@ -148,7 +145,7 @@ try:
 except KeyError:
     value = default
 
-# Good — use dict.get()
+# Good
 value = my_dict.get(key, default)
 ```
 
@@ -167,69 +164,58 @@ if value and value > 0:
 
 ### Profiling
 
-When you suspect a performance issue, profile before optimising:
+Profile before optimising:
 
 ```bash
-# Python built-in profiler
 python -m cProfile -s cumtime script.py
-
-# Statistical profiler — attaches to a running process without restart; safe for production
 py-spy top --pid <PID>
-py-spy record -o profile.svg --pid <PID>  # flame graph
-
-# Memory profiler — tracks allocations and produces flame graphs and memory timelines
+py-spy record -o profile.svg --pid <PID>
 python -m memray run -o output.bin script.py
 python -m memray flamegraph output.bin
 ```
 
----
+## Python 3.9 (base supported version)
 
-## Python 3.9  (base supported version)
-
-### Dict Merge Operator
+#### Dict Merge Operator
 
 ```python
-# Good — dict merge operator; avoids creating intermediate dicts
+# Good — avoids intermediate dicts
 merged = defaults | overrides
-
-# Dict update operator for in-place merge
 config |= overrides
 
-# Bad — {**a, **b} creates two intermediate dicts
+# Bad
 merged = {**defaults, **overrides}
 ```
 
-### String Prefix/Suffix Removal
+#### String Prefix/Suffix Removal
 
 ```python
-# Good — str.removeprefix/removesuffix are faster and clearer than slicing
+# Good — faster and clearer than slicing
 name = filename.removesuffix(".json")
 base = url.removeprefix("https://")
 
-# Bad — manual slicing or replace()
+# Bad
 name = filename[:-5] if filename.endswith(".json") else filename
 ```
 
-### Built-in Generic Type Hints
+#### Built-in Generic Type Hints
 
 ```python
 # Good — built-in generics avoid importing from typing
 def process(items: list[str]) -> dict[str, int]:
     return {item: len(item) for item in items}
 
-# Bad — importing List/Dict from typing is unnecessary in Python 3.9+
+# Bad — unnecessary in Python 3.9+
 from typing import List, Dict
 def process(items: List[str]) -> Dict[str, int]: ...
 ```
 
----
-
 ## Python 3.10
 
-### Structural Pattern Matching for Dispatch
+#### Structural Pattern Matching for Dispatch
 
 ```python
-# Good — match/case avoids repeated isinstance/dict-get in hot dispatch paths
+# Good — avoids repeated isinstance/dict-get in hot dispatch paths
 match event["type"]:
     case "click":
         handle_click(event)
@@ -238,97 +224,85 @@ match event["type"]:
     case _:
         pass
 
-# Bad — repeated get() calls on each branch
+# Bad
 if event.get("type") == "click":
     handle_click(event)
 elif event.get("type") == "scroll":
     handle_scroll(event)
 ```
 
-### `zip(strict=True)` to Catch Length Mismatches Early
+#### `zip(strict=True)` to Catch Length Mismatches Early
 
 ```python
-# Good — raises ValueError immediately if lengths differ, prevents silent bugs
+# Good — raises ValueError immediately if lengths differ
 for key, value in zip(keys, values, strict=True):
     result[key] = value
 ```
 
----
-
 ## Python 3.11
 
-### Specialising Adaptive Interpreter
+Specialising Adaptive Interpreter: 10-60% speedups over 3.10. No code changes required.
 
-Python 3.11 introduced the Specialising Adaptive Interpreter. Benchmarks show 10–60% speedups over 3.10 for typical workloads. No code changes required; upgrading the interpreter alone is sufficient.
-
-### `asyncio.TaskGroup` for Structured Concurrent I/O
+#### `asyncio.TaskGroup` for Structured Concurrent I/O
 
 ```python
-# Good — TaskGroup starts all tasks concurrently; all exceptions are collected
+# Good — starts all tasks concurrently; all exceptions collected
 async def fetch_all(urls: list[str]) -> list[bytes]:
     async with asyncio.TaskGroup() as tg:
         tasks = [tg.create_task(fetch(url)) for url in urls]
     return [t.result() for t in tasks]
 
-# Bad — sequential awaits; no concurrency
+# Bad — sequential awaits
 results = [await fetch(url) for url in urls]
 
-# Avoid — asyncio.gather() swallows exceptions unless return_exceptions=True
+# Avoid — gather() swallows exceptions unless return_exceptions=True
 results = await asyncio.gather(*[fetch(url) for url in urls])
 ```
 
-### `tomllib` for Config Parsing
+#### `tomllib` for Config Parsing
 
 ```python
-# Good — standard library TOML parsing (Python 3.11+); no third-party dependency
+# Good — stdlib TOML parsing (3.11+); no third-party dependency
 import tomllib
-
 with open("pyproject.toml", "rb") as f:
     config = tomllib.load(f)
 ```
 
----
-
 ## Python 3.12
 
-### `itertools.batched()` for Chunked Processing
+#### `itertools.batched()` for Chunked Processing
 
 ```python
-# Good — itertools.batched() for chunked processing; no manual slice arithmetic
+# Good — no manual slice arithmetic
 from itertools import batched
-
 for batch in batched(records, 500):
     db.bulk_insert(batch)
 
-# Bad — manual chunking with slice arithmetic
+# Bad
 for i in range(0, len(records), 500):
     db.bulk_insert(records[i:i + 500])
 ```
 
-### `type` Statement for Type Aliases
+#### `type` Statement for Type Aliases
 
 ```python
-# Good — type statement is evaluated lazily; no runtime overhead (Python 3.12+)
+# Good — evaluated lazily; no runtime overhead (3.12+)
 type Vector = list[float]
 type Matrix = list[Vector]
 
-# Bad — TypeAlias is evaluated eagerly at import time (Python 3.10–3.11 style)
+# Bad — TypeAlias evaluated eagerly at import time
 from typing import TypeAlias
 Vector: TypeAlias = list[float]
 ```
 
-### Subinterpreters for True Parallelism (Preview)
-
-Python 3.12 introduced support for running subinterpreters with their own GIL. Use via `interpreters` module (PEP 734, stabilised in 3.13).
-
----
+Subinterpreters (PEP 734): 3.12 introduced subinterpreters with their own GIL; stabilised in 3.13.
 
 ## Python 3.13
 
-### `copy.replace()` for Cheap Copy-with-Modification
+#### `copy.replace()` for Cheap Copy-with-Modification
 
 ```python
-# Good — copy.replace() for immutable copies with field overrides (Python 3.13+)
+# Good — immutable copies with field overrides (3.13+)
 from copy import replace
 from dataclasses import dataclass
 
@@ -341,73 +315,44 @@ class Config:
 base = Config("localhost", 5432)
 prod = replace(base, host="db.prod.example.com")
 
-# Bad — manual reconstruction repeated per variant
+# Bad — manual reconstruction per variant
 prod = Config(host="db.prod.example.com", port=base.port, timeout=base.timeout)
 ```
 
-### Improved REPL and Error Messages
+Improved REPL and error messages; faster startup. No code changes required.
 
-Python 3.13 delivers faster startup and improved error messages. No code changes required.
+## Python 3.14 (latest stable)
 
----
+#### Free-Threaded CPython (PEP 703)
 
-## Python 3.14  (latest stable)
-
-### Free-Threaded CPython (PEP 703)
-
-Python 3.14 includes free-threaded CPython as a supported (non-experimental) build. This removes the GIL for CPU-bound parallel work when running `python -X gil=0` or setting `PYTHON_GIL=0`.
+Free-threaded CPython removes the GIL for CPU-bound parallel work. Run with `python -X gil=0` or `PYTHON_GIL=0`.
 
 ```python
-# Good — free-threaded CPython allows true thread-level parallelism for CPU work
-# Run with: python -X gil=0 script.py  (or set PYTHON_GIL=0)
+# Good — true thread-level parallelism for CPU work
 import threading
 
 def cpu_intensive(n: int) -> int:
     return sum(i * i for i in range(n))
 
-# With free-threading enabled, these threads run in parallel on multiple cores
 threads = [threading.Thread(target=cpu_intensive, args=(10_000_000,)) for _ in range(4)]
 for t in threads: t.start()
 for t in threads: t.join()
-
-# Note: Not all third-party C extensions support free-threading yet — check compatibility
-# Check: https://py-free-threading.github.io/
+# Note: Not all C extensions support free-threading yet — check py-free-threading.github.io
 ```
 
-### Deferred Annotation Evaluation (PEP 749)
+#### Deferred Annotation Evaluation (PEP 749)
 
 ```python
-# Good — forward references are now resolved lazily by default; no quotes needed
-# This eliminates runtime cost for annotation evaluation
+# Good — forward references resolved lazily by default; no quotes needed
 class Node:
-    def children(self) -> list[Node]:  # "Node" is not yet defined, but works now
+    def children(self) -> list[Node]:
         return self._children
 ```
 
-### `annotationlib` for Runtime Annotation Introspection
+#### `annotationlib` for Runtime Annotation Introspection
 
 ```python
-# Good — use annotationlib for correct runtime annotation resolution (Python 3.14+)
+# Good — correct runtime annotation resolution (3.14+)
 import annotationlib
-
 hints = annotationlib.get_annotations(MyClass, format=annotationlib.Format.FORWARDREF)
 ```
-
----
-
-## Resources
-
-- [Python Data Model](https://docs.python.org/3/reference/datamodel.html)
-- [Time Complexity of Python Built-ins](https://wiki.python.org/moin/TimeComplexity)
-- [Python Profilers (cProfile, profile)](https://docs.python.org/3/library/profile.html)
-- [collections — Container Datatypes](https://docs.python.org/3/library/collections.html)
-- [functools — Higher-order Functions](https://docs.python.org/3/library/functools.html)
-- [asyncio.TaskGroup](https://docs.python.org/3/library/asyncio-task.html#asyncio.TaskGroup)
-- [itertools.batched](https://docs.python.org/3/library/itertools.html#itertools.batched)
-- [Python 3.11 What's New — Specialising Adaptive Interpreter](https://docs.python.org/3/whatsnew/3.11.html)
-- [Python 3.12 What's New](https://docs.python.org/3/whatsnew/3.12.html)
-- [Python 3.13 What's New](https://docs.python.org/3/whatsnew/3.13.html)
-- [Python 3.14 What's New](https://docs.python.org/3.14/whatsnew/3.14.html)
-- [Free-threaded CPython compatibility tracker](https://py-free-threading.github.io/)
-- [py-spy — Sampling Profiler](https://github.com/benfred/py-spy)
-- [memray — Memory Profiler](https://bloomberg.github.io/memray/)

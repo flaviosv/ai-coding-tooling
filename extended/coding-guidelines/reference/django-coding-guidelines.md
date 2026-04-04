@@ -7,8 +7,6 @@
 
 ## General Django Coding Conventions
 
-Conventions that apply across all still-supported Django versions (4.2–5.2).
-
 ### Project Layout
 
 - Follow the standard Django app layout: `models.py`, `views.py`, `urls.py`, `serializers.py`, `admin.py`, `tests/`
@@ -29,13 +27,11 @@ Conventions that apply across all still-supported Django versions (4.2–5.2).
 - Use `select_related` for ForeignKey traversal and `prefetch_related` for ManyToMany / reverse FK
 
 ```python
-from django.db import models
-
 class OrderLine(models.Model):
     order = models.ForeignKey(
         "Order",
         on_delete=models.CASCADE,
-        related_name="lines",  # Explicit reverse name
+        related_name="lines",
     )
     product = models.ForeignKey(
         "Product",
@@ -74,12 +70,6 @@ class OrderLine(models.Model):
 - Set `permission_classes` explicitly on every view or ViewSet — never rely only on global defaults
 
 ```python
-from rest_framework import serializers, viewsets
-from rest_framework.permissions import IsAuthenticated
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Item
-from .services import create_item
-
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
@@ -109,9 +99,6 @@ class ItemViewSet(viewsets.ModelViewSet):
 - Use `Q()` objects for complex OR/AND filter conditions
 
 ```python
-from django.db import transaction
-from django.db.models import F, Q
-
 # F() expression — atomic increment
 Item.objects.filter(pk=pk).update(view_count=F("view_count") + 1)
 
@@ -142,10 +129,6 @@ class MyAppConfig(AppConfig):
         import myapp.signals  # noqa: F401 — registers receivers
 
 # signals.py
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.db import transaction
-
 @receiver(post_save, sender=Order)
 def schedule_confirmation_email(sender, instance, created, **kwargs):
     if created:
@@ -159,9 +142,6 @@ def schedule_confirmation_email(sender, instance, created, **kwargs):
 - Use `Manager.from_queryset()` to define typed custom managers
 
 ```python
-from django.db import models
-from django.db.models import QuerySet
-
 class ActiveItemManager(models.Manager):
     def get_queryset(self) -> QuerySet["Item"]:
         return super().get_queryset().filter(is_active=True)
@@ -180,8 +160,6 @@ class Item(models.Model):
 - Use `cache.get_or_set()` for a one-liner cache-aside pattern
 
 ```python
-from django.core.cache import cache
-
 def get_active_categories() -> list[dict]:
     return cache.get_or_set(
         "active_categories",
@@ -207,8 +185,6 @@ def get_active_categories() -> list[dict]:
 - Do not use `settings` directly in templates — pass needed values via the template context
 - Do not mix `db_default` and `default` on the same field — they serve different purposes
 
----
-
 ## Django 4.2 (LTS — base version)
 
 ### Async Views
@@ -216,9 +192,6 @@ def get_active_categories() -> list[dict]:
 Use `async def` for I/O-bound views. Wrap ORM calls with `sync_to_async` — the ORM is synchronous by default in 4.2:
 
 ```python
-from asgiref.sync import sync_to_async
-from django.http import JsonResponse
-
 async def item_detail(request, pk: int):
     item = await sync_to_async(Item.objects.select_related("category").get)(pk=pk)
     return JsonResponse({"name": item.name, "category": item.category.name})
@@ -237,8 +210,6 @@ DATABASES = {
 }
 ```
 
----
-
 ## Django 5.0
 
 ### `db_default` — Database-Level Field Defaults
@@ -246,9 +217,6 @@ DATABASES = {
 Use `db_default` for fields whose default is a database function. It executes at the database layer without a round-trip through Python:
 
 ```python
-from django.db import models
-from django.db.models.functions import Now
-
 class Order(models.Model):
     created_at = models.DateTimeField(db_default=Now())
     updated_at = models.DateTimeField(auto_now=True)
@@ -260,15 +228,10 @@ class Order(models.Model):
 `ModelAdmin.show_facets` controls facet COUNT queries in the admin. Avoid `ShowFacets.ALWAYS` on large tables:
 
 ```python
-from django.contrib import admin
-from django.contrib.admin import ShowFacets
-
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
     show_facets = ShowFacets.ALLOW  # Default — user can toggle; not forced on
 ```
-
----
 
 ## Django 5.1
 
@@ -277,9 +240,6 @@ class ItemAdmin(admin.ModelAdmin):
 When `LoginRequiredMiddleware` is active, all views require authentication by default. Explicitly mark public views:
 
 ```python
-from django.views.decorators.login_required import login_not_required
-from django.http import JsonResponse
-
 @login_not_required
 def health_check(request):
     return JsonResponse({"status": "ok"})
@@ -297,8 +257,6 @@ async def export_items():
         await write_to_export(item)
 ```
 
----
-
 ## Django 5.2 (LTS — latest version)
 
 ### Composite Primary Keys
@@ -306,8 +264,6 @@ async def export_items():
 Use `CompositePrimaryKey` for junction tables where multi-column identity is the natural key:
 
 ```python
-from django.db import models
-
 class TenantMembership(models.Model):
     tenant_id = models.SmallIntegerField()
     user_id = models.SmallIntegerField()
@@ -326,8 +282,6 @@ Do not use composite PKs as a workaround for missing surrogate keys — only use
 Django 5.2 introduces `transaction.aatomic()` for async atomic blocks, removing the `sync_to_async(transaction.atomic)` workaround:
 
 ```python
-from django.db import transaction
-
 async def transfer_funds(from_id: int, to_id: int, amount: int) -> None:
     async with transaction.aatomic():
         sender = await Account.objects.select_for_update().aget(pk=from_id)
@@ -361,18 +315,3 @@ def describe_status(status: str) -> str:
         case _:
             return "Unknown"
 ```
-
----
-
-## Resources
-
-- [Django Documentation](https://docs.djangoproject.com/en/stable/)
-- [Django REST Framework](https://www.django-rest-framework.org/)
-- [django-stubs](https://github.com/typeddjango/django-stubs)
-- [django-environ](https://django-environ.readthedocs.io/en/latest/)
-- [django-configurations](https://django-configurations.readthedocs.io/en/stable/)
-- [django-filter](https://django-filter.readthedocs.io/en/stable/)
-- [drf-spectacular](https://drf-spectacular.readthedocs.io/en/latest/)
-- [Django Async Support](https://docs.djangoproject.com/en/stable/topics/async/)
-- [Django 5.2 Release Notes](https://docs.djangoproject.com/en/5.2/releases/5.2/)
-- [Django Supported Versions](https://www.djangoproject.com/download/#supported-versions)

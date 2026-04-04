@@ -2,6 +2,8 @@
 
 > Load this file together with `go-coding-guidelines.md`. Rules here are additive and Gin-specific.
 
+---
+
 ## Project Layout
 
 - Place handler structs under a `handler/` or `api/` package — one file per resource (e.g. `item_handler.go`, `user_handler.go`)
@@ -43,7 +45,7 @@ func (h *ItemHandler) List(c *gin.Context) {
 - Use `gin.New()` in production — not `gin.Default()`. Register only the middleware you have reviewed and configured:
 
 ```go
-// Good — explicit, reviewed middleware stack
+// Good
 router := gin.New()
 router.Use(gin.Logger())
 router.Use(gin.CustomRecovery(func(c *gin.Context, recovered any) {
@@ -134,7 +136,7 @@ if !ok {
 - Every middleware that writes an error response MUST call `c.Abort()` or `c.AbortWithStatusJSON()` to stop the handler chain
 
 ```go
-// Good — chain stops after error response
+// Good
 func RequireAdmin() gin.HandlerFunc {
     return func(c *gin.Context) {
         if !isAdmin(c) {
@@ -155,7 +157,7 @@ go func() {
     process(c.Param("id"), c.GetString("user_id"))
 }()
 
-// Good — copy out before spawning
+// Good
 id := c.Param("id")
 userID := c.GetString("user_id")
 go func() {

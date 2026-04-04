@@ -32,8 +32,6 @@ Applies to: LangChain 0.3+ / langchain-core 0.3+, LangGraph 0.2+
 - [ ] Ingested document content treated as untrusted — not blindly injected into system prompts
 - [ ] Access control not delegated to the LLM ("only show the user documents they can see" in a prompt is not a control)
 
----
-
 ## Architecture & Design
 
 - [ ] Chains composed using LCEL — not legacy `LLMChain`, `SequentialChain`, or `SimpleSequentialChain`
@@ -54,8 +52,6 @@ Applies to: LangChain 0.3+ / langchain-core 0.3+, LangGraph 0.2+
 - [ ] LLM model configuration (model name, temperature, `max_tokens`, `request_timeout`) externalized — not hardcoded in chain or graph files
 - [ ] Retriever/vector store construction separated from chain composition
 - [ ] State schema (`state.py`) lives in a separate module from graph construction (`graph.py`) and node logic (`nodes.py`)
-
----
 
 ## Error Handling
 
@@ -83,8 +79,6 @@ def search_documentation(state):
             pass
 ```
 
----
-
 ## Performance
 
 - [ ] `RunnableParallel` used for independent operations — not sequential calls that could run concurrently
@@ -96,8 +90,6 @@ def search_documentation(state):
 - [ ] `max_tokens` explicitly set on all LLM instances — no unbounded generation
 - [ ] Token usage tracked — no silent runaway context windows
 - [ ] State objects contain only references (IDs, keys) for large data — not full documents or raw HTML blobs
-
----
 
 ## LangGraph-Specific
 
@@ -132,8 +124,6 @@ class State(TypedDict):
 state = {"messages": [], "step": "start"}
 ```
 
----
-
 ## Observability
 
 - [ ] LangSmith tracing enabled in non-trivial production applications (`LANGCHAIN_TRACING_V2=true`)
@@ -141,8 +131,6 @@ state = {"messages": [], "step": "start"}
 - [ ] Token usage and latency visible in traces
 - [ ] Callbacks used exclusively for logging, tracing, and monitoring — never for business logic
 - [ ] LangSmith API key (`LANGCHAIN_API_KEY`) not logged, printed, or included in error reports
-
----
 
 ## Anti-Patterns
 

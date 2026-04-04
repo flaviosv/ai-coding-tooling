@@ -2,8 +2,6 @@
 
 This file maps external skill vendors to their detection patterns and reinstall commands. The `skill-update` skill reads this file to identify who installed a given skill and how to update it.
 
----
-
 ## Tech Leads Club
 
 **Detection:** A `.skill-meta.json` file is present inside the skill directory. Example content:
@@ -27,8 +25,6 @@ Substitute `<skill-name>` with the skill directory name and `<npx-agent-id>` wit
 - Overwrites the skill directory in-place. Extended symlinks (SKILL.extended.md, reference/) are removed and must be re-applied after each reinstall.
 - The `contentHash` in `.skill-meta.json` changes only when the registry publishes a new version. If it is identical before and after reinstall, the skill was already at the latest version.
 - Requires Node.js and npx to be installed.
-
----
 
 ## Adding a new vendor
 

@@ -4,12 +4,6 @@ Security guidance for projects using `@playwright/test`. Covers credential handl
 
 ---
 
-## Scope
-
-This document covers Playwright-specific security patterns. All rules apply to test suites and browser automation scripts that use `@playwright/test`.
-
----
-
 ## PW-SEC-001: Credentials MUST NOT be hardcoded in test files or configuration
 
 **Severity: Critical**
@@ -26,7 +20,6 @@ Hardcoded credentials are committed to source control and exposed in PR diffs, g
 ```typescript
 // Bad — password committed to source control
 setup('authenticate', async ({ page }) => {
-  await page.getByLabel('Email').fill('testuser@example.com');
   await page.getByLabel('Password').fill('TestP@ssword123');
 });
 
@@ -55,8 +48,6 @@ setup('authenticate', async ({ page }) => {
 - Search for `.fill(` calls with string literals that resemble passwords, keys, or tokens
 - Search `playwright.config.ts` for `extraHTTPHeaders` containing literal token values
 
----
-
 ## PW-SEC-002: Storage state files MUST be excluded from version control
 
 **Severity: High**
@@ -82,13 +73,11 @@ auth.json
 - Search for files matching `*.json` inside `playwright/` or `.auth/` directories that are tracked by git (`git ls-files | grep -E '\.auth|storageState'`)
 - Search `playwright.config.ts` for `storageState:` values; verify each resolves to a gitignored path
 
----
-
 ## PW-SEC-003: `ignoreHTTPSErrors` MUST NOT be enabled globally for production or audit runs
 
 **Severity: High**
 
-`ignoreHTTPSErrors: true` disables TLS certificate validation. It allows tests to run against endpoints with expired, self-signed, or mismatched certificates — masking real security issues in the environment under test.
+`ignoreHTTPSErrors: true` disables TLS certificate validation, allowing tests to run against endpoints with expired, self-signed, or mismatched certificates — masking real security issues in the environment under test.
 
 **Required:**
 - MUST NOT set `ignoreHTTPSErrors: true` in the global `use` block without an environment guard
@@ -119,8 +108,6 @@ export default defineConfig({
 **Detection hints:**
 - Search for `ignoreHTTPSErrors: true` without an adjacent environment variable check
 - Flag any `ignoreHTTPSErrors: true` in shared CI configuration
-
----
 
 ## PW-SEC-004: Route handlers MUST always resolve the request
 
@@ -159,8 +146,6 @@ await page.route('**/api/data', async (route) => {
 **Detection hints:**
 - Search for `page.route(` handlers with conditional logic where not all branches call `route.fulfill/continue/abort`
 
----
-
 ## PW-SEC-005: Trace and video artifacts MUST be scoped to failures; full capture requires a data retention policy
 
 **Severity: Medium**
@@ -184,8 +169,6 @@ export default defineConfig({
   },
 });
 ```
-
----
 
 ## PW-SEC-006: Base URL MUST be explicit in CI; production MUST NOT be a fallback value
 
@@ -215,8 +198,6 @@ if (!baseURL) throw new Error('BASE_URL environment variable is required — do 
 export default defineConfig({ use: { baseURL } });
 ```
 
----
-
 ## Scanning Heuristics for Playwright Suites
 
 High-signal patterns to audit:
@@ -227,13 +208,3 @@ High-signal patterns to audit:
 - `page.route(` handler with conditional logic and no guaranteed `fulfill/continue/abort` → `PW-SEC-004`
 - `trace: 'on'` or `video: 'on'` in CI configuration → review `PW-SEC-005`
 - `baseURL` with a production URL as a fallback value → `PW-SEC-006`
-
----
-
-## Resources
-
-- [Playwright Authentication](https://playwright.dev/docs/auth)
-- [Playwright Configuration](https://playwright.dev/docs/test-configuration)
-- [Playwright Network](https://playwright.dev/docs/network)
-- [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)
-- [GitLab CI/CD Variables](https://docs.gitlab.com/ee/ci/variables/)

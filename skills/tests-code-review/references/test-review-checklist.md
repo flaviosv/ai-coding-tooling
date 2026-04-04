@@ -14,8 +14,6 @@ Technology-specific guides extend this file.
 - [ ] Test code reads as documentation of intended system behaviour
 - [ ] Tests verify observable behaviour through the public API — not internal state or implementation details
 
----
-
 ## Coverage and Completeness
 
 - [ ] Happy path is tested
@@ -27,8 +25,6 @@ Technology-specific guides extend this file.
 - [ ] Response/return value structure is verified — not just status codes or boolean success flags
 - [ ] Access-controlled paths are tested for both the authorized success case and the unauthorized rejection case
 
----
-
 ## Independence and Isolation
 
 - [ ] Tests do not share mutable state across test cases
@@ -38,16 +34,12 @@ Technology-specific guides extend this file.
 - [ ] No test relies on another test having run first
 - [ ] Global or shared configuration mutated during a test is restored in teardown — not left for subsequent tests
 
----
-
 ## Determinism
 
 - [ ] No time-dependent assertions (fixed timestamps, relative time checks)
 - [ ] No random values used without a fixed seed
 - [ ] No sleeps or polling used to synchronise async behaviour
 - [ ] Tests produce the same result on every run
-
----
 
 ## Maintainability
 
@@ -59,15 +51,11 @@ Technology-specific guides extend this file.
 - [ ] No hardcoded values that would silently break if the code changes
 - [ ] Test helper functions that contain assertions are marked to report failures at the call site — not inside the helper
 
----
-
 ## Performance
 
 - [ ] Unit tests have no I/O and run fast
 - [ ] Slow or I/O-bound tests are clearly separated or marked
 - [ ] No unnecessary delays in test setup or teardown
-
----
 
 ## Test Doubles Quality
 
@@ -75,8 +63,6 @@ Technology-specific guides extend this file.
 - [ ] Partial mocking of the system under test is not used — mock only external dependencies, instantiate the real unit
 - [ ] Test doubles implement the same contract (interface/type) as the real dependency — not concrete classes
 - [ ] Assertions on test doubles are only present when the interaction itself is the behaviour under test
-
----
 
 ## Anti-Patterns to Flag
 

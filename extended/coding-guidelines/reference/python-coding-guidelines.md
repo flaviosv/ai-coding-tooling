@@ -3,12 +3,12 @@
 <!-- General section covers conventions that apply across ALL still-supported Python versions (3.9–3.14) -->
 ## General Python Coding Patterns
 
+---
+
 ### Formatting
 
 - **Indentation**: 4 spaces per level — never tabs
-
 - **Line length**: 79 characters max for code; 72 for docstrings and comments. With a project-configured formatter (Black, Ruff) a limit of 88–99 is acceptable if set consistently in `pyproject.toml`.
-
 - **Blank lines**: 2 blank lines before and after top-level definitions (classes, functions); 1 blank line between methods inside a class; use blank lines sparingly inside functions to separate logical steps.
 
 ```python
@@ -31,7 +31,6 @@ class OrderService:
 # Good
 import os
 import sys
-
 # Bad
 import os, sys
 ```
@@ -42,7 +41,6 @@ import os, sys
 # Good
 result = x + y
 def connect(host: str, port: int = 5432) -> None: ...
-
 # Bad
 result=x+y
 def connect(host: str, port: int=5432) -> None: ...
@@ -55,7 +53,6 @@ def connect(host: str, port: int=5432) -> None: ...
 coords = (1, 2, 3)
 mapping = {"key": "value"}
 chunk = data[1:10]
-
 # Bad
 coords = (1 , 2 , 3)
 mapping = {"key" : "value"}
@@ -63,7 +60,6 @@ chunk = data[1 : 10]
 ```
 
 - **No trailing whitespace** on any line
-
 - **No semicolons** — never separate two statements with `;` on one line
 
 ```python
@@ -77,7 +73,6 @@ x = 1; y = 2
 # Good
 if result is None: ...
 if result is not None: ...
-
 # Bad
 if result == None: ...
 if result != None: ...
@@ -89,15 +84,12 @@ if result != None: ...
 # Good
 if items: ...
 if not active: ...
-
 # Bad
 if items == True: ...
 if active == False: ...
 ```
 
 - **String quotes** — choose either single or double quotes and apply them consistently across the entire codebase. PEP 8 has no preference; the project standard wins.
-
----
 
 ### Naming Conventions
 
@@ -136,7 +128,6 @@ def process_item(item: Item) -> str:
     if not item.is_active:
         return ""
     return item.name.upper()
-
 # Bad — nested if chain
 def process_item(item: Item) -> str:
     if item is not None:
@@ -149,8 +140,6 @@ def process_item(item: Item) -> str:
 - Use dataclasses for plain data containers instead of raw dicts
 
 ```python
-from dataclasses import dataclass, field
-
 @dataclass
 class Config:
     host: str
@@ -159,7 +148,6 @@ class Config:
 
 # Bad — mutable default argument is shared across all calls
 def configure(tags=[]) -> None: ...
-
 # Good — use None and assign inside
 def configure(tags: list[str] | None = None) -> None:
     tags = tags or []
@@ -188,7 +176,6 @@ class User:
 ```python
 # Good — specific type, informative message
 raise ValueError(f"Invalid status {status!r}; expected one of {VALID_STATUSES}")
-
 # Bad — bare except swallows everything including KeyboardInterrupt
 try:
     process()
@@ -200,12 +187,9 @@ except:
 - Use `contextlib.suppress` only for genuinely ignorable exceptions
 
 ```python
-from contextlib import suppress
-
 # Good — deleting a file that may not exist is a known, harmless case
 with suppress(FileNotFoundError):
     temp_path.unlink()
-
 # Bad — suppress(Exception) is a catch-all and hides real bugs
 ```
 
@@ -220,7 +204,6 @@ with suppress(FileNotFoundError):
 # Good — lazy generator; does not create a full list in memory
 def active_names(items: list[Item]) -> Generator[str, None, None]:
     return (item.name for item in items if item.is_active)
-
 # Good — list comprehension is fine when you need all results at once
 names = [item.name for item in items if item.is_active]
 ```
@@ -229,14 +212,10 @@ names = [item.name for item in items if item.is_active]
 - Use `pathlib.Path` for all filesystem operations — not `os.path`
 
 ```python
-from pathlib import Path
-
 # Good
 config_path = Path("config") / "settings.json"
 content = config_path.read_text(encoding="utf-8")
-
 # Bad
-import os
 config_path = os.path.join("config", "settings.json")
 ```
 
@@ -273,8 +252,6 @@ def process(*args, **kwargs) -> None: ...  # Bad — no type information
 def process(name: str, value: int) -> None: ...  # Good
 ```
 
----
-
 ## Python 3.9  (base supported version)
 
 ### Built-in Generic Type Hints
@@ -283,7 +260,6 @@ def process(name: str, value: int) -> None: ...  # Good
 # Good — built-in generics; no typing imports needed (Python 3.9+)
 def get_users(ids: list[int]) -> dict[str, list[str]]:
     ...
-
 # Bad — importing List/Dict from typing is unnecessary in Python 3.9+
 from typing import List, Dict
 def get_users(ids: List[int]) -> Dict[str, List[str]]: ...
@@ -295,7 +271,6 @@ def get_users(ids: List[int]) -> Dict[str, List[str]]: ...
 # Good — str.removeprefix/removesuffix are safer than slicing (Python 3.9+)
 name = filename.removesuffix(".json")
 base_url = url.removeprefix("https://")
-
 # Bad — manual slicing or replace() is error-prone
 name = filename[:-5] if filename.endswith(".json") else filename
 ```
@@ -305,15 +280,11 @@ name = filename[:-5] if filename.endswith(".json") else filename
 ```python
 # Good — dict merge operator (Python 3.9+)
 merged = defaults | overrides
-
 # In-place update
 config |= env_overrides
-
 # Bad — {**a, **b} creates intermediate dicts; less readable
 merged = {**defaults, **overrides}
 ```
-
----
 
 ## Python 3.10
 
@@ -323,7 +294,6 @@ merged = {**defaults, **overrides}
 # Good — X | Y union syntax instead of Optional[X] or Union[X, Y] (Python 3.10+)
 def get_user(user_id: int | None = None) -> User | None:
     ...
-
 # Bad — verbose legacy syntax
 from typing import Optional, Union
 def get_user(user_id: Optional[int] = None) -> Optional[User]: ...
@@ -351,7 +321,6 @@ def handle_command(command: dict) -> None:
 # Good — raises ValueError immediately if lengths differ (Python 3.10+)
 for key, value in zip(keys, values, strict=True):
     result[key] = value
-
 # Bad — silently truncates to the shorter sequence
 for key, value in zip(keys, values):
     result[key] = value
@@ -367,8 +336,6 @@ UserId: TypeAlias = int
 UserMap: TypeAlias = dict[str, list[int]]
 ```
 
----
-
 ## Python 3.11
 
 ### `asyncio.TaskGroup` for Structured Concurrency
@@ -379,10 +346,8 @@ async def fetch_all(urls: list[str]) -> list[bytes]:
     async with asyncio.TaskGroup() as tg:
         tasks = [tg.create_task(fetch(url)) for url in urls]
     return [t.result() for t in tasks]
-
 # Bad — sequential awaits; no concurrency
 results = [await fetch(url) for url in urls]
-
 # Avoid — asyncio.gather() swallows exceptions unless return_exceptions=True
 results = await asyncio.gather(*[fetch(url) for url in urls])
 ```
@@ -445,8 +410,6 @@ class QueryBuilder:
         return self
 ```
 
----
-
 ## Python 3.12
 
 ### `@override` Decorator
@@ -476,7 +439,6 @@ class BrokenDerived(Base):
 type Vector = list[float]
 type Matrix = list[Vector]
 type UserId = int
-
 # Bad (Python 3.10–3.11 style) — TypeAlias is evaluated eagerly
 from typing import TypeAlias
 Vector: TypeAlias = list[float]
@@ -490,13 +452,10 @@ from itertools import batched
 # Good — clear intent; no off-by-one errors (Python 3.12+)
 for batch in batched(records, 500):
     db.bulk_insert(batch)
-
 # Bad — manual slice arithmetic
 for i in range(0, len(records), 500):
     db.bulk_insert(records[i:i + 500])
 ```
-
----
 
 ## Python 3.13
 
@@ -514,7 +473,6 @@ class Config:
 
 base = Config("localhost", 5432)
 prod = replace(base, host="db.prod.example.com")  # clean, explicit override
-
 # Bad — manual reconstruction is verbose and error-prone
 prod = Config(host="db.prod.example.com", port=base.port, timeout=base.timeout)
 ```
@@ -544,8 +502,6 @@ items: list[str | int] = ["a", 1, "b"]
 strings = [x for x in items if is_string(x)]
 # strings is inferred as list[str]
 ```
-
----
 
 ## Python 3.14  (latest stable)
 
@@ -590,23 +546,4 @@ for t in threads: t.start()
 for t in threads: t.join()
 
 # Note: verify third-party C extensions support free-threading before enabling
-# Reference: https://py-free-threading.github.io/
 ```
-
----
-
-## Resources
-
-- [PEP 8 — Style Guide for Python Code](https://peps.python.org/pep-0008/)
-- [PEP 257 — Docstring Conventions](https://peps.python.org/pep-0257/)
-- [Python Type Hints](https://docs.python.org/3/library/typing.html)
-- [dataclasses](https://docs.python.org/3/library/dataclasses.html)
-- [pathlib](https://docs.python.org/3/library/pathlib.html)
-- [contextlib](https://docs.python.org/3/library/contextlib.html)
-- [asyncio](https://docs.python.org/3/library/asyncio.html)
-- [Python 3.10 What's New](https://docs.python.org/3/whatsnew/3.10.html)
-- [Python 3.11 What's New](https://docs.python.org/3/whatsnew/3.11.html)
-- [Python 3.12 What's New](https://docs.python.org/3/whatsnew/3.12.html)
-- [Python 3.13 What's New](https://docs.python.org/3/whatsnew/3.13.html)
-- [Python 3.14 What's New](https://docs.python.org/3.14/whatsnew/3.14.html)
-- [Free-threaded CPython compatibility tracker](https://py-free-threading.github.io/)

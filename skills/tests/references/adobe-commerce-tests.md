@@ -15,8 +15,6 @@ Applies to: Adobe Commerce / Magento 2 projects using PHPUnit, Magento Integrati
 | API Functional | `Test/Api/` | Magento Webapi Test Framework (PHPUnit) | REST and GraphQL endpoint contracts |
 | MFTF | `Test/Mftf/` | MFTF (Codeception/XML) | End-to-end browser-level acceptance tests |
 
----
-
 ## Unit Tests
 
 Unit tests live in `Test/Unit/` and extend `\PHPUnit\Framework\TestCase`. All dependencies are injected via constructor and mocked — no Magento bootstrap, no database, no DI container.
@@ -49,7 +47,6 @@ class OrderProcessorTest extends TestCase
     {
         $order = $this->createMock(OrderInterface::class);
         $this->orderRepository->expects($this->once())->method('save')->with($order);
-
         $this->processor->process($order);
     }
 
@@ -58,7 +55,6 @@ class OrderProcessorTest extends TestCase
         $order = $this->createMock(OrderInterface::class);
         $this->orderRepository->method('save')
             ->willThrowException(new CouldNotSaveException(__('Could not save order')));
-
         $this->expectException(CouldNotSaveException::class);
         $this->processor->process($order);
     }
@@ -122,13 +118,10 @@ class SetOrderStatusObserverTest extends TestCase
     {
         $order = $this->createMock(OrderInterface::class);
         $order->expects($this->once())->method('setStatus')->with('custom_status');
-
         $event = $this->createMock(Event::class);
         $event->method('getData')->with('order')->willReturn($order);
-
         $observerWrapper = $this->createMock(Observer::class);
         $observerWrapper->method('getEvent')->willReturn($event);
-
         $observer = new SetOrderStatusObserver();
         $observer->execute($observerWrapper);
     }
@@ -152,17 +145,13 @@ class ProductInfoViewModelTest extends TestCase
     {
         $product = $this->createMock(ProductInterface::class);
         $product->method('getName')->willReturn('My Product');
-
         $repository = $this->createMock(ProductRepositoryInterface::class);
         $repository->method('getById')->with(42)->willReturn($product);
-
         $viewModel = new ProductInfoViewModel($repository);
         $this->assertSame('My Product', $viewModel->getProductName(42));
     }
 }
 ```
-
----
 
 ## Integration Tests
 
@@ -178,13 +167,12 @@ cd dev/tests/integration
 
 ### Setting the Area Code
 
-Tests that exercise area-specific code (design, configuration, templates) must set the area code:
+Tests that exercise area-specific code (design, configuration, templates) MUST set the area code:
 
 ```php
 protected function setUp(): void
 {
     parent::setUp(); // always call parent first in integration tests
-
     $this->appState = $this->_objectManager->get(\Magento\Framework\App\State::class);
     $this->appState->setAreaCode(\Magento\Framework\App\Area::AREA_FRONTEND);
 }
@@ -210,21 +198,17 @@ Custom fixture file (`Test/Integration/_files/custom_attribute.php`):
 
 ```php
 <?php
-/** @var \Magento\Framework\Registry $registry */
 $registry = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()
     ->get(\Magento\Framework\Registry::class);
-
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', true);
-
 // create fixture data here (attribute EAV record, custom table rows, etc.) ...
-
 $registry->unregister('isSecureArea');
 ```
 
-### Data Fixtures — Modern PHP Attribute Style (AC 2.4.5+)
+### Data Fixtures — PHP Attribute Style (AC 2.4.5+)
 
-AC 2.4.5 introduced PHP 8 attribute-based fixtures, which are more composable and type-safe:
+More composable and type-safe than legacy DocBlock file fixtures (which are deprecated):
 
 ```php
 use Magento\TestFramework\Fixture\DataFixture;
@@ -245,14 +229,11 @@ class QuoteTest extends \PHPUnit\Framework\TestCase
     ]
     public function testCollectTotals(): void
     {
-        // Fixtures are resolved and available via fixture registry
         $cart = $this->fixtures->get('cart');
         $this->assertNotNull($cart->getId());
     }
 }
 ```
-
-Prefer the PHP attribute style for new tests — the legacy DocBlock file fixtures are deprecated.
 
 ### Config Fixtures
 
@@ -281,8 +262,6 @@ class SomeConfigMutatingTest extends \Magento\TestFramework\TestCase\AbstractCon
 }
 ```
 
----
-
 ## Testing Admin Controllers
 
 ```php
@@ -310,8 +289,6 @@ class GridTest extends AbstractBackendController
     }
 }
 ```
-
----
 
 ## Testing REST API (Webapi Functional Tests)
 
@@ -356,8 +333,6 @@ class ProductApiTest extends WebapiAbstract
 }
 ```
 
----
-
 ## Testing GraphQL (Webapi Functional Tests)
 
 ```php
@@ -383,7 +358,6 @@ class ProductGraphQlTest extends GraphQlAbstract
             }
         }
         QUERY;
-
         $response = $this->graphQlQuery($query);
         $this->assertNotEmpty($response['products']['items']);
         $this->assertEquals('simple', $response['products']['items'][0]['sku']);
@@ -408,8 +382,6 @@ class ProductGraphQlTest extends GraphQlAbstract
     }
 }
 ```
-
----
 
 ## MFTF (Magento Functional Testing Framework)
 
@@ -448,13 +420,8 @@ MFTF tests live in `Test/Mftf/` and use XML-based test definitions interpreted b
 ### Running MFTF Tests
 
 ```bash
-# Run a single test by name
 vendor/bin/mftf run:test MyModuleFeatureTest
-
-# Run all tests in a group
 vendor/bin/mftf run:group my_module
-
-# Generate tests after editing XML
 vendor/bin/mftf generate:tests
 ```
 
@@ -481,8 +448,6 @@ vendor/bin/mftf generate:tests
 </sections>
 ```
 
----
-
 ## Test Configuration
 
 Register custom integration tests in `dev/tests/integration/phpunit.xml`:
@@ -497,15 +462,3 @@ Register custom integration tests in `dev/tests/integration/phpunit.xml`:
     </testsuite>
 </testsuites>
 ```
-
----
-
-## Resources
-
-- [Magento 2 Unit Testing Guide](https://developer.adobe.com/commerce/testing/guide/unit/)
-- [Magento 2 Integration Testing Guide](https://developer.adobe.com/commerce/testing/guide/integration/)
-- [Integration Test Data Fixtures](https://developer.adobe.com/commerce/testing/guide/integration/attributes/data-fixture/)
-- [MFTF Documentation](https://developer.adobe.com/commerce/testing/functional-testing-framework/)
-- [Magento Webapi Testing](https://developer.adobe.com/commerce/testing/guide/web-api/)
-- [PHPUnit Documentation](https://docs.phpunit.de/)
-- [Magento Test Fixture Annotations](https://developer.adobe.com/commerce/testing/guide/integration/attributes/)

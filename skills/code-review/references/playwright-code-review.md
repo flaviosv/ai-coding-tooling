@@ -130,7 +130,6 @@ export default defineConfig({
 // Bad — launches a new browser process inside a test; expensive and defeats worker model
 test('example', async () => {
   const browser = await chromium.launch();
-  const page = await browser.newPage();
   // ...
   await browser.close();
 });
@@ -140,14 +139,3 @@ test('example', async ({ page }) => {
   // page is isolated within the worker's browser process
 });
 ```
-
----
-
-## Resources
-
-- [Playwright Configuration](https://playwright.dev/docs/test-configuration)
-- [Page Object Model](https://playwright.dev/docs/pom)
-- [Playwright Fixtures](https://playwright.dev/docs/test-fixtures)
-- [Authentication (storageState)](https://playwright.dev/docs/auth)
-- [Network Mocking](https://playwright.dev/docs/mock)
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices)

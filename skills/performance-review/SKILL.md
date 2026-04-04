@@ -27,38 +27,25 @@ Identify performance bottlenecks, memory issues, and optimization opportunities 
 Apply performance best practices when writing new code. Write performant code from the start.
 
 ### Mode 2: Passive Detection
-While reviewing code, flag critical performance issues without being asked. Focus on high-impact
-findings — not micro-optimisations.
+While reviewing code, flag critical performance issues without being asked. Focus on high-impact findings — not micro-optimisations.
 
 ### Mode 3: Performance Audit Report
 When explicitly requested, produce a comprehensive performance report across the codebase.
-
----
 
 ## Review Process
 
 ### Step 1: Load references
 
-> **CONSTRAINT: Load ONLY stack-relevant references.**
-> Reference files use `<tech-prefix>-<purpose>.md` naming. A file is tech-specific if its name
-> starts with a known prefix (e.g., `python-`, `django-`). A file is generic if it has no tech
-> prefix (e.g., `performance-checklist.md`). Skip all non-matching tech-specific files.
-> If `docs/PROJECT_DETAILS.md` is missing or has no Tech Stack section, do NOT load any
-> tech-specific references — load only generic files.
+Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
 
 Always load the generic performance baseline:
 - `references/performance-checklist.md` (generic — always load)
 
-Then identify the project's language and framework from `docs/PROJECT_DETAILS.md` and load
-ONLY matching technology-specific reference files from the same `references/` directory.
+Then identify the project's language and framework from `docs/PROJECT_DETAILS.md` and load ONLY matching technology-specific reference files from the same `references/` directory.
 
-Reference files follow the naming convention `<language>-<framework>-*.md`. Load only files that
-match the detected stack — for example, if the stack is Python + Django, load
-`python-performance-review.md` and `django-performance-review.md`. Skip all other tech-specific
-files (e.g., `golang-performance-review.md`, `php-performance-review.md`).
+Reference files follow the naming convention `<language>-<framework>-*.md`. Load only files that match the detected stack — for example, if the stack is Python + Django, load `python-performance-review.md` and `django-performance-review.md`. Skip all other tech-specific files (e.g., `golang-performance-review.md`, `php-performance-review.md`).
 
-Apply all loaded sources together — the generic checklist sets the baseline, technology-specific
-references deepen it.
+Apply all loaded sources together — the generic checklist sets the baseline, technology-specific references deepen it.
 
 ### Step 2: Apply the checklist to the target scope
 
@@ -67,12 +54,9 @@ references deepen it.
 
 ### Step 3: Report findings
 
-In **passive / code-review mode**: surface findings as rows in the review table with appropriate
-severity.
+In **passive / code-review mode**: surface findings as rows in the review table with appropriate severity.
 
 In **audit mode**: produce a structured report (see Report Format below).
-
----
 
 ## Report Format
 
@@ -105,8 +89,6 @@ Optimisations that would improve performance moderately.
 Minor optimisations and best-practice suggestions.
 
 Write the report to `performance_review_report.md` or a user-specified location.
-
----
 
 ## Example
 

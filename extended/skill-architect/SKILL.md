@@ -18,8 +18,6 @@ metadata:
 > DISCOVERY → ARCHITECTURE → CRAFT → VALIDATE → DELIVER workflow. This extension injects
 > guardrail design into those phases and adds the `extended/` pattern for global skill modifications.
 
----
-
 ## Extension 1: Guardrail Design
 
 Inject the following steps into the parent skill's workflow at the phases indicated.
@@ -28,7 +26,7 @@ Inject the following steps into the parent skill's workflow at the phases indica
 
 **1.3 — Guardrail Discovery**
 
-Before moving to Architecture, ask the user one focused question about risk profile:
+Ask the user one focused question about risk profile:
 
 > "Does this skill take any actions that are hard to reverse or visible outside this session —
 > for example: writing or deleting files, running git operations, calling external APIs, sending
@@ -41,8 +39,6 @@ Based on the answer, categorize the skill as:
 - **High risk** — irreversible actions, external side effects, or touches credentials → full guardrail set
 
 Record the risk category. It drives the guardrail set proposed in Phase 2.
-
----
 
 ### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure
 
@@ -69,8 +65,6 @@ After the user confirms the guardrail set, record each selected guardrail with:
 - Its behavior (what exactly does the skill do when triggered?)
 
 This becomes the source material for the `## Guardrails` section in Phase 3.
-
----
 
 ### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
 
@@ -108,8 +102,6 @@ Never include credential values in output. Reference by name only (e.g. `$API_KE
 
 Omit sections that don't apply. For Low risk skills, a single `### Scope` with Do-NOT statements is sufficient.
 
----
-
 ### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
 
 **Guardrail testing**
@@ -123,8 +115,6 @@ For each guardrail defined in the skill, mentally simulate the failure case:
 - Resource collision → is the collision handling unambiguous?
 
 If any guardrail path is unclear or missing, fix it before delivery.
-
----
 
 ## Extension 2: The `extended/` Pattern for Global Skills
 
@@ -170,3 +160,55 @@ metadata:
 - Use "Inject into Phase X" or "Add to section Y" headings so the agent knows exactly where the new instructions apply in the parent's workflow.
 - Do not re-state parent instructions — reference them by name and add only the delta.
 - Keep the extension under 200 lines where possible. If it grows larger, move content to `reference/` files under `extended/<skill-name>/reference/`.
+
+## Extension 3: Token Efficiency
+
+Inject the following steps into the parent skill's workflow at the phases indicated.
+
+### Inject into Phase 2 (Architecture) — when the skill includes reference files
+
+**2.4 — Reference File Design**
+
+If the skill will include technology-specific reference files:
+- Follow the naming pattern in [Reference File Naming Convention](../../templates/reference-file-naming-convention.md).
+- Follow the versioning structure in [Version Stratification Guide](../../templates/version-stratification-guide.md).
+
+### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
+
+**Output rules for reference files** (any file under `references/`):
+
+- No `## Resources` or `## References` section — agents do not browse links
+- One `---` only — immediately after the scope line (first 1–2 sentence paragraph); none elsewhere
+- Every code example must have a `// Good` or `// Bad` marker; trim text after ` — ` when the heading already conveys the intent
+- "Bad" examples: keep signature + problematic line(s) only; remove surrounding scaffolding
+- Max 1 consecutive blank line; no blank lines inside code blocks
+- Version sections with ≤1 code block and <5 prose lines: inline into the parent section with a version annotation (e.g. `# PHP 8.4+`)
+- Never write filler phrases: "It is important to note", "In order to", "As a general rule"
+- Preserve WHY context, disambiguation, and edge-case prose — this is the most valuable content
+
+**Output rules for SKILL.md files:**
+
+- No `---` between sections — only the frontmatter closing `---` is kept
+- Do not restate the frontmatter `description` in the skill body
+- Step introductions lead with the action, not with context ("Check whether…" not "Before checking…")
+- No filler phrases in any directive
+
+Full rules: [Token Efficiency Rules](../../templates/token-efficiency-rules.md).
+
+### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
+
+**Token efficiency check**
+
+Before delivering any generated file, verify:
+
+**Reference files:**
+- [ ] No `## Resources`/`## References` section present
+- [ ] Exactly one `---` in the file (after scope line); none between sections
+- [ ] Every code example has a `// Good` or `// Bad` marker
+- [ ] No consecutive blank lines (max 1); no blank lines inside code blocks
+- [ ] No filler phrases
+
+**SKILL.md files:**
+- [ ] No `---` between sections (only frontmatter close)
+- [ ] Frontmatter `description` not restated in the body
+- [ ] Step introductions lead with the action

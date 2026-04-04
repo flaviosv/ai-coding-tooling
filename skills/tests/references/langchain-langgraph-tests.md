@@ -4,16 +4,6 @@ Applies to: Projects using LangChain 0.3+ / langchain-core 0.3+ and LangGraph 0.
 
 ---
 
-## Overview
-
-LangChain and LangGraph applications require a layered testing strategy:
-
-- **Unit tests**: Individual nodes, tools, prompt templates, output parsers — always use a fake or mock LLM, never a live one
-- **Integration tests**: Full chain/graph execution — mocked LLM, real tools where safe
-- **E2E tests**: Live LLM calls — expensive and slow; mark and exclude from CI by default
-
----
-
 ## Test Organization
 
 ```
@@ -31,8 +21,6 @@ tests/
 └── conftest.py                # Shared fixtures
 ```
 
----
-
 ## Core Fixtures
 
 ### Fake LLM
@@ -40,7 +28,6 @@ tests/
 `FakeListChatModel` returns pre-defined responses in sequence — no network calls, fully deterministic.
 
 ```python
-import pytest
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage
 
@@ -48,9 +35,7 @@ from langchain_core.messages import AIMessage
 def fake_llm():
     """Deterministic LLM that returns pre-defined responses in order."""
     return FakeListChatModel(
-        responses=[
-            AIMessage(content="Default fake response"),
-        ]
+        responses=[AIMessage(content="Default fake response")]
     )
 
 def make_fake_llm(*responses: str) -> FakeListChatModel:
@@ -63,8 +48,6 @@ def make_fake_llm(*responses: str) -> FakeListChatModel:
 ### Fake LLM with Tool Calls
 
 ```python
-from langchain_core.messages import AIMessage
-
 def make_fake_llm_with_tool_call(tool_name: str, args: dict, call_id: str = "call_1") -> FakeListChatModel:
     """Fake LLM that produces a tool call on the first response."""
     return FakeListChatModel(
@@ -86,9 +69,7 @@ from langchain_core.documents import Document
 
 @pytest.fixture
 def mock_retriever():
-    docs = [
-        Document(page_content="Test content", metadata={"source": "test.md"}),
-    ]
+    docs = [Document(page_content="Test content", metadata={"source": "test.md"})]
     retriever = MagicMock()
     retriever.invoke.return_value = docs
     retriever.ainvoke = AsyncMock(return_value=docs)
@@ -102,11 +83,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 @pytest.fixture
 def checkpointer():
-    """Fresh in-memory checkpointer for each test."""
     return InMemorySaver()
 ```
-
----
 
 ## Unit Testing Patterns
 
@@ -136,7 +114,6 @@ def test_prompt_raises_on_missing_variable():
 ### Testing Output Parsers
 
 ```python
-import pytest
 from langchain_core.output_parsers import JsonOutputParser
 
 def test_json_parser_extracts_fields():
@@ -175,7 +152,6 @@ def test_structured_output_extraction():
 
 ```python
 from langchain_core.tools import tool
-import pytest
 
 @tool
 def add_numbers(a: int, b: int) -> int:
@@ -236,8 +212,6 @@ def test_should_continue_routes_to_end_when_no_tool_calls():
     assert should_continue(state) == "end"
 ```
 
----
-
 ## Integration Testing Patterns
 
 ### Testing a Full LCEL Chain
@@ -259,19 +233,17 @@ from langchain_core.messages import HumanMessage, AIMessage
 def test_agent_graph_completes_and_returns_ai_message(fake_llm, checkpointer):
     graph = build_agent_graph(llm=fake_llm).compile(checkpointer=checkpointer)
     config = {"configurable": {"thread_id": "test-1"}}
-
     result = graph.invoke(
         {"messages": [HumanMessage(content="hello")]},
         config,
     )
-
     assert len(result["messages"]) >= 2
     assert isinstance(result["messages"][-1], AIMessage)
 ```
 
 ### Testing Graph State Transitions with `update_state`
 
-LangGraph's `update_state` lets you inject state mid-graph to test partial execution paths.
+`update_state` lets you inject state mid-graph to test partial execution paths.
 
 ```python
 from langgraph.checkpoint.memory import MemorySaver
@@ -279,14 +251,12 @@ from langgraph.checkpoint.memory import MemorySaver
 def test_partial_execution_from_classify_node():
     checkpointer = MemorySaver()
     compiled = build_graph().compile(checkpointer=checkpointer)
-
     # Simulate state as if "parse_input" node already ran
     compiled.update_state(
         config={"configurable": {"thread_id": "partial-1"}},
         values={"messages": [HumanMessage(content="billing issue")], "category": "billing"},
         as_node="parse_input",
     )
-
     # Resume from "classify" onward
     result = compiled.invoke(
         None,
@@ -306,13 +276,10 @@ def test_graph_interrupts_before_destructive_action(checkpointer):
         interrupt_before=["execute_action"],
     )
     config = {"configurable": {"thread_id": "hitl-1"}}
-
-    # First invocation — should pause at execute_action
     result = graph.invoke(
         {"messages": [HumanMessage(content="delete my account")]},
         config,
     )
-    # Graph interrupted — last message should NOT be from execute_action
     assert result.get("__interrupt__") is not None or \
            "execute_action" not in [m.name for m in result["messages"] if hasattr(m, "name")]
 
@@ -322,9 +289,7 @@ def test_graph_resumes_after_approval(checkpointer):
         interrupt_before=["execute_action"],
     )
     config = {"configurable": {"thread_id": "hitl-2"}}
-
     graph.invoke({"messages": [HumanMessage(content="delete my account")]}, config)
-
     # Resume with human approval
     result = graph.invoke(Command(resume=True), config)
     assert isinstance(result["messages"][-1], AIMessage)
@@ -336,19 +301,14 @@ def test_graph_resumes_after_approval(checkpointer):
 def test_graph_accumulates_messages_across_invocations(checkpointer):
     graph = build_graph().compile(checkpointer=checkpointer)
     config = {"configurable": {"thread_id": "persist-1"}}
-
     graph.invoke({"messages": [HumanMessage(content="First message")]}, config)
     result = graph.invoke({"messages": [HumanMessage(content="Second message")]}, config)
-
-    # Both messages should appear in accumulated history
     all_human_messages = [
         m.content for m in result["messages"] if isinstance(m, HumanMessage)
     ]
     assert "First message" in all_human_messages
     assert "Second message" in all_human_messages
 ```
-
----
 
 ## E2E Tests (Live LLM)
 
@@ -377,13 +337,9 @@ markers = [
 ]
 ```
 
----
-
 ## Parametrize Patterns
 
 ```python
-import pytest
-
 @pytest.mark.parametrize("input_text,expected_category", [
     ("I need a refund", "billing"),
     ("My account is locked", "account"),
@@ -395,8 +351,6 @@ def test_classify_node_covers_all_intents(input_text, expected_category):
     result = classify_node(state)
     assert result["category"] == expected_category
 ```
-
----
 
 ## Running Tests
 

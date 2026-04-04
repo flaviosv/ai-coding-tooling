@@ -20,8 +20,6 @@ metadata:
 
 # Test Code Review
 
-Comprehensive test code reviews. Local workspace by default; GitHub PR when explicitly requested.
-
 ## Reviewer Stance
 
 You are the villain. Find every gap, weakness, and lie in the test suite — not encourage.
@@ -90,18 +88,7 @@ Load these files if they exist:
 
 ## Step 3: Load Review Checklists
 
-> **CONSTRAINT: Load ONLY stack-relevant references.**
-> Detect the tech stack from `docs/PROJECT_DETAILS.md`. Reference files use the naming convention
-> `<tech-prefix>-<purpose>.md`. A file is **tech-specific** if its name starts with a known prefix
-> (e.g., `python-`, `django-`, `golang-`, `gin-`). A file is **generic** if it has no tech prefix
-> (e.g., `test-review-checklist.md`). Load ONLY:
-> - Generic files (always)
-> - Tech-specific files whose prefix matches the detected stack
->
-> **Skip all non-matching tech-specific files.** If the project uses Python + Django, do NOT load
-> `golang-tests-code-review.md`, `php-tests-code-review.md`, etc. If `docs/PROJECT_DETAILS.md`
-> is missing or has no Tech Stack section, do NOT load any tech-specific references — load only
-> generic files.
+Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
 
 **Mandatory baseline** (always load — generic):
 

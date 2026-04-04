@@ -32,11 +32,9 @@ Guidelines for writing, maintaining, and running tests across any technology sta
 - A few well-written tests are better than many poorly written ones
 - If a test is hard to write, it signals a design problem in the production code — surface it
 
----
-
 ## Step 1: Load project test conventions
 
-Before writing any tests, check whether the project has a test conventions file:
+Check whether the project has a test conventions file:
 
 - `docs/TESTS.md` — project-specific conventions, base classes, fixtures, naming patterns
 
@@ -44,12 +42,7 @@ If this file exists, follow it precisely. It takes precedence over the generic g
 
 Then load the reference files:
 
-> **CONSTRAINT: Load ONLY stack-relevant references.**
-> Reference files use `<tech-prefix>-<purpose>.md` naming. A file is tech-specific if its name
-> starts with a known prefix (e.g., `python-`, `django-`). A file is generic if it has no tech
-> prefix (e.g., `testing-patterns.md`). Skip all non-matching tech-specific files.
-> If `docs/PROJECT_DETAILS.md` is missing or has no Tech Stack section, do NOT load any
-> tech-specific references — load only generic files.
+Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
 
 1. Always load `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules (generic)
 2. Always load `references/coverage-guide.md` — coverage goals and what not to test (generic)
@@ -58,20 +51,7 @@ Then load the reference files:
    the detected stack. If the stack is Python + Django, load `python-tests.md` AND `django-tests.md`.
    Skip all other tech-specific files (e.g., `golang-tests.md`, `php-tests.md`).
 
-If no matching technology-specific reference file exists for the detected stack, STOP and output:
-
----
-> ⚠️ **No tech-specific test reference found for: [detected stack]**
->
-> No matching reference file was found in `references/`. Generic testing principles will apply,
-> but stack-specific patterns (fixtures, assertion styles, framework idioms) will NOT be enforced.
->
-> **Options:**
-> 1. Run `tech-reference-add` to generate test guidelines for this stack, then retry.
-> 2. Proceed with generic principles only.
->
-> _Reply with **1** or **2** to continue._
----
+If no matching technology-specific reference file exists for the detected stack, STOP and apply [Unsupported Tech Stack Alert](../../templates/unsupported-tech-stack-alert.md).
 
 ## Test Types
 
@@ -97,11 +77,7 @@ Test multiple scenarios using the testing framework's parametrize feature.
 - Only 1–2 cases (overhead not worth it)
 - Test setups differ significantly between cases
 
----
-
 > For TDD methodology (red-green-refactor, test-first workflows), see the **tests-tdd** skill.
-
----
 
 ## Completion Checklist
 
@@ -122,8 +98,6 @@ Before considering a feature or fix complete:
 - [ ] Mock setup is minimal — over-mocking hides real behaviour
 - [ ] Common setup is extracted into helpers — not copy-pasted across tests
 - [ ] Test code reads as documentation of how the system is meant to work
-
----
 
 ## Example
 

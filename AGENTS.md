@@ -14,10 +14,7 @@ See [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) for the full project conc
 
 ## documentation-upsert
 
-When the **documentation-upsert** skill is invoked in this project, in addition to its standard workflow,
-update `README.md` with whatever is relevant: new skills added, new tech references, structural
-changes to the `skills/` or `extended/` directories, or changes to the global agent setup. Keep
-the README accurate as a first-stop reference for anyone using or contributing to this project.
+When the **documentation-upsert** skill is invoked in this project, in addition to its standard workflow, update `README.md` with whatever is relevant: new skills added, new tech references, structural changes to the `skills/` or `extended/` directories, or changes to the global agent setup. Keep the README accurate as a first-stop reference for anyone using or contributing to this project.
 
 # Available Skills
 

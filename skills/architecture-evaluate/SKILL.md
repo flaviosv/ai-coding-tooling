@@ -94,6 +94,8 @@ Use Glob and Read to gather context. Adapt searches to the actual language, fram
 | **Data pipelines** | `dags/`, `pipelines/`, Airflow, dbt, Spark configs |
 | **Monitoring** | Datadog monitors, PagerDuty integrations, alerting configs tied to deploys |
 
+When generating documentation files, follow [Token Efficiency Rules](../../templates/token-efficiency-rules.md).
+
 ## Step 4: Write PROJECT_DETAILS.md
 
 > **Delegate to `docs-writer`** for the `.md` file write to ensure consistent formatting.
@@ -182,8 +184,6 @@ via the directive in AGENTS.global.md.
 
 If any file could not be written, report the error and reason.
 
----
-
 ## Package Mode
 
 Triggered when invoked with a specific package/module path (e.g. "evaluate architecture for `packages/auth`") or called by **documentation-upsert** when a new package is detected.
@@ -254,8 +254,6 @@ Package architecture evaluated:
 ```
 
 If the package could not be fully evaluated (e.g. insufficient source files, ambiguous structure), report what was generated and flag gaps.
-
----
 
 ## Keeping Docs Up to Date
 

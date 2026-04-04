@@ -17,8 +17,6 @@ Supplements `review-checklist.md` and `golang-code-review.md` for Go projects us
 - [ ] `router.SetTrustedProxies()` explicitly configured — do not rely on default proxy trust (`nil` disables; provide explicit CIDR list when behind a load balancer)
 - [ ] `*gin.Context` not stored in goroutines or long-lived structs — it is pooled and reused by Gin after the handler returns
 
----
-
 ## Error Handling
 
 - [ ] `c.ShouldBindJSON` / `c.ShouldBind` / `c.ShouldBindQuery` used over `c.BindJSON` / `c.Bind` — the `Bind*` variants call `c.AbortWithStatus(400)` automatically and may suppress custom error handling logic
@@ -34,7 +32,7 @@ func AuthMiddleware() gin.HandlerFunc {
             c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
             // Missing c.Abort() — c.Next() still runs downstream handlers
         }
-        c.Next()
+        // ...
     }
 }
 
@@ -57,7 +55,7 @@ func AuthMiddleware() gin.HandlerFunc {
 func (h *Handler) Create(c *gin.Context) {
     var req CreateItemRequest
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.Error(err) // add to context, do not respond here
+        c.Error(err)
         return
     }
     item, err := h.useCase.Create(c.Request.Context(), req)
@@ -74,14 +72,11 @@ func ErrorHandler() gin.HandlerFunc {
         c.Next()
         if len(c.Errors) > 0 {
             err := c.Errors.Last().Err
-            // map err type to appropriate HTTP status
             c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         }
     }
 }
 ```
-
----
 
 ## Performance
 
@@ -91,8 +86,6 @@ func ErrorHandler() gin.HandlerFunc {
 - [ ] No unbounded list queries behind list endpoints — pagination enforced at the use case or repository layer
 - [ ] `gin.H` (a `map[string]any`) used only for one-off or error responses — typed structs preferred for recurring response shapes (map marshalling is slower due to runtime reflection)
 - [ ] `router.MaxMultipartMemory` configured explicitly for file-upload routes — not left at default 32 MiB
-
----
 
 ## Architecture & Design
 
@@ -126,8 +119,6 @@ func (h *Handler) List(c *gin.Context) {
 - [ ] `gin.New()` used in production (not `gin.Default()`) with explicitly chosen middleware registered via `router.Use()`
 - [ ] `http.Server` used to wrap the Gin router — `router.Run()` not called directly in production (no timeout configuration possible via `Run`)
 
----
-
 ## Code Quality
 
 - [ ] Request structs use `binding:` validation tags from `go-playground/validator/v10` — not manual field-by-field checks in handler bodies
@@ -146,8 +137,8 @@ type CreateItemRequest struct {
 
 ```go
 // Bad — inconsistent response shapes
-c.JSON(200, items)                                    // bare slice
-c.JSON(200, gin.H{"data": items, "total": count})    // wrapped
+c.JSON(200, items)
+c.JSON(200, gin.H{"data": items, "total": count})
 
 // Good — consistent typed envelope
 type ListResponse[T any] struct {
@@ -158,8 +149,6 @@ c.JSON(http.StatusOK, ListResponse[Item]{Data: items, Total: total})
 ```
 
 - [ ] `c.Request.Body` not read again after `ShouldBindJSON` — the body stream is consumed on first read
-
----
 
 ## Gin Idioms
 
@@ -218,8 +207,6 @@ go func() {
 
 - [ ] Custom validators registered via `binding.Validator.Engine().(*validator.Validate).RegisterValidation(...)` — not reimplemented manually in handler bodies
 
----
-
 ## Testing
 
 - [ ] Handler tests use `gin.SetMode(gin.TestMode)` at the start of every test function
@@ -227,12 +214,3 @@ go func() {
 - [ ] Both success and error paths covered for every handler
 - [ ] Response body structure asserted, not just the status code
 - [ ] Middleware tested in isolation with a minimal router — not through full end-to-end integration tests
-
----
-
-## Resources
-
-- [Gin Framework Documentation](https://gin-gonic.com/docs/)
-- [Gin GitHub](https://github.com/gin-gonic/gin)
-- [go-playground/validator](https://github.com/go-playground/validator)
-- [net/http/httptest](https://pkg.go.dev/net/http/httptest)

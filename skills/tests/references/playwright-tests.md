@@ -7,14 +7,11 @@ For Python Playwright (`pytest-playwright`), adapt patterns — core concepts (P
 
 ## General Playwright Testing Patterns
 
-Universal conventions that apply across all currently supported Playwright versions (v1.40+).
+Universal conventions for Playwright v1.40+.
 
 ### Test File Structure
 
 ```typescript
-// tests/login.spec.ts
-import { test, expect } from '@playwright/test';
-
 test.describe('Login', () => {
   test('valid credentials redirect to dashboard', async ({ page }) => {
     await page.goto('/login');
@@ -36,11 +33,7 @@ test.describe('Login', () => {
 
 File naming: `<feature>.spec.ts` for tests, `<feature>.page.ts` for Page Object classes, `<name>.setup.ts` for setup projects, `<name>.fixture.ts` for fixture definitions.
 
----
-
 ### Locator Priority (Most to Least Preferred)
-
-Use locators in this order — each level is more resilient to UI changes than the next:
 
 1. **Role-based** — `getByRole('button', { name: 'Submit' })` — ARIA semantics; survives CSS refactors
 2. **Label** — `getByLabel('Email')` — matches `<label>` associations
@@ -49,23 +42,18 @@ Use locators in this order — each level is more resilient to UI changes than t
 5. **CSS / XPath** — last resort only; highly brittle
 
 ```typescript
-// Good — role-based; works regardless of class changes
+// Good — role-based
 await page.getByRole('button', { name: 'Sign in' }).click();
-
-// Good — label association; works regardless of layout changes
+// Good — label association
 await page.getByLabel('Email').fill('user@example.com');
-
 // Good — explicit test id for complex custom components
 await page.getByTestId('date-picker-trigger').click();
 
-// Bad — class name is an implementation detail; breaks with CSS refactors
+// Bad — class name is implementation detail
 await page.locator('button.btn-primary.login-submit').click();
-
-// Bad — fragile XPath; breaks with any DOM restructure
+// Bad — fragile XPath
 await page.locator('//*[@id="app"]/div[2]/form/button').click();
 ```
-
----
 
 ### Web-First Assertions
 
@@ -98,8 +86,6 @@ await expect(locator).toHaveAttribute('href', '/about')
 await expect(page).toHaveURL('/path')
 await expect(page).toHaveTitle('Page Title')
 ```
-
----
 
 ### Page Object Model (POM)
 
@@ -145,8 +131,6 @@ test('valid credentials redirect to dashboard', async ({ page }) => {
 });
 ```
 
----
-
 ### Fixtures with `test.extend`
 
 Extract shared setup into typed fixtures. Never duplicate browser context configuration or auth setup across test bodies.
@@ -168,7 +152,6 @@ export const test = base.extend<AppFixtures>({
     await loginPage.goto();
     await use(loginPage);
   },
-
   dashboardPage: async ({ page }, use) => {
     await use(new DashboardPage(page));
   },
@@ -187,8 +170,6 @@ test('shows welcome message on dashboard', async ({ dashboardPage }) => {
   await expect(dashboardPage.welcomeHeading).toBeVisible();
 });
 ```
-
----
 
 ### Authentication via Storage State
 
@@ -230,11 +211,9 @@ export default defineConfig({
 });
 ```
 
----
-
 ### Network Mocking
 
-Use `page.route()` to intercept and control API responses. Always call `route.fulfill()`, `route.continue()`, or `route.abort()` in every code path.
+Use `page.route()` to intercept and control API responses. MUST call `route.fulfill()`, `route.continue()`, or `route.abort()` in every code path.
 
 ```typescript
 test('shows error banner when API returns 500', async ({ page }) => {
@@ -259,22 +238,20 @@ test('displays fetched orders', async ({ page }) => {
 });
 ```
 
----
-
 ### Anti-Patterns
 
 ```typescript
-// Bad — hard-coded sleep; flaky on slow CI, needlessly slow on fast CI
+// Bad — hard-coded sleep; flaky on slow CI
 await page.waitForTimeout(3000);
 // Good — wait for the condition that signals readiness
 await expect(page.getByTestId('data-table')).toBeVisible();
 
-// Bad — unawaited action; executes nothing; test may pass incorrectly
+// Bad — unawaited action; test may pass incorrectly
 page.click('#submit');
 // Good
 await page.click('#submit');
 
-// Bad — accessing textContent() without auto-retry; timing-unsafe
+// Bad — textContent() without auto-retry; timing-unsafe
 const text = await page.locator('#message').textContent();
 expect(text).toBe('Done');
 // Good
@@ -286,20 +263,15 @@ const el = await page.$('.submit-btn');
 const el = page.getByRole('button', { name: 'Submit' });
 ```
 
----
-
 ## v1.45+ — Clock API
 
-Time manipulation for tests that depend on `Date.now()`, `setTimeout`, `setInterval`, or `requestAnimationFrame`.
+Time manipulation for tests depending on `Date.now()`, `setTimeout`, `setInterval`, or `requestAnimationFrame`.
 
 ```typescript
 test('session expires after inactivity timeout', async ({ page }) => {
   await page.clock.install({ time: new Date('2024-06-01T10:00:00') });
   await page.goto('/dashboard');
-
-  // Fast-forward by 30 minutes without waiting in real time
   await page.clock.fastForward('30:00');
-
   await expect(page.getByText('Session expired')).toBeVisible();
 });
 
@@ -307,13 +279,10 @@ test('countdown timer reaches zero', async ({ page }) => {
   await page.clock.install({ time: new Date('2024-12-31T23:59:00') });
   await page.goto('/countdown');
   await expect(page.getByTestId('countdown')).toHaveText('1 minute remaining');
-
-  await page.clock.fastForward(60_000); // advance 60 seconds
+  await page.clock.fastForward(60_000);
   await expect(page.getByTestId('countdown')).toHaveText("Time's up!");
 });
 ```
-
----
 
 ## v1.46+ — ARIA Snapshots
 
@@ -331,16 +300,3 @@ test('navigation menu exposes correct links', async ({ page }) => {
   `);
 });
 ```
-
----
-
-## Resources
-
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
-- [Playwright Test Fixtures](https://playwright.dev/docs/test-fixtures)
-- [Page Object Model](https://playwright.dev/docs/pom)
-- [Authentication (storageState)](https://playwright.dev/docs/auth)
-- [Network Mocking](https://playwright.dev/docs/mock)
-- [Web-First Assertions](https://playwright.dev/docs/test-assertions)
-- [Clock API](https://playwright.dev/docs/clock) (v1.45+)
-- [ARIA Snapshots](https://playwright.dev/docs/aria-snapshots) (v1.46+)

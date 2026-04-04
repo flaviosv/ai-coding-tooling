@@ -25,8 +25,6 @@ Document technical debts and maintain an anti-pattern index so agents avoid repl
 
 ## Operations
 
-Determine which operation to perform based on the user's request.
-
 ### Create
 
 Trigger: User describes a new tech debt to document.

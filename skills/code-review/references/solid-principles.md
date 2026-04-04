@@ -4,9 +4,7 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 
 ---
 
-## S — Single Responsibility Principle
-
-> A class (or module, function) should have one, and only one, reason to change.
+## S — Single Responsibility Principle (one reason to change)
 
 - [ ] Each class/module has a single, clearly stated purpose — if you need "and" to describe it, it violates SRP
 - [ ] Business logic is not mixed with persistence, serialization, or transport concerns in the same class
@@ -16,16 +14,9 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 - [ ] Large classes are flagged — size is a proxy for multiple responsibilities
 - [ ] Event handlers and observers are stateless — they carry no mutable instance state that persists across invocations
 
-**Common violations to flag:**
-- `UserService` that also handles email delivery, file uploads, and audit logging
-- A model class that contains SQL queries or HTTP calls
-- A controller action that performs data access, business logic, and response formatting inline
+**Common violations:** `UserService` that also handles email delivery, file uploads, and audit logging; a model class that contains SQL queries or HTTP calls; a controller action that performs data access, business logic, and response formatting inline.
 
----
-
-## O — Open/Closed Principle
-
-> Software entities should be open for extension, but closed for modification.
+## O — Open/Closed Principle (open for extension, closed for modification)
 
 - [ ] Adding new behavior does not require modifying existing, stable code
 - [ ] Conditionals that dispatch on type or enum values are not scattered — use polymorphism or a strategy pattern instead
@@ -33,16 +24,9 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 - [ ] Core domain logic is not frequently modified to accommodate new features — it is extended
 - [ ] Plugin, strategy, or decorator patterns are used where behavior needs to vary
 
-**Common violations to flag:**
-- A `switch(type)` or `if/elif` chain that must grow every time a new type is added
-- Adding a new feature by editing a core utility function shared across many callers
-- Hard-coded conditionals like `if env == "production"` scattered through business logic
+**Common violations:** A `switch(type)` or `if/elif` chain that must grow every time a new type is added; adding a new feature by editing a core utility function shared across many callers; hard-coded conditionals like `if env == "production"` scattered through business logic.
 
----
-
-## L — Liskov Substitution Principle
-
-> Subtypes must be substitutable for their base types without altering correctness.
+## L — Liskov Substitution Principle (subtypes substitutable without altering correctness)
 
 - [ ] Subclasses do not override methods in ways that break the contract defined by the parent
 - [ ] A subclass does not narrow preconditions (require more) or weaken postconditions (guarantee less) compared to the parent
@@ -50,16 +34,9 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 - [ ] Inheriting and then doing nothing (no-op overrides or `raise NotImplementedError`) is a red flag — prefer composition
 - [ ] Callers can use the base type without knowing which concrete subtype they have
 
-**Common violations to flag:**
-- A `ReadOnlyList` that extends `List` but throws on `add()` — callers expecting `List` break
-- An override that silently ignores input the parent processed
-- Checking `instanceof` before calling a method — code doesn't trust the substitution
+**Common violations:** A `ReadOnlyList` that extends `List` but throws on `add()` — callers expecting `List` break; an override that silently ignores input the parent processed; checking `instanceof` before calling a method — code doesn't trust the substitution.
 
----
-
-## I — Interface Segregation Principle
-
-> Clients should not be forced to depend on interfaces they do not use.
+## I — Interface Segregation Principle (no forced dependency on unused interfaces)
 
 - [ ] Interfaces are focused — no "fat interfaces" that bundle unrelated capabilities
 - [ ] A class that implements an interface is not forced to leave methods empty or raise `NotImplementedError`
@@ -67,16 +44,9 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 - [ ] Large interfaces are split by role (e.g. `Readable`, `Writable` instead of one `FileHandler`)
 - [ ] A change to one part of a fat interface does not force recompilation or changes in unrelated consumers
 
-**Common violations to flag:**
-- A single `IRepository` interface with `findById`, `save`, `delete`, `bulkImport`, `generateReport` — consumers only using read operations still depend on write operations
-- An interface implemented by a class that leaves 3 of 7 methods as `pass` or `throw new NotImplementedException()`
-- Injecting a full service into a component that only uses one method from it
+**Common violations:** A single `IRepository` interface with `findById`, `save`, `delete`, `bulkImport`, `generateReport` — consumers only using read operations still depend on write operations; an interface implemented by a class that leaves 3 of 7 methods as `pass` or `throw new NotImplementedException()`; injecting a full service into a component that only uses one method from it.
 
----
-
-## D — Dependency Inversion Principle
-
-> High-level modules should not depend on low-level modules. Both should depend on abstractions. Abstractions should not depend on details.
+## D — Dependency Inversion Principle (depend on abstractions, not concretions)
 
 - [ ] High-level business logic depends on interfaces/abstractions, not concrete implementations
 - [ ] Concrete classes (database adapters, HTTP clients, file system wrappers) are injected, not instantiated inline
@@ -86,13 +56,7 @@ Checklist for evaluating SOLID design principles during code review. Use alongsi
 - [ ] No static calls to concrete utility classes inside domain logic
 - [ ] Service locator pattern is not used — calling a container to retrieve a dependency by name inside business logic violates DIP the same way `new` does
 
-**Common violations to flag:**
-- `OrderService` directly instantiating `MySQLOrderRepository` or `StripePaymentGateway`
-- Business logic importing and using a specific logger implementation instead of a logging interface
-- Infrastructure code (e.g. a database adapter) pulling in domain objects directly
-- Calling `Container::get('SomeService')` or equivalent inside a domain method instead of using constructor injection
-
----
+**Common violations:** `OrderService` directly instantiating `MySQLOrderRepository` or `StripePaymentGateway`; business logic importing and using a specific logger implementation instead of a logging interface; infrastructure code (e.g. a database adapter) pulling in domain objects directly; calling `Container::get('SomeService')` or equivalent inside a domain method instead of using constructor injection.
 
 ## Cross-Cutting SOLID Smells
 

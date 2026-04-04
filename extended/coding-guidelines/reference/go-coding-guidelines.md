@@ -54,8 +54,8 @@ import (
 
 // Bad — alias used as abbreviation with no collision
 import (
-    ctx "context"         // wrong: no collision, just laziness
-    str "strings"        // wrong: same reason
+    ctx "context"  // wrong: no collision
+    str "strings"  // wrong: same reason
 )
 ```
 
@@ -190,8 +190,7 @@ func (s *Server) shutdown() {
 ```go
 // Bad — err shadowing across sequential :=
 data, err := fetchData(ctx)
-result, err := processData(data) // new `err` shadows previous one in some editors; use = here
-if err != nil { ... }
+result, err := processData(data) // use = here
 
 // Good
 data, err := fetchData(ctx)
@@ -232,8 +231,6 @@ Patterns and features available as of Go 1.23 (the older of the two currently su
 Use range-over-function iterators (`iter.Seq`, `iter.Seq2`) for custom collection traversal instead of ad-hoc callback APIs or allocating intermediate slices.
 
 ```go
-import "iter"
-
 // Good — lazy iterator; no allocation for the filtered sequence
 func ActiveItems(items []Item) iter.Seq[Item] {
     return func(yield func(Item) bool) {
@@ -267,12 +264,6 @@ func ForEachActive(items []Item, fn func(Item)) {
 Use `slices` and `maps` stdlib packages instead of manual loops for common operations.
 
 ```go
-import (
-    "cmp"
-    "maps"
-    "slices"
-)
-
 // Good — type-safe sort with cmp.Compare
 slices.SortFunc(items, func(a, b Item) int {
     return cmp.Compare(a.Name, b.Name)
@@ -304,11 +295,7 @@ slog.Info("request completed",
     "status", statusCode,
     "duration_ms", elapsed.Milliseconds(),
 )
-
-slog.Error("database query failed",
-    "query", queryName,
-    "err", err,
-)
+slog.Error("database query failed", "query", queryName, "err", err)
 
 // Bad — unstructured; cannot be parsed by log aggregators
 log.Printf("request: %s %s %d %dms", r.Method, r.URL.Path, statusCode, elapsed.Milliseconds())
@@ -330,8 +317,6 @@ if c > largest { largest = c }
 ### `cmp` Package
 
 ```go
-import "cmp"
-
 // Good — cmp.Or for default values (returns first non-zero value)
 name := cmp.Or(userProvidedName, "default")
 
@@ -358,11 +343,7 @@ if err != nil {
     return fmt.Errorf("opening upload root: %w", err)
 }
 defer root.Close()
-
 f, err := root.Open(userFilename) // traversal rejected by OS
-if err != nil {
-    return fmt.Errorf("opening file: %w", err)
-}
 
 // Bad — filepath.Join does NOT prevent traversal; ../../../etc/passwd passes through
 f, err := os.Open(filepath.Join("/var/data/uploads", userFilename))
@@ -378,8 +359,6 @@ type Set[K comparable] = map[K]bool
 
 var tags Set[string]
 tags = Set[string]{"admin": true, "user": true}
-
-// Usage — same as map[string]bool; no boxing
 if tags["admin"] { ... }
 ```
 
@@ -388,8 +367,6 @@ if tags["admin"] { ... }
 Use `weak.Pointer` for caches where GC reclamation under memory pressure is desirable.
 
 ```go
-import "weak"
-
 // Good — cache that does not prevent GC from reclaiming values
 type Cache[K comparable, V any] struct {
     mu      sync.Mutex
@@ -498,21 +475,3 @@ p := new(Config)
 // instead of manual ECIES or custom KEM+DEM implementations
 import "crypto/hpke"
 ```
-
----
-
-## Resources
-
-- [Effective Go](https://go.dev/doc/effective_go)
-- [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
-- [Go Proverbs](https://go-proverbs.github.io)
-- [slices package](https://pkg.go.dev/slices)
-- [maps package](https://pkg.go.dev/maps)
-- [iter package](https://pkg.go.dev/iter)
-- [cmp package](https://pkg.go.dev/cmp)
-- [weak package](https://pkg.go.dev/weak)
-- [log/slog package](https://pkg.go.dev/log/slog)
-- [Go 1.23 Release Notes](https://go.dev/doc/go1.23)
-- [Go 1.24 Release Notes](https://go.dev/doc/go1.24)
-- [Go 1.25 Release Notes](https://go.dev/doc/go1.25)
-- [Go 1.26 Release Notes](https://go.dev/doc/go1.26)

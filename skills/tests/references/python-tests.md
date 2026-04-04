@@ -1,38 +1,22 @@
 # Python Reference — tests
 
-Applies to: Python projects using pytest. pytest is the standard test runner for modern Python.
+Applies to: Python projects using pytest.
 
 ---
 
-<!-- General section covers conventions that apply across ALL still-supported Python versions (3.9–3.14) -->
 ## General Python Testing Patterns
 
 ### Test Discovery and Running
 
 ```bash
-# Run all tests
-pytest
-
-# Run a specific file
-pytest path/to/test_module.py
-
-# Run a specific test by name pattern
-pytest -k "test_create_item"
-
-# Verbose output
-pytest -v
-
-# Stop on first failure
-pytest -x
-
-# Re-run last failed tests
-pytest --lf
-
-# Show local variables on failure
-pytest -l
-
-# Run with coverage
-pytest --cov=myapp --cov-report=term-missing
+pytest                                          # all tests
+pytest path/to/test_module.py                   # specific file
+pytest -k "test_create_item"                    # by name pattern
+pytest -v                                       # verbose
+pytest -x                                       # stop on first failure
+pytest --lf                                     # re-run last failed
+pytest -l                                       # show locals on failure
+pytest --cov=myapp --cov-report=term-missing    # with coverage
 ```
 
 ### File and Directory Organization
@@ -51,12 +35,9 @@ tests/
 
 ### Fixtures
 
-Fixtures provide reusable setup and teardown. Define them in `conftest.py`:
+Define reusable setup/teardown in `conftest.py`:
 
 ```python
-# conftest.py
-import pytest
-
 @pytest.fixture
 def sample_data() -> dict:
     return {"name": "Test", "value": 42}
@@ -81,8 +62,6 @@ def expensive_resource():
 ### Parametrize
 
 ```python
-import pytest
-
 @pytest.mark.parametrize("input,expected", [
     (1, 2),
     (2, 4),
@@ -106,10 +85,10 @@ Use `@pytest.mark.parametrize` when you have 3+ similar test cases with the same
 
 ### Mocking with `pytest-mock`
 
-`pytest-mock` provides a `mocker` fixture that integrates cleanly with pytest and auto-resets after each test:
+`pytest-mock` provides a `mocker` fixture that integrates with pytest and auto-resets after each test:
 
 ```python
-# Good — mocker fixture; patch auto-resets after the test
+# Good — patch auto-resets after the test
 def test_external_call(mocker) -> None:
     mock_get = mocker.patch("myapp.services.requests.get")
     mock_get.return_value.json.return_value = {"data": "value"}
@@ -117,13 +96,13 @@ def test_external_call(mocker) -> None:
     assert result == "value"
     mock_get.assert_called_once_with("https://api.example.com/data")
 
-# Spy — wraps the real function, records calls without replacing behaviour
+# Good — spy wraps the real function, records calls without replacing behaviour
 def test_calls_processor(mocker) -> None:
     spy = mocker.spy(item_service, "process")
     item_service.run_all()
     assert spy.call_count == 3
 
-# Patch a method on an existing instance
+# Good — patch a method on an existing instance
 def test_sends_email(mocker, user_service) -> None:
     mock_send = mocker.patch.object(user_service.mailer, "send")
     user_service.register("alice@example.com")
@@ -135,7 +114,6 @@ def test_sends_email(mocker, user_service) -> None:
 ```python
 from unittest.mock import patch, MagicMock, AsyncMock
 
-# Patch a function in the module under test
 @patch("myapp.services.requests.get")
 def test_external_call(mock_get) -> None:
     mock_get.return_value.json.return_value = {"data": "value"}
@@ -143,13 +121,11 @@ def test_external_call(mock_get) -> None:
     assert result == "value"
     mock_get.assert_called_once_with("https://api.example.com/data")
 
-# Context manager form
 def test_with_context_manager() -> None:
     with patch("myapp.services.send_email") as mock_email:
         trigger_email_function()
         mock_email.assert_called_once()
 
-# MagicMock for object dependencies
 def test_with_mock_object() -> None:
     mock_service = MagicMock()
     mock_service.get_data.return_value = [{"id": 1}]
@@ -167,7 +143,7 @@ async def test_async_service(mocker) -> None:
 ### Assert Patterns
 
 ```python
-# Basic assertions — use pytest's plain assert; no assertEqual needed
+# Basic — use pytest's plain assert; no assertEqual needed
 assert result == expected
 assert result is not None
 assert len(results) == 3
@@ -204,8 +180,6 @@ class TestItemService:
 ### Markers
 
 ```python
-import pytest
-
 @pytest.mark.slow
 def test_slow_operation() -> None:
     ...
@@ -233,8 +207,6 @@ markers =
 
 ```python
 # conftest.py — fixtures here are available to all tests in the same directory and below
-import pytest
-
 @pytest.fixture
 def api_client() -> TestClient:
     return TestClient(app)
@@ -287,26 +259,22 @@ async def test_async_fetch() -> None:
 ### CI/CD Integration
 
 ```bash
-# Run all tests with coverage and JUnit XML output for CI
-pytest --cov=myapp --cov-report=xml --junitxml=results.xml
-
-# Run only fast unit tests
-pytest -m "not slow and not integration"
-
-# Stop on first failure in CI
-pytest -x
+pytest --cov=myapp --cov-report=xml --junitxml=results.xml  # coverage + JUnit XML for CI
+pytest -m "not slow and not integration"                      # only fast unit tests
+pytest -x                                                     # stop on first failure
 ```
 
-Recommended CI pipeline order: linting → unit tests → integration tests → coverage report.
+Recommended CI pipeline order: linting -> unit tests -> integration tests -> coverage report.
 
 ### Common Anti-Patterns
 
 #### Do Not Test Implementation Details
 
 ```python
-# Bad — testing a private method directly
+# Bad
 def test_internal_method() -> None:
     obj._private_method()
+    # ...
 
 # Good — test via the public interface
 def test_public_behavior() -> None:
@@ -347,19 +315,14 @@ def empty_list() -> list:
 ```python
 # Bad — MagicMock is not awaitable; raises TypeError at runtime
 mock_fetch = MagicMock(return_value={"id": 1})
-
-async def test_async_service() -> None:
-    result = await my_service(mock_fetch)  # TypeError
+result = await my_service(mock_fetch)  # TypeError
+# ...
 
 # Good — AsyncMock for coroutines
-from unittest.mock import AsyncMock
-
 mock_fetch = AsyncMock(return_value={"id": 1})
 ```
 
----
-
-## Python 3.9  (base supported version)
+## Python 3.9 (base supported version)
 
 ### Built-in Generic Annotations in Test Signatures
 
@@ -368,7 +331,7 @@ mock_fetch = AsyncMock(return_value={"id": 1})
 def make_item(tags: list[str] | None = None) -> Item:
     return Item(tags=tags or [])
 
-# Bad — outdated syntax
+# Bad
 from typing import List, Optional
 def make_item(tags: Optional[List[str]] = None) -> Item: ...
 ```
@@ -391,26 +354,24 @@ def test_inactive_item_excluded_from_listing() -> None:
     assert item not in list_active_items()
 ```
 
----
-
 ## Python 3.10
 
-### Union Type Syntax in Test Helper Signatures
+### Union Type Syntax in Test Helper Signatures (Python 3.10+)
 
 ```python
-# Good — X | Y union syntax in test helper signatures (Python 3.10+)
+# Good — X | Y union syntax
 def make_item(name: str | None = None, category: int | None = None) -> Item:
     return Item(name=name or "Default", category_id=category or 1)
 
-# Bad — verbose legacy Optional
+# Bad
 from typing import Optional
 def make_item(name: Optional[str] = None, category: Optional[int] = None) -> Item: ...
 ```
 
-### Structural Pattern Matching in Test Dispatch Helpers
+### Structural Pattern Matching in Test Dispatch Helpers (Python 3.10+)
 
 ```python
-# Good — match/case in test helpers for readable assertion dispatch (Python 3.10+)
+# Good — match/case for readable assertion dispatch
 def assert_api_error(response, expected_code: int) -> None:
     match response.status_code:
         case 400:
@@ -423,8 +384,6 @@ def assert_api_error(response, expected_code: int) -> None:
             pytest.fail(f"Unexpected status {response.status_code}")
 ```
 
----
-
 ## Python 3.11
 
 ### `ExceptionGroup` for Concurrent Task Failures
@@ -432,24 +391,19 @@ def assert_api_error(response, expected_code: int) -> None:
 When testing code that uses `asyncio.TaskGroup`, expect `ExceptionGroup`, not individual exceptions:
 
 ```python
-import asyncio
-import pytest
-
 async def test_task_group_collects_all_errors() -> None:
     async def fail(msg: str) -> None:
         raise ValueError(msg)
-
     with pytest.raises(ExceptionGroup) as exc_info:
         async with asyncio.TaskGroup() as tg:
             tg.create_task(fail("error-a"))
             tg.create_task(fail("error-b"))
-
     errors = exc_info.value.exceptions
     assert len(errors) == 2
     assert all(isinstance(e, ValueError) for e in errors)
 ```
 
-### `Self` Type for Fluent Builder Fixtures
+### `Self` Type for Fluent Builder Fixtures (Python 3.11+)
 
 ```python
 from typing import Self
@@ -476,7 +430,7 @@ def test_inactive_item_excluded_from_listing() -> None:
     assert item not in list_active_items()
 ```
 
-### Testing Concurrent I/O with `asyncio.TaskGroup`
+### Testing Concurrent I/O with `asyncio.TaskGroup` (Python 3.11+)
 
 ```python
 async def test_parallel_fetch() -> None:
@@ -487,11 +441,9 @@ async def test_parallel_fetch() -> None:
     assert t2.result()["id"] == 2
 ```
 
----
-
 ## Python 3.12
 
-### `@override` on Test Base Class Method Overrides
+### `@override` on Test Base Class Method Overrides (Python 3.12+)
 
 ```python
 from typing import override
@@ -508,7 +460,7 @@ class AdminTestCase(BaseAPITestCase):
 
 Without `@override`, a typo in the method name silently creates a new method and the intended override never runs.
 
-### `itertools.batched()` in Batch-Processing Tests
+### `itertools.batched()` in Batch-Processing Tests (Python 3.12+)
 
 ```python
 from itertools import batched
@@ -516,7 +468,6 @@ from itertools import batched
 def test_bulk_import_processes_in_batches(mock_processor) -> None:
     records = list(range(250))
     bulk_import(records, batch_size=100)
-
     expected_calls = len(list(batched(records, 100)))
     assert mock_processor.call_count == expected_calls
 
@@ -524,14 +475,12 @@ def test_bulk_import_processes_in_batches(mock_processor) -> None:
 expected_batches = [records[i:i+100] for i in range(0, len(records), 100)]
 ```
 
----
-
 ## Python 3.13
 
-### `copy.replace()` for Building Test Payload Variants
+### `copy.replace()` for Building Test Payload Variants (Python 3.13+)
 
 ```python
-# Good — copy.replace() makes the variation explicit and avoids repeated literals (Python 3.13+)
+# Good — copy.replace() makes the variation explicit and avoids repeated literals
 from copy import replace
 from dataclasses import dataclass
 
@@ -554,16 +503,12 @@ def test_regular_user_creation() -> None:
 # Bad — repeated dict literals with minor variations
 def test_admin_user_creation() -> None:
     create_user({"name": "Alice", "email": "alice@example.com", "role": "admin"})
-
-def test_regular_user_creation() -> None:
-    create_user({"name": "Alice", "email": "alice@example.com", "role": "user"})
+# ...
 ```
 
----
+## Python 3.14 (latest stable)
 
-## Python 3.14  (latest stable)
-
-### Testing Free-Threaded Code
+### Testing Free-Threaded Code (Python 3.14+)
 
 When testing code that uses free-threaded CPython (`-X gil=0`), use standard `threading` patterns. Test thread safety by running concurrent operations and asserting final state:
 
@@ -578,31 +523,13 @@ def test_counter_is_thread_safe() -> None:
     assert counter.value == 100
 ```
 
-### Deferred Annotation Evaluation in Test Fixtures
+### Deferred Annotation Evaluation in Test Fixtures (Python 3.14+)
 
 ```python
-# Good — forward references resolve lazily in Python 3.14+; no string quotes needed
-# Works even if Item is not yet defined at the point of fixture definition
+# Good — forward references resolve lazily; no string quotes needed
 @pytest.fixture
 def item_factory() -> Callable[[str], Item]:
     def _make(name: str) -> Item:
         return Item(name=name)
     return _make
 ```
-
----
-
-## Resources
-
-- [pytest Documentation](https://docs.pytest.org/en/stable/)
-- [pytest Fixtures](https://docs.pytest.org/en/stable/reference/fixtures.html)
-- [pytest.mark.parametrize](https://docs.pytest.org/en/stable/how-to/parametrize.html)
-- [unittest.mock](https://docs.python.org/3/library/unittest.mock.html)
-- [pytest-mock](https://pytest-mock.readthedocs.io/en/latest/)
-- [pytest-asyncio](https://pytest-asyncio.readthedocs.io/en/latest/)
-- [Hypothesis](https://hypothesis.readthedocs.io/en/latest/)
-- [pytest-cov](https://pytest-cov.readthedocs.io/en/latest/)
-- [Python 3.11 What's New](https://docs.python.org/3/whatsnew/3.11.html)
-- [Python 3.12 What's New](https://docs.python.org/3/whatsnew/3.12.html)
-- [Python 3.13 What's New](https://docs.python.org/3/whatsnew/3.13.html)
-- [Python 3.14 What's New](https://docs.python.org/3.14/whatsnew/3.14.html)

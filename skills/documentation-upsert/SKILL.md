@@ -53,7 +53,6 @@ Inspect the git workspace to find what has changed:
 ```bash
 # Staged + unstaged changes against HEAD
 git diff --name-only HEAD
-
 # Untracked new files
 git ls-files --others --exclude-standard
 ```
@@ -161,6 +160,8 @@ For each file:
 3. Mark as impacted if changes fall within its scope.
 
 ## Step 7: Update All Impacted .md Files via docs-writer
+
+When generating new `.md` files, follow [Token Efficiency Rules](../../templates/token-efficiency-rules.md).
 
 For each impacted `.md` file identified in Steps 5 and 6:
 

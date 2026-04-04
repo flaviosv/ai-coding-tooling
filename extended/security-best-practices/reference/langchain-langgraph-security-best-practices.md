@@ -6,15 +6,6 @@ Applies to: LangChain 0.3+ / langchain-core 0.3+, LangGraph 0.2+
 
 ---
 
-## 0) Scope
-
-This document covers security patterns specific to LLM-powered applications built with LangChain
-and LangGraph. It focuses on AI-specific threats: prompt injection, LLM output validation,
-credential handling for LLM APIs, and sensitive data leakage through prompts and traces.
-General Python security rules still apply and are not repeated here.
-
----
-
 ## 1) Prompt Injection Prevention
 
 ### LC-SEC-001: Never interpolate raw user input into system prompts
@@ -29,15 +20,11 @@ Required:
 - MUST use `ChatPromptTemplate.from_messages()` with separate `("system", ...)` and `("human", "{variable}")` tuples.
 - MUST NOT use f-strings, `.format()`, `%` formatting, or string concatenation to inject user-controlled values into the system message.
 
-Insecure pattern:
-
 ```python
 # Bad — user controls the system message; can override instructions
 system_msg = f"You are a helpful assistant. Answer: {user_input}"
 response = llm.invoke(system_msg)
 ```
-
-Secure pattern:
 
 ```python
 from langchain_core.prompts import ChatPromptTemplate
@@ -64,8 +51,6 @@ Required:
 - MUST NOT include user-controlled variables in system prompts that define agent persona, capabilities, or restrictions.
 - SHOULD treat any content retrieved from external sources (web scraping, user-uploaded files, database content) as untrusted and capable of carrying injection payloads.
 
----
-
 ## 2) LLM Output Validation
 
 ### LC-SEC-003: Validate and constrain structured LLM output before use
@@ -83,15 +68,11 @@ Required:
 - SHOULD use `OutputFixingParser` or `RetryWithErrorOutputParser` for graceful recovery on parse failure.
 - MUST NOT use `eval()` or `exec()` on any LLM-generated content.
 
-Insecure pattern:
-
 ```python
 # Bad — raw eval on LLM output
 code = llm.invoke("Write a Python expression for the sum of a list.")
 result = eval(code.content)  # arbitrary code execution
 ```
-
-Secure pattern:
 
 ```python
 from pydantic import BaseModel
@@ -100,10 +81,10 @@ from langchain.chat_models import init_chat_model
 class SumResult(BaseModel):
     result: float
 
+# Good — structured output; no eval
 llm = init_chat_model("gpt-4o", max_tokens=64)
 structured_llm = llm.with_structured_output(SumResult)
 output = structured_llm.invoke("What is the sum of [1, 2, 3]?")
-# output.result is a validated float — no eval
 ```
 
 ### LC-SEC-004: Validate LLM-generated routing decisions
@@ -130,8 +111,6 @@ def should_continue(state: AgentState) -> Literal["tools", "human_review", "end"
     # No LLM-generated string is trusted as a routing key
     return "end"
 ```
-
----
 
 ## 3) Tool Security
 
@@ -195,8 +174,6 @@ Required:
 - File tools MUST restrict access to a sandboxed directory.
 - HTTP tools MUST validate URLs against an allowlist of approved domains to prevent SSRF.
 
----
-
 ## 4) Credential and Secret Handling
 
 ### LC-SEC-008: Load all LLM API keys from environment variables
@@ -239,8 +216,6 @@ Required:
 - SHOULD NOT store raw PII in state — use opaque references (user IDs, session tokens) and fetch from secure storage within nodes.
 - MUST review checkpoint storage security: encryption at rest, access control, and retention policy.
 
----
-
 ## 5) Data Leakage Through Prompts and Traces
 
 ### LC-SEC-010: Sanitize data before sending to LLM provider APIs
@@ -269,8 +244,6 @@ Required:
 - SHOULD configure `LANGCHAIN_HIDE_INPUTS=true` and `LANGCHAIN_HIDE_OUTPUTS=true` for any workflow that processes sensitive personal data.
 - MUST NOT commit `LANGCHAIN_API_KEY` to version control or include it in application logs.
 - SHOULD review trace retention policies for compliance with applicable data regulations (GDPR, HIPAA, SOC 2).
-
----
 
 ## 6) Retrieval and RAG Security
 
@@ -312,8 +285,6 @@ Required:
 - MUST NOT blindly trust content from user-uploaded documents — treat it as attacker-controlled.
 - MUST validate content-type and file extension before processing uploads.
 - SHOULD use a dedicated document processing pipeline that strips executable content (macros, scripts) before text extraction.
-
----
 
 ## 7) Dependency Security
 

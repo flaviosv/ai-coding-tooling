@@ -3,6 +3,8 @@
 <!-- General section covers conventions that apply across ALL currently supported versions (PHP 8.2+) -->
 ## General PHP Patterns
 
+---
+
 ### Naming Conventions
 
 - **Classes, interfaces, traits, enums**: PascalCase (`UserService`, `PaymentGatewayInterface`)
@@ -45,7 +47,6 @@ Use `php-cs-fixer` or `phpcs` to enforce PSR-1 and PSR-12 automatically — do n
 - Use `readonly` properties for value objects and DTOs
 
 ```php
-// Prefer typed, readonly value objects
 final readonly class Money {
     public function __construct(
         public int $amount,
@@ -75,7 +76,6 @@ final readonly class Money {
 - Log exceptions with full context at the boundary where they are caught
 
 ```php
-// Typed exception hierarchy
 class UserNotFoundException extends DomainException {
     public function __construct(int $userId) {
         parent::__construct("User {$userId} not found");
@@ -143,8 +143,6 @@ class UserNotFoundException extends DomainException {
 - Do not use string class references (`'App\Service\UserService'`) where `UserService::class` can be used — string references bypass static analysis and refactoring tools
 - Do not use `isset()` and `array_key_exists()` interchangeably — `isset()` returns `false` for keys that exist with a `null` value; use `array_key_exists()` when `null` is a valid value
 
----
-
 ## PHP 8.2
 
 > Floor for new projects — PHP 8.1 reached end of life December 2025.
@@ -164,8 +162,6 @@ class UserNotFoundException extends DomainException {
 - Use Fibers for cooperative concurrency in event-loop contexts (ReactPHP/Revolt). Do not use Fibers as a general threading mechanism — PHP remains single-threaded per request in traditional FPM environments.
 - Backed enums (`enum Status: string`) and pure enums are available — prefer them over class constants for closed sets
 
----
-
 ## PHP 8.3
 
 - Use `#[Override]` attribute on overriding methods to make the intent explicit and catch rename mismatches at static analysis time:
@@ -178,8 +174,6 @@ class UserNotFoundException extends DomainException {
 - Use typed class constants (`const int MAX = 100`) — avoids implicit coercion and enables static analysis validation
 - Use `json_validate()` to check JSON validity before calling `json_decode()` — avoids allocating the decoded structure just to check validity
 - Use `mb_str_split()` and other `mb_*` functions when processing multibyte strings
-
----
 
 ## PHP 8.4
 
@@ -205,8 +199,6 @@ class UserNotFoundException extends DomainException {
 - Use `array_find()` and `array_find_key()` instead of manual `foreach` loops for searching arrays by predicate
 - Use the `#[\Deprecated]` attribute to mark deprecated functions/methods — it triggers native deprecation notices without requiring docblock `@deprecated` annotations
 - Use `Dom\HTMLDocument` for HTML5-compliant DOM parsing — the new parser correctly handles modern HTML5 documents unlike the legacy `DOMDocument`
-
----
 
 ## PHP 8.5
 

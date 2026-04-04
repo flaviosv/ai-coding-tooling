@@ -11,7 +11,7 @@ Applies to: LangChain 0.3+ / langchain-core 0.3+, LangGraph 0.2+
 ### Live LLM Calls Without Isolation Marker
 
 ```python
-# Bad — flaky, slow, expensive, non-deterministic; will fail in CI without credentials
+# Bad
 def test_summarize_chain():
     chain = create_summarize_chain()
     result = chain.invoke({"text": "Some long text..."})
@@ -30,13 +30,11 @@ def test_summarize_chain(fake_llm):
 
 ### Asserting on Exact LLM Output Text
 
-Even with fake LLMs, asserting on exact response strings is brittle. Prefer structural assertions.
+Prefer structural assertions over exact string matching, even with fake LLMs.
 
 ```python
-# Bad — brittle; breaks if fake response wording changes
-def test_agent_response(fake_llm):
-    result = agent.invoke({"input": "hello"})
-    assert result == "Hello! How can I help you today?"
+# Bad
+assert result == "Hello! How can I help you today?"
 
 # Good — assert on structure and type
 def test_agent_response(fake_llm):
@@ -48,15 +46,13 @@ def test_agent_response(fake_llm):
 ### Testing Only Final Output, Ignoring State Transitions
 
 ```python
-# Bad — only checks the final message, misses whether the graph routed correctly
+# Bad — only checks final message, misses routing verification
 def test_agent_graph(fake_llm, checkpointer):
     graph = build_graph(llm=fake_llm).compile(checkpointer=checkpointer)
     result = graph.invoke({"messages": [HumanMessage(content="hello")]})
     assert len(result["messages"]) > 1
 
-# Good — also verify intermediate state (tool calls happened, correct node was visited)
-from langchain_core.messages import ToolMessage
-
+# Good — verify intermediate state (tool calls, node traversal)
 def test_agent_graph_calls_tool_when_requested(fake_llm, checkpointer):
     graph = build_graph(llm=fake_llm).compile(checkpointer=checkpointer)
     result = graph.invoke(
@@ -68,15 +64,12 @@ def test_agent_graph_calls_tool_when_requested(fake_llm, checkpointer):
 
 ### Missing Tests for Conditional Edge Functions
 
-Conditional edge routing is the control flow of the graph. Every branch must be tested independently.
+Every branch of conditional edge routing MUST be tested independently.
 
 ```python
-# Bad — no dedicated tests for the routing function
-# (covered implicitly only via full graph integration tests)
+# Bad — no dedicated tests for routing function
 
-# Good — explicit unit tests for every branch of the routing function
-from langchain_core.messages import AIMessage
-
+# Good — explicit unit tests for every branch
 def test_should_continue_routes_to_tools():
     state = {
         "messages": [
@@ -90,21 +83,17 @@ def test_should_continue_routes_to_end():
     assert should_continue(state) == "end"
 ```
 
----
-
 ## Mocking Patterns
 
 ### Use `FakeListChatModel` — Not `unittest.mock.patch` on the LLM
 
 ```python
-# Bad — patching internals; brittle and bypasses LCEL's invoke contract
+# Bad — patching internals bypasses LCEL's invoke contract
 with patch("langchain_openai.ChatOpenAI.invoke") as mock_invoke:
     mock_invoke.return_value = AIMessage(content="answer")
     result = chain.invoke({"query": "test"})
 
-# Good — use the official fake; it implements the full Runnable interface
-from langchain_core.language_models.fake_chat_models import FakeListChatModel
-
+# Good — official fake implements full Runnable interface
 @pytest.fixture
 def fake_llm():
     return FakeListChatModel(
@@ -118,9 +107,7 @@ def fake_llm():
 ### Mock Tools, Not the Entire Graph
 
 ```python
-# Good — test graph routing and state handling with controlled tool behavior
-from langchain_core.tools import tool
-
+# Good — test graph routing with controlled tool behavior
 @pytest.fixture
 def mock_search_tool():
     @tool
@@ -143,9 +130,6 @@ def test_graph_uses_search_tool(mock_search_tool, fake_llm, checkpointer):
 ### Mock Retrievers for RAG Chains
 
 ```python
-from unittest.mock import AsyncMock, MagicMock
-from langchain_core.documents import Document
-
 @pytest.fixture
 def mock_retriever():
     docs = [Document(page_content="Relevant content", metadata={"source": "test.md"})]
@@ -160,15 +144,11 @@ def test_rag_chain_retrieves_documents(mock_retriever, fake_llm):
     mock_retriever.invoke.assert_called_once()
 ```
 
----
-
 ## Graph Testing Patterns
 
 ### Test Individual Nodes as Pure Functions
 
 ```python
-from langchain_core.messages import HumanMessage
-
 # Good — unit test a single node function directly
 def test_classify_node_routes_billing_queries():
     state = {"messages": [HumanMessage(content="I need a refund")]}
@@ -179,20 +159,15 @@ def test_classify_node_routes_billing_queries():
 ### Test Graph With `update_state` for Partial Execution
 
 ```python
-from langgraph.checkpoint.memory import MemorySaver
-
 def test_graph_handles_pre_classified_state():
     checkpointer = MemorySaver()
     compiled = build_graph().compile(checkpointer=checkpointer)
     config = {"configurable": {"thread_id": "partial-exec-1"}}
-
-    # Inject state as if node "classify" already ran
     compiled.update_state(
         config=config,
         values={"category": "billing"},
         as_node="classify",
     )
-
     result = compiled.invoke(None, config=config)
     assert result["category"] == "billing"
 ```
@@ -200,20 +175,16 @@ def test_graph_handles_pre_classified_state():
 ### Test Human-in-the-Loop Interrupt and Resume
 
 ```python
-from langgraph.types import Command
-
 def test_graph_pauses_at_interrupt_before(checkpointer):
     graph = build_graph().compile(
         checkpointer=checkpointer,
         interrupt_before=["execute_action"],
     )
     config = {"configurable": {"thread_id": "hitl-test-1"}}
-
     result = graph.invoke(
         {"messages": [HumanMessage(content="perform dangerous action")]},
         config,
     )
-    # Graph should have paused — check interrupt is surfaced
     assert "__interrupt__" in result or result.get("pending_action") is not None
 
 def test_graph_resumes_with_command_resume(checkpointer):
@@ -222,10 +193,8 @@ def test_graph_resumes_with_command_resume(checkpointer):
         interrupt_before=["execute_action"],
     )
     config = {"configurable": {"thread_id": "hitl-resume-1"}}
-
     graph.invoke({"messages": [HumanMessage(content="perform action")]}, config)
     result = graph.invoke(Command(resume=True), config)
-
     assert isinstance(result["messages"][-1], AIMessage)
 ```
 
@@ -235,28 +204,24 @@ def test_graph_resumes_with_command_resume(checkpointer):
 def test_messages_accumulate_across_graph_invocations(checkpointer):
     graph = build_graph().compile(checkpointer=checkpointer)
     config = {"configurable": {"thread_id": "accumulate-1"}}
-
     graph.invoke({"messages": [HumanMessage(content="First")]}, config)
     result = graph.invoke({"messages": [HumanMessage(content="Second")]}, config)
-
     human_messages = [m.content for m in result["messages"] if isinstance(m, HumanMessage)]
     assert "First" in human_messages
     assert "Second" in human_messages
 ```
 
----
-
 ## What to Flag in Review
 
-- [ ] Unit or integration tests calling live LLM APIs without `@pytest.mark.e2e` and a `skipif` guard on the API key environment variable
-- [ ] No `FakeListChatModel` (or equivalent fake) in the test suite — all chain/graph tests hit real APIs
-- [ ] Graph tests that only assert on final output length or type — no verification of intermediate state, tool call messages, or node traversal
-- [ ] No dedicated unit tests for conditional edge routing functions — branches only tested implicitly via full graph runs
-- [ ] Assertions on exact LLM response strings — brittle even with deterministic fakes; prefer structural type checks
-- [ ] No tests for error paths: what happens when the LLM returns unparseable output, a tool raises, or the graph hits a retry limit
-- [ ] State schema changes (new fields, changed reducers) not reflected in test fixtures or state setup
+- [ ] Tests calling live LLM APIs without `@pytest.mark.e2e` and `skipif` guard on API key env var
+- [ ] No `FakeListChatModel` (or equivalent fake) in test suite — all chain/graph tests hit real APIs
+- [ ] Graph tests only assert on final output — no verification of intermediate state, tool calls, or node traversal
+- [ ] No dedicated unit tests for conditional edge routing functions — branches only tested implicitly
+- [ ] Assertions on exact LLM response strings — brittle even with deterministic fakes
+- [ ] No tests for error paths: unparseable LLM output, tool raises, graph hits retry limit
+- [ ] State schema changes (new fields, changed reducers) not reflected in test fixtures
 - [ ] Tests using `unittest.mock.patch` on LLM internals instead of `FakeListChatModel`
-- [ ] `InMemorySaver` / `MemorySaver` fixture not reset between tests — shared checkpointer state causes test interdependence
-- [ ] Human-in-the-loop flows tested without exercising the `Command(resume=...)` path
+- [ ] `MemorySaver` fixture not reset between tests — shared checkpointer causes test interdependence
+- [ ] Human-in-the-loop flows tested without exercising `Command(resume=...)` path
 - [ ] Missing parametrized tests for conditional routing when 3+ branches exist
-- [ ] E2E tests mixed into the unit/integration test suite with no marker to exclude from CI
+- [ ] E2E tests mixed into unit/integration suite with no marker to exclude from CI

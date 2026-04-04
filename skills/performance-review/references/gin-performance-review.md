@@ -9,15 +9,15 @@ Load in addition to `golang-performance-review.md`.
 
 ### Avoid Per-Route Middleware Repetition
 
-Gin applies middleware sequentially on every request that matches the route. Repeating the same middleware per route multiplies the call overhead and maintenance surface:
+Repeating middleware per route multiplies call overhead and maintenance surface:
 
 ```go
-// Bad — middleware applied redundantly on every route; hard to maintain
+// Bad
 router.GET("/v1/items", AuthMiddleware(), ListItems)
 router.POST("/v1/items", AuthMiddleware(), CreateItem)
 router.GET("/v1/users", AuthMiddleware(), ListUsers)
 
-// Good — apply once on the group; single registration, same runtime cost per request
+// Good — apply once on the group
 v1 := router.Group("/v1", AuthMiddleware())
 v1.GET("/items", ListItems)
 v1.POST("/items", CreateItem)
@@ -26,27 +26,22 @@ v1.GET("/users", ListUsers)
 
 ### Keep Middleware Lean
 
-Every middleware runs on every matched request in its group. Avoid in middleware:
+Every middleware runs on every matched request in its group. Avoid:
 
 - Allocating new objects on each call — use `sync.Pool` for reusable buffers
-- Synchronous calls to external services (DB lookups, cache misses, outbound HTTP) unless unavoidable
-- Logging full request/response bodies in production — log metadata (method, path, status, latency) only
-
----
+- Synchronous calls to external services (DB, cache, outbound HTTP) unless unavoidable
+- Logging full request/response bodies in production — log metadata only
 
 ## Request Binding
 
 ### Prefer `ShouldBind*` over Manual JSON Decode
 
-Gin's `ShouldBindJSON` uses internal decoder pooling. Creating a new `json.NewDecoder` per request allocates on every call:
+Gin's `ShouldBindJSON` uses internal decoder pooling. `json.NewDecoder` allocates per request:
 
 ```go
-// Bad — allocates a new decoder on every request
+// Bad
 var req CreateItemRequest
-if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
-    c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-    return
-}
+json.NewDecoder(c.Request.Body).Decode(&req)
 
 // Good — Gin manages the decoder pool
 var req CreateItemRequest
@@ -58,10 +53,9 @@ if err := c.ShouldBindJSON(&req); err != nil {
 
 ### Cap Request Body Size Early
 
-Unbounded body reads can exhaust memory under sustained load or against adversarial input. Apply the limit before any binding — globally via middleware is preferred over per-handler:
+Unbounded body reads can exhaust memory. Apply globally via middleware before route definitions:
 
 ```go
-// Global body-limit middleware — register before route definitions
 func BodyLimitMiddleware(limit int64) gin.HandlerFunc {
     return func(c *gin.Context) {
         c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit)
@@ -69,21 +63,18 @@ func BodyLimitMiddleware(limit int64) gin.HandlerFunc {
     }
 }
 
-// Wire it
 router := gin.New()
 router.Use(BodyLimitMiddleware(1 << 20)) // 1 MiB
 ```
-
----
 
 ## Response Rendering
 
 ### Use Typed Structs, Not `gin.H` for Repeated Response Shapes
 
-`gin.H` is `map[string]any` — marshalling a map requires runtime reflection over keys. A concrete struct is faster and type-safe:
+`gin.H` is `map[string]any` — map marshalling requires runtime reflection over keys. Struct is faster and type-safe:
 
 ```go
-// Bad — map marshalling; slower for recurring response shapes
+// Bad
 c.JSON(http.StatusOK, gin.H{"data": items, "total": count})
 
 // Good — struct marshalling; faster and compiler-checked
@@ -96,37 +87,33 @@ c.JSON(http.StatusOK, ListResponse[Item]{Data: items, Total: count})
 
 Reserve `gin.H` for one-off or error responses where defining a struct would be disproportionate.
 
----
-
 ## Context Propagation
 
 ### Always Pass `c.Request.Context()` Downstream
 
-Using `context.Background()` in downstream calls ignores client disconnects — the DB or HTTP call may continue running after the client has gone away, wasting resources:
+`context.Background()` ignores client disconnects — downstream work outlives the client:
 
 ```go
-// Bad — ignores request cancellation; downstream work outlives the client
+// Bad
 items, err := h.useCase.List(context.Background())
 
-// Good — cancels downstream work when client disconnects or timeout fires
+// Good — cancels downstream work when client disconnects
 items, err := h.useCase.List(c.Request.Context())
 ```
 
-Set timeouts at the use-case or repository layer — not in the handler — so timeout policy is consistent across all transports (HTTP, gRPC, CLI, queue consumer).
-
----
+Set timeouts at the use-case or repository layer — not in the handler — so timeout policy is consistent across all transports.
 
 ## Server Configuration
 
 ### Configure `http.Server` Timeouts Explicitly
 
-`router.Run()` uses `net/http`'s default server with zero timeouts — vulnerable to slow-client and Slowloris DoS attacks. Always wrap the router in an `http.Server`:
+`router.Run()` uses zero timeouts — vulnerable to slow-client and Slowloris DoS. Always wrap in `http.Server`:
 
 ```go
-// Bad — zero timeouts; one slow client can hold a connection open indefinitely
+// Bad
 router.Run(":8080")
 
-// Good — explicit timeout budget per phase
+// Good
 srv := &http.Server{
     Addr:              ":8080",
     Handler:           router,
@@ -141,21 +128,18 @@ log.Fatal(srv.ListenAndServe())
 
 ### Graceful Shutdown
 
-Use `http.Server.Shutdown()` with a timeout to drain in-flight requests before exit — avoids dropping active connections on SIGTERM:
+Use `http.Server.Shutdown()` with a timeout to drain in-flight requests — avoids dropping active connections on SIGTERM:
 
 ```go
 srv := &http.Server{Addr: ":8080", Handler: router}
-
 go func() {
     if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
         log.Fatalf("listen: %s\n", err)
     }
 }()
-
 quit := make(chan os.Signal, 1)
 signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 <-quit
-
 ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 if err := srv.Shutdown(ctx); err != nil {
@@ -163,28 +147,24 @@ if err := srv.Shutdown(ctx); err != nil {
 }
 ```
 
----
-
 ## File Uploads
 
 ### Set `MaxMultipartMemory` for Upload Routes
 
-The default multipart memory limit is 32 MiB. For routes that do not accept file uploads, this is generous. For upload-heavy APIs, tune it to match expected payload sizes:
+Default multipart memory limit is 32 MiB. Tune to match expected payload sizes:
 
 ```go
 router := gin.New()
-router.MaxMultipartMemory = 8 << 20  // 8 MiB — override default 32 MiB
+router.MaxMultipartMemory = 8 << 20  // 8 MiB
 router.POST("/upload", h.Upload)
 ```
 
----
-
 ## Streaming Large Responses
 
-Stream large list results or file downloads instead of buffering the full payload in memory:
+Stream large results or file downloads instead of buffering full payload in memory:
 
 ```go
-// Stream a JSON array without buffering all records
+// Stream JSON array without buffering all records
 c.Stream(func(w io.Writer) bool {
     encoder := json.NewEncoder(w)
     for _, item := range items {
@@ -195,12 +175,10 @@ c.Stream(func(w io.Writer) bool {
     return false
 })
 
-// Stream a file to the client
-c.File("/var/data/report.csv")                    // inline
-c.FileAttachment("/var/data/report.csv", "report.csv") // forces download
+// Stream a file
+c.File("/var/data/report.csv")
+c.FileAttachment("/var/data/report.csv", "report.csv")
 ```
-
----
 
 ## Pagination
 
@@ -227,29 +205,17 @@ func (h *Handler) List(c *gin.Context) {
 }
 ```
 
----
-
 ## Profiling in Production
 
 Register pprof on an **internal-only** loopback listener — never on the public Gin router:
 
 ```go
-// Good — internal debug server; not reachable from the public network
+// Good — internal debug server; not reachable from public network
 import _ "net/http/pprof"
-
 go func() {
     log.Println(http.ListenAndServe("localhost:6060", nil))
 }()
 
-// Bad — pprof exposed on the public Gin router
+// Bad — pprof exposed on public Gin router
 router.GET("/debug/pprof/*action", gin.WrapH(http.DefaultServeMux))
 ```
-
----
-
-## Resources
-
-- [Gin Framework Documentation](https://gin-gonic.com/docs/)
-- [Gin GitHub](https://github.com/gin-gonic/gin)
-- [net/http Server](https://pkg.go.dev/net/http#Server)
-- [Go Performance Guide](https://github.com/dgryski/go-perfbook)

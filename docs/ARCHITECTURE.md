@@ -1,7 +1,5 @@
 # Architecture
 
-## Overview
-
 `ai-coding-tooling` is a configuration distribution system, not a runtime application. Its architecture is based on a symlink model: a single repository holds all agent instructions and skills, which are linked into the expected locations for each supported AI tool. There is no build step, no server, and no runtime dependencies beyond `make`.
 
 ## Core Concepts
@@ -28,8 +26,6 @@ Repository (single source of truth)
 `make link` creates all project-level symlinks (including extended skill files). `/agent-setup` handles the global ones.
 
 ## Skill Sources
-
-Skills come from two sources:
 
 | Source | Location | Install method |
 |--------|----------|---------------|

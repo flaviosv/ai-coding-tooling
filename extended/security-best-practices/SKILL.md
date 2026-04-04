@@ -23,11 +23,7 @@ This file is always loaded together with the parent `SKILL.md`. Both must be act
 
 ## Reference Files
 
-> **CONSTRAINT: Load ONLY stack-relevant references.**
-> Reference files use `<tech-prefix>-<purpose>.md` naming. A file is tech-specific if its name
-> starts with a known prefix (e.g., `python-`, `golang-`, `gin-`). Skip all non-matching
-> tech-specific files. If `docs/PROJECT_DETAILS.md` is missing or has no Tech Stack section,
-> do NOT load any tech-specific references — rely solely on the parent skill's built-in guidance.
+Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
 
 Detect the project's tech stack from `docs/PROJECT_DETAILS.md`. Then check both reference
 locations and load ONLY matching files:

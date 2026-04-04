@@ -9,15 +9,14 @@ Supplements `test-review-checklist.md` for projects using `@playwright/test`.
 ### Test Naming
 
 ```typescript
-// Bad — generic; a failing test reports nothing about what broke
+// Bad — generic name reports nothing about what broke
 test('test login', async ({ page }) => { ... });
-test('test checkout', async ({ page }) => { ... });
 
-// Good — scenario + expected outcome; a failing name explains itself
+// Good — scenario + expected outcome; failing name explains itself
 test('invalid credentials show inline error under the password field', async ({ page }) => { ... });
 test('successful login redirects to /dashboard', async ({ page }) => { ... });
 
-// Good — grouped with describe; first word of describe + test name reads as a sentence
+// Good — grouped with describe; describe + test name reads as sentence
 test.describe('Login', () => {
   test('valid credentials redirect to dashboard', async ({ page }) => { ... });
   test('locked account shows link to contact support', async ({ page }) => { ... });
@@ -25,14 +24,12 @@ test.describe('Login', () => {
 });
 ```
 
----
-
 ### Assertions
 
 #### Hard-Coded Waits — Flag All Occurrences
 
 ```typescript
-// Bad — arbitrary sleep; flaky on CI under load, slow when not needed
+// Bad — arbitrary sleep; flaky on CI, slow when not needed
 await page.waitForTimeout(2000);
 await page.click('#submit');
 
@@ -46,7 +43,7 @@ Every `page.waitForTimeout()` is a finding. No exceptions — replace with a con
 #### Non-Retrying Assertions
 
 ```typescript
-// Bad — isVisible() resolves immediately; fails if element renders with any delay
+// Bad — isVisible() resolves immediately; fails if element renders with delay
 expect(await page.getByText('Welcome').isVisible()).toBe(true);
 
 // Good — expect() wraps with auto-wait and retry logic
@@ -56,7 +53,7 @@ await expect(page.getByText('Welcome')).toBeVisible();
 #### Asserting Existence Without Content
 
 ```typescript
-// Bad — confirms the element exists but not what it communicates; passes on wrong error messages
+// Bad — confirms element exists but not what it communicates
 await expect(page.getByRole('alert')).toBeVisible();
 
 // Good — asserts the exact intent
@@ -75,8 +72,6 @@ await expect(page.getByRole('dialog')).toBeVisible();
 
 Enable `@typescript-eslint/no-floating-promises` to catch this at the editor level.
 
----
-
 ### Locators
 
 #### Brittle CSS and XPath Selectors
@@ -84,10 +79,8 @@ Enable `@typescript-eslint/no-floating-promises` to catch this at the editor lev
 ```typescript
 // Bad — CSS class; breaks when designer renames classes
 await page.locator('button.btn-primary.login-submit').click();
-
 // Bad — nth-child position; breaks on any DOM reorder
 await page.locator('#form > div:nth-child(3) > input').fill('value');
-
 // Bad — fragile XPath chain
 await page.locator('//*[@id="tsf"]/div[2]/div[1]/div[1]/div/div[2]/input').click();
 
@@ -99,7 +92,7 @@ await page.getByLabel('Email').fill('user@example.com');
 #### Implicit Waiting Without Assertion
 
 ```typescript
-// Bad — count() resolves immediately; race condition if items load asynchronously
+// Bad — count() resolves immediately; race condition if items load async
 const count = await page.locator('.item').count();
 expect(count).toBe(3);
 
@@ -107,17 +100,13 @@ expect(count).toBe(3);
 await expect(page.locator('.item')).toHaveCount(3);
 ```
 
----
-
 ### Test Independence
 
 #### Tests That Share Mutable State
 
 ```typescript
 // Bad — test 2 depends on data created by test 1; ordering dependency
-test('creates item', async ({ page }) => {
-  // creates 'Item A' via the UI
-});
+test('creates item', async ({ page }) => { /* creates 'Item A' via UI */ });
 test('deletes item', async ({ page }) => {
   // fails if 'creates item' did not run first
   await page.getByText('Item A').getByRole('button', { name: 'Delete' }).click();
@@ -125,7 +114,7 @@ test('deletes item', async ({ page }) => {
 
 // Good — each test owns its preconditions
 test('deletes an item', async ({ page }) => {
-  await createItemViaAPI({ name: 'Item A' }); // API call for fast, independent setup
+  await createItemViaAPI({ name: 'Item A' });
   await page.goto('/items');
   await page.getByText('Item A').getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('Item A')).toBeHidden();
@@ -135,7 +124,7 @@ test('deletes an item', async ({ page }) => {
 #### Authentication Duplicated in Test Bodies
 
 ```typescript
-// Bad — full login UI sequence before every test; slow and brittle if login UI changes
+// Bad — full login UI sequence before every test; slow and brittle
 test.beforeEach(async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(process.env.TEST_USER_EMAIL!);
@@ -144,7 +133,7 @@ test.beforeEach(async ({ page }) => {
   await page.waitForURL('/dashboard');
 });
 
-// Good — storageState restores session; login runs once in a setup project
+// Good — storageState restores session; login runs once in setup project
 // playwright.config.ts: use: { storageState: '.auth/user.json' }
 test('views orders page', async ({ page }) => {
   await page.goto('/orders');
@@ -155,10 +144,10 @@ test('views orders page', async ({ page }) => {
 #### `test.describe.serial` Without Justification
 
 ```typescript
-// Bad — forces sequential execution across tests that could run in parallel
+// Bad — forces sequential execution across independent tests
 test.describe.serial('dashboard features', () => {
   test('loads widget', async ({ page }) => { ... });
-  test('filters data', async ({ page }) => { ... }); // independent; doesn't need serial
+  test('filters data', async ({ page }) => { ... });
 });
 
 // Good — only genuinely dependent tests serialised; justification comment required
@@ -170,19 +159,17 @@ test.describe.serial('multi-step import wizard', () => {
 });
 ```
 
----
-
 ### Page Object Model Discipline
 
 ```typescript
-// Bad — raw locator calls in test body; duplicated across test files; hard to maintain
+// Bad — raw locator calls in test body; duplicated across files
 test('adds item to cart', async ({ page }) => {
   await page.goto('/products');
   await page.locator('.product-card').first().locator('button[data-add-cart]').click();
   await expect(page.locator('#cart-count')).toHaveText('1');
 });
 
-// Good — page object owns selectors; test reads as a user story
+// Good — page object owns selectors; test reads as user story
 test('adds item to cart', async ({ page }) => {
   const productsPage = new ProductsPage(page);
   await productsPage.goto();
@@ -191,17 +178,15 @@ test('adds item to cart', async ({ page }) => {
 });
 ```
 
----
-
 ### Network Mocking
 
 #### Tests That Depend on Real APIs
 
 ```typescript
-// Bad — test breaks on network issues, slow external APIs, or changing real data
+// Bad — breaks on network issues, slow external APIs, or changing real data
 test('shows order list', async ({ page }) => {
   await page.goto('/orders');
-  await expect(page.getByText('Order #12345')).toBeVisible(); // depends on real DB data
+  await expect(page.getByText('Order #12345')).toBeVisible();
 });
 
 // Good — deterministic data via route mock
@@ -217,12 +202,11 @@ test('shows fetched orders in a table', async ({ page }) => {
 #### Hanging Route Handlers
 
 ```typescript
-// Bad — request never resolved if condition is not met; test hangs until timeout
+// Bad — request never resolved if condition not met; test hangs until timeout
 await page.route('**/api/data', async (route) => {
   if (someCondition) {
     await route.fulfill({ status: 200, body: '{}' });
   }
-  // else: request hangs
 });
 
 // Good — always resolve the request
@@ -235,11 +219,9 @@ await page.route('**/api/data', async (route) => {
 });
 ```
 
----
-
 ### Coverage Gaps to Flag
 
-The most common missing coverage in Playwright suites:
+Most common missing coverage in Playwright suites:
 
 - [ ] API 4xx/5xx — does the UI surface an appropriate error message? (use route mock)
 - [ ] Empty state — what does the list/dashboard show with no data?
@@ -248,12 +230,10 @@ The most common missing coverage in Playwright suites:
 - [ ] Unauthorised access — redirected to login or shown a 403 page
 - [ ] Auth expiry — session timeout or token refresh handled gracefully
 
----
-
 ## Playwright Test Review Checklist
 
 ### Structure
-- [ ] Test names describe scenario and expected outcome — a failing name explains itself
+- [ ] Test names describe scenario and expected outcome
 - [ ] `test.describe` groups related tests by feature or component
 - [ ] Page Object Model used — no raw `page.locator()` / `page.getByRole()` calls in test bodies
 - [ ] Fixtures (`test.extend`) used for shared setup — no copy-pasted `beforeEach` blocks
@@ -285,15 +265,3 @@ The most common missing coverage in Playwright suites:
 - [ ] No `waitForTimeout` — every wait bound to an observable condition
 - [ ] `fullyParallel: true` in config; tests do not force serial ordering unnecessarily
 - [ ] `storageState` used to skip login overhead
-
----
-
-## Resources
-
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
-- [Playwright Locators](https://playwright.dev/docs/locators)
-- [Page Object Model](https://playwright.dev/docs/pom)
-- [Web-First Assertions](https://playwright.dev/docs/test-assertions)
-- [Authentication (storageState)](https://playwright.dev/docs/auth)
-- [Network Mocking](https://playwright.dev/docs/mock)
-- [Parallel Tests](https://playwright.dev/docs/test-parallel)
