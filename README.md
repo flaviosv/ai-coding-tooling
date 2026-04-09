@@ -83,10 +83,9 @@ Maintained here and installed globally via `make link` / `/agent-setup`. These a
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. |
 | **documentation-upsert** | Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation. Updates inline API docs, root context files, and base `docs/` files. |
 | **performance-review** | Identifies performance bottlenecks, memory issues, and optimization opportunities. |
-| **report-tech-debt** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **skill-alias** | Creates slash-command aliases for existing skills by generating thin delegator skills. The original skill remains unchanged. |
-| **skill-install** | Installs a skill into the agent's global skills directory and updates the Global Skills list. Multi-agent — resolves paths via agent reference files. |
-| **skill-update** | Updates externally installed skills (Tech Leads Club and other vendors) by reinstalling them and re-applying extended skill symlinks. Supports a single skill, a set, or all externals. Vendor-agnostic — detects the vendor automatically via `references/vendors.md`. |
+| **skill-manager** | Installs or updates skills in an agent's global skills directory. Handles fresh installation (Tech Leads Club via npx or local project via symlink) and updates externally installed skills by reinstalling from their vendor registry and re-applying extended skill symlinks. Prompts for install vs update if intent is ambiguous. |
+| **tech-debt-report** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **tests** | Writes and maintains tests — unit, integration, and coverage analysis. |
 | **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes. |
@@ -96,7 +95,7 @@ Maintained here and installed globally via `make link` / `/agent-setup`. These a
 >
 > - **`architecture-evaluate`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/` that agents load progressively based on task relevance.
 > - **`tech-reference-add`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, tests, performance, etc.) in one step.
-> - **`report-tech-debt`** — Documents known anti-patterns so agents avoid replicating them. The `docs/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
+> - **`tech-debt-report`** — Documents known anti-patterns so agents avoid replicating them. The `docs/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
 
 ### Skill Aliases
 

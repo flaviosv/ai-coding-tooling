@@ -105,7 +105,8 @@ For each candidate new package:
    > "I detected what looks like a new package: `<path>`. Should I run architecture-evaluate to generate a `CLAUDE.md` for it?"
 2. If the user confirms, invoke architecture-evaluate in **package mode** with the package path:
    > **Invoking skill:** `architecture-evaluate` (package mode for `<path>`)
-3. Wait for the package `CLAUDE.md` to be generated before continuing.
+   > **Important:** Instruct architecture-evaluate to **generate the CLAUDE.md content only — do not write the file**. Collect the returned content; documentation-upsert will write it via docs-writer in Step 7.
+3. Add the generated CLAUDE.md to the list of impacted files for Step 7.
 4. If the user declines, skip and continue to Step 4.
 
 If multiple candidates are detected, present them all at once so the user can confirm or decline each one in a single response.
@@ -177,7 +178,7 @@ Provide docs-writer with:
 After all updates, check that:
 
 - [ ] All modified source files with public symbols have updated inline documentation
-- [ ] New packages have a `CLAUDE.md` generated via architecture-evaluate package mode
+- [ ] New packages have a `CLAUDE.md` generated (content from architecture-evaluate, written via docs-writer)
 - [ ] Root-level context files are still accurate
 - [ ] Every impacted `docs/` base file has been updated
 - [ ] All `.md` edits were delegated to docs-writer
@@ -223,7 +224,7 @@ User: "document my changes"
 1. `git diff HEAD --name-only --diff-filter=A` → new files under `app/code/Vendor/Shipping/`
 2. Project is Magento 2 (from PROJECT_DETAILS.md). New directory has `registration.php` + `etc/module.xml` → matches existing module pattern in `app/code/Vendor/`
 3. Ask: "I detected what looks like a new Magento module: `app/code/Vendor/Shipping/`. Should I run architecture-evaluate to generate a CLAUDE.md for it?"
-4. User: "yes" → invoke architecture-evaluate package mode → generates `app/code/Vendor/Shipping/CLAUDE.md`
+4. User: "yes" → invoke architecture-evaluate package mode → returns CLAUDE.md content (not written yet)
 5. Update inline docs in modified source files
 6. Base docs/: `docs/ARCHITECTURE.md` — impacted (new module in the system)
 7. Delegate `docs/ARCHITECTURE.md` update to docs-writer

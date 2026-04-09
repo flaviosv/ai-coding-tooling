@@ -1,6 +1,6 @@
 # Vendor Registry
 
-This file maps external skill vendors to their detection patterns and reinstall commands. The `skill-update` skill reads this file to identify who installed a given skill and how to update it.
+This file maps external skill vendors to their detection patterns and reinstall commands. The `skill-manager` skill reads this file to identify who installed a given skill and how to update it.
 
 ## Tech Leads Club
 

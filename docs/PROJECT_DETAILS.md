@@ -35,10 +35,9 @@ ai-coding-tooling/
     ├── code-review/
     ├── documentation-upsert/
     ├── performance-review/
-    ├── report-tech-debt/
     ├── skill-alias/
-    ├── skill-install/
-    ├── skill-update/
+    ├── skill-manager/
+    ├── tech-debt-report/
     ├── tech-reference-add/
     ├── tests/
     ├── tests-code-review/
@@ -55,10 +54,9 @@ ai-coding-tooling/
 | `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security |
 | `documentation-upsert` | Syncs inline API docs and project `.md` files with the current git workspace state. Detects new packages and scaffolds context via architecture-evaluate package mode |
 | `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |
-| `report-tech-debt` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
 | `skill-alias` | Creates slash-command aliases for existing skills by generating thin delegator skills |
-| `skill-install` | Installs a skill into the agent's global skills directory and updates the Global Skills list in the agent's global config file |
-| `skill-update` | Updates externally installed skills from their vendor registry and re-applies extended skill symlinks |
+| `skill-manager` | Installs or updates skills in an agent's global skills directory. Prompts for intent if ambiguous |
+| `tech-debt-report` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, and code coverage analysis |
 | `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes |

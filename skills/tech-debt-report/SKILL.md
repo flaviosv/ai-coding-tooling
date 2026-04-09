@@ -1,16 +1,17 @@
 ---
-name: report-tech-debt
+name: tech-debt-report
 description: >
   Create, update, and resolve technical debt reports. Generates individual debt
   documentation in docs/tech-debts/ and maintains an anti-pattern index in
   docs/TECH_DEBTS.md that agents read at session start to avoid replicating
-  known bad patterns. Use when the user says "report tech debt", "document tech
-  debt", "add tech debt", "update tech debt", "resolve tech debt", or "mark
-  tech debt as resolved". Do NOT use for fixing tech debt, code reviews, or
-  refactoring.
+  known bad patterns. Use when the user says "tech debt report", "report tech debt",
+  "document tech debt", "add tech debt", "update tech debt", "resolve tech debt",
+  or "mark tech debt as resolved". Do NOT use for fixing tech debt, code reviews,
+  or refactoring.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   triggers:
+    - "tech debt report"
     - "report tech debt"
     - "document tech debt"
     - "add tech debt"
@@ -19,7 +20,7 @@ metadata:
     - "mark tech debt as resolved"
 ---
 
-# Report Tech Debt
+# Tech Debt Report
 
 Document technical debts and maintain an anti-pattern index so agents avoid replicating known bad patterns in new code.
 

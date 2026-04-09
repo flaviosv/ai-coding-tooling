@@ -63,18 +63,7 @@ Parse the user's request:
 - **No PR number** → local workspace mode. Proceed to Step 2.
 - **PR number provided** (e.g. "review PR #123", "code review PR 456") → GitHub PR mode.
 
-For **GitHub PR mode**:
-
-1. Extract the PR number from the user's message.
-2. Check if GitHub MCP tools are available in the current session (search for tools matching `github`, `pull_request`, `gh`). MCP is preferred — it respects per-project configuration.
-3. Fetch PR metadata and diff:
-   - **MCP available**: use the GitHub MCP tools to get PR details, changed files, and diff content.
-   - **MCP unavailable**: fall back to `gh` CLI:
-     ```bash
-     gh pr view <number> --json title,body,baseRefName,headRefName,files
-     gh pr diff <number>
-     ```
-4. If both MCP and `gh` fail, report the error and stop.
+For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md).
 
 ## Step 2: Load Project Context
 
@@ -190,44 +179,7 @@ After fixes:
 
 ## Step 8: Post to GitHub (GitHub PR mode only)
 
-Runs **only** when the user explicitly requests after reviewing findings locally.
-
-### 8a. User Selects Findings
-
-Wait for user to specify which findings to post:
-- By number: "post 1, 3, 5"
-- By filter: "post all", "post all P0", "post all Critical"
-
-### 8b. Create Pending Review Comments
-
-Use GitHub MCP tools if available (preferred), fall back to `gh` CLI.
-
-**Using GitHub MCP**: use the MCP tool for creating pull request reviews. Pass selected comments as inline review comments with `PENDING` event.
-
-**Using `gh` CLI fallback**:
-
-```bash
-gh api repos/{owner}/{repo}/pulls/{number}/reviews \
-  --input - <<'EOF'
-{
-  "event": "PENDING",
-  "comments": [
-    {"path": "<file>", "line": <line>, "body": "**[Severity/Priority]** Title\n\nExplanation\n\n**Suggestion:** fix"}
-  ]
-}
-EOF
-```
-
-Parse `{owner}/{repo}` from `gh repo view --json nameWithOwner -q '.nameWithOwner'`.
-
-### 8c. Confirm Result
-
-Report:
-- Number of comments added to pending review
-- Link to the PR
-- Reminder: "Review is pending — submit manually on GitHub."
-
-**Never submit the review.** No `APPROVE`, `REQUEST_CHANGES`, or `COMMENT` event. Pending only.
+Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md).
 
 ## Examples
 
