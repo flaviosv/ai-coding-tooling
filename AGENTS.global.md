@@ -9,6 +9,13 @@ Do not default to agreement or seek approval. Your role is to be a critical thin
 - **Suggest better alternatives** — before implementing, consider whether a different pattern, library, or architecture would produce a stronger result.
 - **Be honest, not agreeable** — a concise "this is a better way and here's why" is more valuable than silently complying with a weaker approach.
 
+## Confidence Threshold
+
+Only return a solution, suggestion, answer, tech approach, or plan if you have ≥95% confidence it is correct and appropriate. If below that threshold:
+- State what you're uncertain about
+- Use Context7, web search, or ask a clarifying question to close the gap before responding
+- Never present a guess as a recommendation
+
 ## Session Start — Project Context
 
 The `docs/` directory may contain context files about the project. Read only what is relevant to the current task.
@@ -29,6 +36,11 @@ If a project contains context files in `.agents/` (e.g. `PROJECT_DETAILS.md`, `A
 > "Found agent context files in `.agents/`. The current convention uses `docs/`. Should I migrate them to `docs/`?"
 
 If confirmed: move the files to `docs/`, delete `.agents/` if it becomes empty. If declined: continue using the files where they are for this session.
+
+## MCP Tools
+
+### Context7 — External Documentation
+Context7 MCP (`mcp__context7__*`) is available for fetching up-to-date documentation for any library, framework, SDK, API, or CLI tool. Use it when you judge that authoritative external docs would improve accuracy (e.g. API syntax, version migration, config options). Falls back to agent knowledge if unavailable or unnecessary.
 
 ## File Deduplication
 
@@ -147,7 +159,7 @@ Three skills have extended versions that must be loaded alongside the base skill
 - **skill-alias** (`skills/skill-alias/SKILL.md`): Create a slash-command alias for an existing skill by generating a thin delegator skill. The original skill remains unchanged. Use when the user says "alias skill", "create shortcut for skill", "skill alias", or "change slash command for skill". Do NOT use for skill deletion or modification. Source: This project (`ai-coding-tooling`).
 - **skill-install** (`skills/skill-install/SKILL.md`): Install a skill into the agent's global skills directory and update the Global Skills list in the agent's global config file. Use when the user says "install this skill globally", "add this skill to global skills", "install skill", or "skill-global-installation". Source: This project (`ai-coding-tooling`).
 - **skill-update** (`skills/skill-update/SKILL.md`): Update externally installed skills by reinstalling them from their vendor registry and re-applying any extended skill symlinks. Supports a single skill, a set of skills, or all externals. Use when the user says "update skills", "update all skills", "update skill X", "update skill X and Y", "reinstall skill", "upgrade skills", "refresh skills", or "check for skill updates". Source: This project (`ai-coding-tooling`).
-- **tech-reference-add** (`skills/tech-reference-add/SKILL.md`): Add technology-specific reference files across all skills in this project and extend any qualifying global skills. Use when the user says "add support for <technology>", "add a new technology reference", "add <tech> to the stack", or "onboard <framework>". Source: This project (`ai-coding-tooling`).
+- **tech-reference-add** (`skills/tech-reference-add/SKILL.md`): Capture project-specific, opinionated insights about a technology into skill reference files. Skills load these files at invocation time if they exist. Use when the user says "save this insight", "add this to the [tech] reference", "remember this [tech] pattern", "capture this convention", or "log this for [tech]". Do NOT use to generate generic best practices from public documentation. Source: This project (`ai-coding-tooling`).
 - **tests** (`skills/tests/SKILL.md`): Write and maintain tests for any project. Covers unit tests, integration tests, and code coverage analysis. Technology agnostic. Use when the user says "write tests", "add tests", "missing tests", "test coverage", "unit test", or "integration test". Do NOT use for reviewing existing test quality — use tests-code-review for that. Do NOT use for TDD methodology — use tests-tdd for that. Do NOT use just to run tests. Source: This project (`ai-coding-tooling`).
 - **tests-code-review** (`skills/tests-code-review/SKILL.md`): Review test code quality, coverage patterns, and maintainability. Ensures tests are clear, independent, and provide meaningful coverage. Technology agnostic. Use when the user says "review tests", "test code review", "check tests", "review test coverage", "review my tests", "review tests on PR #123", or "check tests PR #42". Do NOT use for writing new tests — use tests for that. Do NOT use for reviewing implementation code — use code-review. Source: This project (`ai-coding-tooling`).
 - **tests-tdd** (`skills/tests-tdd/SKILL.md`): Test-Driven Development methodology — behavioral principles for writing tests before implementation. Covers the red-green-refactor cycle, when to apply TDD, and when to skip it. Technology agnostic. Use when the user says "TDD", "test-driven", "red-green-refactor", "write test first", or "test-first". Do NOT use for writing tests without TDD intent — use tests for that. Do NOT use for reviewing test quality — use tests-code-review for that. Source: This project (`ai-coding-tooling`).
