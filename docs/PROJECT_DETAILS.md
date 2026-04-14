@@ -28,13 +28,14 @@ ai-coding-tooling/
 │   │   └── SKILL.md     # Adds token-efficiency output rules for all generated .md content
 │   └── skill-architect/
 │       └── SKILL.md     # Adds guardrail design guidance and the extended/ pattern documentation
-└── skills/              # Skills owned by this project
-    ├── agent-setup/
+├── .agents/skills/      # Project-local skills (auto-loaded when project is opened)
+│   ├── agent-setup/     # Bootstraps global agent config and installs all global skills
+│   └── skill-manager/   # Installs or updates skills in an agent's skills directory
+└── skills/              # Skills owned by this project (installed globally via make link / agent-setup)
     ├── architecture-evaluate/
     ├── code/
     ├── code-review/
     ├── documentation-upsert/
-    ├── skill-manager/
     ├── tech-debt-report/
     ├── tech-reference-add/
     ├── tests/
@@ -43,14 +44,21 @@ ai-coding-tooling/
 
 ## Skills Owned by This Project
 
+**Project-local skills** (`.agents/skills/`, auto-loaded when the project is opened):
+
 | Skill | Description |
 |-------|-------------|
 | `agent-setup` | Bootstraps global agent config and installs all global skills for any supported agent |
+| `skill-manager` | Installs or updates skills in an agent's global skills directory. Prompts for intent if ambiguous |
+
+**Globally installed skills** (`skills/`, installed via `make link` / `/agent-setup`):
+
+| Skill | Description |
+|-------|-------------|
 | `architecture-evaluate` | Creates/updates the three project context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE) |
 | `code` | Alias for `coding-guidelines` — applies behavioral and tech-specific coding guidelines. Delegator to the TLC skill |
 | `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security. Includes standalone Performance Audit mode (full-codebase P0–P3 findings report) |
 | `documentation-upsert` | Syncs inline API docs and project `.md` files with the current git workspace state. Detects new packages and scaffolds context via architecture-evaluate package mode |
-| `skill-manager` | Installs or updates skills in an agent's global skills directory. Prompts for intent if ambiguous |
 | `tech-debt-report` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, and code coverage analysis |

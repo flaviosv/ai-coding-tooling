@@ -44,7 +44,7 @@ If the user did not specify which agent to set up, ask:
 
 Wait for the answer before proceeding. Store it as `<agent>`.
 
-**Load agent-specific reference:** Check if a file exists at `skills/agent-setup/references/<agent>.md`. If it exists, read it now — it contains the config file path, skills directory, npx agent identifier, native skills to skip, and any agent-specific caveats. Use that information for all subsequent steps.
+**Load agent-specific reference:** Check if a file exists at `.agents/skills/agent-setup/references/<agent>.md`. If it exists, read it now — it contains the config file path, skills directory, npx agent identifier, native skills to skip, and any agent-specific caveats. Use that information for all subsequent steps.
 
 If no reference file exists for the agent, ask the user for:
 - The global config file path (e.g. `~/.someagent/SOMEAGENT.md`)
@@ -161,7 +161,7 @@ Report to the user:
 User says: "Run agent-setup for claude-code"
 
 Actions:
-1. Agent is `claude-code` → load `skills/agent-setup/references/claude-code.md`
+1. Agent is `claude-code` → load `.agents/skills/agent-setup/references/claude-code.md`
 2. Config path is `~/.claude/CLAUDE.md`, skills dir is `~/.claude/skills/`, npx id is `claude-code`
 3. Check `~/.claude/CLAUDE.md` → not found
 4. Create symlink from `$(pwd)/AGENTS.global.md` → `~/.claude/CLAUDE.md`
@@ -174,7 +174,7 @@ Actions:
 User says: "Run agent-setup for gemini-cli"
 
 Actions:
-1. Agent is `gemini-cli` → load `skills/agent-setup/references/gemini-cli.md`
+1. Agent is `gemini-cli` → load `.agents/skills/agent-setup/references/gemini-cli.md`
 2. Config path is `~/.gemini/GEMINI.md`, skills dir is `~/.gemini/skills/`, npx id is `gemini`
 3. Reference specifies `mkdir -p ~/.gemini && mkdir -p ~/.gemini/skills` before symlinking
 4. Check `~/.gemini/GEMINI.md` → not found

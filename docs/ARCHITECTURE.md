@@ -29,7 +29,8 @@ Repository (single source of truth)
 
 | Source | Location | Install method |
 |--------|----------|---------------|
-| This project | `skills/<name>/` | Symlinked via `make link` or `skill-manager` |
+| This project (project-local) | `.agents/skills/<name>/` | Auto-loaded when the project is opened; no installation needed |
+| This project (global) | `skills/<name>/` | Symlinked via `make link` or `skill-manager` |
 | Tech Leads Club | `~/.claude/skills/<name>/` | Installed via `npx @tech-leads-club/agent-skills` |
 
 ## Extended Skills
@@ -48,7 +49,13 @@ The `extended/` directory holds project-local additions to globally-installed sk
 git clone → make link → /agent-setup (in Claude Code)
 ```
 
-### Adding a new skill
+### Adding a new project-local skill
+```
+Create .agents/skills/<name>/SKILL.md
+  → Auto-loaded when the project is opened; no registration or install needed
+```
+
+### Adding a new globally installed skill
 ```
 Create skills/<name>/SKILL.md
   → Register in AGENTS.md

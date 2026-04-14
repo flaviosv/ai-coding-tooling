@@ -6,7 +6,7 @@ See [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) for the full project conc
 
 ## Skill Modification Rules
 
-- **Only modify skills whose source is `This project (ai-coding-tooling)`** — i.e., files under `skills/` in this repository.
+- **Only modify skills whose source is `This project (ai-coding-tooling)`** — i.e., files under `skills/` or `.agents/skills/` in this repository.
 - **Never modify skills installed globally** (e.g. `~/.claude/skills/`) or sourced from external registries (e.g. Tech Leads Club). Those are treated as read-only dependencies.
 - If a globally installed skill needs changes, raise it with the user instead of editing it directly.
 
@@ -22,7 +22,6 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 
 # Global Skills
 
-- **agent-setup** (`skills/agent-setup/SKILL.md`): Source: This project (`ai-coding-tooling`).
 - **architecture-evaluate** (`skills/architecture-evaluate/SKILL.md`): Source: This project (`ai-coding-tooling`).
 - **best-practices**: Source: Tech Leads Club.
 - **chrome-devtools**: Source: Tech Leads Club.
@@ -34,7 +33,6 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 - **learning-opportunities**: Source: Tech Leads Club.
 - **security-best-practices**: Source: Tech Leads Club.
 - **skill-architect**: Source: Tech Leads Club. Install: local.
-- **skill-manager** (`skills/skill-manager/SKILL.md`): Source: This project (`ai-coding-tooling`).
 - **subagent-creator**: Source: Tech Leads Club.
 - **tech-debt-report** (`skills/tech-debt-report/SKILL.md`): Source: This project (`ai-coding-tooling`).
 - **tech-reference-add** (`skills/tech-reference-add/SKILL.md`): Source: This project (`ai-coding-tooling`).

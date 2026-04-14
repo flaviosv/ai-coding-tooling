@@ -71,18 +71,28 @@ Only removes symlinks — real files are never deleted.
 
 Skills are reusable agent instructions that extend AI coding tools with specialized workflows. They are grouped below by source.
 
+### Project-Local Skills (`.agents/skills/`)
+
+These skills live in `.agents/skills/` and are auto-loaded when the project is opened in Claude Code. No installation step required.
+
+| Skill | Description |
+|---|---|
+| **agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. Multi-agent — supports Claude Code, Gemini CLI, and others via agent reference files. |
+| **generate-knowledge-base** | Reads files or folders, extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
+| **raindrop-kb-convert** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
+| **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. Source: Tech Leads Club. Installed locally. |
+| **skill-manager** | Installs or updates skills in an agent's global skills directory. Handles fresh installation (Tech Leads Club via npx or local project via symlink) and updates externally installed skills by reinstalling from their vendor registry and re-applying extended skill symlinks. Prompts for install vs update if intent is ambiguous. |
+
 ### Source: This Project (`ai-coding-tooling`)
 
 Maintained here and installed globally via `make link` / `/agent-setup`. These are the only skills you should modify:
 
 | Skill | Description |
 |---|---|
-| **agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. Multi-agent — supports Claude Code, Gemini CLI, and others via agent reference files. |
 | **architecture-evaluate** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Also supports package mode for evaluating individual packages/modules, generating a scoped `CLAUDE.md` inside the package directory. Run this when onboarding a new project or when context files are missing. |
 | **code** | Apply coding guidelines when writing code. Thin delegator to `coding-guidelines` (TLC). Pairs with `code-review` for the `/code` + `/code-review` naming pattern. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
 | **documentation-upsert** | Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation. Updates inline API docs, root context files, and base `docs/` files. |
-| **skill-manager** | Installs or updates skills in an agent's global skills directory. Handles fresh installation (Tech Leads Club via npx or local project via symlink) and updates externally installed skills by reinstalling from their vendor registry and re-applying extended skill symlinks. Prompts for install vs update if intent is ambiguous. |
 | **tech-debt-report** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **tests** | Writes and maintains tests — unit, integration, and coverage analysis. |
@@ -133,7 +143,6 @@ Installed globally by `/agent-setup`. Treated as read-only — do not edit these
 | **coding-guidelines** | Behavioral guidelines to reduce common LLM coding mistakes. Applied when writing or reviewing code. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
 | **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |
-| **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. Extended by `extended/skill-architect/SKILL.md`: adds guardrail design guidance into the workflow and documents the `extended/` pattern for modifying global skills. |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
 | **web-design-guidelines** | Reviews UI code for accessibility, design, and best-practices compliance. |

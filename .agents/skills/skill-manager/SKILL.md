@@ -54,7 +54,7 @@ If the user did not specify which agent to install for, ask:
 
 Wait for the answer. Store as `<agent>`.
 
-**Load agent reference:** Check for `skills/agent-setup/references/<agent>.md`. If it exists, read it — it contains `<config-path>`, `<skills-dir>`, `<npx-agent-id>`, and caveats. If no reference exists, ask the user for all three values.
+**Load agent reference:** Check for `.agents/skills/agent-setup/references/<agent>.md`. If it exists, read it — it contains `<config-path>`, `<skills-dir>`, `<npx-agent-id>`, and caveats. If no reference exists, ask the user for all three values.
 
 ### Step I-2: Guardrails
 
@@ -107,11 +107,11 @@ If the user did not specify which agent, ask:
 
 > Which agent's skills should be updated? (e.g. `claude-code`, `gemini-cli`, `cursor`, `windsurf`)
 
-Wait for the answer. Load `skills/agent-setup/references/<agent>.md` for `<skills-dir>` and `<npx-agent-id>`. If no reference exists, ask the user for both.
+Wait for the answer. Load `.agents/skills/agent-setup/references/<agent>.md` for `<skills-dir>` and `<npx-agent-id>`. If no reference exists, ask the user for both.
 
 ### Step U-2: Load the Vendor Registry
 
-Read `skills/skill-manager/references/vendors.md`. It defines detection patterns and reinstall commands per vendor.
+Read `.agents/skills/skill-manager/references/vendors.md`. It defines detection patterns and reinstall commands per vendor.
 
 ### Step U-3: Identify External Skills
 
@@ -199,7 +199,7 @@ User: "Install skill-architect globally"
 
 1. Install signal detected.
 2. Agent not specified → ask → `claude-code`
-3. Load `skills/agent-setup/references/claude-code.md`
+3. Load `.agents/skills/agent-setup/references/claude-code.md`
 4. Source is Tech Leads Club → npx install
 5. Run: `npx @tech-leads-club/agent-skills install --skill skill-architect --agent claude-code --global`
 6. Read installed `SKILL.md` frontmatter → update `# Global Skills` in `~/.claude/CLAUDE.md`
