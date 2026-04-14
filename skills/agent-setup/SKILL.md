@@ -79,14 +79,19 @@ If the symlink creation fails, report the error and stop.
 
 ## Step 3: Install global skills
 
-Read `AGENTS.global.md` at the project root using the **Read tool** (not grep or bash) to ensure no lines are truncated. Extract every skill entry from the `# Global Skills` section. Process each skill sequentially (not in parallel) so errors are easy to trace.
+Read `AGENTS.md` at the project root using the **Read tool** (not grep or bash) to ensure no lines are truncated. Extract every skill entry from the `# Global Skills` section. Process each skill sequentially (not in parallel) so errors are easy to trace.
 
 For each skill entry, check its `Source:` field and act accordingly:
 
 - **`Source: Tech Leads Club`** (or a techlead.club link) → install via npx using the agent identifier from the reference file:
-  ```bash
-  npx @tech-leads-club/agent-skills install --skill <skill-name> --agent <npx-agent-id> --global
-  ```
+  - If the entry also has `Install: local` → install into the project-local skills directory (omit `--global`):
+    ```bash
+    npx @tech-leads-club/agent-skills install --skill <skill-name> --agent <npx-agent-id>
+    ```
+  - Otherwise → install globally:
+    ```bash
+    npx @tech-leads-club/agent-skills install --skill <skill-name> --agent <npx-agent-id> --global
+    ```
 - **`Source: Native <agent> skill`** (or listed as native in the agent reference) → skip installation entirely; the skill is built into the agent. Log it as "skipped (native)".
 - **`Source: This project (...)`** → install via symlink from the project's `skills/` folder into the agent's skills directory:
   ```bash
@@ -134,7 +139,7 @@ For each `personal/<skill-name>/` directory:
    ```
 3. Skip if a symlink or folder already exists at that path (log as "skipped (already present)").
 
-Label each installed personal skill as `Personal (local-only)` in the summary. These skills are gitignored and never listed in `AGENTS.global.md` — they are discovered dynamically at install time.
+Label each installed personal skill as `Personal (local-only)` in the summary. These skills are gitignored and never listed in `AGENTS.md` — they are discovered dynamically at install time.
 
 If `personal/` does not exist, skip this step silently.
 
@@ -160,7 +165,7 @@ Actions:
 2. Config path is `~/.claude/CLAUDE.md`, skills dir is `~/.claude/skills/`, npx id is `claude-code`
 3. Check `~/.claude/CLAUDE.md` → not found
 4. Create symlink from `$(pwd)/AGENTS.global.md` → `~/.claude/CLAUDE.md`
-5. Read `# Global Skills` from `AGENTS.global.md`, install each per source
+5. Read `# Global Skills` from `AGENTS.md`, install each per source
 6. Process `extended/` directory — symlink `SKILL.extended.md` and `reference/` per agent reference rules
 7. Report summary
 

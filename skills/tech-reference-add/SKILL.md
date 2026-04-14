@@ -64,8 +64,8 @@ Scan `skills/` and `extended/` for directories containing a `references/` or `re
 For each reference-enabled skill, reason semantically: **"Does this insight affect the workflow this skill performs?"**
 
 Reasoning examples:
-- Naming convention → `coding-guidelines`, `code-review`; not `performance-review`
-- Query optimization → `performance-review`, `code-review`; likely `coding-guidelines`
+- Naming convention → `coding-guidelines`, `code-review`; performance-review not applicable
+- Query optimization → `code-review` (performance audit mode); likely `coding-guidelines`
 - Test fixture pattern → `tests`, `tests-code-review`; not `coding-guidelines`
 - Security input handling → `security-best-practices`, `code-review`; not `tests`
 
@@ -79,7 +79,7 @@ Present:
 |-------|-------------|--------|-----------|
 | code-review | `skills/code-review/references/django-code-review.md` | Append | Affects review correctness |
 | coding-guidelines | `extended/coding-guidelines/reference/django-coding-guidelines.md` | Create + append | Style convention |
-| performance-review | `skills/performance-review/references/django-performance-review.md` | Append (?) | May surface during perf review — confirm |
+| code-review | `skills/code-review/references/django-performance-review.md` | Append (?) | May surface during performance audit — confirm |
 
 Ask: **"Confirm saving to these files? Remove any you don't want or adjust the list."**
 
@@ -130,5 +130,5 @@ Written to
 - extended/coding-guidelines/reference/django-coding-guidelines.md (created)
 
 Skipped
-- performance-review: removed by user
+- code-review (performance): removed by user
 ```

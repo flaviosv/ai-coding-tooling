@@ -24,8 +24,8 @@ ai-coding-tooling/
 │   ├── coding-guidelines/
 │   │   ├── SKILL.md     # Loaded alongside parent skill; adds stack-specific coding style rules
 │   │   └── reference/   # Tech-specific style guides loaded at runtime
-│   ├── security-best-practices/
-│   │   └── reference/   # Tech-specific security reference files
+│   ├── docs-writer/
+│   │   └── SKILL.md     # Adds token-efficiency output rules for all generated .md content
 │   └── skill-architect/
 │       └── SKILL.md     # Adds guardrail design guidance and the extended/ pattern documentation
 └── skills/              # Skills owned by this project
@@ -34,14 +34,11 @@ ai-coding-tooling/
     ├── code/
     ├── code-review/
     ├── documentation-upsert/
-    ├── performance-review/
-    ├── skill-alias/
     ├── skill-manager/
     ├── tech-debt-report/
     ├── tech-reference-add/
     ├── tests/
-    ├── tests-code-review/
-    └── tests-tdd/
+    └── tests-code-review/
 ```
 
 ## Skills Owned by This Project
@@ -51,16 +48,13 @@ ai-coding-tooling/
 | `agent-setup` | Bootstraps global agent config and installs all global skills for any supported agent |
 | `architecture-evaluate` | Creates/updates the three project context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE) |
 | `code` | Alias for `coding-guidelines` — applies behavioral and tech-specific coding guidelines. Delegator to the TLC skill |
-| `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security |
+| `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security. Includes standalone Performance Audit mode (full-codebase P0–P3 findings report) |
 | `documentation-upsert` | Syncs inline API docs and project `.md` files with the current git workspace state. Detects new packages and scaffolds context via architecture-evaluate package mode |
-| `performance-review` | Identifies performance bottlenecks, memory issues, and optimization opportunities |
-| `skill-alias` | Creates slash-command aliases for existing skills by generating thin delegator skills |
 | `skill-manager` | Installs or updates skills in an agent's global skills directory. Prompts for intent if ambiguous |
 | `tech-debt-report` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, and code coverage analysis |
 | `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes |
-| `tests-tdd` | Test-Driven Development behavioral principles — red-green-refactor cycle and test-first methodology |
 
 ## External Dependencies
 

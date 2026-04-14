@@ -137,7 +137,7 @@ edit the global file directly**. Instead, use the `extended/` pattern:
 2. Use `extends: <skill-name>` in the frontmatter — this signals the relationship to the parent.
 3. The extension file is loaded **alongside** the parent SKILL.md, not instead of it. Write it additively: only add or clarify, don't repeat what the parent already says.
 4. Run `make link-extended` to symlink the new directory into `~/.claude/skills/` (only needed the first time a new `extended/<skill-name>/` directory is created).
-5. Update `AGENTS.global.md` to annotate the parent skill entry with `— **Extended**: if \`extended/<skill-name>/SKILL.md\` exists, load it alongside the parent skill.`
+5. Update `AGENTS.md` to annotate the parent skill entry with `— **Extended**: if \`extended/<skill-name>/SKILL.md\` exists, load it alongside the parent skill.`
 
 **Frontmatter template for an extension:**
 

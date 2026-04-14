@@ -3,19 +3,26 @@ name: code-review
 description: >
   Perform comprehensive code reviews on implementation code. Reviews local workspace changes by
   default, or a GitHub PR when a PR number is provided. Covers architecture, performance, code
-  quality, API design, and security. Technology agnostic — adapts to the project's stack using
-  context files. Use when the user says "review my code", "code review", "check my code",
-  "review my changes", "review this PR", or "review PR #123". Do NOT use for reviewing test
-  files — use the tests-code-review skill for that.
+  quality, API design, and security. Also performs full-codebase Performance Audits (P0–P3
+  findings report) when triggered by performance audit phrases. Technology agnostic — adapts to
+  the project's stack using context files. Use when the user says "review my code", "code review",
+  "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
+  reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   triggers:
-    - "review my code"
-    - "code review"
     - "check my code"
+    - "code review"
+    - "optimize performance"
+    - "performance audit"
+    - "performance bottleneck"
+    - "performance review"
     - "review my changes"
-    - "review this PR"
+    - "review my code"
     - "review PR #123"
+    - "review this PR"
+    - "slow code"
+    - "slow query"
 ---
 
 # Code Review
@@ -37,8 +44,8 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 ### Review Modes
 
 - **Local workspace** (default): review all changed/added files in git workspace.
-- **GitHub PR**: review only the PR diff from GitHub. Do NOT review local workspace files.
-- User must explicitly provide a PR number to activate GitHub PR mode.
+- **GitHub PR**: review only the PR diff from GitHub. Do NOT review local workspace files. User must explicitly provide a PR number to activate GitHub PR mode.
+- **Performance Audit**: full-codebase performance scan. Activated when user says "performance review", "performance audit", "optimize performance", "slow code", "performance bottleneck", or "slow query". Scope is full codebase (not just changed files). Produces executive summary + P0/P1/P2/P3 findings report.
 
 ### What NOT to Review
 
@@ -60,6 +67,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 Parse the user's request:
 
+- **Performance audit phrases** ("performance review", "performance audit", "optimize performance", "slow code", "performance bottleneck", "slow query") → Performance Audit mode. Skip Steps 4–7; apply performance checklist to full codebase and produce Performance Audit Report.
 - **No PR number** → local workspace mode. Proceed to Step 2.
 - **PR number provided** (e.g. "review PR #123", "code review PR 456") → GitHub PR mode.
 
@@ -91,7 +99,7 @@ Load and apply [Reference Loading Constraint](../../templates/reference-loading-
 
 **Security references**: load ONLY matching files from `security-best-practices` skill's `references/` directory (global or project). Skip non-matching.
 
-**Performance references**: load `performance-review` skill's `references/performance-checklist.md` (generic — always) and ONLY matching tech-specific files. Skip non-matching.
+**Performance references**: load `references/performance-checklist.md` (generic — always) and ONLY matching `*-performance-review.md` files from local `references/`. Skip non-matching.
 
 ## Step 4: Collect Changed Files
 
@@ -151,10 +159,11 @@ If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts
 
 ### Performance
 
-1. Apply generic performance baseline from `performance-review` references
-2. Apply all loaded tech-specific performance references
-3. Scope to changed files only
-4. Flag every inefficiency: N+1 queries, unnecessary allocations, missing indexes, blocking calls
+1. Apply generic performance baseline from `references/performance-checklist.md`
+2. Apply all loaded `*-performance-review.md` references from local `references/`
+3. **Local workspace / GitHub PR mode**: scope to changed files only
+4. **Performance Audit mode**: scope to full codebase
+5. Flag every inefficiency: N+1 queries, unnecessary allocations, missing indexes, blocking calls
 
 ## Step 6: Present Findings
 
@@ -180,6 +189,29 @@ After fixes:
 ## Step 8: Post to GitHub (GitHub PR mode only)
 
 Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md).
+
+## Performance Audit Report Format
+
+Used only in **Performance Audit** mode.
+
+### Executive Summary
+- Overall assessment (1–2 sentences)
+- Count of critical issues
+- Top-3 highest-impact fixes
+
+### P0 — Critical (fix immediately)
+
+```
+[ID] Title
+Impact: <description>
+Location: <File:Line>
+Current: <what is happening>
+Recommendation: <specific fix>
+```
+
+### P1 — High Priority (fix soon)
+### P2 — Medium Priority (moderate improvement)
+### P3 — Low Priority (minor / best-practice)
 
 ## Examples
 
@@ -207,3 +239,13 @@ User: "review PR #42"
 6. User: "post 1, 3, 5 to GitHub"
 7. Create pending review with 3 comments via MCP or `gh api`
 8. Report: "3 comments added to pending review on PR #42. Submit manually on GitHub."
+
+### Example 3: Performance audit
+
+User: "do a performance audit of the orders module"
+
+1. Trigger phrase matches → Performance Audit mode
+2. Load context: `PROJECT_DETAILS.md`, `ARCHITECTURE.md`
+3. Load `references/performance-checklist.md` + matching `*-performance-review.md` references
+4. Scan full codebase (or named module scope)
+5. Produce Performance Audit Report in the format above

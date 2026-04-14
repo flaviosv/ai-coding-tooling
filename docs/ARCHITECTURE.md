@@ -51,7 +51,7 @@ git clone → make link → /agent-setup (in Claude Code)
 ### Adding a new skill
 ```
 Create skills/<name>/SKILL.md
-  → Register in AGENTS.md and/or AGENTS.global.md
+  → Register in AGENTS.md
   → Run /skill-manager if it should be globally available
 ```
 
@@ -59,19 +59,12 @@ Create skills/<name>/SKILL.md
 ```
 Create personal/<name>/SKILL.md  (directory is gitignored)
   → make link  (or make link-personal) symlinks it into ~/.claude/skills/
-  → Appears in agent skill list; never committed or listed in AGENTS.global.md
+  → Appears in agent skill list; never committed or listed in AGENTS.md
 ```
 
 ### Installing a Tech Leads Club skill
 ```
 /skill-manager → npx @tech-leads-club/agent-skills install → CLAUDE.md updated
-```
-
-### Creating a skill alias
-```
-/skill-alias → generates skills/<new-name>/SKILL.md (thin delegator)
-  → Registers in AGENTS.md, AGENTS.global.md, README.md
-  → Original skill remains unchanged
 ```
 
 ### Extending a globally-installed skill

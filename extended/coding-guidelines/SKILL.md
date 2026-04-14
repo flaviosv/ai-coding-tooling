@@ -35,6 +35,10 @@ Reference files in both directories follow the naming convention `<language>-<fr
 
 If no matching reference file exists for the detected stack in either location, STOP immediately and apply [Unsupported Tech Stack Alert](../../templates/unsupported-tech-stack-alert.md).
 
+## Web Design Guidelines
+
+If the code being written or modified contains **HTML or CSS** (including template files, JSX/TSX with className, inline styles, or `.css`/`.scss`/`.less` files), also invoke the `web-design-guidelines` skill alongside this one. Apply its rules to any UI markup or styling changes.
+
 ## SOLID Principles
 
 Always load `reference/solid-guidelines.md` from this extension's reference directory when writing or reviewing OOP-style code. Apply its rules proactively — treat SOLID violations as design defects, not style suggestions.
