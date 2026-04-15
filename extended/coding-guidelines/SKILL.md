@@ -39,14 +39,10 @@ If no matching reference file exists for the detected stack in either location, 
 
 If the code being written or modified contains **HTML or CSS** (including template files, JSX/TSX with className, inline styles, or `.css`/`.scss`/`.less` files), also invoke the `web-design-guidelines` skill alongside this one. Apply its rules to any UI markup or styling changes.
 
-## SOLID Principles
+## Software Design Principles
 
-Always load `reference/solid-guidelines.md` from this extension's reference directory when writing or reviewing OOP-style code. Apply its rules proactively — treat SOLID violations as design defects, not style suggestions.
+Always load `reference/best-practices-coding-guidelines.md` from this extension's reference directory when writing or reviewing code. Apply its rules proactively — treat violations as design defects, not style suggestions.
 
-Key checkpoints before completing any implementation task:
+The file covers: SOLID, DRY, KISS, YAGNI, Separation of Concerns, Low Coupling/High Cohesion, Composition over Inheritance, Law of Demeter, Fail Fast, Convention over Configuration, Readability over Cleverness, and Boy Scout Rule.
 
-1. **SRP**: Can you describe each new class/module in one sentence without "and"?
-2. **OCP**: Will adding the next variant require editing stable existing code?
-3. **LSP**: If subclassing, does the subclass honor the parent's full contract?
-4. **ISP**: Does the caller depend only on methods it actually uses?
-5. **DIP**: Is every volatile dependency (DB, HTTP, file system) injected rather than instantiated?
+Run the pre-completion checklist at the end of the file before marking any implementation done.

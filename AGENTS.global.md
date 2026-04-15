@@ -64,7 +64,8 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 ## Plan Mode
 
 - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- All plans must be written to `docs/plans/<descriptive-name>.md` (e.g., `docs/plans/stripe-integration.md`, `docs/plans/auth-refactor.md`)
+- All plans must be written to `docs/plans/<TASK-ID>/<descriptive-name>.md` (e.g., `docs/plans/stripe-integration.md`, `docs/plans/auth-refactor.md`)
+- Ask for the TASK-ID if you don't have it 
 - **Complexity tiers:**
   - **Tactical** (3-10 steps, single concern): standard plan with numbered steps and checkable items
   - **Architectural** (cross-cutting, new systems, integrations, multi-package changes): invoke the `technical-design-doc-creator` skill to generate a TDD as the plan. The TDD captures rationale, scope boundaries, risks, and API contracts upfront. Break implementation tasks from the TDD afterward.
@@ -79,6 +80,21 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 - Create the Integration Tests if applicable
 - Create the Functional Tests if applicable
 - Create the E2E Tests if applicable
+
+### Architecture Decision Records
+
+When choosing between alternatives that affect more than today's task – a library, an architecture pattern, an API design, or deciding NOT to do something – log it:
+
+File: /docs/decisions/description_YYYY-MM-DD.md
+
+Format:
+## Decision: {what you decided}
+## Context: {why this came up}
+## Alternatives considered: {what else was on the table}
+## Reasoning: {why this option won}
+## Trade-offs accepted: {what you gave up}
+
+When about to make a similar decision, grep /decisions/ for prior choices. Follow them unless new information invalidates the reasoning.
 
 ## Subagent strategy
 
@@ -141,6 +157,6 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 
 The following skills require additional files to be loaded alongside the base skill:
 
-- **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/solid-guidelines.md` for OOP-style code.
+- **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/best-practices-coding-guidelines.md` for software design principles.
 - **docs-writer**: if `extended/docs-writer/SKILL.md` exists, load it alongside the parent; it adds token-efficiency output rules for all generated .md content.
 - **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases, documents the `extended/` pattern for modifying globally installed skills, and enforces token-efficiency rules for generated skill and reference files.

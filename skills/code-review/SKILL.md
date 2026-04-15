@@ -91,7 +91,7 @@ Load and apply [Reference Loading Constraint](../../templates/reference-loading-
 
 1. `references/review-checklist.md` — generic baseline (architecture, code quality, security, performance, docs)
 2. `references/clean-code-checklist.md` — clean code principles (naming, functions, classes, control flow, side effects, abstractions)
-3. `references/solid-principles.md` — SOLID design principles and cross-cutting smells
+3. `references/best-practices-code-review.md` — software design principles (SOLID, DRY, KISS, YAGNI, SoC, and more) and cross-cutting smells
 
 **Tech-specific checklists**: load ONLY matching `<language>-<framework>-code-review.md` from `references/` whose prefix matches the detected stack.
 
