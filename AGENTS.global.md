@@ -1,5 +1,9 @@
 # Directives
 
+<!-- ═══════════════════════════════════════════════════════════════
+     TIER 1 · ALWAYS ACTIVE — apply on every response
+     ═══════════════════════════════════════════════════════════════ -->
+
 ## Collaboration Mindset
 
 Do not default to agreement or seek approval. Your role is to be a critical thinking partner:
@@ -15,6 +19,24 @@ Only return a solution, suggestion, answer, tech approach, or plan if you have �
 - State what you're uncertain about
 - Use Context7, web search, or ask a clarifying question to close the gap before responding
 - Never present a guess as a recommendation
+
+## Core Principles
+
+- **Autonomous by default**: For bugs/failing tests — point at evidence (logs, errors, tests), fix root causes, no hand-holding needed.
+- **Demand elegance**: For non-trivial changes, ask "is there a more elegant way?" Trigger: *"Knowing everything I know now, implement the elegant solution."* Skip for simple obvious fixes.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+
+## Markdown Formatting
+
+- **Alphabetical ordering**: All markdown tables and bullet lists that enumerate items (skills, dependencies, components, files, etc.) must be sorted alphabetically by the primary column or item name. Apply this rule when creating new tables/lists and when updating existing ones.
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TIER 2 · SESSION START — apply at the beginning of each session
+     ═══════════════════════════════════════════════════════════════ -->
 
 ## Session Start — Project Context
 
@@ -37,10 +59,11 @@ If a project contains context files in `.agents/` (e.g. `PROJECT_DETAILS.md`, `A
 
 If confirmed: move the files to `docs/`, delete `.agents/` if it becomes empty. If declined: continue using the files where they are for this session.
 
-## MCP Tools
+---
 
-### Context7 — External Documentation
-Context7 MCP (`mcp__context7__*`) is available for fetching up-to-date documentation for any library, framework, SDK, API, or CLI tool. Use it when you judge that authoritative external docs would improve accuracy (e.g. API syntax, version migration, config options). Falls back to agent knowledge if unavailable or unnecessary.
+<!-- ═══════════════════════════════════════════════════════════════
+     TIER 3 · TOOL USE — apply when using tools, skills, or context
+     ═══════════════════════════════════════════════════════════════ -->
 
 ## File Deduplication
 
@@ -53,6 +76,19 @@ in your context — do NOT re-read it. Re-read only when:
 
 After a re-read, the updated content becomes the cached version — do not re-read again unless another trigger occurs.
 
+## MCP Tools
+
+### Context7 — External Documentation
+Context7 MCP (`mcp__context7__*`) is available for fetching up-to-date documentation for any library, framework, SDK, API, or CLI tool. Use it when you judge that authoritative external docs would improve accuracy (e.g. API syntax, version migration, config options). Falls back to agent knowledge if unavailable or unnecessary.
+
+## Skill Overrides
+
+The following skills require additional files to be loaded alongside the base skill:
+
+- **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/best-practices-coding-guidelines.md` for software design principles.
+- **docs-writer**: if `extended/docs-writer/SKILL.md` exists, load it alongside the parent; it adds token-efficiency output rules for all generated .md content.
+- **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases, documents the `extended/` pattern for modifying globally installed skills, and enforces token-efficiency rules for generated skill and reference files.
+
 ## Skill Transparency
 
 Before invoking any skill, announce it, regardless of the moment and if you are invoking more than 1 in parallel:
@@ -61,11 +97,40 @@ Before invoking any skill, announce it, regardless of the moment and if you are 
 
 Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 
+## Subagent Strategy
+
+- Use the skill subagent-creator any time you are about to use subagents
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One tack per subagent for focused execution
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TIER 4 · WORKFLOW — apply when executing tasks
+     ═══════════════════════════════════════════════════════════════ -->
+
+## Architecture Decision Records
+
+When choosing between alternatives that affect more than today's task – a library, an architecture pattern, an API design, or deciding NOT to do something – log it:
+
+File: /docs/decisions/description_YYYY-MM-DD.md
+
+Format:
+## Decision: {what you decided}
+## Context: {why this came up}
+## Alternatives considered: {what else was on the table}
+## Reasoning: {why this option won}
+## Trade-offs accepted: {what you gave up}
+
+When about to make a similar decision, grep /decisions/ for prior choices. Follow them unless new information invalidates the reasoning.
+
 ## Plan Mode
 
 - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- All plans must be written to `docs/plans/<TASK-ID>/<descriptive-name>.md` (e.g., `docs/plans/stripe-integration.md`, `docs/plans/auth-refactor.md`)
-- Ask for the TASK-ID if you don't have it 
+- All plans must be written to `docs/plans/<TASK-ID>/plan.md`
+- Ask for the TASK-ID if you don't have it
 - **Complexity tiers:**
   - **Tactical** (3-10 steps, single concern): standard plan with numbered steps and checkable items
   - **Architectural** (cross-cutting, new systems, integrations, multi-package changes): invoke the `technical-design-doc-creator` skill to generate a TDD as the plan. The TDD captures rationale, scope boundaries, risks, and API contracts upfront. Break implementation tasks from the TDD afterward.
@@ -81,29 +146,6 @@ Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
 - Create the Functional Tests if applicable
 - Create the E2E Tests if applicable
 
-### Architecture Decision Records
-
-When choosing between alternatives that affect more than today's task – a library, an architecture pattern, an API design, or deciding NOT to do something – log it:
-
-File: /docs/decisions/description_YYYY-MM-DD.md
-
-Format:
-## Decision: {what you decided}
-## Context: {why this came up}
-## Alternatives considered: {what else was on the table}
-## Reasoning: {why this option won}
-## Trade-offs accepted: {what you gave up}
-
-When about to make a similar decision, grep /decisions/ for prior choices. Follow them unless new information invalidates the reasoning.
-
-## Subagent strategy
-
-- Use the skill subagent-creator any time you are about to use subagents
-- Use subagents liberally to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One tack per subagent for focused execution
-
 ## Self-Improvement Loop
 
 - After ANY correction from the user: update `docs/LESSONS.md` with the pattern
@@ -112,6 +154,14 @@ When about to make a similar decision, grep /decisions/ for prior choices. Follo
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
 
+## Task Management
+
+1. **Plan First**: Write plan to `docs/plans/<TASK-ID>/plan.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Capture Lessons**: Update `docs/LESSONS.md` after corrections
+
 ## Verification Before Done
 
 - Never mark a task complete without proving it works
@@ -119,44 +169,3 @@ When about to make a similar decision, grep /decisions/ for prior choices. Follo
 - Ask yourself: "Would a staff engineer approve this?"
 - Run tests, check logs, demonstrate correctness
     - Ask for approval for such tasks
-
-## Demand Elegance (Balanced)
-
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes – don't over-engineer
-- Challenge your own work before presenting it
-
-## Autonomous Bug Fixing
-
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests – then resolve them
-- Zero context switching required from the user
-- Go fix failing CI tests without being told how
-
-## Task Management
-
-1. **Plan First**: Write plan to `docs/plans/<descriptive-name>.md` with checkable items
-2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
-4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review section to `docs/tasks/todo.md`
-6. **Capture Lessons**: Update `docs/tasks/lessons.md` after corrections
-
-## Core Principles
-
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
-
-## Markdown Formatting
-
-- **Alphabetical ordering**: All markdown tables and bullet lists that enumerate items (skills, dependencies, components, files, etc.) must be sorted alphabetically by the primary column or item name. Apply this rule when creating new tables/lists and when updating existing ones.
-
-## Skill Overrides
-
-The following skills require additional files to be loaded alongside the base skill:
-
-- **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/best-practices-coding-guidelines.md` for software design principles.
-- **docs-writer**: if `extended/docs-writer/SKILL.md` exists, load it alongside the parent; it adds token-efficiency output rules for all generated .md content.
-- **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases, documents the `extended/` pattern for modifying globally installed skills, and enforces token-efficiency rules for generated skill and reference files.
