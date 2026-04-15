@@ -140,6 +140,7 @@ Installed globally by `/agent-setup`. Treated as read-only — do not edit these
 
 | Skill | Description |
 |---|---|
+| **codenavi** | Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use when fixing bugs, implementing features, refactoring, or investigating flows in unfamiliar territory. |
 | **coding-guidelines** | Behavioral guidelines to reduce common LLM coding mistakes. Applied when writing or reviewing code. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
 | **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |

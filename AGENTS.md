@@ -27,6 +27,7 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 - **chrome-devtools**: Source: Tech Leads Club.
 - **code** (`skills/code/SKILL.md`): Source: This project (`ai-coding-tooling`).
 - **code-review** (`skills/code-review/SKILL.md`): Source: This project (`ai-coding-tooling`).
+- **codenavi**: Source: Tech Leads Club.
 - **coding-guidelines**: Source: Tech Leads Club.
 - **docs-writer**: Source: Tech Leads Club.
 - **documentation-upsert** (`skills/documentation-upsert/SKILL.md`): Source: This project (`ai-coding-tooling`).
