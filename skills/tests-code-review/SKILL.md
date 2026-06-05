@@ -83,9 +83,7 @@ Load and apply [Reference Loading Constraint](../../templates/reference-loading-
 
 1. `references/test-review-checklist.md` — generic test quality checklist (structure, coverage, isolation, determinism, maintainability, test doubles, anti-patterns)
 
-**Tech-specific checklists**: load ONLY matching `<language>-*` and `<framework>-*` from `references/` whose prefix matches the detected stack. If the stack is Python + Django, load `python-tests-code-review.md` AND `django-tests-code-review.md`. Skip all other tech-specific files. The generic checklist sets the baseline, stack-specific references deepen it.
-
-**Test-writing references**: load ONLY matching files from the `tests` skill's `references/` directory (global: `~/.claude/skills/tests/references/`, project: `.agents/skills/tests/references/`). Pattern: `<language>-tests.md`, `<framework>-tests.md`. Skip non-matching tech-specific files. These contain test-writing patterns, conventions, and anti-patterns per stack — deviations are findings.
+**Tech-specific checklists**: load ONLY matching `<language>-*` and `<framework>-*` from `references/` whose prefix matches the detected stack. If the stack is Python + Django, load `python-tests-code-review.md` AND `django-tests-code-review.md`. Skip all other tech-specific files. If no matching file exists in `references/`, proceed with the mandatory baseline only.
 
 ## Step 4: Collect Changed Files
 

@@ -93,13 +93,9 @@ Load and apply [Reference Loading Constraint](../../templates/reference-loading-
 2. `references/clean-code-checklist.md` — clean code principles (naming, functions, classes, control flow, side effects, abstractions)
 3. `references/best-practices-code-review.md` — software design principles (SOLID, DRY, KISS, YAGNI, SoC, and more) and cross-cutting smells
 
-**Tech-specific checklists**: load ONLY matching `<language>-<framework>-code-review.md` from `references/` whose prefix matches the detected stack.
+**Tech-specific checklists**: load ONLY matching `<language>-<framework>-code-review.md` from `references/` whose prefix matches the detected stack. If no matching file exists in `references/`, proceed with the mandatory baselines only.
 
-**Coding-guidelines style guides**: load ONLY matching files from the `coding-guidelines` skill's `reference/` directory (global: `~/.claude/skills/coding-guidelines/reference/`, project: `.agents/skills/coding-guidelines/reference/`). Pattern: `<language>-coding-guidelines.md`, `<language>-<framework>-coding-guidelines.md`. Skip non-matching. Deviations are findings.
-
-**Security references**: load ONLY matching files from `security-best-practices` skill's `references/` directory (global or project). Skip non-matching.
-
-**Performance references**: load `references/performance-checklist.md` (generic — always) and ONLY matching `*-performance-review.md` files from local `references/`. Skip non-matching.
+**Performance references**: load `references/performance-checklist.md` (generic — always) and ONLY matching `*-performance-review.md` files from `references/`. Skip non-matching.
 
 ## Step 4: Collect Changed Files
 

@@ -103,3 +103,11 @@ Before marking any implementation done:
 8. Any speculative/unrequested feature added? (YAGNI)
 9. Layer boundaries respected? (SoC)
 10. Left the code better than found? (Boy Scout)
+
+---
+
+## Comments
+
+1. Add a comment only when:
+   (a) the language/framework requires it as an industry standard (e.g. Go `godoc` on exported identifiers), or
+   (b) the name/signature alone does not convey intent — explain *why* or *what constraint* applies, never *what the code does*

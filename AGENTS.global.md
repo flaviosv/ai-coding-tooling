@@ -134,11 +134,14 @@ When about to make a similar decision, grep /decisions/ for prior choices. Follo
 - **Complexity tiers:**
   - **Tactical** (3-10 steps, single concern): standard plan with numbered steps and checkable items
   - **Architectural** (cross-cutting, new systems, integrations, multi-package changes): invoke the `technical-design-doc-creator` skill to generate a TDD as the plan. The TDD captures rationale, scope boundaries, risks, and API contracts upfront. Break implementation tasks from the TDD afterward.
+- Use subagents to execute tasks in parallel if applicable
 - If something goes sideways, STOP and re-plan immediately – don't keep pushing
 - Use plan mode for verification steps, not just building
 - Write detailed specs upfront to reduce ambiguity
 - Make the plan extremely concise. Sacrifice grammar for the sake of concision.
-- At the end of each plan, give me a list of unresolved questions to answer, if any.
+- At the end of each plan, list all unresolved questions explicitly.
+- **If there are open questions: STOP. Ask them. Do NOT suggest defaults, auto-accepts, or proceed assumptions. Do NOT move on with the plan.**
+- **A plan is only complete when every open question has an explicit answer from the user.**
 - Be detailed in your plan, i need to understand the details
 - Number all steps.
 - Create the Unit Tests if applicable

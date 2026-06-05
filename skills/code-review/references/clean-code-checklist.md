@@ -43,6 +43,7 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 
 ## Comments
 
+- [ ] Comments added only when (a) the language/framework requires them as an industry standard (e.g. Go godoc on exported identifiers), or (b) the name/signature alone does not convey intent
 - [ ] No comments that restate what the code already says
 - [ ] No commented-out code left in the codebase
 - [ ] No misleading or outdated comments — comments that contradict the code are worse than none

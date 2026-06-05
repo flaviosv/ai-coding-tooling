@@ -91,16 +91,14 @@ If this file exists, follow it precisely. It takes precedence over the generic g
 
 Then load the reference files:
 
-Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
-
 1. Always load `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules (generic)
 2. Always load `references/coverage-guide.md` — coverage goals and what not to test (generic)
 3. Identify the project's language and framework from `docs/PROJECT_DETAILS.md`
-4. Load ONLY matching technology-specific reference files from `references/` whose prefix matches
-   the detected stack. If the stack is Python + Django, load `python-tests.md` AND `django-tests.md`.
-   Skip all other tech-specific files (e.g., `golang-tests.md`, `php-tests.md`).
-
-If no matching technology-specific reference file exists for the detected stack, STOP and apply [Unsupported Tech Stack Alert](../../templates/unsupported-tech-stack-alert.md).
+4. List files in `references/` and load ONLY those whose prefix matches the detected stack.
+   If the stack is Python + Django, load `python-tests.md` AND `django-tests.md` if they exist.
+   Skip all other tech-specific files.
+5. If no matching technology-specific reference file exists in `references/`, proceed using only
+   the generic references already loaded — do not look outside the `references/` folder.
 
 ## Test Types
 

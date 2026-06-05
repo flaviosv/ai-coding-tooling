@@ -73,7 +73,7 @@ Use Glob and Read to gather context. Adapt searches to the actual language, fram
 
 | Area | What to look for |
 |------|-----------------|
-| **Dependency manifests** | `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `composer.json`, `Gemfile`, `requirements.txt` |
+| **Dependency manifests** | `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `composer.json`, `Gemfile`, `requirements.txt` — extract exact pinned versions for all key libraries; these feed the Key Libraries table in Step 4 |
 | **Infrastructure** | `Dockerfile`, `docker-compose.yml`, `Makefile`, `justfile` |
 | **Local dev tooling** | Seed scripts, mock servers, dev-only config, fixture data, local service stubs |
 | **Environment** | `.env.example`, `.env.sample`, `README.md` for env docs |
@@ -106,7 +106,7 @@ Create or update `docs/PROJECT_DETAILS.md` (or user-specified path). Include onl
 |---------|---------|
 | **Overview** | 1–2 sentence description of what the project does and who it's for |
 | **Tech Stack** | Category / Technology table (language, framework, database, cache, queue, infrastructure). Include minimum runtime/language version constraints (e.g. Node >= 18, Python >= 3.11) — agents must respect these to avoid using unsupported features |
-| **Key Libraries** | Library / Purpose table |
+| **Key Libraries** | Library / Version / Purpose / Modern Usage table — extract the exact pinned version from the dependency manifest; for each library, use Context7 (`mcp__context7__*`) or a web search to identify the idiomatic modern APIs and patterns agents should prefer for that version (e.g. "React Query v5 → use `useQuery` not `connect()`", "SQLAlchemy 2.x → use `select()` not `Query`"). Flag any library pinned to a significantly outdated minor or major version. |
 | **Project Structure** | Top-level directory tree with brief annotations |
 | **Commands** | Task / Command table (setup, build, test, lint, deploy, migrate, seed) |
 | **Local Development Setup** | Services to run (docker compose profile, local DB), seed/fixture data, how to mock or stub external services, ports and URLs for local services |
