@@ -1,0 +1,677 @@
+#!/usr/bin/env node
+// fsvskills — skill manager for AI coding agents. config/skills.json is the
+// authoritative source map (sources: local, tech-leads-club, matt-pocock, native).
+// Vendor calls go through execFileSync with an argument array, never a shell
+// string, so skill names cannot inject commands.
+
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+// ---------------------------------------------------------------------------
+// Paths & config
+// ---------------------------------------------------------------------------
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.dirname(SCRIPT_DIR); // repo root (bin/ is one level down)
+
+// Project-local link sources: setup points <agent.projectDir> at .agents and
+// <agent.projectConfig> at AGENTS.md.
+const AGENTS_DIR = '.agents';
+const MD_SOURCE = 'AGENTS.md';
+
+const SKILL_NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
+
+// ---------------------------------------------------------------------------
+// Small utilities
+// ---------------------------------------------------------------------------
+
+const c = {
+  reset: '\x1b[0m', dim: '\x1b[2m', red: '\x1b[31m', green: '\x1b[32m',
+  yellow: '\x1b[33m', cyan: '\x1b[36m', bold: '\x1b[1m',
+};
+const log = (m) => console.log(m);
+const info = (m) => console.log(`${c.cyan}•${c.reset} ${m}`);
+const ok = (m) => console.log(`${c.green}✓${c.reset} ${m}`);
+const skip = (m) => console.log(`${c.dim}– ${m}${c.reset}`);
+const warn = (m) => console.warn(`${c.yellow}!${c.reset} ${m}`);
+const fail = (m) => console.error(`${c.red}✗ ${m}${c.reset}`);
+
+class UserError extends Error {}
+
+function expandHome(p) {
+  if (p === '~') return os.homedir();
+  if (p.startsWith('~/')) return path.join(os.homedir(), p.slice(2));
+  return p;
+}
+
+// Existence check that does NOT follow symlinks (so broken symlinks count).
+function lexists(p) {
+  try { fs.lstatSync(p); return true; } catch { return false; }
+}
+function isSymlink(p) {
+  try { return fs.lstatSync(p).isSymbolicLink(); }
+  catch { return false; }
+}
+function isDir(p) {
+  try { return fs.statSync(p).isDirectory(); } catch { return false; }
+}
+
+function loadJson(rel) {
+  const p = path.join(ROOT, rel);
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    throw new UserError(`Could not read ${rel}: ${e.message}`);
+  }
+}
+
+function validateSkillName(name) {
+  if (!SKILL_NAME_RE.test(name)) {
+    throw new UserError(`Invalid skill name "${name}" (allowed: lowercase letters, digits, hyphens).`);
+  }
+  return name;
+}
+
+function resolveAgent(agents, id) {
+  if (!id) throw new UserError('Missing agent. Usage example: fsvskills setup claude-code');
+  const a = agents[id];
+  if (!a) {
+    throw new UserError(`Unknown agent "${id}". Known: ${Object.keys(agents).join(', ')}.`);
+  }
+  return {
+    id,
+    configPath: expandHome(a.configPath),
+    skillsDir: expandHome(a.skillsDir),
+    statuslinePath: a.statuslinePath ? expandHome(a.statuslinePath) : null,
+    npxId: a.npxId,
+    native: a.native || [],
+    projectDir: a.projectDir || null,
+    projectConfig: a.projectConfig || null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Filesystem actions (dry-run aware)
+// ---------------------------------------------------------------------------
+
+let DRY = false;
+
+function ensureDir(p) {
+  if (isDir(p)) return;
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} mkdir -p ${p}`); return; }
+  fs.mkdirSync(p, { recursive: true });
+}
+
+// Create a symlink, never clobbering anything that already exists.
+// Returns 'linked' | 'present' | 'dry'.
+function linkSafe(target, dest) {
+  if (lexists(dest)) { skip(`${dest} already exists`); return 'present'; }
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} ln -s ${target} ${dest}`); return 'dry'; }
+  fs.symlinkSync(target, dest);
+  ok(`linked ${dest} -> ${target}`);
+  return 'linked';
+}
+
+// Force-create an overlay symlink: removes an existing symlink first, but never
+// deletes a real file/dir.
+function relinkOverlay(target, dest) {
+  if (lexists(dest)) {
+    if (!isSymlink(dest)) { warn(`${dest} is a real file/dir — leaving it untouched`); return 'blocked'; }
+    if (!DRY) fs.unlinkSync(dest);
+  }
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} ln -sf ${target} ${dest}`); return 'dry'; }
+  fs.symlinkSync(target, dest);
+  return 'linked';
+}
+
+function unlinkIfSymlink(dest) {
+  if (!lexists(dest)) { skip(`${dest} not present`); return; }
+  if (!isSymlink(dest)) { skip(`${dest} is not a symlink`); return; }
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm ${dest}`); return; }
+  fs.unlinkSync(dest);
+  ok(`removed ${dest}`);
+}
+
+function runNpx(args, label) {
+  const printable = `npx ${args.join(' ')}`;
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} ${printable}`); return true; }
+  info(printable);
+  try {
+    execFileSync('npx', args, { stdio: 'inherit' });
+    ok(label);
+    return true;
+  } catch (e) {
+    fail(`${label} failed (${e.message})`);
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Overrides (extended/) overlay
+// ---------------------------------------------------------------------------
+
+// Apply the extended/<skill>/ overlay into <skillsDir>/<skill>/.
+function applyOverlay(name, agent) {
+  const extDir = path.join(ROOT, 'extended', name);
+  if (!isDir(extDir)) return; // nothing to overlay
+  const targetDir = path.join(agent.skillsDir, name);
+  if (!isDir(targetDir)) { warn(`override for ${name}: parent skill not installed yet — skipping overlay`); return; }
+
+  const extSkill = path.join(extDir, 'SKILL.md');
+  if (lexists(extSkill)) {
+    const r = relinkOverlay(extSkill, path.join(targetDir, 'SKILL.extended.md'));
+    if (r === 'linked' || r === 'dry') ok(`override ${name}: SKILL.extended.md`);
+  }
+
+  const refSrc = path.join(extDir, 'reference');
+  if (isDir(refSrc)) {
+    // Collision-aware: if the vendor shipped a references/ dir, use reference.extended.
+    const destName = isDir(path.join(targetDir, 'references')) ? 'reference.extended' : 'reference';
+    const r = relinkOverlay(refSrc, path.join(targetDir, destName));
+    if (r === 'linked' || r === 'dry') ok(`override ${name}: ${destName}/`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Vendor install / update (hardcoded, arg arrays)
+// ---------------------------------------------------------------------------
+
+function installSkill(skill, agent) {
+  const name = validateSkillName(skill.name);
+  const installScope = skill.installScope || 'global';
+
+  if (skill.source === 'native' || agent.native.includes(name) || installScope === 'none') {
+    skip(`${name} (${skill.source === 'native' ? 'native' : 'not installed: ' + installScope})`);
+    return true;
+  }
+
+  const dest = path.join(agent.skillsDir, name);
+  if (lexists(dest)) { skip(`${name} already installed`); return true; }
+
+  switch (skill.source) {
+    case 'local': {
+      const src = path.join(ROOT, 'skills', name);
+      if (!isDir(src)) { fail(`${name}: source skills/${name} not found`); return false; }
+      linkSafe(src, dest);
+      return true;
+    }
+    case 'tech-leads-club': {
+      const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', agent.npxId];
+      if (installScope !== 'local') args.push('--global');
+      return runNpx(args, `installed ${name} (Tech Leads Club)`);
+    }
+    case 'matt-pocock': {
+      const args = ['skills@latest', 'add', 'mattpocock/skills', '--agent', agent.npxId, '--skill', name, '--global', '--yes'];
+      return runNpx(args, `installed ${name} (Matt Pocock)`);
+    }
+    default:
+      fail(`${name}: unknown source "${skill.source}"`);
+      return false;
+  }
+}
+
+function updateSkill(skill, agent) {
+  const name = validateSkillName(skill.name);
+  switch (skill.source) {
+    case 'tech-leads-club': {
+      const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', agent.npxId, '--global'];
+      return runNpx(args, `updated ${name} (Tech Leads Club)`);
+    }
+    case 'matt-pocock': {
+      return runNpx(['skills', 'update', name, '-g', '--yes'], `updated ${name} (Matt Pocock)`);
+    }
+    default:
+      skip(`${name} (${skill.source}: nothing to update)`);
+      return true;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Commands
+// ---------------------------------------------------------------------------
+
+function cmdSetup(agentId) {
+  const agents = loadJson('config/agents.json');
+  const agent = resolveAgent(agents, agentId);
+  const { skills } = loadJson('config/skills.json');
+
+  // Guard: never overwrite an existing global config.
+  if (lexists(agent.configPath)) {
+    throw new UserError(`${agent.configPath} already exists. Remove it manually before running setup.`);
+  }
+
+  log(`${c.bold}Setting up ${agent.id}${c.reset}`);
+  ensureDir(agent.skillsDir);
+
+  linkSafe(path.join(ROOT, 'AGENTS.global.md'), agent.configPath);
+
+  log(`\n${c.bold}Skills${c.reset}`);
+  for (const skill of skills) installSkill(skill, agent);
+
+  log(`\n${c.bold}Overrides${c.reset}`);
+  for (const skill of skills) if (skill.extended) applyOverlay(skill.name, agent);
+
+  const personalDir = path.join(ROOT, 'personal');
+  if (isDir(personalDir)) {
+    log(`\n${c.bold}Personal${c.reset}`);
+    for (const name of fs.readdirSync(personalDir)) {
+      const sd = path.join(personalDir, name);
+      if (!isDir(sd) || !lexists(path.join(sd, 'SKILL.md'))) continue;
+      linkSafe(sd, path.join(agent.skillsDir, name));
+    }
+  }
+
+  // Project-local links expose .agents skills + AGENTS.md to the agent in this repo.
+  if (agent.projectDir || agent.projectConfig) {
+    log(`\n${c.bold}Project-local links${c.reset}`);
+    if (agent.projectDir) linkSafe(AGENTS_DIR, path.join(ROOT, agent.projectDir));
+    if (agent.projectConfig) linkSafe(MD_SOURCE, path.join(ROOT, agent.projectConfig));
+  }
+
+  log(`\n${c.green}Setup complete for ${agent.id}.${c.reset}`);
+}
+
+function cmdAdd(agentId, skillName, source) {
+  const agents = loadJson('config/agents.json');
+  const agent = resolveAgent(agents, agentId);
+  const registry = loadJson('config/skills.json');
+  const name = validateSkillName(skillName);
+
+  let skill = registry.skills.find((s) => s.name === name);
+  if (!skill) {
+    if (!source) throw new UserError(`"${name}" is not in skills.json. Provide --source <local|tech-leads-club|matt-pocock>.`);
+    skill = { name, source, scope: source === 'local' ? 'built' : source };
+  }
+
+  const dest = path.join(agent.skillsDir, name);
+  if (lexists(dest)) throw new UserError(`${dest} already exists. Remove it manually or run update.`);
+
+  ensureDir(agent.skillsDir);
+  const installed = installSkill(skill, agent);
+  if (!installed) throw new UserError(`Install of ${name} failed.`);
+
+  applyOverlay(name, agent);
+
+  // Register a newly-added skill and refresh the doc.
+  if (!registry.skills.find((s) => s.name === name)) {
+    registry.skills.push(skill);
+    registry.skills.sort((a, b) => a.name.localeCompare(b.name));
+    if (!DRY) fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
+    ok(`registered ${name} (${skill.source}) in skills.json`);
+    if (!DRY) generateDocs();
+  }
+  log(`\n${c.green}Added ${name}.${c.reset}`);
+}
+
+function cmdUpdate(agentId, names) {
+  const agents = loadJson('config/agents.json');
+  const agent = resolveAgent(agents, agentId);
+  const { skills } = loadJson('config/skills.json');
+
+  const vendorSkills = skills.filter((s) => s.source === 'tech-leads-club' || s.source === 'matt-pocock');
+  let scope;
+  if (names.length) {
+    scope = [];
+    for (const n of names) {
+      const s = vendorSkills.find((x) => x.name === n);
+      if (!s) { warn(`${n} is not a vendor skill in skills.json — skipping`); continue; }
+      scope.push(s);
+    }
+  } else {
+    scope = vendorSkills;
+  }
+
+  if (!scope.length) { warn('No vendor skills to update.'); return; }
+  log(`${c.bold}Updating ${scope.length} vendor skill(s) for ${agent.id}${c.reset}`);
+  for (const skill of scope) {
+    updateSkill(skill, agent);
+    if (skill.extended) applyOverlay(skill.name, agent);
+  }
+  log(`\n${c.green}Update complete.${c.reset}`);
+}
+
+function cmdOverride(agentId, skillName) {
+  const agents = loadJson('config/agents.json');
+  const agent = resolveAgent(agents, agentId);
+  const registry = loadJson('config/skills.json');
+  const name = validateSkillName(skillName);
+
+  const skill = registry.skills.find((s) => s.name === name);
+  if (skill && skill.source === 'local') {
+    warn(`${name} is a local skill you own — edit skills/${name}/ directly instead of overriding.`);
+    return;
+  }
+
+  // Scaffold extended/<name>/SKILL.md from the frontmatter template.
+  const extDir = path.join(ROOT, 'extended', name);
+  const extSkill = path.join(extDir, 'SKILL.md');
+  if (lexists(extSkill)) {
+    skip(`extended/${name}/SKILL.md already exists — leaving it untouched`);
+  } else {
+    ensureDir(extDir);
+    const body = overrideTemplate(name);
+    if (DRY) log(`${c.dim}[dry-run]${c.reset} write extended/${name}/SKILL.md`);
+    else fs.writeFileSync(extSkill, body);
+    ok(`scaffolded extended/${name}/SKILL.md`);
+  }
+
+  if (skill) {
+    if (!skill.extended) {
+      skill.extended = true;
+      if (!DRY) fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
+      ok(`marked ${name} extended in skills.json`);
+    }
+  } else {
+    warn(`${name} is not in skills.json — add it (or run \`add\`) so the override is tracked.`);
+  }
+
+  applyOverlay(name, agent);
+  if (!DRY && skill) generateDocs();
+  log(`\n${c.green}Override scaffolded for ${name}. Fill in extended/${name}/SKILL.md.${c.reset}`);
+}
+
+function overrideTemplate(name) {
+  return `---
+name: ${name}-extended
+extends: ${name}
+description: >
+  Extension for the ${name} skill. This file MUST be read together with the parent
+  ${name} SKILL.md. The parent skill defines [what the parent governs]. This extension
+  adds [what this adds].
+metadata:
+  version: "1.0.0"
+  parent_skill: ${name}
+  source: "ai-coding-tooling (extended/)"
+---
+
+# ${name} — Extension
+
+<!-- Add project-specific guidance that layers on top of the parent ${name} skill. -->
+`;
+}
+
+function cmdList(agentId) {
+  const agents = loadJson('config/agents.json');
+  const agent = resolveAgent(agents, agentId);
+  const { skills } = loadJson('config/skills.json');
+
+  log(`${c.bold}Skills for ${agent.id}${c.reset} (skillsDir: ${agent.skillsDir})\n`);
+  const pad = Math.max(...skills.map((s) => s.name.length));
+  for (const s of skills) {
+    const dest = path.join(agent.skillsDir, s.name);
+    let state;
+    if (s.source === 'native' || (s.installScope === 'none')) state = `${c.dim}n/a${c.reset}`;
+    else if (!lexists(dest)) state = `${c.yellow}missing${c.reset}`;
+    else if (isSymlink(dest)) state = `${c.green}symlink${c.reset}`;
+    else state = `${c.green}installed${c.reset}`;
+    const ext = s.extended ? ` ${c.cyan}[override]${c.reset}` : '';
+    log(`  ${s.name.padEnd(pad)}  ${s.source.padEnd(16)} ${state}${ext}`);
+  }
+}
+
+// Undo setup: remove the global config symlink, uninstall the skills setup
+// installed globally, drop personal + project-local links.
+function cmdDestroy(agentId) {
+  const agents = loadJson('config/agents.json');
+  const agent = resolveAgent(agents, agentId);
+  const { skills } = loadJson('config/skills.json');
+
+  log(`${c.bold}Tearing down ${agent.id}${c.reset} (undoes setup)`);
+
+  log(`\n${c.bold}Global config${c.reset}`);
+  removeConfigSymlink(agent.configPath);
+
+  log(`\n${c.bold}Skills${c.reset}`);
+  for (const skill of skills) uninstallSkill(skill, agent);
+
+  const personalDir = path.join(ROOT, 'personal');
+  if (isDir(personalDir)) {
+    log(`\n${c.bold}Personal${c.reset}`);
+    for (const name of fs.readdirSync(personalDir)) {
+      const sd = path.join(personalDir, name);
+      if (!isDir(sd) || !lexists(path.join(sd, 'SKILL.md'))) continue;
+      unlinkIfSymlink(path.join(agent.skillsDir, name));
+    }
+  }
+
+  if (agent.projectDir || agent.projectConfig) {
+    log(`\n${c.bold}Project-local links${c.reset}`);
+    if (agent.projectDir) unlinkIfSymlink(path.join(ROOT, agent.projectDir));
+    if (agent.projectConfig) unlinkIfSymlink(path.join(ROOT, agent.projectConfig));
+  }
+
+  log(`\n${c.green}Teardown complete. Only setup-managed skills and symlinks were removed.${c.reset}`);
+}
+
+// Remove the global config symlink only if it points at this repo's AGENTS.global.md.
+function removeConfigSymlink(configPath) {
+  if (!lexists(configPath)) { skip(`${configPath} not present`); return; }
+  if (!isSymlink(configPath)) { warn(`${configPath} is a real file — leaving it untouched`); return; }
+  const expected = path.join(ROOT, 'AGENTS.global.md');
+  const actual = path.resolve(path.dirname(configPath), fs.readlinkSync(configPath));
+  if (actual !== expected) { warn(`${configPath} points elsewhere (${actual}) — leaving it untouched`); return; }
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm ${configPath}`); return; }
+  fs.unlinkSync(configPath);
+  ok(`removed ${configPath}`);
+}
+
+// Uninstall a globally-installed skill: unlink symlinks, rm -rf vendor dirs.
+// Skips native, non-global installScope (e.g. project-local), and absent skills.
+function uninstallSkill(skill, agent) {
+  const name = validateSkillName(skill.name);
+  const installScope = skill.installScope || 'global';
+  if (skill.source === 'native' || installScope !== 'global') {
+    skip(`${name} (${skill.source === 'native' ? 'native' : installScope})`);
+    return;
+  }
+  const dest = path.join(agent.skillsDir, name);
+  if (!lexists(dest)) { skip(`${name} not installed`); return; }
+  if (isSymlink(dest)) {
+    if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm ${dest}`); return; }
+    fs.unlinkSync(dest);
+    ok(`removed ${name} (symlink)`);
+  } else if (isDir(dest)) {
+    if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm -rf ${dest}`); return; }
+    fs.rmSync(dest, { recursive: true, force: true });
+    ok(`uninstalled ${name} (${skill.source})`);
+  }
+}
+
+// Remove a single skill: uninstall (symlink for local, rm -rf for vendor dirs),
+// deregister from skills.json, and regenerate the doc. Keeps extended/<name>/ and,
+// for local skills, the skills/<name>/ source.
+function cmdDelete(agentId, skillName) {
+  const agents = loadJson('config/agents.json');
+  const agent = resolveAgent(agents, agentId);
+  const registry = loadJson('config/skills.json');
+  const name = validateSkillName(skillName);
+
+  const skill = registry.skills.find((s) => s.name === name);
+  if (!skill) throw new UserError(`"${name}" is not in skills.json — nothing to delete.`);
+
+  log(`${c.bold}Deleting ${name}${c.reset} (${skill.source})`);
+
+  // Filesystem uninstall: symlink unlink (local) / vendor rm -rf; extended/ left intact.
+  uninstallSkill(skill, agent);
+  if (skill.extended && isDir(path.join(ROOT, 'extended', name))) {
+    log(`${c.dim}kept extended/${name}/ (override overlay preserved)${c.reset}`);
+  }
+
+  // Deregister + regenerate the auto-doc.
+  registry.skills = registry.skills.filter((s) => s.name !== name);
+  if (DRY) {
+    log(`${c.dim}[dry-run]${c.reset} remove ${name} from config/skills.json + regenerate ${DOC_PATH}`);
+  } else {
+    fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
+    ok(`removed ${name} from skills.json`);
+    generateDocs();
+  }
+  log(`\n${c.green}Deleted ${name}.${c.reset}`);
+}
+
+function cmdStatusline(force) {
+  const agents = loadJson('config/agents.json');
+  const dest = expandHome((agents['claude-code'] && agents['claude-code'].statuslinePath) || '~/.claude/statusline-command.sh');
+  const src = path.join(ROOT, 'config', 'statusline-command.sh');
+  if (!lexists(src)) throw new UserError(`Status line source not found: ${src}`);
+
+  if (lexists(dest) && !force) {
+    skip(`${dest} already exists (use --force to overwrite)`);
+    return;
+  }
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} cp ${src} ${dest} && chmod +x ${dest}`); return; }
+  ensureDir(path.dirname(dest));
+  fs.copyFileSync(src, dest);
+  fs.chmodSync(dest, 0o755);
+  ok(`installed status line -> ${dest}`);
+}
+
+// ---------------------------------------------------------------------------
+// Doc generation (internal; run by add/override)
+// ---------------------------------------------------------------------------
+
+const SCOPE_SECTIONS = [
+  { key: 'built', title: 'Built in this project' },
+  { key: 'local-only', title: 'Local-only (project)' },
+  { key: 'tech-leads-club', title: 'Tech Leads Club' },
+  { key: 'matt-pocock', title: 'Matt Pocock' },
+  { key: 'native', title: 'Native (built-in)' },
+];
+
+function skillPath(s) {
+  if (s.scope === 'built') return ` (\`skills/${s.name}/SKILL.md\`)`;
+  if (s.scope === 'local-only') return ` (\`.agents/skills/${s.name}/SKILL.md\`)`;
+  return '';
+}
+
+const DOC_PATH = 'docs/AGENT-SKILLS.md';
+const DOC_MARKER = '<!-- fsvskills:generated — do not edit below this line; regenerated from config/skills.json -->';
+
+function generateDocs() {
+  const { skills } = loadJson('config/skills.json');
+
+  // Preserve the hand-written preamble above the marker; regenerate everything below it.
+  const docPath = path.join(ROOT, DOC_PATH);
+  let preamble = '# Agent Skills';
+  if (lexists(docPath)) {
+    const existing = fs.readFileSync(docPath, 'utf8');
+    const cut = existing.indexOf(DOC_MARKER);
+    const at = cut !== -1 ? cut : existing.indexOf('## Global Skills Registry');
+    if (at !== -1) preamble = existing.slice(0, at).trimEnd();
+  }
+
+  const lines = [preamble, '', DOC_MARKER, '', '## Global Skills Registry', ''];
+  for (const section of SCOPE_SECTIONS) {
+    const inScope = skills.filter((s) => s.scope === section.key).sort((a, b) => a.name.localeCompare(b.name));
+    if (!inScope.length) {
+      if (section.key === 'matt-pocock') {
+        lines.push(`### ${section.title}`, '', '_No Matt Pocock skills installed yet. Add one with:_ `fsvskills add claude-code <skill> --source matt-pocock`', '');
+      }
+      continue;
+    }
+    lines.push(`### ${section.title}`, '');
+    for (const s of inScope) {
+      lines.push(`- **${s.name}**${skillPath(s)}: ${s.description}`);
+    }
+    lines.push('');
+  }
+
+  const overridden = skills.filter((s) => s.extended).sort((a, b) => a.name.localeCompare(b.name));
+  if (overridden.length) {
+    lines.push('## Overridden (extended)', '');
+    lines.push('These skills carry a project-specific overlay in `extended/<name>/` (applied as `SKILL.extended.md` and optional `reference/`):', '');
+    for (const s of overridden) {
+      lines.push(`- **${s.name}** — overlays the ${SCOPE_SECTIONS.find((x) => x.key === s.scope)?.title || s.source} skill.`);
+    }
+    lines.push('');
+  }
+
+  const out = lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} write ${DOC_PATH} (${overridden.length} overrides, ${skills.length} skills)`); return; }
+  ensureDir(path.dirname(docPath));
+  fs.writeFileSync(docPath, out);
+  ok(`generated ${DOC_PATH} (${skills.length} skills)`);
+}
+
+// ---------------------------------------------------------------------------
+// CLI
+// ---------------------------------------------------------------------------
+
+const HELP = `${c.bold}fsvskills${c.reset} — skill manager for AI coding agents
+
+${c.bold}Usage:${c.reset} fsvskills <command> [args] [--dry-run]
+
+${c.bold}Commands:${c.reset}
+  setup <agent>                 Bootstrap: global config + skills + overrides + project-local links
+  destroy <agent>               Undo setup (remove config, uninstall skills, drop links)
+  add <agent> <skill> [--source <s>]   Install one skill (registers it if new)
+  delete <agent> <skill>        Remove one skill (uninstall + deregister; keeps extended/)
+  update <agent> [skills...]    Update vendor skills (Tech Leads Club / Matt Pocock)
+  override <agent> <skill>      Scaffold extended/<skill>/ and apply the overlay
+  list <agent>                  Show each skill's source and install state
+  statusline [--force]          Install the Claude Code status line script
+  help                          Show this message
+
+${c.bold}Sources:${c.reset} local · tech-leads-club · matt-pocock · native
+${c.bold}Flags:${c.reset}   --dry-run (print actions, change nothing) · --force (statusline only)`;
+
+function parseArgs(argv) {
+  const positionals = [];
+  const flags = { dryRun: false, force: false, source: null };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--dry-run') flags.dryRun = true;
+    else if (a === '--force') flags.force = true;
+    else if (a === '--source') flags.source = argv[++i];
+    else if (a.startsWith('--source=')) flags.source = a.slice('--source='.length);
+    else positionals.push(a);
+  }
+  return { positionals, flags };
+}
+
+function main() {
+  const { positionals, flags } = parseArgs(process.argv.slice(2));
+  DRY = flags.dryRun;
+  const [command, ...rest] = positionals;
+
+  if (!command || command === 'help' || command === '--help' || command === '-h') {
+    log(HELP);
+    return;
+  }
+  if (DRY) log(`${c.dim}(dry-run: no changes will be made)${c.reset}\n`);
+
+  switch (command) {
+    case 'setup': cmdSetup(rest[0]); break;
+    case 'destroy': cmdDestroy(rest[0]); break;
+    case 'add': {
+      if (!rest[1]) throw new UserError('Usage: fsvskills add <agent> <skill> [--source <s>]');
+      cmdAdd(rest[0], rest[1], flags.source);
+      break;
+    }
+    case 'delete': {
+      if (!rest[1]) throw new UserError('Usage: fsvskills delete <agent> <skill>');
+      cmdDelete(rest[0], rest[1]);
+      break;
+    }
+    case 'update': cmdUpdate(rest[0], rest.slice(1)); break;
+    case 'override': {
+      if (!rest[1]) throw new UserError('Usage: fsvskills override <agent> <skill>');
+      cmdOverride(rest[0], rest[1]);
+      break;
+    }
+    case 'list': cmdList(rest[0]); break;
+    case 'statusline': cmdStatusline(flags.force); break;
+    default:
+      throw new UserError(`Unknown command "${command}". Run \`fsvskills help\`.`);
+  }
+}
+
+try {
+  main();
+} catch (e) {
+  if (e instanceof UserError) { fail(e.message); process.exit(1); }
+  throw e;
+}

@@ -1,13 +1,19 @@
 # ai-coding-tooling
 
-Shared agent configuration and skills for AI coding tools (Claude Code, Cursor, Windsurf, Gemini CLI, etc.).
+Shared agent configuration and skills for Claude Code.
 
 ## Installation
 
+Everything is managed by the **`fsvskills`** command (`bin/skills.mjs`) — a single-file Node CLI with no dependencies. It replaces the former `agent-setup`/`skill-manager` skills and the `Makefile`.
+
+> The command is **repo-local for now** — it requires this cloned repository. Making it available on any computer is a planned follow-up (see [docs/TASKS.md](docs/TASKS.md)).
+
 ### Prerequisites
 
+- **Node.js ≥ 18** (oldest maintained LTS) and `npx` — bundled with Node. Developed and tested on Node 26.
 - Unix-like shell (macOS/Linux)
-- `make` installed
+
+Check your version with `node --version`. The CLI has zero runtime dependencies, so Node + `npx` is all you need.
 
 ### 1. Clone the repository
 
@@ -16,56 +22,60 @@ git clone <repo-url>
 cd ai-coding-tooling
 ```
 
-### 2. Create the symlinks
+### 2. Make the `fsvskills` command available
 
 ```bash
-make link
+npm link
 ```
 
-Existing files or symlinks are skipped — nothing is overwritten.
+This exposes `fsvskills` from any directory on this machine. (Or skip it and run `node bin/skills.mjs …` from the repo.)
 
-### 3. Set up global agent configuration
+> **`fsvskills: command not found` right after `npm link`?**
+> Your shell cached the old "not found" result. Run `rehash` (zsh) / `hash -r` (bash) in the current shell, or open a new terminal, then `which fsvskills` should resolve.
+>
+> **Using nvm?** `npm link` installs the symlink under the **active** Node's global prefix, and `fsvskills` runs on whatever `node` is active in the current directory (its shebang is `#!/usr/bin/env node`). Run `npm link` on the Node version you intend to use, and confirm with `node --version` before a real `setup`. If you add a `.nvmrc` that pins an old version, the CLI will execute on it.
 
-Open this project in Claude Code and run:
-
-```
-/agent-setup
-```
-
-This will symlink `AGENTS.global.md` to the agent's global config file and install all global skills.
-
-### 4. Install extended skill files
-
-After the global skills are installed (step 3), link the extended skill files into the installed skill directories:
+### 3. Set up the agent
 
 ```bash
-make link-extended
+fsvskills setup claude-code
 ```
 
-### 5. Install the status line script
+One command bootstraps everything:
 
-Run this separately (not included in `make link`) to install the Claude Code status line script to `~/.claude/statusline-command.sh`. It displays the active model, effort level, current directory, git branch, context remaining, and token usage:
+- **Global:** symlinks `AGENTS.global.md` to the agent's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, and installs any `personal/` skills.
+- **Project-local:** creates `.claude → .agents` and `CLAUDE.md → AGENTS.md` so this repo's project-local skills (`.agents/skills/`) and instructions are visible to Claude Code in the project.
+
+It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed, drop the project-local links), run `fsvskills destroy claude-code`.
+
+### 4. Install the status line script
+
+```bash
+fsvskills statusline          # skip if file already exists
+fsvskills statusline --force  # overwrite with the version from this repo
+```
+
+Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `config/statusline-command.sh`). It shows the active model, effort level, directory, git branch, context remaining, and token usage:
 
 ```
 [Claude Sonnet 4.6 - **High**] 📁 my-project git:(main) | 82% | 4321 tokens
 ```
 
-The script is copied from `config/statusline-command.sh`. If the destination already exists it is skipped:
+To customize without losing changes on the next `--force` run, edit `~/.claude/statusline-command.sh` directly and omit `--force`.
 
-```bash
-make install-statusline          # skip if file already exists
-make install-statusline FORCE=1  # overwrite with the version from this repo
-```
+## Managing skills
 
-To customize the status line without losing your changes on the next `FORCE=1` run, edit `~/.claude/statusline-command.sh` directly — omit the `FORCE=1` flag and it will never be overwritten.
+| Command | Action |
+|---|---|
+| `fsvskills add claude-code <skill> --source <local\|tech-leads-club\|matt-pocock>` | Install one skill and register it in `config/skills.json` |
+| `fsvskills delete claude-code <skill>` | Remove one skill: uninstall + deregister from `config/skills.json`; keeps `skills/<skill>` source and `extended/<skill>/` |
+| `fsvskills list claude-code` | Show each skill's source and install state |
+| `fsvskills override claude-code <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
+| `fsvskills update claude-code [skills...]` | Update Tech Leads Club / Matt Pocock skills |
 
-### 6. Remove symlinks
+`docs/AGENT-SKILLS.md` is regenerated automatically when `add`, `delete`, or `override` change the registry.
 
-```bash
-make unlink
-```
-
-Only removes symlinks — real files are never deleted.
+Add `--dry-run` to any command to print the actions without changing anything.
 
 ## Skills
 
@@ -73,19 +83,19 @@ Skills are reusable agent instructions that extend AI coding tools with speciali
 
 ### Project-Local Skills (`.agents/skills/`)
 
-These skills live in `.agents/skills/` and are auto-loaded when the project is opened in Claude Code. No installation step required.
+These skills live in `.agents/skills/`. `fsvskills setup` creates a `.claude → .agents` symlink so Claude Code loads them at project scope in this repo (Claude Code reads `.claude/skills/`, not `.agents/skills/` directly). No global installation required.
 
 | Skill | Description |
 |---|---|
-| **agent-setup** | Sets up global agent configuration by symlinking `AGENTS.global.md` and installing all global skills. Multi-agent — supports Claude Code, Gemini CLI, and others via agent reference files. |
 | **generate-knowledge-base** | Reads files or folders, extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
 | **raindrop-kb-convert** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
 | **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. Source: Tech Leads Club. Installed locally. |
-| **skill-manager** | Installs or updates skills in an agent's global skills directory. Handles fresh installation (Tech Leads Club via npx or local project via symlink) and updates externally installed skills by reinstalling from their vendor registry and re-applying extended skill symlinks. Prompts for install vs update if intent is ambiguous. |
+
+> Skill installation/update is handled by the `fsvskills` command (`bin/skills.mjs`), not by a skill. See [Managing skills](#managing-skills).
 
 ### Source: This Project (`ai-coding-tooling`)
 
-Maintained here and installed globally via `make link` / `/agent-setup`. These are the only skills you should modify:
+Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. These are the only skills you should modify:
 
 | Skill | Description |
 |---|---|
@@ -122,7 +132,7 @@ personal/
     SKILL.md
 ```
 
-`/agent-setup` and `make link` both auto-discover and install everything in `personal/` via symlink. Personal skills installed via `make link` are removed with `make unlink`. These skills are labeled `Personal (local-only)` in the `/agent-setup` install summary and are never listed in `AGENTS.md`.
+`fsvskills setup` auto-discovers and installs everything in `personal/` via symlink. These skills are never listed in `config/skills.json` and are discovered dynamically at setup time.
 
 The `personal/` directory is gitignored — nothing inside it is tracked or committed.
 
@@ -136,7 +146,7 @@ Context7 is optional but strongly recommended. When available, `tech-reference-a
 
 ### Source: [Tech Leads Club](https://techlead.club)
 
-Installed globally by `/agent-setup`. Treated as read-only — do not edit these directly:
+Installed globally by `fsvskills setup`. Treated as read-only — do not edit these directly:
 
 | Skill | Description |
 |---|---|
@@ -147,3 +157,13 @@ Installed globally by `/agent-setup`. Treated as read-only — do not edit these
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
 | **web-design-guidelines** | Reviews UI code for accessibility, design, and best-practices compliance. |
+
+### Source: [Matt Pocock](https://github.com/mattpocock/skills)
+
+Installed on demand via the `npx skills` CLI. Treated as read-only — override via `extended/<skill>/` rather than editing directly.
+
+No Matt Pocock skills are adopted yet — the vendor is wired up and ready. Install one with:
+
+```bash
+fsvskills add claude-code <skill> --source matt-pocock
+```

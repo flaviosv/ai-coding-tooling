@@ -1,0 +1,11 @@
+{
+  "claude-code": {
+    "configPath": "~/.claude/CLAUDE.md",
+    "skillsDir": "~/.claude/skills",
+    "npxId": "claude-code",
+    "statuslinePath": "~/.claude/statusline-command.sh",
+    "projectDir": ".claude",
+    "projectConfig": "CLAUDE.md",
+    "native": ["keybindings-help"]
+  }
+}
