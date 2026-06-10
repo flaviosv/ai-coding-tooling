@@ -306,22 +306,29 @@ function cmdAdd(agentId, skillName, source) {
   log(`\n${c.green}Added ${name}.${c.reset}`);
 }
 
-function cmdUpdate(agentId, names) {
+function cmdUpdate(agentId, names, all) {
   const agents = loadJson('config/agents.json');
   const agent = resolveAgent(agents, agentId);
   const { skills } = loadJson('config/skills.json');
 
   const vendorSkills = skills.filter((s) => s.source === 'tech-leads-club' || s.source === 'matt-pocock');
+
+  // Accept comma- and/or space-separated names; --all updates every vendor skill.
+  const requested = names.flatMap((n) => n.split(',')).map((n) => n.trim()).filter(Boolean);
+  if (!all && !requested.length) {
+    throw new UserError('Specify skills to update (comma- or space-separated) or pass --all for every vendor skill.');
+  }
+
   let scope;
-  if (names.length) {
+  if (all) {
+    scope = vendorSkills;
+  } else {
     scope = [];
-    for (const n of names) {
+    for (const n of requested) {
       const s = vendorSkills.find((x) => x.name === n);
       if (!s) { warn(`${n} is not a vendor skill in skills.json — skipping`); continue; }
       scope.push(s);
     }
-  } else {
-    scope = vendorSkills;
   }
 
   if (!scope.length) { warn('No vendor skills to update.'); return; }
@@ -609,22 +616,24 @@ ${c.bold}Commands:${c.reset}
   destroy <agent>               Undo setup (remove config, uninstall skills, drop links)
   add <agent> <skill> [--source <s>]   Install one skill (registers it if new)
   delete <agent> <skill>        Remove one skill (uninstall + deregister; keeps extended/)
-  update <agent> [skills...]    Update vendor skills (Tech Leads Club / Matt Pocock)
+  update <agent> <skills|--all> Update vendor skills (Tech Leads Club / Matt Pocock).
+                                Pass a comma- or space-separated list, or --all for every vendor skill.
   override <agent> <skill>      Scaffold extended/<skill>/ and apply the overlay
   list <agent>                  Show each skill's source and install state
   statusline [--force]          Install the Claude Code status line script
   help                          Show this message
 
 ${c.bold}Sources:${c.reset} local · tech-leads-club · matt-pocock · native
-${c.bold}Flags:${c.reset}   --dry-run (print actions, change nothing) · --force (statusline only)`;
+${c.bold}Flags:${c.reset}   --dry-run (print actions, change nothing) · --all (update only) · --force (statusline only)`;
 
 function parseArgs(argv) {
   const positionals = [];
-  const flags = { dryRun: false, force: false, source: null };
+  const flags = { dryRun: false, force: false, all: false, source: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') flags.dryRun = true;
     else if (a === '--force') flags.force = true;
+    else if (a === '--all') flags.all = true;
     else if (a === '--source') flags.source = argv[++i];
     else if (a.startsWith('--source=')) flags.source = a.slice('--source='.length);
     else positionals.push(a);
@@ -656,7 +665,7 @@ function main() {
       cmdDelete(rest[0], rest[1]);
       break;
     }
-    case 'update': cmdUpdate(rest[0], rest.slice(1)); break;
+    case 'update': cmdUpdate(rest[0], rest.slice(1), flags.all); break;
     case 'override': {
       if (!rest[1]) throw new UserError('Usage: fsvskills override <agent> <skill>');
       cmdOverride(rest[0], rest[1]);
