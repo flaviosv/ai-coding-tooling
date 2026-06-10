@@ -45,11 +45,11 @@
       "description": "Updates all project documentation by inspecting the git workspace for modified files. Detects new packages, updates inline API docs, root context files, and base docs/ files."
     },
     {
-      "name": "generate-knowledge-base",
+      "name": "generate-kb",
       "source": "local",
       "scope": "local-only",
       "installScope": "none",
-      "description": "Reads files or folders, extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally."
+      "description": "Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally."
     },
     {
       "name": "keybindings-help",

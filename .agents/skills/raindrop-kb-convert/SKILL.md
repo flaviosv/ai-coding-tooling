@@ -10,7 +10,7 @@ description: >
   "raindrop kb convert", "create knowledge base from my Raindrop", "convert my bookmarks to notes",
   or "turn my Raindrop collection into a knowledge base".
   Requires Raindrop MCP connection. Do NOT use for general bookmark search, Raindrop organization,
-  one-off link lookup, or generating knowledge bases from local files (use generate-knowledge-base for that).
+  one-off link lookup, or generating knowledge bases from local files (use generate-kb for that).
 metadata:
   author: flaviostudart
   version: 1.0.0
