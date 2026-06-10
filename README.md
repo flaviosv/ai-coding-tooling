@@ -55,11 +55,24 @@ fsvskills statusline          # skip if file already exists
 fsvskills statusline --force  # overwrite with the version from this repo
 ```
 
-Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `config/statusline-command.sh`). It shows the active model, effort level, directory, git branch, context remaining, and token usage:
+Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `config/statusline-command.sh`). It shows the active model, effort level, directory, git branch, context-window usage, and the 5-hour rate-limit usage:
 
 ```
-[Claude Sonnet 4.6 - **High**] 📁 my-project git:(main) | 82% | 4321 tokens
+[Opus 4.8 (1M context) (high) - 📁 ai-coding-tooling (main)] ctx:6% 5h:3%
 ```
+
+<img src="docs/images/statusline.png" alt="Status line sample" width="600">
+
+Colors (rendered in the terminal):
+
+| Element | Color |
+|---------|-------|
+| 🟦 Model (`Opus 4.8`) | bold cyan |
+| 🟪 Effort (`high`) | bold magenta |
+| 🟩 Directory (`my-project`) | green |
+| 🟨 Branch (`main`) | yellow |
+| ⬜ Labels (`ctx:`, `5h:`) | white |
+| 🟩🟨🟥 Percentages | green < 50%, yellow < 80%, red ≥ 80% |
 
 To customize without losing changes on the next `--force` run, edit `~/.claude/statusline-command.sh` directly and omit `--force`.
 
