@@ -1,0 +1,130 @@
+{
+  "skills": [
+    {
+      "name": "architecture-evaluate",
+      "source": "local",
+      "scope": "built",
+      "description": "Creates or updates the mandatory project context files (PROJECT_DETAILS.md, ARCHITECTURE.md, PIPELINE.md) in docs/. Supports package mode for scoped CLAUDE.md generation."
+    },
+    {
+      "name": "code",
+      "source": "local",
+      "scope": "built",
+      "description": "Applies coding guidelines when writing code. Thin delegator to coding-guidelines; pairs with code-review for the /code + /code-review naming pattern."
+    },
+    {
+      "name": "code-review",
+      "source": "local",
+      "scope": "built",
+      "description": "Comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local changes or a GitHub PR; also runs standalone performance audits."
+    },
+    {
+      "name": "codenavi",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use for bug fixes, features, refactors, or flow investigation in unfamiliar territory."
+    },
+    {
+      "name": "coding-guidelines",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "extended": true,
+      "description": "Behavioral guidelines to reduce common LLM coding mistakes. Applied when writing or reviewing code."
+    },
+    {
+      "name": "docs-writer",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "extended": true,
+      "description": "Writing, reviewing, and editing documentation and .md files."
+    },
+    {
+      "name": "documentation-upsert",
+      "source": "local",
+      "scope": "built",
+      "description": "Updates all project documentation by inspecting the git workspace for modified files. Detects new packages, updates inline API docs, root context files, and base docs/ files."
+    },
+    {
+      "name": "generate-knowledge-base",
+      "source": "local",
+      "scope": "local-only",
+      "installScope": "none",
+      "description": "Reads files or folders, extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally."
+    },
+    {
+      "name": "keybindings-help",
+      "source": "native",
+      "scope": "native",
+      "description": "Customize Claude Code keyboard shortcuts. Built into Claude Code — no installation needed."
+    },
+    {
+      "name": "learning-opportunities",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Facilitates deliberate skill development during AI-assisted coding by offering interactive learning exercises after architectural work."
+    },
+    {
+      "name": "raindrop-kb-convert",
+      "source": "local",
+      "scope": "local-only",
+      "installScope": "none",
+      "description": "Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault, clustering bookmarks by topic. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally."
+    },
+    {
+      "name": "security-best-practices",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Language and framework specific security reviews (Python, JavaScript/TypeScript, Go)."
+    },
+    {
+      "name": "skill-architect",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "installScope": "local",
+      "extended": true,
+      "description": "Expert guide for designing and building high-quality skills through structured conversation. Installed project-locally (not global)."
+    },
+    {
+      "name": "subagent-creator",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Guide for creating AI subagents with isolated context for complex multi-step workflows."
+    },
+    {
+      "name": "tech-debt-report",
+      "source": "local",
+      "scope": "built",
+      "description": "Documents tech debts in docs/tech-debts/ and maintains an anti-pattern index in docs/TECH_DEBTS.md so agents avoid replicating bad patterns."
+    },
+    {
+      "name": "tech-reference-add",
+      "source": "local",
+      "scope": "built",
+      "description": "Adds technology-specific reference files across all skills and extends qualifying global skills. Use when adding a new framework or language to a project's stack."
+    },
+    {
+      "name": "technical-design-doc-creator",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Creates comprehensive Technical Design Documents (TDD) following industry standards."
+    },
+    {
+      "name": "tests",
+      "source": "local",
+      "scope": "built",
+      "description": "Writes and maintains tests — unit, integration, and coverage analysis. Technology agnostic."
+    },
+    {
+      "name": "tests-code-review",
+      "source": "local",
+      "scope": "built",
+      "description": "Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes."
+    },
+    {
+      "name": "web-design-guidelines",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Reviews UI code for accessibility, design, and best-practices compliance."
+    }
+  ]
+}
