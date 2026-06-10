@@ -35,8 +35,8 @@ ai-coding-tooling/
 │       └── SKILL.md     # Adds guardrail design guidance and the extended/ pattern documentation
 ├── .claude -> .agents   # Untracked symlink created by `fsvskills setup`; exposes .agents skills to Claude Code
 ├── .agents/skills/      # Project-local skills (exposed to Claude via .claude -> .agents)
-│   ├── generate-knowledge-base/
-│   ├── raindrop-kb-convert/
+│   ├── kb-from-folder/
+│   ├── kb-from-raindrop/
 │   └── skill-architect/
 └── skills/              # Skills owned by this project (installed globally via `fsvskills setup`)
     ├── architecture-evaluate/
@@ -68,7 +68,7 @@ Skills are managed by the **`fsvskills`** command (`bin/skills.mjs`), a single-f
 
 ## Skills Owned by This Project
 
-**Project-local skills** (`.agents/skills/`, exposed to Claude Code via the `.claude → .agents` symlink that `fsvskills setup` creates): `generate-knowledge-base`, `raindrop-kb-convert`, `skill-architect`.
+**Project-local skills** (`.agents/skills/`, exposed to Claude Code via the `.claude → .agents` symlink that `fsvskills setup` creates): `kb-from-folder`, `kb-from-raindrop`, `skill-architect`.
 
 **Globally installed skills** (`skills/`, installed via `fsvskills setup`):
 

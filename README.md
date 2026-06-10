@@ -87,8 +87,8 @@ These skills live in `.agents/skills/`. `fsvskills setup` creates a `.claude →
 
 | Skill | Description |
 |---|---|
-| **generate-kb** | Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
-| **raindrop-kb-convert** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
+| **kb-from-folder** | Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
+| **kb-from-raindrop** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
 | **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. Source: Tech Leads Club. Installed locally. |
 
 > Skill installation/update is handled by the `fsvskills` command (`bin/skills.mjs`), not by a skill. See [Managing skills](#managing-skills).

@@ -31,8 +31,8 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 
 ### Local-only (project)
 
-- **generate-kb** (`.agents/skills/generate-kb/SKILL.md`): Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
-- **raindrop-kb-convert** (`.agents/skills/raindrop-kb-convert/SKILL.md`): Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault, clustering bookmarks by topic. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
+- **kb-from-folder** (`.agents/skills/kb-from-folder/SKILL.md`): Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
+- **kb-from-raindrop** (`.agents/skills/kb-from-raindrop/SKILL.md`): Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault, clustering bookmarks by topic. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
 
 ### Tech Leads Club
 

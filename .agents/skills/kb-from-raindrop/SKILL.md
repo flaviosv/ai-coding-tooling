@@ -1,5 +1,5 @@
 ---
-name: raindrop-kb-convert
+name: kb-from-raindrop
 description: >
   Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault.
   Fetches all bookmarks from a user-specified collection, reads their full content, clusters them by
@@ -7,16 +7,16 @@ description: >
   development-relevant sections synthesized from the sources. Validates each file with web search
   suggestions kept strictly separate from Raindrop content.
   Use when user says "convert Raindrop collection", "generate knowledge base from bookmarks",
-  "raindrop kb convert", "create knowledge base from my Raindrop", "convert my bookmarks to notes",
+  "kb from raindrop", "create knowledge base from my Raindrop", "convert my bookmarks to notes",
   or "turn my Raindrop collection into a knowledge base".
   Requires Raindrop MCP connection. Do NOT use for general bookmark search, Raindrop organization,
-  one-off link lookup, or generating knowledge bases from local files (use generate-kb for that).
+  one-off link lookup, or generating knowledge bases from local files (use kb-from-folder for that).
 metadata:
   author: flaviostudart
   version: 1.0.0
 ---
 
-# raindrop-kb-convert
+# kb-from-raindrop
 
 Converts a Raindrop.io bookmark collection into a synthesized, deduplicated knowledge base. Each topic cluster becomes one `.md` file with structured sections derived from the actual content — not a link list, but a consolidated knowledge document. Web suggestions are added at the end of each file, strictly separated from Raindrop content.
 
