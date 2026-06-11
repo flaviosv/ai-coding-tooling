@@ -122,7 +122,7 @@ Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. 
 
 > ⭐ **Highlighted skills:**
 >
-> - **`architecture-evaluate`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/` that agents load progressively based on task relevance.
+> - **`architecture-evaluate`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/codebase/` that agents load progressively based on task relevance.
 > - **`tech-reference-add`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, coding guidelines, tests, etc.) in one step.
 > - **`tech-debt-report`** — Documents known anti-patterns so agents avoid replicating them. The `docs/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
 

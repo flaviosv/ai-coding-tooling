@@ -86,11 +86,28 @@ Whenever you load a skill's `SKILL.md`, check whether a `SKILL.extended.md` file
 
 ## Skill Transparency
 
-Before invoking any skill, announce it, regardless of the moment and if you are invoking more than 1 in parallel:
+**MANDATORY — no exceptions.** Every skill invocation must produce visible output — before it runs and after it completes. This applies to every skill: user-triggered, auto-triggered, sub-skills, and mid-task chains.
 
-> **Invoking skill:** `<skill-name>`
+**Before — single skill:**
+> **Invoking skill:** `<skill-name>` — *<one-line reason why>*
 
-Applies to auto-triggered skills, sub-skills, and any skill invoked mid-task.
+**Before — multiple skills (parallel or sequential), list ALL upfront:**
+> **Invoking skills:**
+> 1. `<skill-name-1>` — *<reason>*
+> 2. `<skill-name-2>` — *<reason>*
+> 3. `<skill-name-3>` — *<reason>*
+
+**After — single skill:**
+> **Skill complete:** `<skill-name>`
+
+**After — multiple skills:**
+> **Skills complete:** `<skill-name-1>`, `<skill-name-2>`, `<skill-name-3>`
+
+Hard rules:
+- Never silently invoke a skill — the user must always see the full list upfront.
+- Always include the reason — a blank reason field is a violation.
+- Sub-skill chains: announce each skill individually as it is about to run, then confirm completion.
+- This rule cannot be skipped for brevity, speed, or any other reason.
 
 ## Subagent Strategy
 
@@ -129,7 +146,10 @@ When about to make a similar decision, grep /decisions/ for prior choices. Follo
 - **Complexity tiers:**
   - **Tactical** (3-10 steps, single concern): standard plan with numbered steps and checkable items
   - **Architectural** (cross-cutting, new systems, integrations, multi-package changes): invoke the `technical-design-doc-creator` skill to generate a TDD as the plan. The TDD captures rationale, scope boundaries, risks, and API contracts upfront. Break implementation tasks from the TDD afterward.
-- Use subagents to execute tasks in parallel if applicable
+- **Subagents — mandatory consideration for complex or multi-step plans:**
+  - For any plan with 3+ independent steps, parallel workstreams, or heavy research: subagents are not optional — identify which steps to delegate and list them explicitly in the plan.
+  - When a plan requires subagents, use the `subagent-creator` skill to design and author the subagent definitions — it ensures each has a focused purpose, correct metadata, and a well-structured prompt.
+  - Default to subagents — they keep the main context clean and increase throughput.
 - If something goes sideways, STOP and re-plan immediately – don't keep pushing
 - Use plan mode for verification steps, not just building
 - Write detailed specs upfront to reduce ambiguity

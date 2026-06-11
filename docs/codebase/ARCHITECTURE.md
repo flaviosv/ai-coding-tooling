@@ -8,7 +8,7 @@
 |---------|-------------|
 | **Agent instructions** | Markdown files (`AGENTS.md`, `AGENTS.global.md`) that tell an AI agent how to behave in a project or globally |
 | **Skills** | Self-contained `SKILL.md` files that an agent loads on demand to perform a specific workflow |
-| **Project context** | `docs/` files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) loaded progressively based on task relevance. `docs/TECH_DEBTS.md` is a separate on-demand documentation ledger — intentionally not auto-loaded |
+| **Project context** | `docs/codebase/` files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) loaded progressively based on task relevance. `docs/TECH_DEBTS.md` is a separate on-demand documentation ledger — intentionally not auto-loaded |
 | **Symlinks** | The mechanism for distributing one set of files to all supported tools without duplication |
 
 ## Distribution Model
@@ -96,7 +96,7 @@ New package detected by architecture-evaluate Incremental mode (or user runs arc
 
 ## Design Principles
 
-- **Tool-agnostic** — instructions and skills work across all supported AI assistants
+- **Claude Code–focused** — instructions and skills target Claude Code; the symlink layout can accommodate other tools if the scope expands
 - **Single source of truth** — one repo, one set of files, no duplication
 - **Non-destructive** — symlink operations never overwrite real files; guardrails refuse rather than clobber
 - **Deterministic management** — a dependency-free Node script (not LLM prose) performs install/update/override; vendor commands run via argument arrays, never shell strings

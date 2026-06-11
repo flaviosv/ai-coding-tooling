@@ -73,7 +73,7 @@ Skills are managed by the **`fsvskills`** command (`bin/skills.mjs`), a single-f
 
 | Skill | Description |
 |-------|-------------|
-| `architecture-evaluate` | Creates, updates, and incrementally syncs project context docs. Full mode writes the three context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE); Incremental mode syncs inline API docs, root context files, and base `docs/` files from the git workspace and detects new packages; Package mode generates a scoped `CLAUDE.md` |
+| `architecture-evaluate` | Creates, updates, and incrementally syncs project context docs. Full mode writes the three context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE); Incremental mode syncs inline API docs, root context files, and `docs/codebase/` files from the git workspace and detects new packages; Package mode generates a scoped `CLAUDE.md` |
 | `code` | Alias for `coding-guidelines` — applies behavioral and tech-specific coding guidelines. Delegator to the TLC skill |
 | `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security. Includes standalone Performance Audit mode (full-codebase P0–P3 findings report) |
 | `tech-debt-report` | Maintains a permanent numbered tech-debt ledger in `docs/TECH_DEBTS.md` (on-demand documentation, not auto-loaded); per-debt solution plans go in `docs/tech-debts/TD-XX.md` when planning a fix |

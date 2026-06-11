@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
   triggers:
     - "check my code"
     - "code review"
@@ -165,8 +165,60 @@ If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts
 
 ## Step 6: Present Findings
 
+Choose the output format based on scale:
+
+### Flat format (small reviews)
+
+Use when findings are few and span a single area. Present a single table:
+
 | # | Severity | Priority | Title | Type | File:Line | Explanation |
 |---|----------|----------|-------|------|-----------|-------------|
+
+### Zoned format (large reviews — default when findings are many or span multiple zones)
+
+Use automatically when:
+- Findings span multiple natural zones (packages / modules / layers), **or**
+- The total finding count is large enough to require multiple triage rounds, **or**
+- The user asks to output the review as a markdown file.
+
+#### Structure
+
+**1. Header**
+```
+# <TASK-ID> — Code Review
+Scope: <files/directories reviewed>
+Branch: <branch>
+Run: <date>
+```
+
+**2. Legend**
+```
+✓ Fixed | ✓ Resolved (no change needed) | Tracked (moved to tech-debts) | Ignored (user-confirmed) | Pending (awaits decision) | Open (not triaged)
+```
+
+**3. At-a-glance summary table** — one row per zone:
+
+| Zone | Scope | Total | Fixed | Resolved-no-change | Tracked | Ignored | Pending | Open |
+|------|-------|------:|------:|-------------------:|--------:|--------:|--------:|-----:|
+
+**4. Per-zone section** — `## Zone N — <path scope>` with findings table:
+
+| # | Severity | Priority | Title | Type | File:Line | Status | Explanation |
+|---|----------|----------|-------|------|-----------|--------|-------------|
+
+- Finding IDs use a zone-prefix letter + number (e.g. `D1`, `H3`, `C12`, `U7`). Pick letters that match the zone (first letter of the dominant package/layer).
+- All findings start as `Open`. Status updates as the user triages.
+- Populate the `Explanation` column for every finding — what is wrong, what the consequence is, and what the fix should be.
+
+**5. Side-effect changes** — at the end of each zone, list any changes made that were not in the original finding list.
+
+**6. Open/untriaged summary** — at the very bottom, a table of findings that still have no disposition.
+
+#### Markdown file output
+
+When the user asks to save the review as a markdown file, always use the zoned format and write it to `docs/plans/<TASK-ID>/code-review.md` (or `code-review_phase2.md` for subsequent passes). Ask for the TASK-ID if not provided.
+
+---
 
 **Severity:** Critical, High, Medium, Low
 
@@ -174,7 +226,7 @@ If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts
 
 **Type:** Security, Performance, Architecture, Code Quality, Documentation, Tech Debt
 
-Format for CLI readability. Provide specific line numbers. Suggest concrete solutions. Keep explanations concise.
+Provide specific line numbers. Suggest concrete solutions. Keep explanations concise.
 
 ## Step 7: Iterative Review
 
