@@ -59,6 +59,13 @@ function isDir(p) {
   try { return fs.statSync(p).isDirectory(); } catch { return false; }
 }
 
+// Returns the correct install path for a skill: project-local (.agents/skills/) for
+// local-only scope, global skillsDir otherwise.
+function skillDest(skill, agent) {
+  if (skill.scope === 'local-only') return path.join(ROOT, AGENTS_DIR, 'skills', skill.name);
+  return path.join(agent.skillsDir, skill.name);
+}
+
 function loadJson(rel) {
   const p = path.join(ROOT, rel);
   try {
@@ -154,10 +161,12 @@ function runNpx(args, label) {
 // ---------------------------------------------------------------------------
 
 // Apply the extended/<skill>/ overlay into <skillsDir>/<skill>/.
-function applyOverlay(name, agent) {
+// skill may be a full skill object or a plain {name, scope} for the path resolver.
+function applyOverlay(skill, agent) {
+  const name = skill.name;
   const extDir = path.join(ROOT, 'extended', name);
   if (!isDir(extDir)) return; // nothing to overlay
-  const targetDir = path.join(agent.skillsDir, name);
+  const targetDir = skillDest(skill, agent);
   if (!isDir(targetDir)) { warn(`override for ${name}: parent skill not installed yet — skipping overlay`); return; }
 
   const extSkill = path.join(extDir, 'SKILL.md');
@@ -179,16 +188,20 @@ function applyOverlay(name, agent) {
 // Vendor install / update (hardcoded, arg arrays)
 // ---------------------------------------------------------------------------
 
-function installSkill(skill, agent) {
+function installSkill(skill, agent, { force = false } = {}) {
   const name = validateSkillName(skill.name);
   const installScope = skill.installScope || 'global';
 
-  if (skill.source === 'native' || agent.native.includes(name) || installScope === 'none') {
-    skip(`${name} (${skill.source === 'native' ? 'native' : 'not installed: ' + installScope})`);
+  if (skill.source === 'native' || agent.native.includes(name) || installScope === 'none'
+      || (!force && installScope === 'local')) {
+    const reason = skill.source === 'native' ? 'native'
+      : installScope === 'local' ? 'project-local'
+      : `not installed: ${installScope}`;
+    skip(`${name} (${reason})`);
     return true;
   }
 
-  const dest = path.join(agent.skillsDir, name);
+  const dest = skillDest(skill, agent);
   if (lexists(dest)) { skip(`${name} already installed`); return true; }
 
   switch (skill.source) {
@@ -199,12 +212,15 @@ function installSkill(skill, agent) {
       return true;
     }
     case 'tech-leads-club': {
+      if (installScope === 'local') ensureDir(path.dirname(dest));
       const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', agent.npxId];
       if (installScope !== 'local') args.push('--global');
       return runNpx(args, `installed ${name} (Tech Leads Club)`);
     }
     case 'matt-pocock': {
-      const args = ['skills@latest', 'add', 'mattpocock/skills', '--agent', agent.npxId, '--skill', name, '--global', '--yes'];
+      if (installScope === 'local') ensureDir(path.dirname(dest));
+      const args = ['skills@latest', 'add', 'mattpocock/skills', '--agent', agent.npxId, '--skill', name, '--yes'];
+      if (installScope !== 'local') args.push('--global');
       return runNpx(args, `installed ${name} (Matt Pocock)`);
     }
     default:
@@ -215,13 +231,17 @@ function installSkill(skill, agent) {
 
 function updateSkill(skill, agent) {
   const name = validateSkillName(skill.name);
+  const installScope = skill.installScope || 'global';
   switch (skill.source) {
     case 'tech-leads-club': {
-      const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', agent.npxId, '--global'];
+      const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', agent.npxId];
+      if (installScope !== 'local') args.push('--global');
       return runNpx(args, `updated ${name} (Tech Leads Club)`);
     }
     case 'matt-pocock': {
-      return runNpx(['skills', 'update', name, '-g', '--yes'], `updated ${name} (Matt Pocock)`);
+      const args = ['skills', 'update', name, '--yes'];
+      if (installScope !== 'local') args.push('-g');
+      return runNpx(args, `updated ${name} (Matt Pocock)`);
     }
     default:
       skip(`${name} (${skill.source}: nothing to update)`);
@@ -238,11 +258,6 @@ function cmdSetup(agentId) {
   const agent = resolveAgent(agents, agentId);
   const { skills } = loadJson('config/skills.json');
 
-  // Guard: never overwrite an existing global config.
-  if (lexists(agent.configPath)) {
-    throw new UserError(`${agent.configPath} already exists. Remove it manually before running setup.`);
-  }
-
   log(`${c.bold}Setting up ${agent.id}${c.reset}`);
   ensureDir(agent.skillsDir);
 
@@ -252,7 +267,7 @@ function cmdSetup(agentId) {
   for (const skill of skills) installSkill(skill, agent);
 
   log(`\n${c.bold}Overrides${c.reset}`);
-  for (const skill of skills) if (skill.extended) applyOverlay(skill.name, agent);
+  for (const skill of skills) if (skill.extended) applyOverlay(skill, agent);
 
   const personalDir = path.join(ROOT, 'personal');
   if (isDir(personalDir)) {
@@ -274,7 +289,7 @@ function cmdSetup(agentId) {
   log(`\n${c.green}Setup complete for ${agent.id}.${c.reset}`);
 }
 
-function cmdAdd(agentId, skillName, source) {
+function cmdAdd(agentId, skillName, source, flags = {}) {
   const agents = loadJson('config/agents.json');
   const agent = resolveAgent(agents, agentId);
   const registry = loadJson('config/skills.json');
@@ -283,17 +298,19 @@ function cmdAdd(agentId, skillName, source) {
   let skill = registry.skills.find((s) => s.name === name);
   if (!skill) {
     if (!source) throw new UserError(`"${name}" is not in skills.json. Provide --source <local|tech-leads-club|matt-pocock>.`);
-    skill = { name, source, scope: source === 'local' ? 'built' : source };
+    const scope = flags.local ? 'local-only' : (source === 'local' ? 'built' : source);
+    skill = { name, source, scope };
+    if (flags.local) skill.installScope = 'local';
   }
 
-  const dest = path.join(agent.skillsDir, name);
+  const dest = skillDest(skill, agent);
   if (lexists(dest)) throw new UserError(`${dest} already exists. Remove it manually or run update.`);
 
-  ensureDir(agent.skillsDir);
-  const installed = installSkill(skill, agent);
+  ensureDir(path.dirname(dest));
+  const installed = installSkill(skill, agent, { force: !!flags.local });
   if (!installed) throw new UserError(`Install of ${name} failed.`);
 
-  applyOverlay(name, agent);
+  applyOverlay(skill, agent);
 
   // Register a newly-added skill and refresh the doc.
   if (!registry.skills.find((s) => s.name === name)) {
@@ -335,7 +352,7 @@ function cmdUpdate(agentId, names, all) {
   log(`${c.bold}Updating ${scope.length} vendor skill(s) for ${agent.id}${c.reset}`);
   for (const skill of scope) {
     updateSkill(skill, agent);
-    if (skill.extended) applyOverlay(skill.name, agent);
+    if (skill.extended) applyOverlay(skill, agent);
   }
   log(`\n${c.green}Update complete.${c.reset}`);
 }
@@ -375,7 +392,7 @@ function cmdOverride(agentId, skillName) {
     warn(`${name} is not in skills.json — add it (or run \`add\`) so the override is tracked.`);
   }
 
-  applyOverlay(name, agent);
+  applyOverlay(skill || { name, scope: 'tech-leads-club' }, agent);
   if (!DRY && skill) generateDocs();
   log(`\n${c.green}Override scaffolded for ${name}. Fill in extended/${name}/SKILL.md.${c.reset}`);
 }
@@ -408,9 +425,9 @@ function cmdList(agentId) {
   log(`${c.bold}Skills for ${agent.id}${c.reset} (skillsDir: ${agent.skillsDir})\n`);
   const pad = Math.max(...skills.map((s) => s.name.length));
   for (const s of skills) {
-    const dest = path.join(agent.skillsDir, s.name);
+    const dest = skillDest(s, agent);
     let state;
-    if (s.source === 'native' || (s.installScope === 'none')) state = `${c.dim}n/a${c.reset}`;
+    if (s.source === 'native' || s.installScope === 'none') state = `${c.dim}n/a${c.reset}`;
     else if (!lexists(dest)) state = `${c.yellow}missing${c.reset}`;
     else if (isSymlink(dest)) state = `${c.green}symlink${c.reset}`;
     else state = `${c.green}installed${c.reset}`;
@@ -465,16 +482,19 @@ function removeConfigSymlink(configPath) {
   ok(`removed ${configPath}`);
 }
 
-// Uninstall a globally-installed skill: unlink symlinks, rm -rf vendor dirs.
-// Skips native, non-global installScope (e.g. project-local), and absent skills.
-function uninstallSkill(skill, agent) {
+// Uninstall a skill: unlink symlinks, rm -rf vendor dirs.
+// Skips native, installScope=none, and project-local skills unless force=true.
+function uninstallSkill(skill, agent, { force = false } = {}) {
   const name = validateSkillName(skill.name);
   const installScope = skill.installScope || 'global';
-  if (skill.source === 'native' || installScope !== 'global') {
-    skip(`${name} (${skill.source === 'native' ? 'native' : installScope})`);
+  if (skill.source === 'native' || installScope === 'none' || (!force && installScope === 'local')) {
+    const reason = skill.source === 'native' ? 'native'
+      : installScope === 'local' ? 'project-local'
+      : 'installScope=none';
+    skip(`${name} (${reason})`);
     return;
   }
-  const dest = path.join(agent.skillsDir, name);
+  const dest = skillDest(skill, agent);
   if (!lexists(dest)) { skip(`${name} not installed`); return; }
   if (isSymlink(dest)) {
     if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm ${dest}`); return; }
@@ -502,7 +522,7 @@ function cmdDelete(agentId, skillName) {
   log(`${c.bold}Deleting ${name}${c.reset} (${skill.source})`);
 
   // Filesystem uninstall: symlink unlink (local) / vendor rm -rf; extended/ left intact.
-  uninstallSkill(skill, agent);
+  uninstallSkill(skill, agent, { force: true });
   if (skill.extended && isDir(path.join(ROOT, 'extended', name))) {
     log(`${c.dim}kept extended/${name}/ (override overlay preserved)${c.reset}`);
   }
@@ -614,7 +634,7 @@ ${c.bold}Usage:${c.reset} fsvskills <command> [args] [--dry-run]
 ${c.bold}Commands:${c.reset}
   setup <agent>                 Bootstrap: global config + skills + overrides + project-local links
   destroy <agent>               Undo setup (remove config, uninstall skills, drop links)
-  add <agent> <skill> [--source <s>]   Install one skill (registers it if new)
+  add <agent> <skill> [--source <s>] [--local]   Install one skill (registers it if new; --local installs to .agents/skills/)
   delete <agent> <skill>        Remove one skill (uninstall + deregister; keeps extended/)
   update <agent> <skills|--all> Update vendor skills (Tech Leads Club / Matt Pocock).
                                 Pass a comma- or space-separated list, or --all for every vendor skill.
@@ -624,16 +644,17 @@ ${c.bold}Commands:${c.reset}
   help                          Show this message
 
 ${c.bold}Sources:${c.reset} local · tech-leads-club · matt-pocock · native
-${c.bold}Flags:${c.reset}   --dry-run (print actions, change nothing) · --all (update only) · --force (statusline only)`;
+${c.bold}Flags:${c.reset}   --dry-run (print actions, change nothing) · --all (update only) · --force (statusline only) · --local (add only)`;
 
 function parseArgs(argv) {
   const positionals = [];
-  const flags = { dryRun: false, force: false, all: false, source: null };
+  const flags = { dryRun: false, force: false, all: false, local: false, source: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') flags.dryRun = true;
     else if (a === '--force') flags.force = true;
     else if (a === '--all') flags.all = true;
+    else if (a === '--local') flags.local = true;
     else if (a === '--source') flags.source = argv[++i];
     else if (a.startsWith('--source=')) flags.source = a.slice('--source='.length);
     else positionals.push(a);
@@ -656,8 +677,8 @@ function main() {
     case 'setup': cmdSetup(rest[0]); break;
     case 'destroy': cmdDestroy(rest[0]); break;
     case 'add': {
-      if (!rest[1]) throw new UserError('Usage: fsvskills add <agent> <skill> [--source <s>]');
-      cmdAdd(rest[0], rest[1], flags.source);
+      if (!rest[1]) throw new UserError('Usage: fsvskills add <agent> <skill> [--source <s>] [--local]');
+      cmdAdd(rest[0], rest[1], flags.source, flags);
       break;
     }
     case 'delete': {

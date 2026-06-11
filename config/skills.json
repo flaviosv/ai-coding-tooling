@@ -79,7 +79,7 @@
     {
       "name": "skill-architect",
       "source": "tech-leads-club",
-      "scope": "tech-leads-club",
+      "scope": "local-only",
       "installScope": "local",
       "extended": true,
       "description": "Expert guide for designing and building high-quality skills through structured conversation. Installed project-locally (not global)."

@@ -81,13 +81,9 @@ After a re-read, the updated content becomes the cached version — do not re-re
 ### Context7 — External Documentation
 Context7 MCP (`mcp__context7__*`) is available for fetching up-to-date documentation for any library, framework, SDK, API, or CLI tool. Use it when you judge that authoritative external docs would improve accuracy (e.g. API syntax, version migration, config options). Falls back to agent knowledge if unavailable or unnecessary.
 
-## Skill Overrides
+## Skill Extensions
 
-The following skills require additional files to be loaded alongside the base skill:
-
-- **coding-guidelines**: if `extended/coding-guidelines/SKILL.md` exists, load it alongside the parent; it auto-loads tech-specific style guides from `extended/coding-guidelines/reference/` and always loads `reference/best-practices-coding-guidelines.md` for software design principles.
-- **docs-writer**: if `extended/docs-writer/SKILL.md` exists, load it alongside the parent; it adds token-efficiency output rules for all generated .md content.
-- **skill-architect**: if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases, documents the `extended/` pattern for modifying globally installed skills, and enforces token-efficiency rules for generated skill and reference files.
+Whenever you load a skill's `SKILL.md`, check whether a `SKILL.extended.md` file exists in the same directory. If it does, read it immediately after `SKILL.md` before acting on the skill. The extension file augments — never replaces — the base skill.
 
 ## Skill Transparency
 
