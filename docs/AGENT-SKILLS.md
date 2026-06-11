@@ -20,11 +20,11 @@ When **tlc-spec-driven** runs an **incremental documentation sync** ("update doc
 
 ### Built in this project
 
-- **code-review** (`skills/code-review/SKILL.md`): Comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local changes or a GitHub PR; also runs standalone performance audits.
+- **code-review** (`skills/code-review/SKILL.md`): Comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local changes, a GitHub PR, or a range of commits (multi-commit mode); also runs standalone performance audits.
 - **tech-debt-report** (`skills/tech-debt-report/SKILL.md`): Maintains a permanent numbered tech-debt ledger in docs/TECH_DEBTS.md (a documentation ledger, intentionally NOT auto-loaded into context); per-debt solution plans are written to docs/tech-debts/TD-XX.md when planning a fix. Rows are never deleted.
 - **tech-reference-add** (`skills/tech-reference-add/SKILL.md`): Adds technology-specific reference files across all skills and extends qualifying global skills. Use when adding a new framework or language to a project's stack.
 - **tests** (`skills/tests/SKILL.md`): Writes and maintains tests — unit, integration, and coverage analysis. Technology agnostic.
-- **tests-code-review** (`skills/tests-code-review/SKILL.md`): Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes.
+- **tests-code-review** (`skills/tests-code-review/SKILL.md`): Reviews test code quality, coverage patterns, and maintainability. Supports local workspace, GitHub PR, and multi-commit review modes.
 
 ### Local-only (project)
 

@@ -112,11 +112,11 @@ Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. 
 
 | Skill | Description |
 |---|---|
-| **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
+| **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes, a GitHub PR, or a range of commits (multi-commit mode). Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
 | **tech-debt-report** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **tests** | Writes and maintains tests — unit, integration, and coverage analysis. |
-| **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes. |
+| **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace, GitHub PR, and multi-commit review modes. |
 
 > ⭐ **Highlighted skills:**
 >

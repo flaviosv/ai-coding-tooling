@@ -45,4 +45,5 @@ Throw `UserError` for expected user mistakes; let unexpected errors propagate na
 - `SKILL.md` files use YAML frontmatter (`name`, `description`, `version`, `triggers`).
 - `extended/<skill>/SKILL.md` uses frontmatter from `templates/extension-frontmatter.md` (`name`, `extends`, `description`, `metadata.version`, `metadata.parent_skill`, `metadata.source`).
 - Reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.
+- `skills/<name>/reference.md` (no technology prefix, at skill root) is a workflow or orchestration reference — distinct from tech-specific checklists placed under `references/<tech>-<skill>.md`.
 - `docs/AGENT-SKILLS.md` is auto-generated below its marker; hand-written content above the marker is preserved on every regeneration.

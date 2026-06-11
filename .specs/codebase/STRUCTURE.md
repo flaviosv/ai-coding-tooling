@@ -85,8 +85,9 @@ ai-coding-tooling/
 | Need | Location |
 | ---- | -------- |
 | Add a new local skill | `skills/<name>/SKILL.md` → `fsvskills add claude-code <name> --source local` |
+| Add skill workflow reference doc | `skills/<name>/reference.md` |
 | Add tech-specific reference | `skills/<name>/references/<tech>-<name>.md` |
-| Override a vendor skill | `extended/<name>/SKILL.md` → `fsvskills override claude-code <name>` |
-| Project vision | `.specs/project/PROJECT.md` |
 | Codebase context docs | `.specs/codebase/` (this set) |
 | Feature specs / quick tasks | `.specs/features/` and `.specs/quick/` |
+| Override a vendor skill | `extended/<name>/SKILL.md` → `fsvskills override claude-code <name>` |
+| Project vision | `.specs/project/PROJECT.md` |
