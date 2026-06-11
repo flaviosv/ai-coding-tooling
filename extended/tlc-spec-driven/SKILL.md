@@ -23,6 +23,16 @@ Read this file immediately after the parent `SKILL.md`. It **augments** the pare
 it never replaces it. Parent behavior stays in force except where this file overrides
 a specific point.
 
+## Session Start — Doc Location Check
+
+Before running any mode, determine where the project's codebase docs currently live:
+
+1. Check `.specs/codebase/` — the canonical location.
+2. If absent, check `docs/codebase/` (previous convention).
+3. If still absent, check `docs/` (legacy fallback).
+
+If docs are found in `docs/codebase/` or `docs/`, suggest migrating to `.specs/codebase/` before proceeding. All writes target `.specs/codebase/` regardless; the fallback applies to reads only.
+
 ## Planning Is Prioritized
 
 For any **non-trivial** task (3+ steps or an architectural decision), plan before building:
