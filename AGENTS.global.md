@@ -40,23 +40,28 @@ Only return a solution, suggestion, answer, tech approach, or plan if you have �
 
 ## Session Start — Project Context
 
-The `docs/codebase/` directory may contain context files about the project. Read only what is relevant to the current task. **Fallback:** when a file below is absent from `docs/codebase/`, look for it directly in `docs/` (legacy location).
+The `.specs/codebase/` directory may contain context files about the project (generated and kept in sync by the `tlc-spec-driven` skill's brownfield-mapping). Read only what is relevant to the current task. **Fallback:** when a file below is absent from `.specs/codebase/`, look in `docs/codebase/` (previous convention), then `docs/` (legacy) — and if found there, suggest migrating to `.specs/codebase/`.
 
 | File | Contents | When to load |
 |------|----------|--------------|
-| `docs/codebase/PROJECT_DETAILS.md` | Tech stack, key libraries, project description | Understanding the project, choosing libraries, or onboarding |
-| `docs/codebase/ARCHITECTURE.md` | System layers, data flow, key components | Writing, modifying, or reviewing code |
-| `docs/codebase/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
+| `.specs/codebase/ARCHITECTURE.md` | System layers, data flow, components, patterns | Writing, modifying, or reviewing code |
+| `.specs/codebase/CONCERNS.md` | Risk snapshot: tech debt, fragile areas, security/perf/scaling limits | Estimating risk or touching fragile areas |
+| `.specs/codebase/CONVENTIONS.md` | Naming, code style, error handling, documentation pattern | Writing or reviewing code |
+| `.specs/codebase/INTEGRATIONS.md` | External services, APIs, webhooks, background jobs | Working with integrations or jobs |
+| `.specs/codebase/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
+| `.specs/codebase/STACK.md` | Tech stack, key libraries, commands, env config | Understanding the project, choosing libraries, onboarding |
+| `.specs/codebase/STRUCTURE.md` | Directory layout, module organization, monorepo package map | Navigating the codebase, locating where things live |
+| `.specs/codebase/TESTING.md` | Test frameworks, coverage matrix, gate-check commands | Writing or reviewing tests |
 
-The `docs/codebase/` set is **open-ended** — also load any additional context files it contains (e.g. `CODING_STYLE.md`); a project's root `CLAUDE.md`/`AGENTS.md` may list project-specific ones. If none of these files exist, suggest running `architecture-evaluate`. If the codebase context files are found in `docs/` rather than `docs/codebase/`, suggest migrating them (`architecture-evaluate` handles the move).
+Project **vision/goals** live in `.specs/project/PROJECT.md`; **decisions, blockers, lessons, and todos** in `.specs/project/STATE.md`. The `.specs/codebase/` set is **open-ended** — also load any additional context files it contains; a project's root `CLAUDE.md`/`AGENTS.md` may list project-specific ones. If none of these files exist, suggest **map codebase** (the `tlc-spec-driven` skill). If the context files are found under `docs/codebase/` or `docs/`, suggest migrating them to `.specs/codebase/`.
 
-### Legacy `.agents/` Migration
+### Codebase Doc Generation & Sync (tlc-spec-driven)
 
-If a project contains context files in `.agents/` (e.g. `PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`, `TECH_DEBTS.md`, `LESSONS.md`), **stop and ask the user**:
+The `.specs/codebase/` context set is created and maintained by the `tlc-spec-driven` skill's brownfield-mapping (extended in this setup). Route these intents to it:
 
-> "Found agent context files in `.agents/`. The current convention uses `docs/codebase/`. Should I migrate them to `docs/codebase/`?"
-
-If confirmed: move the files to `docs/codebase/`, delete `.agents/` if it becomes empty. If declined: continue using the files where they are for this session.
+- **"map codebase" / "analyze existing code" / "evaluate architecture" / "onboard project" / "create or update project docs"** → full mapping (generates/refreshes all `.specs/codebase/` docs + `.specs/project/PROJECT.md`).
+- **"update docs" / "document my changes" / "sync documentation" / "document recent changes" / "keep docs in sync"** → incremental sync (git-diff-driven; updates only what changed + inline API docs + root files).
+- **"evaluate package" / "package architecture"** → package mode (scoped `CLAUDE.md` for one package).
 
 ---
 
@@ -95,7 +100,6 @@ Whenever you load a skill's `SKILL.md`, check whether a `SKILL.extended.md` file
 > **Invoking skills:**
 > 1. `<skill-name-1>` — *<reason>*
 > 2. `<skill-name-2>` — *<reason>*
-> 3. `<skill-name-3>` — *<reason>*
 
 **After — single skill:**
 > **Skill complete:** `<skill-name>`
@@ -109,76 +113,11 @@ Hard rules:
 - Sub-skill chains: announce each skill individually as it is about to run, then confirm completion.
 - This rule cannot be skipped for brevity, speed, or any other reason.
 
-## Subagent Strategy
-
-- Use the skill subagent-creator any time you are about to use subagents
-- Use subagents liberally to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One tack per subagent for focused execution
-
 ---
 
 <!-- ═══════════════════════════════════════════════════════════════
      TIER 4 · WORKFLOW — apply when executing tasks
      ═══════════════════════════════════════════════════════════════ -->
-
-## Architecture Decision Records
-
-When choosing between alternatives that affect more than today's task – a library, an architecture pattern, an API design, or deciding NOT to do something – log it:
-
-File: /docs/decisions/description_YYYY-MM-DD.md
-
-Format:
-## Decision: {what you decided}
-## Context: {why this came up}
-## Alternatives considered: {what else was on the table}
-## Reasoning: {why this option won}
-## Trade-offs accepted: {what you gave up}
-
-When about to make a similar decision, grep /decisions/ for prior choices. Follow them unless new information invalidates the reasoning.
-
-## Plan Mode
-
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- All plans must be written to `docs/plans/<TASK-ID>/plan.md`
-- Ask for the TASK-ID if you don't have it
-- **Complexity tiers:**
-  - **Tactical** (3-10 steps, single concern): standard plan with numbered steps and checkable items
-  - **Architectural** (cross-cutting, new systems, integrations, multi-package changes): invoke the `technical-design-doc-creator` skill to generate a TDD as the plan. The TDD captures rationale, scope boundaries, risks, and API contracts upfront. Break implementation tasks from the TDD afterward.
-- **Subagents — mandatory consideration for complex or multi-step plans:**
-  - For any plan with 3+ independent steps, parallel workstreams, or heavy research: subagents are not optional — identify which steps to delegate and list them explicitly in the plan.
-  - When a plan requires subagents, use the `subagent-creator` skill to design and author the subagent definitions — it ensures each has a focused purpose, correct metadata, and a well-structured prompt.
-  - Default to subagents — they keep the main context clean and increase throughput.
-- If something goes sideways, STOP and re-plan immediately – don't keep pushing
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
-- Make the plan extremely concise. Sacrifice grammar for the sake of concision.
-- At the end of each plan, list all unresolved questions explicitly.
-- **If there are open questions: STOP. Ask them. Do NOT suggest defaults, auto-accepts, or proceed assumptions. Do NOT move on with the plan.**
-- **A plan is only complete when every open question has an explicit answer from the user.**
-- Be detailed in your plan, i need to understand the details
-- Number all steps.
-- Create the Unit Tests if applicable
-- Create the Integration Tests if applicable
-- Create the Functional Tests if applicable
-- Create the E2E Tests if applicable
-
-## Self-Improvement Loop
-
-- After ANY correction from the user: update `docs/LESSONS.md` with the pattern
-    - Update the docs in the project folder, not the global one
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
-
-## Task Management
-
-1. **Plan First**: Write plan to `docs/plans/<TASK-ID>/plan.md` with checkable items
-2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
-4. **Explain Changes**: High-level summary at each step
-5. **Capture Lessons**: Update `docs/LESSONS.md` after corrections
 
 ## Verification Before Done
 

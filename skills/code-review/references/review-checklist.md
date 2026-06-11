@@ -44,7 +44,7 @@ Use this as a baseline — technology-specific checklists extend this file.
 
 ## Scope & Simplicity
 
-Aligns with the **Simplicity First** and **Surgical Changes** principles from coding-guidelines.
+Aligns with the **Simplicity First** and **Surgical Changes** principles from the TLC coding-principles.
 
 - [ ] Changes do not include unrequested features, refactors, or speculative additions
 - [ ] No abstractions or helpers created for a single use — YAGNI applies
@@ -57,7 +57,7 @@ Aligns with the **Simplicity First** and **Surgical Changes** principles from co
 ## Code Quality
 
 - [ ] Code is readable — intent is clear without needing comments to explain what it does
-- [ ] Naming follows conventions from loaded coding-guidelines style guides (variables, functions, classes, files)
+- [ ] Naming follows conventions from the loaded coding style references (variables, functions, classes, files)
 - [ ] No dead code introduced or orphaned by these changes — unused imports, variables, functions created by this diff are removed
 - [ ] No unnecessary duplication — shared logic is extracted appropriately
 - [ ] Error handling is present and meaningful — failures are caught and communicated correctly

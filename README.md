@@ -112,8 +112,6 @@ Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. 
 
 | Skill | Description |
 |---|---|
-| **architecture-evaluate** ⭐ | Creates, updates, and incrementally syncs project context documentation across three modes. **Full** deep-scans the codebase to create/update the three mandatory context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/codebase/`. **Incremental** inspects the git workspace and syncs only what changed — inline API docs, root context files, the `docs/codebase/` context files — and detects new packages. **Package** generates a scoped `CLAUDE.md` for an individual package/module. Run Full mode when onboarding a new project or when context files are missing; Incremental mode to keep docs in sync with code changes. |
-| **code** | Apply coding guidelines when writing code. Thin delegator to `coding-guidelines` (TLC). Pairs with `code-review` for the `/code` + `/code-review` naming pattern. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
 | **tech-debt-report** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
@@ -122,17 +120,8 @@ Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. 
 
 > ⭐ **Highlighted skills:**
 >
-> - **`architecture-evaluate`** — The recommended first step for any new or onboarded project. It generates the context files in `docs/codebase/` that agents load progressively based on task relevance.
 > - **`tech-reference-add`** — The recommended way to extend the tooling for a new technology. It propagates tech-specific reference files into all relevant skills (code review, coding guidelines, tests, etc.) in one step.
 > - **`tech-debt-report`** — Documents known anti-patterns so agents avoid replicating them. The `docs/TECH_DEBTS.md` index is loaded automatically when writing or reviewing code.
-
-### Skill Aliases
-
-Aliases are thin delegators that provide shorter slash commands for existing skills. The original skill remains unchanged and fully functional.
-
-| Alias | Original Skill | Description |
-|---|---|---|
-| **code** | `coding-guidelines` | Short command for `/coding-guidelines`. Pairs with `/code-review`. |
 
 ### Personal Skills (`personal/`)
 
@@ -163,11 +152,11 @@ Installed globally by `fsvskills setup`. Treated as read-only — do not edit th
 | Skill | Description |
 |---|---|
 | **codenavi** | Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use when fixing bugs, implementing features, refactoring, or investigating flows in unfamiliar territory. |
-| **coding-guidelines** | Behavioral guidelines to reduce common LLM coding mistakes. Applied when writing or reviewing code. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
 | **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
+| **tlc-spec-driven** ⭐ | Spec-driven planning (Specify → Design → Tasks → Execute) **and** the project's codebase-doc owner. Run **map codebase** as the first step on a new/onboarded project to generate the `.specs/codebase/` context set + `.specs/project/PROJECT.md`. **Extended in this project** (`extended/tlc-spec-driven/`): adds `PIPELINE.md` as an 8th codebase doc plus incremental-sync and per-package modes ported from the retired `architecture-evaluate`; augments `coding-principles` with software-design/observability/stack-style references (ported from the retired `coding-guidelines`) and routes security to `security-best-practices` and UI work to `web-design-guidelines`. |
 | **web-design-guidelines** | Reviews UI code for accessibility, design, and best-practices compliance. |
 
 ### Source: [Matt Pocock](https://github.com/mattpocock/skills)

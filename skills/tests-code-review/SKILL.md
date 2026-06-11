@@ -69,13 +69,13 @@ Load these files if they exist:
 
 | File | Purpose |
 |------|---------|
-| `docs/codebase/ARCHITECTURE.md` | Understand which layers the changed tests cover |
-| `docs/CODING_STYLE.md` | Naming conventions that apply to test code too |
-| `docs/codebase/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
+| `.specs/codebase/ARCHITECTURE.md` | Understand which layers the changed tests cover |
+| `.specs/codebase/CONVENTIONS.md` | Naming conventions that apply to test code too |
+| `.specs/codebase/STACK.md` | Tech stack, key libraries, dependencies, environment config |
 | `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag test code that replicates these |
-| `docs/TESTS.md` | Project-specific test conventions, base classes, naming patterns |
+| `.specs/codebase/TESTING.md` | Project-specific test conventions, frameworks, coverage matrix, gate commands |
 
-`docs/codebase/` paths fall back to `docs/<file>` when not yet migrated.
+`.specs/codebase/` paths fall back to `docs/codebase/<file>` (old names `PROJECT_DETAILS.md`/`CODING_STYLE.md`/`TESTS.md`), then legacy `docs/<file>`, when not yet migrated. If the old structure is found, suggest migrating to `.specs/codebase/`.
 
 ## Step 3: Load Review Checklists
 
@@ -177,7 +177,7 @@ Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode
 User: "review my tests"
 
 1. No PR number → local mode
-2. Load context: `PROJECT_DETAILS.md`, `TESTS.md`, `CODING_STYLE.md`, `ARCHITECTURE.md`, `TECH_DEBTS.md`
+2. Load context: `.specs/codebase/STACK.md`, `.specs/codebase/TESTING.md`, `.specs/codebase/CONVENTIONS.md`, `.specs/codebase/ARCHITECTURE.md`, `docs/TECH_DEBTS.md`
 3. Load baseline + tech-specific checklists + test-writing references from `tests` skill
 4. `git diff HEAD --name-only` + `git diff --cached --name-only` + `git ls-files --others --exclude-standard` → filter to test files
 5. Review each test file against all loaded checklists

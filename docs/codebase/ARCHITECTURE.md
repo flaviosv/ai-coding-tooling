@@ -21,7 +21,7 @@ Repository (single source of truth)
   │     ├── tech-leads-club / matt-pocock ─► ~/.claude/skills/<name>/  (npx)
   │     └── extended/<skill>/
   │           ├── SKILL.md  ──────────► ~/.claude/skills/<skill>/SKILL.extended.md
-  │           └── reference/  ────────► ~/.claude/skills/<skill>/reference/ (or reference.extended)
+  │           └── references/  ───────► ~/.claude/skills/<skill>/references/ (or references.extended)
   └── Project-local (this repo, via fsvskills setup)
         ├── .agents/  ◄─────────────── .claude  (symlink: project-local skills)
         └── AGENTS.md  ◄────────────── CLAUDE.md (symlink: project instructions)
@@ -45,9 +45,9 @@ Repository (single source of truth)
 The `extended/` directory holds project-local additions to globally-installed skills. Each subdirectory name matches an installed skill. It may contain:
 
 - `SKILL.md` — loaded alongside the parent skill as `SKILL.extended.md`; adds stack-specific rules (e.g. language-specific coding style guides)
-- `reference/` — reference files (checklists, style guides) loaded by the skill at runtime based on the detected tech stack
+- `references/` — reference files (checklists, style guides) loaded by the skill at runtime based on the detected tech stack
 
-`fsvskills setup` (and `fsvskills override`) symlink these into the correct installed skill directories — collision-aware: if the vendor shipped a `references/` dir, the overlay is named `reference.extended`.
+`fsvskills setup` (and `fsvskills override`) symlink these into the correct installed skill directories — collision-aware: if the vendor shipped a `references/` dir, the overlay is named `references.extended`.
 
 ## Key Workflows
 

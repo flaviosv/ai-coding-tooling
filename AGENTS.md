@@ -1,6 +1,14 @@
 # Project
 
-See [docs/codebase/PROJECT_DETAILS.md](docs/codebase/PROJECT_DETAILS.md) for the full project concept, architecture, and workflows.
+See [`.specs/project/PROJECT.md`](.specs/project/PROJECT.md) for the full project concept, architecture, and workflows. *(Not yet migrated: currently at [`docs/codebase/PROJECT_DETAILS.md`](docs/codebase/PROJECT_DETAILS.md))*
+
+## Project Nature
+
+This is **not an implementation-heavy codebase**. The vast majority of the project consists of `.md` files: skill definitions (`SKILL.md`), reference documents, configuration (`config/*.json`), and documentation. Treat it accordingly:
+
+- Do not apply typical software engineering heuristics (refactoring for abstraction, test coverage, DRY patterns) to `.md` files — clarity and correctness of content is what matters.
+- The **only implementation code** lives in `bin/` (`bin/skills.mjs`). Only modify it when the scope of actions it performs actually changes — not for style, cleanup, or speculative improvements.
+- When in doubt about a change, ask: "Is this a content edit to a `.md` file, or a behavioral change to `bin/`?" Each requires a very different standard of care.
 
 # Constraints
 

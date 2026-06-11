@@ -175,10 +175,10 @@ function applyOverlay(skill, agent) {
     if (r === 'linked' || r === 'dry') ok(`override ${name}: SKILL.extended.md`);
   }
 
-  const refSrc = path.join(extDir, 'reference');
+  const refSrc = path.join(extDir, 'references');
   if (isDir(refSrc)) {
-    // Collision-aware: if the vendor shipped a references/ dir, use reference.extended.
-    const destName = isDir(path.join(targetDir, 'references')) ? 'reference.extended' : 'reference';
+    // Collision-aware: if the vendor shipped a references/ dir, use references.extended.
+    const destName = isDir(path.join(targetDir, 'references')) ? 'references.extended' : 'references';
     const r = relinkOverlay(refSrc, path.join(targetDir, destName));
     if (r === 'linked' || r === 'dry') ok(`override ${name}: ${destName}/`);
   }
@@ -289,6 +289,31 @@ function cmdSetup(agentId) {
   log(`\n${c.green}Setup complete for ${agent.id}.${c.reset}`);
 }
 
+// Read the `description:` field from a skill's installed SKILL.md frontmatter so
+// the generated registry doc (docs/AGENT-SKILLS.md) shows a real summary instead
+// of "undefined". Handles single-line values and folded/literal block scalars.
+function readSkillDescription(dest) {
+  let text;
+  try { text = fs.readFileSync(path.join(dest, 'SKILL.md'), 'utf8'); } catch { return ''; }
+  const fm = text.match(/^---\n([\s\S]*?)\n---/);
+  if (!fm) return '';
+  const lines = fm[1].split('\n');
+  const i = lines.findIndex((l) => /^description\s*:/.test(l));
+  if (i === -1) return '';
+  let val = lines[i].replace(/^description\s*:/, '').trim();
+  // Block scalar (`description: >` / `|`): gather the indented continuation lines.
+  if (['>', '|', '>-', '|-', ''].includes(val)) {
+    const block = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      if (/^\s+\S/.test(lines[j])) block.push(lines[j].trim());
+      else if (lines[j].trim() === '') block.push('');
+      else break;
+    }
+    val = block.join(' ');
+  }
+  return val.replace(/\s+/g, ' ').replace(/^["']|["']$/g, '').trim();
+}
+
 function cmdAdd(agentId, skillName, source, flags = {}) {
   const agents = loadJson('config/agents.json');
   const agent = resolveAgent(agents, agentId);
@@ -312,12 +337,20 @@ function cmdAdd(agentId, skillName, source, flags = {}) {
 
   applyOverlay(skill, agent);
 
-  // Register a newly-added skill and refresh the doc.
-  if (!registry.skills.find((s) => s.name === name)) {
-    registry.skills.push(skill);
+  // Capture the skill's description from its SKILL.md frontmatter so the registry
+  // doc shows a real summary. `skill` is the same object stored in the registry
+  // (found or newly built), so assigning here persists on write.
+  const desc = readSkillDescription(skillDest(skill, agent));
+  const known = registry.skills.find((s) => s.name === name);
+  const descChanged = desc && skill.description !== desc;
+  if (descChanged) skill.description = desc;
+
+  // Register a newly-added skill and/or persist a refreshed description, then refresh the doc.
+  if (!known || descChanged) {
+    if (!known) registry.skills.push(skill);
     registry.skills.sort((a, b) => a.name.localeCompare(b.name));
     if (!DRY) fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
-    ok(`registered ${name} (${skill.source}) in skills.json`);
+    ok(known ? `refreshed ${name} description in skills.json` : `registered ${name} (${skill.source}) in skills.json`);
     if (!DRY) generateDocs();
   }
   log(`\n${c.green}Added ${name}.${c.reset}`);
@@ -326,7 +359,8 @@ function cmdAdd(agentId, skillName, source, flags = {}) {
 function cmdUpdate(agentId, names, all) {
   const agents = loadJson('config/agents.json');
   const agent = resolveAgent(agents, agentId);
-  const { skills } = loadJson('config/skills.json');
+  const registry = loadJson('config/skills.json');
+  const { skills } = registry;
 
   const vendorSkills = skills.filter((s) => s.source === 'tech-leads-club' || s.source === 'matt-pocock');
 
@@ -350,9 +384,18 @@ function cmdUpdate(agentId, names, all) {
 
   if (!scope.length) { warn('No vendor skills to update.'); return; }
   log(`${c.bold}Updating ${scope.length} vendor skill(s) for ${agent.id}${c.reset}`);
+  let descChanged = false;
   for (const skill of scope) {
     updateSkill(skill, agent);
     if (skill.extended) applyOverlay(skill, agent);
+    // Backfill/refresh the description from the reinstalled SKILL.md frontmatter.
+    const desc = readSkillDescription(skillDest(skill, agent));
+    if (desc && skill.description !== desc) { skill.description = desc; descChanged = true; }
+  }
+  if (descChanged && !DRY) {
+    fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
+    generateDocs();
+    ok('refreshed skill descriptions in skills.json');
   }
   log(`\n${c.green}Update complete.${c.reset}`);
 }
@@ -609,7 +652,7 @@ function generateDocs() {
   const overridden = skills.filter((s) => s.extended).sort((a, b) => a.name.localeCompare(b.name));
   if (overridden.length) {
     lines.push('## Overridden (extended)', '');
-    lines.push('These skills carry a project-specific overlay in `extended/<name>/` (applied as `SKILL.extended.md` and optional `reference/`):', '');
+    lines.push('These skills carry a project-specific overlay in `extended/<name>/` (applied as `SKILL.extended.md` and optional `references/`):', '');
     for (const s of overridden) {
       lines.push(`- **${s.name}** — overlays the ${SCOPE_SECTIONS.find((x) => x.key === s.scope)?.title || s.source} skill.`);
     }

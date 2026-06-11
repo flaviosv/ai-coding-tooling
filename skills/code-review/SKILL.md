@@ -79,11 +79,11 @@ Load these files if they exist:
 
 | File | Purpose |
 |------|---------|
-| `docs/codebase/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
-| `docs/codebase/ARCHITECTURE.md` | System layers, data flow, key components |
+| `.specs/codebase/STACK.md` | Tech stack, key libraries, dependencies, environment config |
+| `.specs/codebase/ARCHITECTURE.md` | System layers, data flow, key components |
 | `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag reviewed code that replicates these |
 
-`docs/codebase/` paths fall back to `docs/<file>` when not yet migrated.
+`.specs/codebase/` paths fall back to `docs/codebase/<file>` (old names `PROJECT_DETAILS.md`/`ARCHITECTURE.md`), then legacy `docs/<file>`, when not yet migrated. If the old structure is found, suggest migrating to `.specs/codebase/`.
 
 ## Step 3: Load Review Checklists
 
@@ -136,7 +136,7 @@ Every line not asked for is a violation:
 
 ### Code Quality
 
-Confront every deviation against all loaded references — coding-guidelines style guides and the clean-code checklist:
+Confront every deviation against all loaded references — coding style references and the clean-code checklist:
 
 - Wrong naming → flag with the rule it breaks
 - Unnecessary complexity or duplication → flag
@@ -216,7 +216,21 @@ Run: <date>
 
 #### Markdown file output
 
-When the user asks to save the review as a markdown file, always use the zoned format and write it to `docs/plans/<TASK-ID>/code-review.md` (or `code-review_phase2.md` for subsequent passes). Ask for the TASK-ID if not provided.
+When the user asks to save the review as a markdown file, always use the zoned format and write it
+into the **current feature's folder, co-located with the artifacts the `tlc-spec-driven` skill owns**.
+Resolve the destination in this order:
+
+1. **Active TLC feature** → `.specs/features/<TASK-ID>-<slug>/code-review.md` — the same folder that
+   holds the feature's `spec.md`/`design.md`/`tasks.md`.
+2. **Active TLC quick task** → `.specs/quick/<TASK-ID>-<slug>/code-review.md` — alongside its
+   `TASK.md`/`SUMMARY.md`.
+3. **No TLC feature folder exists** (code-review run standalone) → fall back to
+   `docs/plans/<TASK-ID>/code-review.md`.
+
+Identify the active folder from the work under review: match the changed files / TASK-ID to an
+existing directory under `.specs/features/` or `.specs/quick/`. If exactly one matches, write there;
+if none exists, use the fallback. Ask for the TASK-ID (or which feature folder) only when it cannot
+be inferred. Use `code-review_phase2.md` (then `_phase3`, …) for subsequent passes in the same folder.
 
 ---
 
@@ -270,7 +284,7 @@ Recommendation: <specific fix>
 User: "review my code"
 
 1. No PR number → local mode
-2. Load context: `PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `TECH_DEBTS.md`
+2. Load context: `.specs/codebase/STACK.md`, `.specs/codebase/ARCHITECTURE.md`, `docs/TECH_DEBTS.md`
 3. Load baselines + tech-specific checklists
 4. `git diff HEAD --name-only` + `git diff --cached --name-only` + `git ls-files --others --exclude-standard`
 5. Review each file against all checklists
@@ -295,7 +309,7 @@ User: "review PR #42"
 User: "do a performance audit of the orders module"
 
 1. Trigger phrase matches → Performance Audit mode
-2. Load context: `PROJECT_DETAILS.md`, `ARCHITECTURE.md`
+2. Load context: `.specs/codebase/STACK.md`, `.specs/codebase/ARCHITECTURE.md`
 3. Load `references/performance-checklist.md` + matching `*-performance-review.md` references
 4. Scan full codebase (or named module scope)
 5. Produce Performance Audit Report in the format above
