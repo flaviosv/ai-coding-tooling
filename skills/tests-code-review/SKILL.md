@@ -69,11 +69,13 @@ Load these files if they exist:
 
 | File | Purpose |
 |------|---------|
-| `docs/ARCHITECTURE.md` | Understand which layers the changed tests cover |
+| `docs/codebase/ARCHITECTURE.md` | Understand which layers the changed tests cover |
 | `docs/CODING_STYLE.md` | Naming conventions that apply to test code too |
-| `docs/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
+| `docs/codebase/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
 | `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag test code that replicates these |
 | `docs/TESTS.md` | Project-specific test conventions, base classes, naming patterns |
+
+`docs/codebase/` paths fall back to `docs/<file>` when not yet migrated.
 
 ## Step 3: Load Review Checklists
 

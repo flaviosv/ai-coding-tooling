@@ -25,7 +25,7 @@ Load this file alongside the parent `SKILL.md`. Both must be active simultaneous
 
 Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
 
-Detect the project's tech stack from `docs/PROJECT_DETAILS.md`. Then check both reference locations and load ONLY matching files:
+Detect the project's tech stack from `docs/codebase/PROJECT_DETAILS.md` (fall back to `docs/PROJECT_DETAILS.md` if not yet migrated). Then check both reference locations and load ONLY matching files:
 
 1. **Parent skill's `reference/` directory** — contains language and framework-specific review checklists (e.g. `golang-code-review.md`, `python-django-code-review.md`). Load ONLY files whose tech prefix matches the detected stack. Skip non-matching files.
 

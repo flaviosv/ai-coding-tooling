@@ -4,7 +4,7 @@
       "name": "architecture-evaluate",
       "source": "local",
       "scope": "built",
-      "description": "Creates or updates the mandatory project context files (PROJECT_DETAILS.md, ARCHITECTURE.md, PIPELINE.md) in docs/. Supports package mode for scoped CLAUDE.md generation."
+      "description": "Creates, updates, and incrementally syncs project context documentation. Three modes: Full deep-scans the codebase to write the mandatory context files (PROJECT_DETAILS.md, ARCHITECTURE.md, PIPELINE.md) in docs/codebase/; Incremental inspects the git workspace to sync only what changed — inline API docs, root context files (README/CLAUDE/AGENTS), the docs/codebase/ context files — and detects new packages; Package generates a scoped CLAUDE.md for a module."
     },
     {
       "name": "code",
@@ -37,12 +37,6 @@
       "scope": "tech-leads-club",
       "extended": true,
       "description": "Writing, reviewing, and editing documentation and .md files."
-    },
-    {
-      "name": "documentation-upsert",
-      "source": "local",
-      "scope": "built",
-      "description": "Updates all project documentation by inspecting the git workspace for modified files. Detects new packages, updates inline API docs, root context files, and base docs/ files."
     },
     {
       "name": "kb-from-folder",
@@ -94,7 +88,7 @@
       "name": "tech-debt-report",
       "source": "local",
       "scope": "built",
-      "description": "Documents tech debts in docs/tech-debts/ and maintains an anti-pattern index in docs/TECH_DEBTS.md so agents avoid replicating bad patterns."
+      "description": "Maintains a permanent numbered tech-debt ledger in docs/TECH_DEBTS.md (a documentation ledger, intentionally NOT auto-loaded into context); per-debt solution plans are written to docs/tech-debts/TD-XX.md when planning a fix. Rows are never deleted."
     },
     {
       "name": "tech-reference-add",

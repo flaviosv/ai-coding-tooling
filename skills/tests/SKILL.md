@@ -93,7 +93,7 @@ Then load the reference files:
 
 1. Always load `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules (generic)
 2. Always load `references/coverage-guide.md` — coverage goals and what not to test (generic)
-3. Identify the project's language and framework from `docs/PROJECT_DETAILS.md`
+3. Identify the project's language and framework from `docs/codebase/PROJECT_DETAILS.md` (fall back to `docs/PROJECT_DETAILS.md` if not yet migrated)
 4. List files in `references/` and load ONLY those whose prefix matches the detected stack.
    If the stack is Python + Django, load `python-tests.md` AND `django-tests.md` if they exist.
    Skip all other tech-specific files.
@@ -152,7 +152,7 @@ User says: "Write tests for the new payment processor module."
 
 1. Check `docs/TESTS.md` for project conventions
 2. Load `references/testing-patterns.md` and `references/coverage-guide.md`
-3. Detect stack from `docs/PROJECT_DETAILS.md` and load ALL matching stack-specific references
+3. Detect stack from `docs/codebase/PROJECT_DETAILS.md` (fall back to `docs/PROJECT_DETAILS.md`) and load ALL matching stack-specific references
 4. Write unit tests for the payment processor's core logic in isolation
 5. Write integration tests for the database and external service interactions
 6. Verify the completion checklist before finishing

@@ -79,9 +79,11 @@ Load these files if they exist:
 
 | File | Purpose |
 |------|---------|
-| `docs/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
-| `docs/ARCHITECTURE.md` | System layers, data flow, key components |
+| `docs/codebase/PROJECT_DETAILS.md` | Tech stack, dependencies, environment config |
+| `docs/codebase/ARCHITECTURE.md` | System layers, data flow, key components |
 | `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag reviewed code that replicates these |
+
+`docs/codebase/` paths fall back to `docs/<file>` when not yet migrated.
 
 ## Step 3: Load Review Checklists
 

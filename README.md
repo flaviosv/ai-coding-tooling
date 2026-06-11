@@ -61,7 +61,7 @@ Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copie
 [Opus 4.8 (1M context) (high) - 📁 ai-coding-tooling (main)] ctx:6% 5h:3%
 ```
 
-<img src="docs/images/statusline.png" alt="Status line sample" width="600">
+<img src="assets/images/statusline.png" alt="Status line sample" width="600">
 
 Colors (rendered in the terminal):
 
@@ -112,10 +112,9 @@ Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. 
 
 | Skill | Description |
 |---|---|
-| **architecture-evaluate** ⭐ | Creates or updates the three mandatory project context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/`. Also supports package mode for evaluating individual packages/modules, generating a scoped `CLAUDE.md` inside the package directory. Run this when onboarding a new project or when context files are missing. |
+| **architecture-evaluate** ⭐ | Creates, updates, and incrementally syncs project context documentation across three modes. **Full** deep-scans the codebase to create/update the three mandatory context files (`PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`) inside `docs/codebase/`. **Incremental** inspects the git workspace and syncs only what changed — inline API docs, root context files, the `docs/codebase/` context files — and detects new packages. **Package** generates a scoped `CLAUDE.md` for an individual package/module. Run Full mode when onboarding a new project or when context files are missing; Incremental mode to keep docs in sync with code changes. |
 | **code** | Apply coding guidelines when writing code. Thin delegator to `coding-guidelines` (TLC). Pairs with `code-review` for the `/code` + `/code-review` naming pattern. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes by default, or a GitHub PR when a PR number is provided. Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
-| **documentation-upsert** | Updates all project documentation by inspecting the git workspace for modified files. Detects new packages and triggers scoped architecture evaluation. Updates inline API docs, root context files, and base `docs/` files. |
 | **tech-debt-report** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 | **tests** | Writes and maintains tests — unit, integration, and coverage analysis. |

@@ -42,7 +42,6 @@ ai-coding-tooling/
     ├── architecture-evaluate/
     ├── code/
     ├── code-review/
-    ├── documentation-upsert/
     ├── tech-debt-report/
     ├── tech-reference-add/
     ├── tests/
@@ -74,11 +73,10 @@ Skills are managed by the **`fsvskills`** command (`bin/skills.mjs`), a single-f
 
 | Skill | Description |
 |-------|-------------|
-| `architecture-evaluate` | Creates/updates the three project context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE) |
+| `architecture-evaluate` | Creates, updates, and incrementally syncs project context docs. Full mode writes the three context files (PROJECT_DETAILS, ARCHITECTURE, PIPELINE); Incremental mode syncs inline API docs, root context files, and base `docs/` files from the git workspace and detects new packages; Package mode generates a scoped `CLAUDE.md` |
 | `code` | Alias for `coding-guidelines` — applies behavioral and tech-specific coding guidelines. Delegator to the TLC skill |
 | `code-review` | Performs comprehensive code reviews on local workspace changes or GitHub PRs. Covers architecture, performance, code quality, API design, and security. Includes standalone Performance Audit mode (full-codebase P0–P3 findings report) |
-| `documentation-upsert` | Syncs inline API docs and project `.md` files with the current git workspace state. Detects new packages and scaffolds context via architecture-evaluate package mode |
-| `tech-debt-report` | Documents tech debts and maintains an anti-pattern index in `docs/TECH_DEBTS.md` |
+| `tech-debt-report` | Maintains a permanent numbered tech-debt ledger in `docs/TECH_DEBTS.md` (on-demand documentation, not auto-loaded); per-debt solution plans go in `docs/tech-debts/TD-XX.md` when planning a fix |
 | `tech-reference-add` | Adds technology-specific reference files across all skills and extends qualifying global skills |
 | `tests` | Writes and maintains tests covering unit tests, integration tests, and code coverage analysis |
 | `tests-code-review` | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes |

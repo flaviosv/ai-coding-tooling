@@ -1,6 +1,6 @@
 # Project
 
-See [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) for the full project concept, architecture, and workflows.
+See [docs/codebase/PROJECT_DETAILS.md](docs/codebase/PROJECT_DETAILS.md) (falls back to `docs/PROJECT_DETAILS.md` if not yet migrated) for the full project concept, architecture, and workflows.
 
 # Constraints
 

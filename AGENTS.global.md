@@ -40,24 +40,23 @@ Only return a solution, suggestion, answer, tech approach, or plan if you have �
 
 ## Session Start — Project Context
 
-The `docs/` directory may contain context files about the project. Read only what is relevant to the current task.
+The `docs/codebase/` directory may contain context files about the project. Read only what is relevant to the current task. **Fallback:** when a file below is absent from `docs/codebase/`, look for it directly in `docs/` (legacy location).
 
 | File | Contents | When to load |
 |------|----------|--------------|
-| `docs/PROJECT_DETAILS.md` | Tech stack, key libraries, project description | Understanding the project, choosing libraries, or onboarding |
-| `docs/ARCHITECTURE.md` | System layers, data flow, key components | Writing, modifying, or reviewing code |
-| `docs/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
-| `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns | Writing or reviewing code, to avoid replicating bad patterns |
+| `docs/codebase/PROJECT_DETAILS.md` | Tech stack, key libraries, project description | Understanding the project, choosing libraries, or onboarding |
+| `docs/codebase/ARCHITECTURE.md` | System layers, data flow, key components | Writing, modifying, or reviewing code |
+| `docs/codebase/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
 
-If none of these files exist, suggest running `architecture-evaluate`.
+The `docs/codebase/` set is **open-ended** — also load any additional context files it contains (e.g. `CODING_STYLE.md`); a project's root `CLAUDE.md`/`AGENTS.md` may list project-specific ones. If none of these files exist, suggest running `architecture-evaluate`. If the codebase context files are found in `docs/` rather than `docs/codebase/`, suggest migrating them (`architecture-evaluate` handles the move).
 
 ### Legacy `.agents/` Migration
 
 If a project contains context files in `.agents/` (e.g. `PROJECT_DETAILS.md`, `ARCHITECTURE.md`, `PIPELINE.md`, `TECH_DEBTS.md`, `LESSONS.md`), **stop and ask the user**:
 
-> "Found agent context files in `.agents/`. The current convention uses `docs/`. Should I migrate them to `docs/`?"
+> "Found agent context files in `.agents/`. The current convention uses `docs/codebase/`. Should I migrate them to `docs/codebase/`?"
 
-If confirmed: move the files to `docs/`, delete `.agents/` if it becomes empty. If declined: continue using the files where they are for this session.
+If confirmed: move the files to `docs/codebase/`, delete `.agents/` if it becomes empty. If declined: continue using the files where they are for this session.
 
 ---
 
