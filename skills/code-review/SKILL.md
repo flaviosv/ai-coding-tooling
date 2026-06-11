@@ -63,174 +63,237 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 - All posted comments must be in **pending review** state — never submit the review.
 - The user reviews and submits manually on GitHub.
 
-## Step 1: Determine Review Mode
+## Step 1: Mode Detection
 
-Parse the user's request:
+Parse the user's request and resolve to exactly one mode before proceeding. Priority order matters — first match wins:
 
-- **Performance audit phrases** ("performance review", "performance audit", "optimize performance", "slow code", "performance bottleneck", "slow query") → Performance Audit mode. Skip Steps 4–7; apply performance checklist to full codebase and produce Performance Audit Report.
-- **No PR number** → local workspace mode. Proceed to Step 2.
-- **PR number provided** (e.g. "review PR #123", "code review PR 456") → GitHub PR mode.
+| Priority | Trigger | Mode |
+|----------|---------|------|
+| 1 | "performance audit", "performance review", "optimize performance", "slow code", "performance bottleneck", "slow query" | Performance Audit |
+| 2 | "review commits X Y Z", "review commits X..Y", "review last N commits", comma/space-separated hashes after "review" | Multi-commit |
+| 3 | PR number present (e.g. "review PR #42", "code review PR 456") | GitHub PR |
+| 4 | Default | Local workspace |
+
+Mode is fixed for the remainder of the pipeline.
 
 For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md).
 
-## Step 2: Load Project Context
+## Step 2: Context Collection
 
-Load these files if they exist:
+Load all of the following in one pass before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
 
-| File | Purpose |
-|------|---------|
-| `.specs/codebase/STACK.md` | Tech stack, key libraries, dependencies, environment config |
-| `.specs/codebase/ARCHITECTURE.md` | System layers, data flow, key components |
-| `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag reviewed code that replicates these |
+**Codebase docs** — load from `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
 
-`.specs/codebase/` paths fall back to `docs/codebase/<file>` (old names `PROJECT_DETAILS.md`/`ARCHITECTURE.md`), then legacy `docs/<file>`, when not yet migrated. If the old structure is found, suggest migrating to `.specs/codebase/`.
+| File | Availability key |
+|------|-----------------|
+| `STACK.md` | `stack` |
+| `ARCHITECTURE.md` | `architecture` |
+| `CONVENTIONS.md` | `conventions` |
+| `TESTING.md` | `testing` |
+| `CONCERNS.md` | `concerns` |
+| `INTEGRATIONS.md` | `integrations` |
+| `STRUCTURE.md` | `structure` |
 
-## Step 3: Load Review Checklists
+**Review checklists** — mandatory baselines always loaded; tech-specific only when stack matches:
 
-Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
+| File | Availability key |
+|------|-----------------|
+| `references/review-checklist.md` | `checklist_baseline` |
+| `references/clean-code-checklist.md` | `checklist_clean_code` |
+| `references/best-practices-code-review.md` | `checklist_best_practices` |
+| `references/performance-checklist.md` | `checklist_performance` |
+| `references/<stack>-*-code-review.md` (if match) | `checklist_tech_specific` |
+| `references/<stack>-*-performance-review.md` (if match) | `checklist_tech_perf` |
 
-**Mandatory baselines** (always load — these are generic):
+**Other:**
 
-1. `references/review-checklist.md` — generic baseline (architecture, code quality, security, performance, docs)
-2. `references/clean-code-checklist.md` — clean code principles (naming, functions, classes, control flow, side effects, abstractions)
-3. `references/best-practices-code-review.md` — software design principles (SOLID, DRY, KISS, YAGNI, SoC, and more) and cross-cutting smells
+| Item | Availability key |
+|------|-----------------|
+| `docs/TECH_DEBTS.md` | `tech_debts` |
+| Active spec or task description (`.specs/features/*/spec.md`, task body, or user-provided) | `requirements` |
 
-**Tech-specific checklists**: load ONLY matching `<language>-<framework>-code-review.md` from `references/` whose prefix matches the detected stack. If no matching file exists in `references/`, proceed with the mandatory baselines only.
+## Step 3: Context Availability Map + Bundle Assembly
 
-**Performance references**: load `references/performance-checklist.md` (generic — always) and ONLY matching `*-performance-review.md` files from `references/`. Skip non-matching.
+Build the availability map from Step 2 results:
 
-## Step 4: Collect Changed Files
-
-**Local workspace mode**:
-
-```bash
-git diff HEAD --name-only                    # modified tracked files
-git diff --cached --name-only                # staged files
-git ls-files --others --exclude-standard     # untracked new files
+```
+availability = {
+  // codebase docs
+  stack, architecture, conventions, testing,
+  concerns, integrations, structure,
+  // checklists
+  checklist_baseline, checklist_clean_code,
+  checklist_best_practices, checklist_performance,
+  checklist_tech_specific, checklist_tech_perf,
+  // other
+  tech_debts, requirements
+}
+// each field: present | absent
 ```
 
-**GitHub PR mode**: parse file paths from the diff fetched in Step 1.
+Use this map to assemble a **context bundle** for each subagent — a structured text block injected into the agent's prompt containing only the items marked `present` and relevant to that agent's dimension. Bundle definitions are in Step 6.
 
-In both modes: skip deleted files, test files, and generated code.
+If a bundle is missing a **required** item for an agent, flag that agent as `degraded`: it proceeds without that item, notes the gap in its findings, and the at-a-glance table shows `⚠️ degraded — <missing item>`.
 
-## Step 5: Review All Files
+## Step 4: Diff Collection
 
-Apply the villain stance to **every area**. A naming violation is as worth flagging as a security hole.
+Collect the diff and file list based on the mode from Step 1:
 
-### Architecture & Design
+| Mode | Commands |
+|------|----------|
+| Local workspace | `git diff HEAD`, `git diff --cached`, `git ls-files --others --exclude-standard` |
+| GitHub PR | `gh pr diff <PR#>` (prefer GitHub MCP if available) |
+| Multi-commit (hashes) | `git show <h1>; git show <h2>; ...` — concatenated in order |
+| Multi-commit (range) | `git diff <base>..<tip>` |
+| Performance Audit | No diff — full codebase scan |
 
-- Breaks layers in `ARCHITECTURE.md`? Flag it.
-- Pattern doesn't belong in this layer? Flag it.
-- Blurs responsibility boundaries? Flag it.
-- Couples things that should be independent? Flag it.
+Also collect:
+- `git diff --stat` (or equivalent) — used in the report header
+- Changed file list — used to route context slices to agents
+- **Multi-commit only:** `git log --oneline <range>` or resolved hash+subject list — used in report header
 
-### Scope & Simplicity
+In all modes: skip deleted files, test files, and generated code when building the changed file list.
 
-Every line not asked for is a violation:
+## Step 5: Quick Mode Check
 
-- Code that doesn't trace to the stated task
-- Speculative abstractions, extra configurability, unrequested refactoring
-- Adjacent code "cleaned up" outside the task
-- Dead code introduced or orphaned
-- Over-engineering: if 50 lines suffice, 200 is a defect
+**Condition:** changed file count ≤ 2 **AND** total diff lines < 100
 
-### Code Quality
+**If triggered:** skip Steps 6–8; fall back to inline review — proceed directly to [Review All Files](#step-6-review-all-files) and [Present Findings](#step-7-present-findings).
 
-Confront every deviation against all loaded references — coding style references and the clean-code checklist:
+**Multi-commit mode:** apply this check against the combined diff totals across all commits.
 
-- Wrong naming → flag with the rule it breaks
-- Unnecessary complexity or duplication → flag
-- Missing comment on non-obvious logic → flag
-- Misuse of language idiom or framework pattern → flag
-- Outdated approach when modern one applies → flag
+If the condition is not met, proceed to Step 6 (parallel subagent dispatch).
 
-### Tech Debt Recurrence
+## Step 6: Parallel Subagent Dispatch
 
-If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts. Code that introduces or replicates a listed anti-pattern → **Critical / P0** with reference to the specific debt entry.
+**All 7 agents MUST be fired in a single parallel message. Never sequentially.**
 
-### Security
+Each agent receives a prompt with four sections:
 
-1. Apply generic security baseline from `references/review-checklist.md`
-2. Apply all loaded `security-best-practices` references
-3. Scope to changed files only
-4. Every security finding is worth reporting
+```
+## Role
+<agent name and dimension>
 
-### Performance
+## Context
+<inlined content from the agent's context bundle — present items only, relevant to this dimension>
 
-1. Apply generic performance baseline from `references/performance-checklist.md`
-2. Apply all loaded `*-performance-review.md` references from local `references/`
-3. **Local workspace / GitHub PR mode**: scope to changed files only
-4. **Performance Audit mode**: scope to full codebase
-5. Flag every inefficiency: N+1 queries, unnecessary allocations, missing indexes, blocking calls
+## Diff
+<full diff from Step 4 — all agents receive the full diff; scoping is in the context, not the code>
 
-## Step 6: Present Findings
+## Return format
+Status: Complete | Blocked | Partial
+Dimension: <agent name>
+Findings: [{severity, title, file, line, explanation, recommendation}]
+Files reviewed: [list]
+Gate check: pass | fail | skipped — <detail>
+Issues: <any blockers encountered>
+```
 
-Choose the output format based on scale:
+### Agent Roster
 
-### Flat format (small reviews)
+| Agent | Dimension | Required context | Optional context | Degrades without |
+|-------|-----------|-----------------|------------------|-----------------|
+| `architecture-reviewer` | Layer violations, coupling, pattern misuse | `checklist_baseline` | `architecture`, `structure`, `stack`, `concerns` | `architecture` |
+| `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code | `checklist_clean_code`, `checklist_best_practices` | `conventions`, `stack`, `concerns`, `tech_debts`, `checklist_tech_specific` | `conventions` |
+| `security-reviewer` | Auth, injection, secrets, data exposure | `checklist_baseline` (security section) | `integrations`, `stack`, `concerns` | — |
+| `performance-reviewer` | N+1, allocations, blocking calls, missing indexes | `checklist_performance` | `stack`, `integrations`, `concerns`, `checklist_tech_perf` | — |
+| `docs-comments-reviewer` | Inline docs, API docs, obsolete/misleading comments | `checklist_baseline` (docs section) | `conventions`, `stack` | — |
+| `build-test-validator` | Run gate check commands, verify tests pass | — | `testing` | `testing` (falls back to standard commands: `npm test`, `pytest`, etc.) |
+| `requirements-tracer` | Does the change satisfy the stated spec/task | `requirements` | — | **Skip entirely** if `requirements` absent — mark as ➖ skipped |
 
-Use when findings are few and span a single area. Present a single table:
+### Reviewer Stance (injected into every agent)
+
+You are the villain. Find every flaw, violation, and risk — not encourage.
+
+- Be relentless. Code is guilty until proven innocent.
+- Every principle violated is worth flagging — no "minor" issues.
+- Flag issues even if possibly intentional — surface them regardless.
+- State problems directly: file, line number, consequence.
+- Never sign off on violations just because they are small.
+
+### Performance Audit mode exception
+
+In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents scope to changed files only. `build-test-validator` and `requirements-tracer` are skipped.
+
+### Quick mode inline fallback (from Step 5)
+
+When Quick Mode Check triggered: skip subagent dispatch. Apply the reviewer stance directly inline across all six dimensions (architecture, code quality, security, performance, docs, requirements) without spawning agents. Proceed to Step 7 (Present Findings).
+
+## Step 7: Await + Fallback
+
+Wait for all dispatched agents to return. For each agent, resolve its outcome:
+
+| Outcome | Action |
+|---------|--------|
+| Returned normally | Parse structured result |
+| Failed or timed out | Mark dimension as `⚠️ not executed — <reason>` |
+| Degraded (missing required context) | Mark dimension as `⚠️ degraded — <missing item>` |
+| `requirements-tracer` skipped (no requirements) | Mark as `➖ skipped — no requirements available` |
+
+Continue to Step 8 regardless of individual agent outcomes. A failed agent never blocks the report.
+
+## Step 8: Consolidation and Present Findings
+
+### Report header (always first)
+
+```
+# <TASK-ID or branch> — Code Review
+Scope: <files reviewed>
+Branch: <branch>
+Commits: <hash — subject>, <hash — subject>, ...   ← multi-commit mode only
+Diff: <N files changed, +X insertions, -Y deletions>
+Run: <date>
+Mode: local | GitHub PR #N | multi-commit | performance audit
+```
+
+### At-a-glance table (always second)
+
+One row per agent dimension — always present regardless of output format:
+
+| Dimension | Status | Findings | Critical | High | Summary |
+|-----------|--------|----------|----------|------|---------|
+| Architecture | ✅ / ⚠️ degraded / ⚠️ not executed | N | N | N | 1-line |
+| Code Quality | ... | N | N | N | 1-line |
+| Security | ... | N | N | N | 1-line |
+| Performance | ... | N | N | N | 1-line |
+| Docs & Comments | ... | N | N | N | 1-line |
+| Build & Tests | ✅ pass / ❌ fail / ⚠️ | — | — | gate result |
+| Requirements | ✅ / ➖ skipped | — | — | coverage summary |
+
+### Output format
+
+**Flat format** — use when findings are few and span a single dimension:
 
 | # | Severity | Priority | Title | Type | File:Line | Explanation |
 |---|----------|----------|-------|------|-----------|-------------|
 
-### Zoned format (large reviews — default when findings are many or span multiple zones)
+**Zoned format** — use when findings are many or span multiple dimensions (default for subagent reviews):
 
-Use automatically when:
-- Findings span multiple natural zones (packages / modules / layers), **or**
-- The total finding count is large enough to require multiple triage rounds, **or**
-- The user asks to output the review as a markdown file.
+Agent dimensions map directly to zones. Zone letter assignment:
 
-#### Structure
+| Zone | Letter | Agent |
+|------|--------|-------|
+| Architecture | A | `architecture-reviewer` |
+| Code Quality | Q | `code-quality-reviewer` |
+| Security | S | `security-reviewer` |
+| Performance | P | `performance-reviewer` |
+| Docs & Comments | D | `docs-comments-reviewer` |
+| Build & Tests | B | `build-test-validator` |
+| Requirements | R | `requirements-tracer` |
 
-**1. Header**
-```
-# <TASK-ID> — Code Review
-Scope: <files/directories reviewed>
-Branch: <branch>
-Run: <date>
-```
+Finding IDs: `<ZoneLetter><N>` (e.g. `A1`, `Q3`, `S2`). All findings start as `Open`.
 
-**2. Legend**
+**Legend:**
 ```
 ✓ Fixed | ✓ Resolved (no change needed) | Tracked (moved to tech-debts) | Ignored (user-confirmed) | Pending (awaits decision) | Open (not triaged)
 ```
 
-**3. At-a-glance summary table** — one row per zone:
-
-| Zone | Scope | Total | Fixed | Resolved-no-change | Tracked | Ignored | Pending | Open |
-|------|-------|------:|------:|-------------------:|--------:|--------:|--------:|-----:|
-
-**4. Per-zone section** — `## Zone N — <path scope>` with findings table:
+Per-zone section: `## Zone <Letter> — <Dimension>` with findings table:
 
 | # | Severity | Priority | Title | Type | File:Line | Status | Explanation |
 |---|----------|----------|-------|------|-----------|--------|-------------|
 
-- Finding IDs use a zone-prefix letter + number (e.g. `D1`, `H3`, `C12`, `U7`). Pick letters that match the zone (first letter of the dominant package/layer).
-- All findings start as `Open`. Status updates as the user triages.
-- Populate the `Explanation` column for every finding — what is wrong, what the consequence is, and what the fix should be.
-
-**5. Side-effect changes** — at the end of each zone, list any changes made that were not in the original finding list.
-
-**6. Open/untriaged summary** — at the very bottom, a table of findings that still have no disposition.
-
-#### Markdown file output
-
-When the user asks to save the review as a markdown file, always use the zoned format and write it
-into the **current feature's folder, co-located with the artifacts the `tlc-spec-driven` skill owns**.
-Resolve the destination in this order:
-
-1. **Active TLC feature** → `.specs/features/<TASK-ID>-<slug>/code-review.md` — the same folder that
-   holds the feature's `spec.md`/`design.md`/`tasks.md`.
-2. **Active TLC quick task** → `.specs/quick/<TASK-ID>-<slug>/code-review.md` — alongside its
-   `TASK.md`/`SUMMARY.md`.
-3. **No TLC feature folder exists** (code-review run standalone) → fall back to
-   `docs/plans/<TASK-ID>/code-review.md`.
-
-Identify the active folder from the work under review: match the changed files / TASK-ID to an
-existing directory under `.specs/features/` or `.specs/quick/`. If exactly one matches, write there;
-if none exists, use the fallback. Ask for the TASK-ID (or which feature folder) only when it cannot
-be inferred. Use `code-review_phase2.md` (then `_phase3`, …) for subsequent passes in the same folder.
+At the very bottom: open/untriaged summary table — all findings with no disposition.
 
 ---
 
@@ -238,11 +301,23 @@ be inferred. Use `code-review_phase2.md` (then `_phase3`, …) for subsequent pa
 
 **Priority:** P0 (must fix before merging), P1 (should fix soon), P2 (nice to have)
 
-**Type:** Security, Performance, Architecture, Code Quality, Documentation, Tech Debt
+**Type:** Architecture, Code Quality, Documentation, Performance, Security, Tech Debt
 
 Provide specific line numbers. Suggest concrete solutions. Keep explanations concise.
 
-## Step 7: Iterative Review
+#### Markdown file output
+
+When the user asks to save the review as a markdown file, always use the zoned format and write it
+into the **current feature's folder, co-located with the artifacts the `tlc-spec-driven` skill owns**.
+Resolve the destination in this order:
+
+1. **Active TLC feature** → `.specs/features/<TASK-ID>-<slug>/code-review.md`
+2. **Active TLC quick task** → `.specs/quick/<TASK-ID>-<slug>/code-review.md`
+3. **No TLC feature folder** → `docs/plans/<TASK-ID>/code-review.md`
+
+Match the changed files / TASK-ID to an existing directory under `.specs/features/` or `.specs/quick/`. If none exists, use the fallback. Use `code-review_phase2.md` (then `_phase3`, …) for subsequent passes.
+
+### Iterative review
 
 After fixes:
 
@@ -250,7 +325,7 @@ After fixes:
 2. Re-review only changed code
 3. Continue until all P0/P1 addressed
 
-## Step 8: Post to GitHub (GitHub PR mode only)
+## Step 9: Post to GitHub (GitHub PR mode only)
 
 Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md).
 
@@ -283,33 +358,51 @@ Recommendation: <specific fix>
 
 User: "review my code"
 
-1. No PR number → local mode
-2. Load context: `.specs/codebase/STACK.md`, `.specs/codebase/ARCHITECTURE.md`, `docs/TECH_DEBTS.md`
-3. Load baselines + tech-specific checklists
-4. `git diff HEAD --name-only` + `git diff --cached --name-only` + `git ls-files --others --exclude-standard`
-5. Review each file against all checklists
-6. Present findings table
-7. After fixes → update table, continue until P0/P1 resolved
+1. Step 1: No PR number, no commit refs → local workspace mode
+2. Step 2: Load all `.specs/codebase/` docs + all checklists + `docs/TECH_DEBTS.md`
+3. Step 3: Build availability map; assemble context bundles per agent
+4. Step 4: `git diff HEAD` + `git diff --cached` + `git ls-files --others --exclude-standard`; collect `git diff --stat`
+5. Step 5: Quick mode check — if ≤ 2 files and < 100 lines, review inline; otherwise continue
+6. Step 6: Dispatch all 7 agents in parallel, each with their context bundle + full diff
+7. Step 7: Await all results; mark any failures/degraded agents
+8. Step 8: Report header → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
 
 ### Example 2: GitHub PR review
 
 User: "review PR #42"
 
-1. PR #42 → GitHub mode
-2. Check for GitHub MCP → use it or fall back to `gh pr view 42` + `gh pr diff 42`
-3. Load context and checklists (same as local)
-4. Review PR diff only — ignore workspace
-5. Present findings table in terminal
-6. User: "post 1, 3, 5 to GitHub"
-7. Create pending review with 3 comments via MCP or `gh api`
-8. Report: "3 comments added to pending review on PR #42. Submit manually on GitHub."
+1. Step 1: PR #42 → GitHub PR mode
+2. Step 2: Load all context + checklists (same as local)
+3. Step 3: Build availability map + bundles
+4. Step 4: `gh pr diff 42` (prefer GitHub MCP); collect changed file list
+5. Step 5: Quick mode check
+6. Step 6: Dispatch 7 agents in parallel against PR diff only — ignore local workspace
+7. Step 7: Await results
+8. Step 8: Consolidated report with at-a-glance table
+9. Step 9: User selects findings to post → create pending review comments via MCP or `gh api`; user submits manually on GitHub
 
 ### Example 3: Performance audit
 
 User: "do a performance audit of the orders module"
 
-1. Trigger phrase matches → Performance Audit mode
-2. Load context: `.specs/codebase/STACK.md`, `.specs/codebase/ARCHITECTURE.md`
-3. Load `references/performance-checklist.md` + matching `*-performance-review.md` references
-4. Scan full codebase (or named module scope)
-5. Produce Performance Audit Report in the format above
+1. Step 1: Trigger phrase matches → Performance Audit mode
+2. Step 2: Load all context + checklists
+3. Step 3: Build availability map + bundles
+4. Step 4: No diff — full codebase scan
+5. Step 5: Quick mode check skipped (Performance Audit always uses subagents)
+6. Step 6: Dispatch `architecture-reviewer` and `performance-reviewer` against full codebase; all other agents scope to changed files only; `build-test-validator` and `requirements-tracer` skipped
+7. Step 7: Await results
+8. Step 8: Produce Performance Audit Report in the format above
+
+### Example 4: Multi-commit review
+
+User: "review commits abc123 def456 ghi789"
+
+1. Step 1: Commit hashes detected → multi-commit mode
+2. Step 2: Load all context + checklists
+3. Step 3: Build availability map + bundles
+4. Step 4: `git show abc123; git show def456; git show ghi789` — concatenated into one combined diff; collect commit list (hash + subject) for report header
+5. Step 5: Quick mode check applied against combined diff totals
+6. Step 6: Dispatch 7 agents in parallel against the combined diff
+7. Step 7: Await results
+8. Step 8: Single consolidated report — header lists all 3 commits; at-a-glance table + findings as normal

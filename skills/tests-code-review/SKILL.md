@@ -54,111 +54,233 @@ You are the villain. Find every gap, weakness, and lie in the test suite — not
 - All posted comments must be in **pending review** state — never submit the review.
 - The user reviews and submits manually on GitHub.
 
-## Step 1: Determine Review Mode
+## Step 1: Mode Detection
 
-Parse the user's request:
+Parse the user's request and resolve to exactly one mode before proceeding. Priority order matters — first match wins:
 
-- **No PR number** → local workspace mode. Proceed to Step 2.
-- **PR number provided** (e.g. "review tests on PR #123", "check tests PR 42") → GitHub PR mode.
+| Priority | Trigger | Mode |
+|----------|---------|------|
+| 1 | "review test commits X Y Z", "review test commits X..Y", "review last N test commits", comma/space-separated hashes after "review" | Multi-commit |
+| 2 | PR number present (e.g. "review tests on PR #42", "check tests PR 456") | GitHub PR |
+| 3 | Default | Local workspace |
+
+Mode is fixed for the remainder of the pipeline.
 
 For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md).
 
-## Step 2: Load Project Context
+## Step 2: Context Collection
 
-Load these files if they exist:
+Load all of the following in one pass before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
 
-| File | Purpose |
-|------|---------|
-| `.specs/codebase/ARCHITECTURE.md` | Understand which layers the changed tests cover |
-| `.specs/codebase/CONVENTIONS.md` | Naming conventions that apply to test code too |
-| `.specs/codebase/STACK.md` | Tech stack, key libraries, dependencies, environment config |
-| `docs/TECH_DEBTS.md` | Known tech debts and anti-patterns — flag test code that replicates these |
-| `.specs/codebase/TESTING.md` | Project-specific test conventions, frameworks, coverage matrix, gate commands |
+**Codebase docs** — load from `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
 
-`.specs/codebase/` paths fall back to `docs/codebase/<file>` (old names `PROJECT_DETAILS.md`/`CODING_STYLE.md`/`TESTS.md`), then legacy `docs/<file>`, when not yet migrated. If the old structure is found, suggest migrating to `.specs/codebase/`.
+| File | Availability key |
+|------|-----------------|
+| `STACK.md` | `stack` |
+| `ARCHITECTURE.md` | `architecture` |
+| `CONVENTIONS.md` | `conventions` |
+| `TESTING.md` | `testing` |
+| `CONCERNS.md` | `concerns` |
+| `INTEGRATIONS.md` | `integrations` |
+| `STRUCTURE.md` | `structure` |
 
-## Step 3: Load Review Checklists
+**Review checklists** — mandatory baseline always loaded; tech-specific only when stack matches:
 
-Load and apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
+| File | Availability key |
+|------|-----------------|
+| `references/test-review-checklist.md` | `checklist_baseline` |
+| `references/<stack>-*-tests-code-review.md` (if match) | `checklist_tech_specific` |
 
-**Mandatory baseline** (always load — generic):
+**Other:**
 
-1. `references/test-review-checklist.md` — generic test quality checklist (structure, coverage, isolation, determinism, maintainability, test doubles, anti-patterns)
+| Item | Availability key |
+|------|-----------------|
+| `docs/TECH_DEBTS.md` | `tech_debts` |
 
-**Tech-specific checklists**: load ONLY matching `<language>-*` and `<framework>-*` from `references/` whose prefix matches the detected stack. If the stack is Python + Django, load `python-tests-code-review.md` AND `django-tests-code-review.md`. Skip all other tech-specific files. If no matching file exists in `references/`, proceed with the mandatory baseline only.
+## Step 3: Context Availability Map + Bundle Assembly
 
-## Step 4: Collect Changed Files
+Build the availability map from Step 2 results:
 
-**Local workspace mode**:
-
-```bash
-git diff HEAD --name-only                    # modified tracked files (filter to test files)
-git diff --cached --name-only                # staged files (filter to test files)
-git ls-files --others --exclude-standard     # untracked new files (filter to test files)
+```
+availability = {
+  // codebase docs
+  stack, architecture, conventions, testing,
+  concerns, integrations, structure,
+  // checklists
+  checklist_baseline, checklist_tech_specific,
+  // other
+  tech_debts
+}
+// each field: present | absent
 ```
 
-**GitHub PR mode**: parse file paths from the diff fetched in Step 1, filter to test files.
+Use this map to assemble a **context bundle** for each subagent — a structured text block injected into the agent's prompt containing only the items marked `present` and relevant to that agent's dimension. Bundle definitions are in Step 6.
 
-In both modes: skip deleted files, non-test files, and generated test code.
+If a bundle is missing a **required** item for an agent, flag that agent as `degraded`: it proceeds without that item, notes the gap in its findings, and the at-a-glance table shows `⚠️ degraded — <missing item>`.
 
-## Step 5: Review All Test Files
+Special case: `TESTING.md` absent → `isolation-reviewer` and `performance-reviewer` run degraded; they fall back to inferring the test framework from `STACK.md` or test file patterns.
 
-Apply the villain stance to **every dimension**. A naming violation is as worth flagging as a missing assertion.
+## Step 4: Diff Collection
 
-### Clarity and Readability
+Collect the diff and test file list based on the mode from Step 1. Filter to test files in all modes:
 
-- Test names describe the scenario and expected outcome — a failing name explains itself
-- Arrange-Act-Assert structure is clearly visible
-- Each test is focused on one behaviour
-- Test code reads as documentation of how the system is meant to work
+| Mode | Commands |
+|------|----------|
+| Local workspace | `git diff HEAD`, `git diff --cached`, `git ls-files --others --exclude-standard` — filter to test files |
+| GitHub PR | `gh pr diff <PR#>` (prefer GitHub MCP if available) — filter to test files |
+| Multi-commit (hashes) | `git show <h1>; git show <h2>; ...` — concatenated in order, filter to test files |
+| Multi-commit (range) | `git diff <base>..<tip>` — filter to test files |
 
-### Coverage and Completeness
+Also collect:
+- `git diff --stat` (or equivalent, filtered to test files) — used in the report header
+- Changed test file list — used to route context slices to agents
+- **Multi-commit only:** `git log --oneline <range>` or resolved hash+subject list — used in report header
 
-- Happy path is tested
-- Error paths and failure scenarios are tested
-- Edge cases are covered (null, empty, zero, boundary values, invalid input)
-- Integration points are tested where the change touches component interactions
-- Access-controlled paths tested for both authorized and unauthorized cases
+In all modes: skip deleted files, non-test files, and generated test code.
 
-### Independence and Isolation
+## Step 5: Quick Mode Check
 
-- Tests do not share mutable state
-- Each test can run in any order and in isolation
-- External dependencies are mocked appropriately in unit tests
-- Any written state (database, filesystem) is reset between tests
-- Tests are deterministic — no random values, no time-dependent assertions
+**Condition:** changed test file count ≤ 5 **AND** total diff lines < 100
 
-### Maintainability
+**If triggered:** skip Steps 6–7; fall back to inline review — apply all 5 dimensions directly without spawning agents, then proceed to [Present Findings](#step-8-consolidation-and-present-findings).
 
-- Common setup is extracted into helpers or shared setup — not copy-pasted
-- Data-driven tests used for similar cases instead of duplicated test bodies
-- Tests are easy to update as the code evolves
-- Mocks are minimal and focused — not mocking the thing under test
+**Multi-commit mode:** apply this check against the combined diff totals across all commits.
 
-### Performance
+If the condition is not met, proceed to Step 6 (parallel subagent dispatch).
 
-- Unit tests have no I/O and run fast
-- Integration tests are clearly marked or separated
-- No unnecessary delays (`sleep`, polling, busy-wait)
+## Step 6: Parallel Subagent Dispatch
 
-### Tech Debt Recurrence
+**All 5 agents MUST be fired in a single parallel message. Never sequentially.**
+
+Each agent receives a prompt with four sections:
+
+```
+## Role
+<agent name and dimension>
+
+## Context
+<inlined content from the agent's context bundle — present items only, relevant to this dimension>
+
+## Diff
+<full test-file diff from Step 4 — all agents receive the full diff; scoping is in the context, not the code>
+
+## Return format
+Status: Complete | Blocked | Partial
+Dimension: <agent name>
+Findings: [{severity, title, file, line, explanation, recommendation}]
+Files reviewed: [list]
+Gate check: pass | fail | skipped — <detail>
+Issues: <any blockers encountered>
+```
+
+### Agent Roster
+
+| Agent | Dimension | Required context | Optional context | Degrades without |
+|-------|-----------|-----------------|------------------|-----------------|
+| `clarity-reviewer` | Test naming, AAA structure, focus, readability as docs | `checklist_baseline` (clarity section) | `conventions`, `stack` | `conventions` |
+| `coverage-reviewer` | Happy path, error paths, edge cases, integration points, access control | `checklist_baseline` (coverage section) | `architecture`, `stack`, `concerns` | — |
+| `isolation-reviewer` | Shared state, ordering, mocks, determinism, external deps | `checklist_baseline` (isolation section) | `testing`, `integrations`, `stack` | `testing` |
+| `maintainability-reviewer` | Helpers, data-driven patterns, mock minimalism, update cost | `checklist_baseline` (maintainability section) | `conventions`, `stack`, `checklist_tech_specific` | — |
+| `performance-reviewer` | I/O in unit tests, sleep/polling, suite speed, test separation | `checklist_baseline` (performance section) | `testing`, `stack` | `testing` |
+
+### Reviewer Stance (injected into every agent)
+
+You are the villain. Find every gap, weakness, and lie in the test suite — not encourage.
+
+- Be relentless. Weak tests are worse than no tests — they create false confidence.
+- Every missing case, every flawed assertion, every poorly isolated test is a finding.
+- If a test could pass even when the code is broken, that IS a broken test — flag it.
+- State problems directly: file, line number, consequence.
+- Never sign off on a test suite that would fail to catch real bugs.
+
+### Tech Debt Recurrence (injected into all agents)
 
 If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts. Test code that introduces or replicates a listed anti-pattern → **Critical / P0** with reference to the specific debt entry.
 
-## Step 6: Present Findings
+### Quick mode inline fallback (from Step 5)
+
+When Quick Mode Check triggered: skip subagent dispatch. Apply all 5 dimensions inline without spawning agents, then proceed to Step 8 (Present Findings).
+
+## Step 7: Await + Fallback
+
+Wait for all dispatched agents to return. For each agent, resolve its outcome:
+
+| Outcome | Action |
+|---------|--------|
+| Returned normally | Parse structured result |
+| Failed or timed out | Mark dimension as `⚠️ not executed — <reason>` |
+| Degraded (missing required context) | Mark dimension as `⚠️ degraded — <missing item>` |
+
+Continue to Step 8 regardless of individual agent outcomes. A failed agent never blocks the report.
+
+## Step 8: Consolidation and Present Findings
+
+### Report header (always first)
+
+```
+# <branch or TASK-ID> — Test Code Review
+Scope: <test files reviewed>
+Branch: <branch>
+Commits: <hash — subject>, <hash — subject>, ...   ← multi-commit mode only
+Diff: <N files changed, +X insertions, -Y deletions>
+Run: <date>
+Mode: local | GitHub PR #N | multi-commit
+```
+
+### At-a-glance table (always second)
+
+One row per agent dimension:
+
+| Dimension | Status | Findings | Critical | High | Summary |
+|-----------|--------|----------|----------|------|---------|
+| Clarity | ✅ / ⚠️ degraded / ⚠️ not executed | N | N | N | 1-line |
+| Coverage | ... | N | N | N | 1-line |
+| Isolation | ... | N | N | N | 1-line |
+| Maintainability | ... | N | N | N | 1-line |
+| Performance | ... | N | N | N | 1-line |
+
+### Output format
+
+**Flat format** — use when findings are few and span a single dimension:
 
 | # | Severity | Priority | Title | Type | File:Line | Explanation |
 |---|----------|----------|-------|------|-----------|-------------|
+
+**Zoned format** — use when findings are many or span multiple dimensions (default for subagent reviews):
+
+| Zone | Letter | Agent |
+|------|--------|-------|
+| Clarity | C | `clarity-reviewer` |
+| Coverage | V | `coverage-reviewer` |
+| Isolation | I | `isolation-reviewer` |
+| Maintainability | M | `maintainability-reviewer` |
+| Performance | P | `performance-reviewer` |
+
+Finding IDs: `<ZoneLetter><N>` (e.g. `C1`, `V3`, `I2`). All findings start as `Open`.
+
+**Legend:**
+```
+✓ Fixed | ✓ Resolved (no change needed) | Tracked | Ignored (user-confirmed) | Pending | Open (not triaged)
+```
+
+Per-zone section: `## Zone <Letter> — <Dimension>` with findings table:
+
+| # | Severity | Priority | Title | Type | File:Line | Status | Explanation |
+|---|----------|----------|-------|------|-----------|--------|-------------|
+
+At the very bottom: open/untriaged summary table.
+
+---
 
 **Severity:** Critical, High, Medium, Low
 
 **Priority:** P0 (must fix — broken or missing tests on critical paths), P1 (should fix — quality, missing coverage), P2 (nice to have — style, refactoring opportunities)
 
-**Type:** Coverage, Isolation, Pattern, Performance, Quality
+**Type:** Coverage, Isolation, Maintainability, Pattern, Performance, Quality
 
-Format for CLI readability. Provide specific line numbers. Suggest concrete improvements ("add a test case for null input"). Reference similar patterns from existing tests where helpful.
+Provide specific line numbers. Suggest concrete improvements ("add a test case for null input"). Reference similar patterns from existing tests where helpful.
 
-## Step 7: Iterative Review
+### Iterative review
 
 After fixes:
 
@@ -166,7 +288,7 @@ After fixes:
 2. Re-review only changed test code
 3. Continue until all P0/P1 addressed
 
-## Step 8: Post to GitHub (GitHub PR mode only)
+## Step 9: Post to GitHub (GitHub PR mode only)
 
 Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md).
 
@@ -176,26 +298,41 @@ Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode
 
 User: "review my tests"
 
-1. No PR number → local mode
-2. Load context: `.specs/codebase/STACK.md`, `.specs/codebase/TESTING.md`, `.specs/codebase/CONVENTIONS.md`, `.specs/codebase/ARCHITECTURE.md`, `docs/TECH_DEBTS.md`
-3. Load baseline + tech-specific checklists + test-writing references from `tests` skill
-4. `git diff HEAD --name-only` + `git diff --cached --name-only` + `git ls-files --others --exclude-standard` → filter to test files
-5. Review each test file against all loaded checklists
-6. Present findings table
-7. After fixes → update table, continue until P0/P1 resolved
+1. Step 1: No PR number, no commit refs → local workspace mode
+2. Step 2: Load all `.specs/codebase/` docs + baseline checklist + tech-specific checklist + `docs/TECH_DEBTS.md`
+3. Step 3: Build availability map; assemble context bundles per agent
+4. Step 4: `git diff HEAD` + `git diff --cached` + `git ls-files --others --exclude-standard` → filter to test files; collect `git diff --stat`
+5. Step 5: Quick mode check — if ≤ 5 test files and < 100 lines, review inline; otherwise continue
+6. Step 6: Dispatch all 5 agents in parallel, each with their context bundle + full test-file diff
+7. Step 7: Await all results; mark any failures/degraded agents
+8. Step 8: Report header → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
 
 ### Example 2: GitHub PR review
 
 User: "review tests on PR #42"
 
-1. PR #42 → GitHub mode
-2. Check for GitHub MCP → use it or fall back to `gh pr view 42` + `gh pr diff 42`
-3. Load context and checklists (same as local)
-4. Review test files in PR diff only — ignore workspace
-5. Present findings table in terminal
-6. User: "post 1, 3, 5 to GitHub"
-7. Create pending review with 3 comments via MCP or `gh api`
-8. Report: "3 comments added to pending review on PR #42. Submit manually on GitHub."
+1. Step 1: PR #42 → GitHub PR mode
+2. Step 2: Load all context + checklists (same as local)
+3. Step 3: Build availability map + bundles
+4. Step 4: `gh pr diff 42` (prefer GitHub MCP) → filter to test files; collect changed test file list
+5. Step 5: Quick mode check
+6. Step 6: Dispatch 5 agents in parallel against PR test-file diff only — ignore local workspace
+7. Step 7: Await results
+8. Step 8: Consolidated report with at-a-glance table
+9. Step 9: User selects findings to post → create pending review comments via MCP or `gh api`; user submits manually on GitHub
+
+### Example 3: Multi-commit review
+
+User: "review test commits abc123 def456"
+
+1. Step 1: Commit hashes with "test commits" trigger → multi-commit mode
+2. Step 2: Load all context + checklists
+3. Step 3: Build availability map + bundles
+4. Step 4: `git show abc123; git show def456` → filter to test files, concatenated; collect commit list (hash + subject) for report header
+5. Step 5: Quick mode check applied against combined diff totals
+6. Step 6: Dispatch 5 agents in parallel against combined test-file diff
+7. Step 7: Await results
+8. Step 8: Single consolidated report — header lists both commits; at-a-glance table + findings as normal
 
 ## When No Stack-Specific References Exist
 

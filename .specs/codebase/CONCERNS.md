@@ -1,45 +1,53 @@
-# Codebase Concerns
+# Concerns
 
-**Snapshot:** 2026-06-11
+**Analyzed:** 2026-06-11
+
+## Critical
+
+### No tests for the only implementation file
+
+**Evidence:** Zero test files in the repo; `bin/skills.mjs` (751 lines) is entirely untested.
+**Risk:** Regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them. Broken commands can reach `main` unnoticed.
+**Fix approach:** Add Node's built-in `node:test` runner. Cover core command functions with integration tests using temp directories (create a scratch dir, run commands, assert symlink state). No extra dependencies needed.
+
+## High
+
+### fsvskills requires npm link — not portable without cloning
+
+**Evidence:** README states "repo-local for now"; `package.json` is not published to npm.
+**Risk:** Setting up a new machine requires cloning this specific repo and running `npm link`. No standalone install path exists.
+**Fix approach:** Publish to npm (planned but deferred; see `.specs/project/PROJECT.md` scope section).
+
+### Legacy `docs/codebase/` not migrated to `.specs/codebase/`
+
+**Evidence:** `docs/codebase/PROJECT_DETAILS.md` and `docs/codebase/ARCHITECTURE.md` still exist alongside the new `.specs/codebase/` convention. Some reader files (skills, templates) still reference `docs/codebase/` paths.
+**Risk:** Agents may load stale docs from `docs/codebase/` when `.specs/codebase/` is the authoritative set. Confusion about which files are current.
+**Fix approach:** Update all reader paths to use the `.specs/codebase/ → docs/codebase/ → docs/` fallback chain, then remove `docs/codebase/` once all readers are updated.
+
+## Medium
+
+### `skills/architecture-evaluate/` de-registered but still present
+
+**Evidence:** `skills/architecture-evaluate/` exists on disk but is not in `config/skills.json` (de-registered per the SDD migration). It sits alongside active skills in `skills/`.
+**Risk:** Confusion for contributors; stale code coexists with active skills.
+**Fix approach:** Move to `archive/skills/` or delete after confirming the `tlc-spec-driven` brownfield-mapping overlay covers all three modes (Full, Incremental, Package).
+
+### No CI/CD pipeline
+
+**Evidence:** No `.github/` directory, no CI config of any kind.
+**Risk:** No automated gate on `bin/skills.mjs` changes; broken CLI commands can reach `main` undetected.
+**Fix approach:** Add a GitHub Actions workflow: `node --check bin/skills.mjs` (syntax) + a basic smoke test (`fsvskills list claude-code`).
+
+## Low
+
+### `docs/plans/` is a legacy planning convention
+
+**Evidence:** `docs/plans/SDD-MIGRATION/plan.md` exists; the current convention (`tlc-spec-driven`) uses `.specs/`.
+**Risk:** Low — the plan is complete. Minor confusion for contributors about where plans live.
+**Fix approach:** Archive or delete after the migration is closed.
 
 ## Tech Debt
 
-### TD-1 — Orphaned `skills/architecture-evaluate/` directory
-
-**Severity:** Low | **Area:** `skills/`
-
-`skills/architecture-evaluate/` exists on disk but is not registered in `config/skills.json`. It is a deregistered skill whose directory was never deleted. Agents scanning `skills/` may be confused by its presence; it bloats the repo.
-
-**Fix:** `git rm -r skills/architecture-evaluate/` and verify `fsvskills list claude-code` shows no reference to it.
-
-### TD-2 — Stale `docs/codebase/` docs
-
-**Severity:** Medium | **Area:** `docs/codebase/`
-
-`docs/codebase/ARCHITECTURE.md` and `docs/codebase/PROJECT_DETAILS.md` reference retired structures: `extended/coding-guidelines/` (deleted), the `architecture-evaluate` and `code` skills (deregistered), and old `docs/codebase/` as the canonical context path. These files now live in `.specs/codebase/` (this set).
-
-**Fix:** Delete `docs/codebase/ARCHITECTURE.md` and `docs/codebase/PROJECT_DETAILS.md` after confirming `.specs/codebase/` is complete. Update any remaining cross-references in `AGENTS.md` / `AGENTS.global.md`.
-
-### TD-3 — No automated test coverage for `bin/skills.mjs`
-
-**Severity:** Medium | **Area:** `bin/`
-
-`bin/skills.mjs` is 750 LOC of CLI logic (symlink creation, overlay detection, vendor npx calls, registry management) with zero automated tests. Regressions in install/unlink logic, collision-detection, or overlay symlinking are only caught manually.
-
-**Fix:** Add integration tests (e.g. using Node's `test` built-in or Vitest) against a tmp directory fixture that mocks the home dir and project root. Prioritize: `cmdSetup`, `cmdDestroy`, `applyOverlay`, `installSkill`.
-
-### TD-4 — `npm link` requirement prevents portable use
-
-**Severity:** Low | **Area:** distribution
-
-`fsvskills` is available only after `npm link` from the local clone. It is not published to npm. A new machine or contributor must clone the repo to a stable path before setup works.
-
-**Fix:** Defer until publishing to npm is in scope (currently out of scope per PROJECT.md). Document the `npm link` step prominently in README.
-
-### TD-5 — No atomic rollback on partial `fsvskills setup`
-
-**Severity:** Low | **Area:** `bin/skills.mjs`
-
-If `fsvskills setup` fails midway (e.g. npx install error), some symlinks may exist while others don't. `fsvskills destroy` is the manual remedy but requires awareness of the failure.
-
-**Fix:** Collect all actions before executing, or add a `--rollback` mode that undoes partial state detected by comparing expected vs actual links.
+- **No package-lock.json:** reproducibility relies on `npm link` from the working tree; no lockfile governs `npx` calls to vendor skills (version drift is possible).
+- **Synchronous npx calls:** `execFileSync` blocks for each vendor skill install; no parallel install path (acceptable at current scale of ~15 vendor skills).
+- **Full doc regeneration:** `generateDocs` always rewrites `docs/AGENT-SKILLS.md` in full; no incremental update (acceptable at current scale of 18 skills).

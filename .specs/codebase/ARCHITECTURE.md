@@ -1,85 +1,68 @@
 # Architecture
 
-**Pattern:** Configuration distribution via symlinks — no runtime server, no build step, no database.
+**Pattern:** Configuration distribution system — symlink-based, no runtime application, no build step, no server.
 
 ## Overview / Pattern
 
-`ai-coding-tooling` is a **symlink distribution system**. A single repository holds all agent instructions and skills. `fsvskills setup` links them into the expected locations for each supported AI tool (currently Claude Code only). The only executable artifact is `bin/skills.mjs` — a 750-line, dependency-free Node CLI.
+`ai-coding-tooling` is a **symlink distribution system**, not a runtime application. A single repository holds all agent instructions and skills; `fsvskills` links them into the expected locations for each supported AI tool. The only executable logic is `bin/skills.mjs`.
 
 ## Layers
 
 | Layer | Responsibility | Key Files or Dirs |
-|-------|---------------|-------------------|
-| Registry | Authoritative source of truth for which skills exist and their metadata | `config/skills.json`, `config/agents.json` |
-| CLI | All install, unlink, override, and list operations | `bin/skills.mjs` |
-| Global skills | Skills installed into `~/.claude/skills/` for use across all projects | `skills/` |
-| Project-local skills | Skills exposed only within this repo via `.claude → .agents` symlink | `.agents/skills/` |
-| Vendor overlays | Project-specific augmentations to globally-installed vendor skills | `extended/` |
-| Agent instructions | Markdown files that govern agent behavior globally or per-project | `AGENTS.global.md`, `AGENTS.md` |
+| ----- | -------------- | ----------------- |
+| Agent config | Global + project-level agent instructions | `AGENTS.global.md`, `AGENTS.md` |
+| CLI | Parse commands, orchestrate all operations | `bin/skills.mjs` |
+| Overrides | Additive extensions to vendor skills | `extended/<skill>/SKILL.md`, `extended/<skill>/references/` |
+| Registry | Authoritative skill + agent configuration | `config/skills.json`, `config/agents.json` |
+| Skills (local) | Skill definitions owned by this repo | `skills/`, `.agents/skills/` |
+| Skills (vendor) | Third-party skills, read-only | `~/.claude/skills/<name>/` (installed via npx) |
+| Templates | Reusable authoring patterns for skills | `templates/` |
 
 ## Distribution Model
 
 ```
-Repository (source of truth)
-  ├── Global (via fsvskills setup)
-  │     ├── AGENTS.global.md ────────────► ~/.claude/CLAUDE.md (copy)
-  │     ├── skills/<name>/ ─────────────► ~/.claude/skills/<name>/ (symlink)
-  │     └── extended/<skill>/
-  │           ├── SKILL.md ────────────► ~/.claude/skills/<skill>/SKILL.extended.md (symlink)
-  │           └── references/ ─────────► ~/.claude/skills/<skill>/references.extended/ (symlink)
-  └── Project-local (this repo)
-        ├── .agents/ ◄─── .claude (symlink)
-        └── AGENTS.md ◄── CLAUDE.md (symlink)
+Repository (single source of truth)
+  ├── Global (~/.claude/, via fsvskills setup)
+  │     ├── AGENTS.global.md  ──────────► ~/.claude/CLAUDE.md              (symlink)
+  │     ├── skills/<name>/  ────────────► ~/.claude/skills/<name>/          (symlink)
+  │     ├── extended/<skill>/SKILL.md ──► ~/.claude/skills/<skill>/SKILL.extended.md
+  │     └── extended/<skill>/references/ ► ~/.claude/skills/<skill>/references.extended/
+  └── Project-local (this repo, via fsvskills setup)
+        ├── .agents/  ◄──────────────── .claude  (symlink)
+        └── AGENTS.md  ◄─────────────── CLAUDE.md (symlink)
 ```
 
 ## Dependency Rules
 
-- `bin/skills.mjs` imports only Node built-ins (`fs`, `path`, `os`, `child_process`, `url`)
-- No file in `skills/`, `extended/`, or `templates/` imports another file — each is a standalone document loaded by the agent at runtime
-- Vendor skill calls go through `execFileSync` with explicit arg arrays — never shell strings
+- `bin/skills.mjs` reads `config/` and `extended/`; it never reads skill content beyond YAML frontmatter (description extraction).
+- `skills/` and `.agents/skills/` contain agent-facing `.md` content only — no imports, no JavaScript.
+- `templates/` files are referenced by skills and the CLI scaffold logic; never auto-loaded by agents.
+- `extended/<skill>/` files must augment, never replace, the parent skill.
 
 ## Communication Patterns
 
-CLI → filesystem only. No HTTP, no sockets, no queues. Vendor skill installs delegate to `npx` via `execFileSync`.
-
-## Data Model
-
-| File | Role | Schema |
-|------|------|--------|
-| `config/skills.json` | Skill registry | `{ skills: [{ name, source, scope, description, extended?, installScope? }] }` |
-| `config/agents.json` | Agent config | `{ "<agent-id>": { configPath, skillsDir, npxId, projectDir, projectConfig, native[] } }` |
-
-`config/skills.json` is the authoritative source — `fsvskills list` reads it, not the filesystem.
+- Local: filesystem operations (symlinks, copies) via Node.js built-ins.
+- Vendor skills: subprocess calls via `execFileSync('npx', args)` — never shell strings (injection-safe).
+- No IPC, no network calls, no queues, no HTTP.
 
 ## State Management
 
-Stateless at runtime. The only persistent state is the filesystem: symlinks created by `fsvskills setup` and the JSON config files. No cache, no lock file owned by fsvskills (TLC installer artifacts `.skill-lock.json` are gitignored and not managed by this project).
+Stateless. All persistent state lives in `config/skills.json` and `config/agents.json`. No sessions, no cache, no database.
 
 ## Error Handling Strategy
 
-`UserError` (extends `Error`) for expected user-facing failures. `main()` catches `UserError` and prints a clean message with `process.exit(1)`. Unexpected errors propagate as uncaught exceptions (Node default output).
+- `UserError` (custom `Error` subclass) for expected user mistakes: caught at the CLI entry point (`main()`), printed with `fail()`, exits with code 1.
+- Unexpected errors are re-thrown (not caught), producing a stack trace.
+- `runNpx` catches subprocess failures, calls `fail()`, and returns `false` — caller decides whether to abort or continue.
 
-## Skill Sources
+## Observability
 
-| Source | Install location | Install method |
-|--------|----------------|----------------|
-| `local` (global) | `~/.claude/skills/<name>/` (symlink to `skills/<name>/`) | `fsvskills setup` / `fsvskills add` |
-| `local` (project-only) | `.agents/skills/<name>/` (exposed via `.claude → .agents`) | No install step needed |
-| `tech-leads-club` | `~/.claude/skills/<name>/` | `npx @tech-leads-club/agent-skills install` |
-| `matt-pocock` | `~/.claude/skills/<name>/` | `npx skills@latest add mattpocock/skills` |
-| `native` | Built into the agent | Not installed |
-
-## Extended Skills (Overlay System)
-
-`extended/<skill>/` adds to a vendor skill without forking it:
-
-- `SKILL.md` → symlinked as `~/.claude/skills/<skill>/SKILL.extended.md`
-- `references/` → symlinked as `~/.claude/skills/<skill>/references.extended/` (collision-aware: only used if vendor already shipped a `references/` dir)
-
-Agents load the base `SKILL.md` then check for and load `SKILL.extended.md` immediately after.
+No structured logging, no tracing, no metrics. Output is ANSI-colored terminal text via helper functions (`ok`, `info`, `warn`, `fail`, `skip`). Dry-run mode logs intent without executing.
 
 ## Notable Patterns
 
-- **Collision-aware symlinking:** `linkSafe` never overwrites an existing target; `relinkOverlay` updates only if the target is already a symlink
-- **Arg-array vendor calls:** `runNpx(args, label)` passes commands as `string[]` to `execFileSync`, preventing command injection
-- **Registry-first:** skill presence is determined by `config/skills.json`, not filesystem detection
+- **Registry-driven CLI:** every command reads `skills.json` + `agents.json` as the sole source of truth — no filesystem scanning to determine install state.
+- **Command-pattern CLI:** each sub-command maps to a named function (`cmdSetup`, `cmdAdd`, `cmdDelete`, etc.); no class-based dispatch.
+- **Dry-run support:** global `DRY` flag checked before every filesystem operation; any command can be safely previewed.
+- **Safe symlink operations:** `linkSafe` never clobbers existing files; `relinkOverlay` only re-links if the target is already a symlink.
+- **Overlay naming:** `extended/<skill>/references/` installs as `references/` (if parent has none) or `references.extended/` (collision-aware).

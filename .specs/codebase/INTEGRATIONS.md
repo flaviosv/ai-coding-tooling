@@ -1,31 +1,41 @@
 # External Integrations
 
-## Vendor Skill Providers
+**Analyzed:** 2026-06-11
 
-### Tech Leads Club
-
-- **Package:** `@tech-leads-club/agent-skills`
-- **Purpose:** Installs curated AI coding skills (tlc-spec-driven, docs-writer, codenavi, mermaid-studio, etc.)
-- **Protocol:** `npx` → `execFileSync(['npx', '@tech-leads-club/agent-skills', 'install', skill, npxId])`
-- **Install location:** `~/.claude/skills/<name>/`
-- **Auth:** None — public npm package
+## Skill Package Registries
 
 ### Matt Pocock
 
-- **Package:** `skills@latest`
-- **Purpose:** Installs Matt Pocock's AI coding skills
-- **Protocol:** `npx` → `execFileSync(['npx', 'skills@latest', 'add', 'mattpocock/skills'])`
-- **Install location:** `~/.claude/skills/<name>/`
-- **Auth:** None — public npm package
+**Type:** Third-party skill registry
+**Purpose:** Source of vendor skills (`deep-research`, `keybindings-help`, and others).
+**Protocol:** npx
+**Install:** `npx skills@latest add mattpocock/skills --agent claude-code --skill <name> --yes [--global]`
+**Update:** `npx skills update <name> --yes [-g]`
+**Auth:** none (public npm package)
+**Data flow:** outbound only (install/update)
+**Location:** `bin/skills.mjs` → `installSkill` / `updateSkill` functions
+
+### Tech Leads Club
+
+**Type:** Third-party skill registry
+**Purpose:** Source of vendor skills (`codenavi`, `docs-writer`, `tlc-spec-driven`, and others).
+**Protocol:** npx
+**Install:** `npx @tech-leads-club/agent-skills install --skill <name> --agent claude-code [--global]`
+**Update:** same npx call (idempotent reinstall)
+**Auth:** none (public npm package)
+**Data flow:** outbound only (install/update)
+**Location:** `bin/skills.mjs` → `installSkill` / `updateSkill` functions
+
+## npm
+
+**Purpose:** `npm link` exposes the `fsvskills` binary globally from the cloned repo.
+**Protocol:** local npm link (not published to the npm registry)
+**Auth:** none
 
 ## Background Jobs
 
-None. No scheduled tasks, no queues, no daemons.
+None. No scheduled tasks, crons, or queues.
 
 ## Webhooks
 
 None.
-
-## APIs
-
-None consumed at runtime. All vendor skill installation is CLI-driven and user-initiated.

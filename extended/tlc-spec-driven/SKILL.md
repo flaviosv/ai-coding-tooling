@@ -8,9 +8,10 @@ description: >
   overlays load, (2) adds PIPELINE.md as an 8th codebase doc, (3) routes decisions to
   STATE.md, (4) notes how CONCERNS.md coexists with the project tech-debt ledger,
   (5) prioritizes planning before implementation for non-trivial work, (6) names
-  feature/quick artifacts `<TASK-ID>-<slug>`, and (7) augments coding-principles with
+  feature/quick artifacts `<TASK-ID>-<slug>`, (7) augments coding-principles with
   software-design/observability/stack-style references and routes security to the
-  security-best-practices skill and UI work to web-design-guidelines.
+  security-best-practices skill and UI work to web-design-guidelines, and (8) delegates
+  test-writing to the `tests` skill when installed.
 metadata:
   version: "1.0.0"
   parent_skill: tlc-spec-driven
@@ -105,6 +106,12 @@ during analysis. It is **separate** from `docs/TECH_DEBTS.md`, the permanent num
 `TD-XX` ledger owned by the `tech-debt-report` skill (out of scope here). Do not duplicate:
 CONCERNS.md is the onboarding/risk view; TECH_DEBTS.md is the durable tracked register.
 When a concern is already a tracked `TD-XX`, reference it rather than restating it.
+
+## Skill Integrations — tests
+
+### Test Writing → tests
+
+Whenever task execution requires writing new tests (unit, integration, or otherwise), **always** check if the `tests` skill is installed in the user's environment before proceeding. If it is installed, delegate all test-writing to it — it provides TDD methodology, red-green-refactor guidance, and convention-aware test authoring. If it is not installed, fall back to writing tests inline using the patterns in `.specs/codebase/TESTING.md` and recommend the user install `tests` for richer test-writing support. Display this recommendation at most once per session.
 
 ## Technical Design Docs → `technical-design-doc-creator`
 

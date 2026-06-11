@@ -2,49 +2,47 @@
 
 ## Naming Conventions
 
-**Files:**
-- CLI script: `skills.mjs` (single file, `.mjs` for ESM)
-- Config: lowercase with hyphens (`agents.json`, `skills.json`)
-- Skill directories: kebab-case (`code-review`, `tech-debt-report`, `tlc-spec-driven`)
-- Doc files: `UPPER_SNAKE_CASE.md` (`SKILL.md`, `AGENTS.md`, `ARCHITECTURE.md`)
-- Tech-specific reference files: `<technology>-<skill-name>.md` (`php-code-review.md`, `go-tests.md`)
-
-**Functions/Methods:**
-- camelCase: `expandHome`, `loadJson`, `validateSkillName`, `cmdSetup`, `installSkill`
-- Command handlers prefixed with `cmd`: `cmdSetup`, `cmdAdd`, `cmdDelete`, `cmdList`, `cmdOverride`
-
-**Variables:**
-- camelCase: `agentId`, `skillName`, `skillsDir`
-
-**Constants:**
-- UPPER_SNAKE_CASE: `ROOT`, `SCRIPT_DIR`, `SKILL_NAME_RE`, `DRY`, `AGENTS_DIR`, `MD_SOURCE`
-- Color codes grouped in single `c` object: `c.red`, `c.green`, `c.bold`, etc.
+| Element | Pattern | Examples |
+| ------- | ------- | -------- |
+| Branch names | kebab-case with context prefix | `sdd-migration-tlc-spec-driven` |
+| CLI flags | kebab-case | `--dry-run`, `--all`, `--force` |
+| Constants | UPPER_SNAKE_CASE | `SCRIPT_DIR`, `ROOT`, `SKILL_NAME_RE`, `DOC_MARKER` |
+| Files (JS) | kebab-case | `skills.mjs` |
+| Files (config) | kebab-case | `agents.json`, `skills.json` |
+| Functions | camelCase | `cmdSetup`, `installSkill`, `readSkillDescription` |
+| Skills (dirs) | kebab-case | `code-review`, `tech-debt-report`, `tlc-spec-driven` |
+| Variables | camelCase | `agentId`, `skillsDir`, `dryRun` |
 
 ## Code Organization
 
-**Section headers in `bin/skills.mjs`:**
-```js
-// ---------------------------------------------------------------------------
-// Section Name
-// ---------------------------------------------------------------------------
-```
-Groups: Paths & config → Utilities → Filesystem actions → Overlay → Install/uninstall → Commands → Docs generation → Main
+**Function declarations over arrow functions** for all named top-level functions:
 
-**Import order:** Node built-ins only, alphabetical by module name.
+```js
+function cmdSetup(agentId) { ... }      // preferred
+const cmdSetup = (agentId) => { ... }   // not used
+```
+
+**Import ordering:** Node built-ins first, grouped, no blank lines between them:
+
+```js
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+```
+
+**File structure within `bin/skills.mjs`:** constants → utility/logging helpers → filesystem helpers → command functions → doc generation → CLI entry point.
 
 ## Error Handling
 
-- User-facing errors: `throw new UserError(message)` — caught in `main()`, printed cleanly, exits 1
-- Unexpected errors: propagate as uncaught exceptions
-- Vendor calls: always use `execFileSync` with an explicit `string[]` arg array — never template strings or shell expansion
+Throw `UserError` for expected user mistakes; let unexpected errors propagate naturally (no swallowing). `runNpx` returns a boolean on subprocess failure — callers check the return value rather than catching exceptions.
 
 ## Documentation Pattern
 
-- `config/agents.json` and `config/skills.json` are the authoritative registries — `docs/AGENT-SKILLS.md` is auto-regenerated from them
-- Agent-facing `.md` files follow token-efficiency rules: tables over prose, bullets over tables, omit sections with no evidence
-- Markdown tables sorted alphabetically by the primary column
-- SKILL.md files: YAML frontmatter followed by body sections; no horizontal rules inside the body
-
-## Markdown Table Sorting
-
-All tables and bullet lists that enumerate items must be sorted alphabetically by the primary column or item name.
+- `.md` files are the primary deliverable — clarity and correctness matter over code heuristics.
+- `bin/skills.mjs` uses sparse inline comments at section boundaries only; no multi-line docstrings.
+- `SKILL.md` files use YAML frontmatter (`name`, `description`, `version`, `triggers`).
+- `extended/<skill>/SKILL.md` uses frontmatter from `templates/extension-frontmatter.md` (`name`, `extends`, `description`, `metadata.version`, `metadata.parent_skill`, `metadata.source`).
+- Reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.
+- `docs/AGENT-SKILLS.md` is auto-generated below its marker; hand-written content above the marker is preserved on every regeneration.
