@@ -38,6 +38,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 - Flag issues even if possibly intentional — surface them regardless.
 - State problems directly: file, line number, consequence.
 - Never sign off on violations just because they are small.
+- Only report a finding when confidence is ≥ 80%. If uncertain whether a pattern is a violation, skip it — do not guess.
 
 ## Guardrails
 
@@ -166,7 +167,7 @@ If the condition is not met, proceed to Step 6 (parallel subagent dispatch).
 
 ## Step 6: Parallel Subagent Dispatch
 
-**All 7 agents MUST be fired in a single parallel message. Never sequentially.**
+**All 8 agents MUST be fired in a single parallel message. Never sequentially.**
 
 Each agent receives a prompt with four sections:
 
@@ -187,6 +188,12 @@ Findings: [{severity, title, file, line, explanation, recommendation}]
 Files reviewed: [list]
 Gate check: pass | fail | skipped — <detail>
 Issues: <any blockers encountered>
+
+## Second Pass
+After your initial findings pass, re-read the full diff from top to bottom.
+For every file or hunk you did not comment on, explicitly state either
+"clean — no violations in my dimension" or flag it. Only skip a file
+when you can state concretely why it is clean for your dimension.
 ```
 
 ### Agent Roster
@@ -199,6 +206,7 @@ Issues: <any blockers encountered>
 | `performance-reviewer` | N+1, allocations, blocking calls, missing indexes | `checklist_performance` | `stack`, `integrations`, `concerns`, `checklist_tech_perf` | — |
 | `docs-comments-reviewer` | Inline docs, API docs, obsolete/misleading comments | `checklist_baseline` (docs section) | `conventions`, `stack` | — |
 | `build-test-validator` | Run gate check commands, verify tests pass | — | `testing` | `testing` (falls back to standard commands: `npm test`, `pytest`, etc.) |
+| `regression-reviewer` | Unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions | `checklist_baseline` | `stack`, `concerns` | — |
 | `requirements-tracer` | Does the change satisfy the stated spec/task | `requirements` | — | **Skip entirely** if `requirements` absent — mark as ➖ skipped |
 
 ### Reviewer Stance (injected into every agent)
@@ -210,10 +218,25 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 - Flag issues even if possibly intentional — surface them regardless.
 - State problems directly: file, line number, consequence.
 - Never sign off on violations just because they are small.
+- Only report a finding when confidence is ≥ 80%. If uncertain whether a pattern is a violation, skip it — do not guess.
 
 ### Performance Audit mode exception
 
 In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents scope to changed files only. `build-test-validator` and `requirements-tracer` are skipped.
+
+### Agent: regression-reviewer
+
+**Dimension:** Regression & Hallucination Detection
+
+Review the diff for changes unrelated to the PR's stated purpose or showing signs of AI-generated artifacts:
+
+- **Phantom imports** — references to symbols that do not exist in the codebase (🚨 Critical).
+- **Unrelated deletions** — code removed with no connection to the stated change (🚨 Critical).
+- **Duplicate logic** — functionality already present in the module, re-implemented.
+- **Weakened assertions** — error handling, validation rules, or test assertions made less strict.
+- **Dead code** — functions or branches introduced but never called.
+- **`TODO`/`FIXME` in production** — leftover markers not resolved before merge.
+- **Type assertions hiding errors** — `as any` or forced casts masking real type errors.
 
 ### Quick mode inline fallback (from Step 5)
 
@@ -257,6 +280,7 @@ One row per agent dimension — always present regardless of output format:
 | Security | ... | N | N | N | 1-line |
 | Performance | ... | N | N | N | 1-line |
 | Docs & Comments | ... | N | N | N | 1-line |
+| Regression & Hallucination | ✅ / ⚠️ degraded / ⚠️ not executed | N | N | N | 1-line |
 | Build & Tests | ✅ pass / ❌ fail / ⚠️ | — | — | gate result |
 | Requirements | ✅ / ➖ skipped | — | — | coverage summary |
 
@@ -275,11 +299,12 @@ Agent dimensions map directly to zones. Zone letter assignment:
 |------|--------|-------|
 | Architecture | A | `architecture-reviewer` |
 | Code Quality | Q | `code-quality-reviewer` |
-| Security | S | `security-reviewer` |
-| Performance | P | `performance-reviewer` |
 | Docs & Comments | D | `docs-comments-reviewer` |
-| Build & Tests | B | `build-test-validator` |
+| Performance | P | `performance-reviewer` |
+| Regression & Hallucination | H | `regression-reviewer` |
 | Requirements | R | `requirements-tracer` |
+| Security | S | `security-reviewer` |
+| Build & Tests | B | `build-test-validator` |
 
 Finding IDs: `<ZoneLetter><N>` (e.g. `A1`, `Q3`, `S2`). All findings start as `Open`.
 
@@ -363,7 +388,7 @@ User: "review my code"
 3. Step 3: Build availability map; assemble context bundles per agent
 4. Step 4: `git diff HEAD` + `git diff --cached` + `git ls-files --others --exclude-standard`; collect `git diff --stat`
 5. Step 5: Quick mode check — if ≤ 2 files and < 100 lines, review inline; otherwise continue
-6. Step 6: Dispatch all 7 agents in parallel, each with their context bundle + full diff
+6. Step 6: Dispatch all 8 agents in parallel, each with their context bundle + full diff
 7. Step 7: Await all results; mark any failures/degraded agents
 8. Step 8: Report header → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
 
@@ -376,7 +401,7 @@ User: "review PR #42"
 3. Step 3: Build availability map + bundles
 4. Step 4: `gh pr diff 42` (prefer GitHub MCP); collect changed file list
 5. Step 5: Quick mode check
-6. Step 6: Dispatch 7 agents in parallel against PR diff only — ignore local workspace
+6. Step 6: Dispatch 8 agents in parallel against PR diff only — ignore local workspace
 7. Step 7: Await results
 8. Step 8: Consolidated report with at-a-glance table
 9. Step 9: User selects findings to post → create pending review comments via MCP or `gh api`; user submits manually on GitHub
@@ -403,6 +428,6 @@ User: "review commits abc123 def456 ghi789"
 3. Step 3: Build availability map + bundles
 4. Step 4: `git show abc123; git show def456; git show ghi789` — concatenated into one combined diff; collect commit list (hash + subject) for report header
 5. Step 5: Quick mode check applied against combined diff totals
-6. Step 6: Dispatch 7 agents in parallel against the combined diff
+6. Step 6: Dispatch 8 agents in parallel against the combined diff
 7. Step 7: Await results
 8. Step 8: Single consolidated report — header lists all 3 commits; at-a-glance table + findings as normal
