@@ -119,6 +119,10 @@ Hard rules:
      TIER 4 · WORKFLOW — apply when executing tasks
      ═══════════════════════════════════════════════════════════════ -->
 
+## Git Commit Messages
+
+- **No co-authoring credits** — never append `Co-Authored-By:`, `Generated with`, or any tool attribution trailer to commit messages. This applies to Claude Code, any other AI tool, or any automated system.
+
 ## Verification Before Done
 
 - Never mark a task complete without proving it works
