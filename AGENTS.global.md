@@ -28,6 +28,10 @@ Only return a solution, suggestion, answer, tech approach, or plan if you have â
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 
+## Coding Style
+
+- **No explanatory comments**: Do not add comments to explain what code does. Only add a comment when the code is genuinely complex (non-obvious algorithm, subtle invariant, external constraint) or the user explicitly asks for it.
+
 ## Markdown Formatting
 
 - **Alphabetical ordering**: All markdown tables and bullet lists that enumerate items (skills, dependencies, components, files, etc.) must be sorted alphabetically by the primary column or item name. Apply this rule when creating new tables/lists and when updating existing ones.
