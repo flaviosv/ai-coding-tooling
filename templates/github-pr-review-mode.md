@@ -27,7 +27,9 @@ Wait for user to specify which findings to post:
 
 **GitHub MCP is mandatory.** Do NOT use the `gh` CLI — not even as a fallback.
 
-Use the GitHub MCP tool for creating pull request reviews. Pass selected comments as inline review comments with `PENDING` event.
+**NEVER create GitHub Issues.** All findings must be posted as inline PR review comments — never as standalone issues. This is a hard requirement with no exceptions.
+
+Use the GitHub MCP tool for creating pull request reviews. Pass selected comments as inline review comments with `PENDING` event. Each comment must be anchored to the **exact line number** identified in the finding — never posted as a top-level PR comment or at the top of the file.
 
 If the GitHub MCP is unavailable, stop and inform the user — do not attempt any `gh` workaround.
 

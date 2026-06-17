@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   triggers:
     - "review tests"
     - "test code review"
@@ -51,6 +51,8 @@ You are the villain. Find every gap, weakness, and lie in the test suite — not
 
 - **Never post comments to GitHub automatically.** Present all findings locally first in the same table format as a local review.
 - Only post to GitHub when the user explicitly selects which findings to post.
+- **NEVER create GitHub Issues** — all GitHub output goes to the PR as inline review comments only. Creating issues is strictly forbidden, no exceptions.
+- Each comment must be anchored to the **exact line number** identified in the finding — never posted as a top-level PR comment or at the top of the file.
 - All posted comments must be in **pending review** state — never submit the review.
 - The user reviews and submits manually on GitHub.
 
@@ -70,7 +72,7 @@ For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templat
 
 ## Step 2: Context Collection
 
-Load all of the following in one pass before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
+Load the following if they exist, before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
 
 **Codebase docs** — load from `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
 
@@ -136,13 +138,16 @@ Also collect:
 - Changed test file list — used to route context slices to agents
 - **Multi-commit only:** `git log --oneline <range>` or resolved hash+subject list — used in report header
 
-In all modes: skip deleted files, non-test files, and generated test code.
+In all modes (primary test diff): skip deleted files, non-test files, and generated test code.
+
+**Implementation diff** (`impl_diff`) — collected separately for `gap-detector` only:
+Using the same mode-appropriate commands, filter to non-test, non-deleted, non-generated implementation files changed in this diff. If `impl_diff` is empty (no implementation files changed), `gap-detector` is skipped entirely.
 
 ## Step 5: Quick Mode Check
 
-**Condition:** changed test file count ≤ 5 **AND** total diff lines < 100
+**Condition:** changed test file count ≤ 5 **OR** total diff lines < 200
 
-**If triggered:** skip Steps 6–7; fall back to inline review — apply all 5 dimensions directly without spawning agents, then proceed to [Present Findings](#step-8-consolidation-and-present-findings).
+**If triggered:** skip Steps 6–7; fall back to inline review — apply all 6 dimensions directly without spawning agents (skip coverage gaps dimension if `impl_diff` is empty), then proceed to [Present Findings](#step-8-consolidation-and-present-findings).
 
 **Multi-commit mode:** apply this check against the combined diff totals across all commits.
 
@@ -169,7 +174,6 @@ Status: Complete | Blocked | Partial
 Dimension: <agent name>
 Findings: [{severity, title, file, line, explanation, recommendation}]
 Files reviewed: [list]
-Gate check: pass | fail | skipped — <detail>
 Issues: <any blockers encountered>
 ```
 
@@ -179,6 +183,7 @@ Issues: <any blockers encountered>
 |-------|-----------|-----------------|------------------|-----------------|
 | `clarity-reviewer` | Test naming, AAA structure, focus, readability as docs | `checklist_baseline` (clarity section) | `conventions`, `stack` | `conventions` |
 | `coverage-reviewer` | Happy path, error paths, edge cases, integration points, access control | `checklist_baseline` (coverage section) | `architecture`, `stack`, `concerns` | — |
+| `gap-detector` | Implementation paths and behaviors missing test coverage (receives `impl_diff` + test diff; skipped if `impl_diff` is empty) | `checklist_baseline` (coverage section) | `architecture`, `stack`, `concerns` | — |
 | `isolation-reviewer` | Shared state, ordering, mocks, determinism, external deps | `checklist_baseline` (isolation section) | `testing`, `integrations`, `stack` | `testing` |
 | `maintainability-reviewer` | Helpers, data-driven patterns, mock minimalism, update cost | `checklist_baseline` (maintainability section) | `conventions`, `stack`, `checklist_tech_specific` | — |
 | `performance-reviewer` | I/O in unit tests, sleep/polling, suite speed, test separation | `checklist_baseline` (performance section) | `testing`, `stack` | `testing` |
@@ -197,9 +202,25 @@ You are the villain. Find every gap, weakness, and lie in the test suite — not
 
 If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts. Test code that introduces or replicates a listed anti-pattern → **Critical / P0** with reference to the specific debt entry.
 
+### Agent: gap-detector
+
+**Dimension:** Coverage Gaps
+
+Cross-references `impl_diff` (implementation changes) against the test diff to identify important code paths and behaviors with no corresponding test. Skipped entirely if `impl_diff` is empty.
+
+Flag as findings:
+- **Public/exported functions or methods** added or modified with no corresponding new or updated test.
+- **Business logic branches** (`if`/`else`, `switch`, `try/catch`, guard clauses) with no test exercising those paths.
+- **Error conditions** — exceptions thrown, error codes returned, validation failures — with no test verifying the error path.
+- **Integration points** — new external calls, DB queries, event emissions — with no test covering the interaction.
+- **Access control / permission checks** added with no test verifying enforcement.
+- **Edge cases implied by the implementation** (null/empty/zero/boundary values handled explicitly in code) with no corresponding test case.
+
+This agent does NOT judge the quality of existing tests — it only identifies what is absent.
+
 ### Quick mode inline fallback (from Step 5)
 
-When Quick Mode Check triggered: skip subagent dispatch. Apply all 5 dimensions inline without spawning agents, then proceed to Step 8 (Present Findings).
+When Quick Mode Check triggered: skip subagent dispatch. Apply all 6 dimensions inline without spawning agents (skip coverage gaps dimension if `impl_diff` is empty), then proceed to Step 8 (Present Findings).
 
 ## Step 7: Await + Fallback
 
@@ -210,6 +231,7 @@ Wait for all dispatched agents to return. For each agent, resolve its outcome:
 | Returned normally | Parse structured result |
 | Failed or timed out | Mark dimension as `⚠️ not executed — <reason>` |
 | Degraded (missing required context) | Mark dimension as `⚠️ degraded — <missing item>` |
+| `gap-detector` skipped (`impl_diff` empty) | Mark dimension as `⚠️ skipped — no implementation changes` |
 
 Continue to Step 8 regardless of individual agent outcomes. A failed agent never blocks the report.
 
@@ -235,6 +257,7 @@ One row per agent dimension:
 |-----------|--------|----------|----------|------|---------|
 | Clarity | ✅ / ⚠️ degraded / ⚠️ not executed | N | N | N | 1-line |
 | Coverage | ... | N | N | N | 1-line |
+| Coverage Gaps | ✅ / ⚠️ skipped — no impl changes / ⚠️ not executed | N | N | N | 1-line |
 | Isolation | ... | N | N | N | 1-line |
 | Maintainability | ... | N | N | N | 1-line |
 | Performance | ... | N | N | N | 1-line |
@@ -252,6 +275,7 @@ One row per agent dimension:
 |------|--------|-------|
 | Clarity | C | `clarity-reviewer` |
 | Coverage | V | `coverage-reviewer` |
+| Coverage Gaps | G | `gap-detector` |
 | Isolation | I | `isolation-reviewer` |
 | Maintainability | M | `maintainability-reviewer` |
 | Performance | P | `performance-reviewer` |
@@ -302,8 +326,8 @@ User: "review my tests"
 2. Step 2: Load all `.specs/codebase/` docs + baseline checklist + tech-specific checklist + `docs/TECH_DEBTS.md`
 3. Step 3: Build availability map; assemble context bundles per agent
 4. Step 4: `git diff HEAD` + `git diff --cached` + `git ls-files --others --exclude-standard` → filter to test files; collect `git diff --stat`
-5. Step 5: Quick mode check — if ≤ 5 test files and < 100 lines, review inline; otherwise continue
-6. Step 6: Dispatch all 5 agents in parallel, each with their context bundle + full test-file diff
+5. Step 5: Quick mode check — if ≤ 5 test files or < 200 lines, review inline; otherwise continue
+6. Step 6: Dispatch up to 6 agents in parallel — all 5 test-quality agents + `gap-detector` (if `impl_diff` non-empty), each with their context bundle + relevant diffs
 7. Step 7: Await all results; mark any failures/degraded agents
 8. Step 8: Report header → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
 
@@ -316,7 +340,7 @@ User: "review tests on PR #42"
 3. Step 3: Build availability map + bundles
 4. Step 4: fetch diff via GitHub MCP → filter to test files; collect changed test file list
 5. Step 5: Quick mode check
-6. Step 6: Dispatch 5 agents in parallel against PR test-file diff only — ignore local workspace
+6. Step 6: Dispatch up to 6 agents in parallel against PR diffs — `gap-detector` receives both `impl_diff` and test diff; all others receive test diff only
 7. Step 7: Await results
 8. Step 8: Consolidated report with at-a-glance table
 9. Step 9: User selects findings to post → create pending review comments via GitHub MCP; user submits manually on GitHub

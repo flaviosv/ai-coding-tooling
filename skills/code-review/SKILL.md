@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.2.0"
+  version: "2.3.0"
   triggers:
     - "check my code"
     - "code review"
@@ -61,6 +61,8 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 - **Never post comments to GitHub automatically.** Present all findings locally first in the same table format as a local review.
 - Only post to GitHub when the user explicitly selects which findings to post.
+- **NEVER create GitHub Issues** — all GitHub output goes to the PR as inline review comments only. Creating issues is strictly forbidden, no exceptions.
+- Each comment must be anchored to the **exact line number** identified in the finding — never posted as a top-level PR comment or at the top of the file.
 - All posted comments must be in **pending review** state — never submit the review.
 - The user reviews and submits manually on GitHub.
 
@@ -81,7 +83,7 @@ For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templat
 
 ## Step 2: Context Collection
 
-Load all of the following in one pass before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
+Load the following if they exist, before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
 
 **Codebase docs** — load from `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
 
@@ -90,7 +92,6 @@ Load all of the following in one pass before spawning any subagent. Each item is
 | `STACK.md` | `stack` |
 | `ARCHITECTURE.md` | `architecture` |
 | `CONVENTIONS.md` | `conventions` |
-| `TESTING.md` | `testing` |
 | `CONCERNS.md` | `concerns` |
 | `INTEGRATIONS.md` | `integrations` |
 | `STRUCTURE.md` | `structure` |
@@ -111,7 +112,7 @@ Load all of the following in one pass before spawning any subagent. Each item is
 | Item | Availability key |
 |------|-----------------|
 | `docs/TECH_DEBTS.md` | `tech_debts` |
-| Active spec or task description (`.specs/features/*/spec.md`, task body, or user-provided) | `requirements` |
+| Active spec file (`.specs/features/*/spec.md`) OR JIRA task ID detected in branch name, commit message, or PR description | `requirements` |
 
 ## Step 3: Context Availability Map + Bundle Assembly
 
@@ -120,7 +121,7 @@ Build the availability map from Step 2 results:
 ```
 availability = {
   // codebase docs
-  stack, architecture, conventions, testing,
+  stack, architecture, conventions,
   concerns, integrations, structure,
   // checklists
   checklist_baseline, checklist_clean_code,
@@ -157,7 +158,7 @@ In all modes: skip deleted files, test files, and generated code when building t
 
 ## Step 5: Quick Mode Check
 
-**Condition:** changed file count ≤ 2 **AND** total diff lines < 100
+**Condition:** changed file count ≤ 5 **OR** total diff lines < 200
 
 **If triggered:** skip Steps 6–8; fall back to inline review — proceed directly to [Review All Files](#step-6-review-all-files) and [Present Findings](#step-7-present-findings).
 
@@ -167,9 +168,9 @@ If the condition is not met, proceed to Step 6 (parallel subagent dispatch).
 
 ## Step 6: Parallel Subagent Dispatch
 
-**All 8 agents MUST be fired in a single parallel message. Never sequentially.**
+**Fire all active agents in a single parallel message. Never sequentially.**
 
-Each agent receives a prompt with four sections:
+Each agent receives a prompt with three sections:
 
 ```
 ## Role
@@ -186,14 +187,7 @@ Status: Complete | Blocked | Partial
 Dimension: <agent name>
 Findings: [{severity, title, file, line, explanation, recommendation}]
 Files reviewed: [list]
-Gate check: pass | fail | skipped — <detail>
 Issues: <any blockers encountered>
-
-## Second Pass
-After your initial findings pass, re-read the full diff from top to bottom.
-For every file or hunk you did not comment on, explicitly state either
-"clean — no violations in my dimension" or flag it. Only skip a file
-when you can state concretely why it is clean for your dimension.
 ```
 
 ### Agent Roster
@@ -201,13 +195,11 @@ when you can state concretely why it is clean for your dimension.
 | Agent | Dimension | Required context | Optional context | Degrades without |
 |-------|-----------|-----------------|------------------|-----------------|
 | `architecture-reviewer` | Layer violations, coupling, pattern misuse | `checklist_baseline` | `architecture`, `structure`, `stack`, `concerns` | `architecture` |
-| `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code | `checklist_clean_code`, `checklist_best_practices` | `conventions`, `stack`, `concerns`, `tech_debts`, `checklist_tech_specific` | `conventions` |
-| `security-reviewer` | Auth, injection, secrets, data exposure | `checklist_baseline` (security section) | `integrations`, `stack`, `concerns` | — |
+| `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code; inline docs, API docs, obsolete/misleading comments | `checklist_clean_code`, `checklist_best_practices`, `checklist_baseline` (docs section) | `conventions`, `stack`, `concerns`, `tech_debts`, `checklist_tech_specific` | `conventions` |
 | `performance-reviewer` | N+1, allocations, blocking calls, missing indexes | `checklist_performance` | `stack`, `integrations`, `concerns`, `checklist_tech_perf` | — |
-| `docs-comments-reviewer` | Inline docs, API docs, obsolete/misleading comments | `checklist_baseline` (docs section) | `conventions`, `stack` | — |
-| `build-test-validator` | Run gate check commands, verify tests pass | — | `testing` | `testing` (falls back to standard commands: `npm test`, `pytest`, etc.) |
 | `regression-reviewer` | Unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions | `checklist_baseline` | `stack`, `concerns` | — |
-| `requirements-tracer` | Does the change satisfy the stated spec/task | `requirements` | — | **Skip entirely** if `requirements` absent — mark as ➖ skipped |
+| `security-reviewer` | Auth, injection, secrets, data exposure | `checklist_baseline` (security section) | `integrations`, `stack`, `concerns` | — |
+| `requirements-tracer` | Does the change satisfy the stated spec/task | `requirements` | — | **Skip entirely** if `requirements` absent (no active spec file and no JIRA task detected) — omit from at-a-glance table |
 
 ### Reviewer Stance (injected into every agent)
 
@@ -222,7 +214,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 ### Performance Audit mode exception
 
-In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents scope to changed files only. `build-test-validator` and `requirements-tracer` are skipped.
+In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents scope to changed files only. `requirements-tracer` is skipped.
 
 ### Agent: regression-reviewer
 
@@ -240,7 +232,7 @@ Review the diff for changes unrelated to the PR's stated purpose or showing sign
 
 ### Quick mode inline fallback (from Step 5)
 
-When Quick Mode Check triggered: skip subagent dispatch. Apply the reviewer stance directly inline across all six dimensions (architecture, code quality, security, performance, docs, requirements) without spawning agents. Proceed to Step 7 (Present Findings).
+When Quick Mode Check triggered: skip subagent dispatch. Apply the reviewer stance directly inline across all five dimensions (architecture, code quality + docs, security, performance, requirements if active) without spawning agents. Proceed to Step 7 (Present Findings).
 
 ## Step 7: Await + Fallback
 
@@ -251,7 +243,7 @@ Wait for all dispatched agents to return. For each agent, resolve its outcome:
 | Returned normally | Parse structured result |
 | Failed or timed out | Mark dimension as `⚠️ not executed — <reason>` |
 | Degraded (missing required context) | Mark dimension as `⚠️ degraded — <missing item>` |
-| `requirements-tracer` skipped (no requirements) | Mark as `➖ skipped — no requirements available` |
+| `requirements-tracer` skipped (no spec/JIRA) | Omit row from at-a-glance table entirely |
 
 Continue to Step 8 regardless of individual agent outcomes. A failed agent never blocks the report.
 
@@ -271,18 +263,16 @@ Mode: local | GitHub PR #N | multi-commit | performance audit
 
 ### At-a-glance table (always second)
 
-One row per agent dimension — always present regardless of output format:
+One row per active agent dimension — always present regardless of output format:
 
 | Dimension | Status | Findings | Critical | High | Summary |
 |-----------|--------|----------|----------|------|---------|
 | Architecture | ✅ / ⚠️ degraded / ⚠️ not executed | N | N | N | 1-line |
-| Code Quality | ... | N | N | N | 1-line |
-| Security | ... | N | N | N | 1-line |
+| Code Quality & Docs | ... | N | N | N | 1-line |
 | Performance | ... | N | N | N | 1-line |
-| Docs & Comments | ... | N | N | N | 1-line |
 | Regression & Hallucination | ✅ / ⚠️ degraded / ⚠️ not executed | N | N | N | 1-line |
-| Build & Tests | ✅ pass / ❌ fail / ⚠️ | — | — | gate result |
-| Requirements | ✅ / ➖ skipped | — | — | coverage summary |
+| Security | ... | N | N | N | 1-line |
+| Requirements | ✅ / ⚠️ (only if active spec/JIRA) | — | — | coverage summary |
 
 ### Output format
 
@@ -298,13 +288,11 @@ Agent dimensions map directly to zones. Zone letter assignment:
 | Zone | Letter | Agent |
 |------|--------|-------|
 | Architecture | A | `architecture-reviewer` |
-| Code Quality | Q | `code-quality-reviewer` |
-| Docs & Comments | D | `docs-comments-reviewer` |
+| Code Quality & Docs | Q | `code-quality-reviewer` |
 | Performance | P | `performance-reviewer` |
 | Regression & Hallucination | H | `regression-reviewer` |
 | Requirements | R | `requirements-tracer` |
 | Security | S | `security-reviewer` |
-| Build & Tests | B | `build-test-validator` |
 
 Finding IDs: `<ZoneLetter><N>` (e.g. `A1`, `Q3`, `S2`). All findings start as `Open`.
 
@@ -384,11 +372,11 @@ Recommendation: <specific fix>
 User: "review my code"
 
 1. Step 1: No PR number, no commit refs → local workspace mode
-2. Step 2: Load all `.specs/codebase/` docs + all checklists + `docs/TECH_DEBTS.md`
+2. Step 2: Load available `.specs/codebase/` docs + all checklists + `docs/TECH_DEBTS.md`; check for active spec or JIRA task ID
 3. Step 3: Build availability map; assemble context bundles per agent
 4. Step 4: `git diff HEAD` + `git diff --cached` + `git ls-files --others --exclude-standard`; collect `git diff --stat`
-5. Step 5: Quick mode check — if ≤ 2 files and < 100 lines, review inline; otherwise continue
-6. Step 6: Dispatch all 8 agents in parallel, each with their context bundle + full diff
+5. Step 5: Quick mode check — if ≤ 5 files or < 200 lines, review inline; otherwise continue
+6. Step 6: Dispatch 5 agents in parallel (+ `requirements-tracer` if spec/JIRA detected), each with their context bundle + full diff
 7. Step 7: Await all results; mark any failures/degraded agents
 8. Step 8: Report header → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
 
@@ -397,11 +385,11 @@ User: "review my code"
 User: "review PR #42"
 
 1. Step 1: PR #42 → GitHub PR mode
-2. Step 2: Load all context + checklists (same as local)
+2. Step 2: Load available context + checklists (same as local); check PR description for JIRA task ID
 3. Step 3: Build availability map + bundles
 4. Step 4: fetch diff via GitHub MCP; collect changed file list
 5. Step 5: Quick mode check
-6. Step 6: Dispatch 8 agents in parallel against PR diff only — ignore local workspace
+6. Step 6: Dispatch active agents in parallel against PR diff only — ignore local workspace
 7. Step 7: Await results
 8. Step 8: Consolidated report with at-a-glance table
 9. Step 9: User selects findings to post → create pending review comments via GitHub MCP; user submits manually on GitHub
@@ -411,11 +399,11 @@ User: "review PR #42"
 User: "do a performance audit of the orders module"
 
 1. Step 1: Trigger phrase matches → Performance Audit mode
-2. Step 2: Load all context + checklists
+2. Step 2: Load available context + checklists
 3. Step 3: Build availability map + bundles
 4. Step 4: No diff — full codebase scan
 5. Step 5: Quick mode check skipped (Performance Audit always uses subagents)
-6. Step 6: Dispatch `architecture-reviewer` and `performance-reviewer` against full codebase; all other agents scope to changed files only; `build-test-validator` and `requirements-tracer` skipped
+6. Step 6: Dispatch `architecture-reviewer` and `performance-reviewer` against full codebase; `regression-reviewer`, `security-reviewer`, `code-quality-reviewer` scope to changed files only; `requirements-tracer` skipped
 7. Step 7: Await results
 8. Step 8: Produce Performance Audit Report in the format above
 
@@ -424,10 +412,10 @@ User: "do a performance audit of the orders module"
 User: "review commits abc123 def456 ghi789"
 
 1. Step 1: Commit hashes detected → multi-commit mode
-2. Step 2: Load all context + checklists
+2. Step 2: Load available context + checklists; check commit messages for JIRA task IDs
 3. Step 3: Build availability map + bundles
 4. Step 4: `git show abc123; git show def456; git show ghi789` — concatenated into one combined diff; collect commit list (hash + subject) for report header
 5. Step 5: Quick mode check applied against combined diff totals
-6. Step 6: Dispatch 8 agents in parallel against the combined diff
+6. Step 6: Dispatch active agents in parallel against the combined diff
 7. Step 7: Await results
 8. Step 8: Single consolidated report — header lists all 3 commits; at-a-glance table + findings as normal
