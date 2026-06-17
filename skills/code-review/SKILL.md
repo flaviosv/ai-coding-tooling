@@ -139,22 +139,40 @@ If a file in an agent's `## Before You Begin` list is absent from the availabili
 
 ## Step 4: Diff Collection
 
-Collect the diff and file list based on the mode from Step 1:
+### Noise Exclusion Constant
+
+Define the following named constant before running any diff command. Every mode references this single list — never duplicate it:
+
+```
+EXCLUDE = [
+  ':(exclude)*.lock'           ':(exclude)package-lock.json'  ':(exclude)yarn.lock'
+  ':(exclude)pnpm-lock.yaml'   ':(exclude)composer.lock'      ':(exclude)Gemfile.lock'
+  ':(exclude)go.sum'           ':(exclude)Cargo.lock'         ':(exclude)poetry.lock'
+  ':(exclude)*.min.js'         ':(exclude)*.min.css'          ':(exclude)*.map'
+  ':(exclude)**/__snapshots__/**'  ':(exclude)dist/**'        ':(exclude)build/**'
+  ':(exclude)vendor/**'        ':(exclude)node_modules/**'    ':(exclude)*.generated.*'
+]
+```
+
+### Collect Diff
+
+Collect the diff and file list based on the mode from Step 1, applying EXCLUDE to every git command:
 
 | Mode | Commands |
 |------|----------|
-| Local workspace | `git diff HEAD`, `git diff --cached`, `git ls-files --others --exclude-standard` |
-| GitHub PR | GitHub MCP only — **never use `gh`** |
-| Multi-commit (hashes) | `git show <h1>; git show <h2>; ...` — concatenated in order |
-| Multi-commit (range) | `git diff <base>..<tip>` |
-| Performance Audit | No diff — full codebase scan |
+| Local workspace | `git diff HEAD -- $EXCLUDE`, `git diff --cached -- $EXCLUDE`, `git ls-files --others --exclude-standard` |
+| GitHub PR | GitHub MCP only — **never use `gh`**; filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
+| Multi-commit (hashes) | `git show <h1> -- $EXCLUDE; git show <h2> -- $EXCLUDE; ...` — concatenated in order |
+| Multi-commit (range) | `git diff <base>..<tip> -- $EXCLUDE` |
+| Performance Audit | No diff — full codebase scan (EXCLUDE does not apply) |
 
 Also collect:
-- `git diff --stat` (or equivalent) — used in the report header
-- Changed file list — used to route context slices to agents
+- `git diff --stat -- $EXCLUDE` (or equivalent) — used in the report header
+- Changed file list (after EXCLUDE applied) — used in complexity assessment and routing
+- Count of files excluded by EXCLUDE — stored as `excluded_count` for the report header
 - **Multi-commit only:** `git log --oneline <range>` or resolved hash+subject list — used in report header
 
-In all modes: skip deleted files, test files, and generated code when building the changed file list.
+In all modes: skip deleted files and test files when building the changed file list. Noise files (lockfiles, generated, minified) are already absent because EXCLUDE was applied at the diff command level.
 
 ## Step 5: Quick Mode Check
 
