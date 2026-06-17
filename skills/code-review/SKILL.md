@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.3.0"
+  version: "2.4.0"
   triggers:
     - "check my code"
     - "code review"
@@ -51,7 +51,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 ### What NOT to Review
 
 - Deleted files
-- Third-party libraries or generated code (migrations, lock files)
+- Noise files (lockfiles, generated code, minified assets) — excluded at the diff level via the EXCLUDE constant in Step 4; they never enter any context
 - Files explicitly marked as "do not review"
 - Test files — use **tests-code-review** skill
 
@@ -506,26 +506,26 @@ Recommendation: <specific fix>
 User: "review my code"
 
 1. Step 1: No PR number, no commit refs → local workspace mode
-2. Step 2: Load available `.specs/codebase/` docs + all checklists + `docs/TECH_DEBTS.md`; check for active spec or JIRA task ID
-3. Step 3: Build availability map; assemble context bundles per agent
-4. Step 4: `git diff HEAD` + `git diff --cached` + `git ls-files --others --exclude-standard`; collect `git diff --stat`
-5. Step 5: Quick mode check — if ≤ 5 files or < 200 lines, review inline; otherwise continue
-6. Step 6: Dispatch 5 agents in parallel (+ `requirements-tracer` if spec/JIRA detected), each with their context bundle + full diff
+2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists; check for active spec or JIRA task ID — build availability map (no content loaded by orchestrator)
+3. Step 3: Availability map ready (presence/absence only)
+4. Step 4: `git diff HEAD -- $EXCLUDE` + `git diff --cached -- $EXCLUDE` + `git ls-files --others --exclude-standard`; collect `git diff --stat -- $EXCLUDE`; record `excluded_count`
+5. Step 5: Complexity assessment — emit Review Plan and complexity banner; route to execution mode (Small → inline, Medium → single agent, Large/Complex → parallel)
+6. Step 6: Dispatch per Review Plan (e.g. Medium: 1 agent covering all active dimensions; Large: N parallel agents); each agent self-loads checklists + codebase docs via `## Before You Begin`
 7. Step 7: Await all results; mark any failures/degraded agents
-8. Step 8: Report header → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
+8. Step 8: Report header (with excluded count if any) → at-a-glance table (active dimensions only) → zoned findings; iterative review until P0/P1 resolved
 
 ### Example 2: GitHub PR review
 
 User: "review PR #42"
 
 1. Step 1: PR #42 → GitHub PR mode
-2. Step 2: Load available context + checklists (same as local); check PR description for JIRA task ID
-3. Step 3: Build availability map + bundles
-4. Step 4: fetch diff via GitHub MCP; collect changed file list
-5. Step 5: Quick mode check
-6. Step 6: Dispatch active agents in parallel against PR diff only — ignore local workspace
+2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists; check PR description for JIRA task ID — build availability map
+3. Step 3: Availability map ready
+4. Step 4: Fetch diff via GitHub MCP; filter changed-file list to remove EXCLUDE-matching paths; record `excluded_count`
+5. Step 5: Complexity assessment — emit banner; route to execution mode
+6. Step 6: Dispatch per Review Plan execution mode against PR diff only — ignore local workspace; agents self-load context via `## Before You Begin`
 7. Step 7: Await results
-8. Step 8: Consolidated report with at-a-glance table
+8. Step 8: Consolidated report with at-a-glance table (active dimensions only)
 9. Step 9: User selects findings to post → create pending review comments via GitHub MCP; user submits manually on GitHub
 
 ### Example 3: Performance audit
@@ -533,11 +533,11 @@ User: "review PR #42"
 User: "do a performance audit of the orders module"
 
 1. Step 1: Trigger phrase matches → Performance Audit mode
-2. Step 2: Load available context + checklists
-3. Step 3: Build availability map + bundles
-4. Step 4: No diff — full codebase scan
-5. Step 5: Quick mode check skipped (Performance Audit always uses subagents)
-6. Step 6: Dispatch `architecture-reviewer` and `performance-reviewer` against full codebase; `regression-reviewer`, `security-reviewer`, `code-quality-reviewer` scope to changed files only; `requirements-tracer` skipped
+2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists — build availability map
+3. Step 3: Availability map ready
+4. Step 4: No diff — full codebase scan (EXCLUDE does not apply)
+5. Step 5: Complexity assessment skipped — Performance Audit always uses parallel dispatch
+6. Step 6: Dispatch `architecture-reviewer` and `performance-reviewer` against full codebase; `regression-reviewer`, `security-reviewer`, `code-quality-reviewer` scope to changed files only; `requirements-tracer` skipped; each agent self-loads via `## Before You Begin`
 7. Step 7: Await results
 8. Step 8: Produce Performance Audit Report in the format above
 
@@ -546,10 +546,10 @@ User: "do a performance audit of the orders module"
 User: "review commits abc123 def456 ghi789"
 
 1. Step 1: Commit hashes detected → multi-commit mode
-2. Step 2: Load available context + checklists; check commit messages for JIRA task IDs
-3. Step 3: Build availability map + bundles
-4. Step 4: `git show abc123; git show def456; git show ghi789` — concatenated into one combined diff; collect commit list (hash + subject) for report header
-5. Step 5: Quick mode check applied against combined diff totals
-6. Step 6: Dispatch active agents in parallel against the combined diff
+2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists; check commit messages for JIRA task IDs — build availability map
+3. Step 3: Availability map ready
+4. Step 4: `git show abc123 -- $EXCLUDE; git show def456 -- $EXCLUDE; git show ghi789 -- $EXCLUDE` — concatenated into one combined diff; collect commit list (hash + subject) for report header; record `excluded_count`
+5. Step 5: Complexity assessment applied against combined diff totals; emit banner; route to execution mode
+6. Step 6: Dispatch per Review Plan execution mode against the combined diff; agents self-load context via `## Before You Begin`
 7. Step 7: Await results
-8. Step 8: Single consolidated report — header lists all 3 commits; at-a-glance table + findings as normal
+8. Step 8: Single consolidated report — header lists all 3 commits and excluded count; at-a-glance table (active dimensions only) + findings as normal
