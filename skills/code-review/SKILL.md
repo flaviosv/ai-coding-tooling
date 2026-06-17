@@ -174,15 +174,76 @@ Also collect:
 
 In all modes: skip deleted files and test files when building the changed file list. Noise files (lockfiles, generated, minified) are already absent because EXCLUDE was applied at the diff command level.
 
-## Step 5: Quick Mode Check
+## Step 5: Review Complexity Assessment
 
-**Condition:** changed file count ≤ 5 **OR** total diff lines < 200
+Using post-exclusion metrics from Step 4 (file count and diff lines after EXCLUDE applied), produce a **Review Plan** and print a **complexity banner** to the user before any review work begins.
 
-**If triggered:** skip Steps 6–8; fall back to inline review — proceed directly to [Review All Files](#step-6-review-all-files) and [Present Findings](#step-7-present-findings).
+### Axis 1 — Size Tier → Execution Mode
 
-**Multi-commit mode:** apply this check against the combined diff totals across all commits.
+Evaluate **top-down, first match wins**:
 
-If the condition is not met, proceed to Step 6 (parallel subagent dispatch).
+| Tier | Condition (post-exclusion) | Execution mode |
+|------|---------------------------|----------------|
+| **Small** | ≤5 files **OR** <200 diff lines | **Inline** — orchestrator reviews active dimensions directly, 0 agents |
+| **Medium** | ≤15 files **AND** <800 diff lines | **Single agent** — 1 delegated subagent covers ALL active dimensions (1× diff) |
+| **Large** | ≤25 files **AND** <1,500 diff lines | **Parallel** — 1 subagent per active dimension dispatched together (N× diff) |
+| **Complex** | >25 files **OR** ≥1,500 diff lines | **Parallel + completeness handling** — same as Large, plus caveat and thoroughness directive |
+
+**Multi-commit mode:** apply against combined diff totals across all commits.
+
+### Axis 2 — Content Type → Active Dimensions
+
+Inspect the changed file list (after EXCLUDE) to determine content type. "ALL changed files" means 100% of the non-deleted, non-excluded list matches the pattern. A single source code file → `general`. Evaluation uses file names only — no file content is read.
+
+| Content type | Detection | Active dimensions |
+|-------------|-----------|------------------|
+| `general` (default) | Any source file present (`*.ts`, `*.js`, `*.py`, `*.go`, `*.rb`, `*.java`, `*.php`, `*.cs`, `*.rs`, `*.kt`, `*.swift`, `*.c`, `*.cpp`, `*.h`, etc.) | All 5 + `requirements-tracer` (conditional) |
+| `docs-only` | 100% match: `*.md`, `*.txt`, `*.rst`, `*.mdx`, `docs/`, `README*`, `CHANGELOG*`, `*.adoc` | `code-quality-reviewer` + `requirements-tracer` (conditional) |
+| `config-infra-only` | 100% match: `*.yml`, `*.yaml`, `*.json`, `*.toml`, `Dockerfile*`, `*.tf`, `*.tfvars`, `.github/`, `*.env`, `*.ini`, `*.cfg`, `.eslintrc*`, `.prettier*` | `security-reviewer`, `code-quality-reviewer`, `regression-reviewer` + `requirements-tracer` (conditional) |
+| `frontend-assets-only` | 100% match: `*.css`, `*.scss`, `*.less`, `*.svg`, `*.png`, `*.jpg`, `*.gif`, `*.ico`, `*.woff*`, `*.ttf` | `code-quality-reviewer`, `security-reviewer` + `requirements-tracer` (conditional) |
+| `mixed` | Multiple non-source types, no source files | Fall through to `general` |
+
+Edge cases:
+- Empty changed list (rename-only): `general`, Small (0 files / 0 lines) → inline.
+- Mixed source + docs: `general` — the source file triggers full 5-dimension scope.
+- `requirements-tracer` is omitted regardless of type when `requirements` is absent (no spec/JIRA found in Step 2).
+
+### Review Plan
+
+The assessment emits an explicit plan consumed by Step 6:
+
+```
+Review Plan:
+  Size tier:         Small | Medium | Large | Complex
+  Content type:      general | docs-only | config-infra-only | frontend-assets-only
+  Execution mode:    inline | single-agent | parallel
+  Active dimensions: [<dimension list>]
+  Agents dispatched: 0 (inline) | 1 (single-agent) | N (parallel)
+  Complex handling:  none | caveat + thoroughness directive
+  Excluded files:    N
+```
+
+### Complexity Banner
+
+Immediately after the assessment, print this one-line banner to the user **before any dispatch or inline review begins**. This is required in every mode and every tier, including Small.
+
+```
+🔍 Code review — Complexity: **<Tier>** (<N> files, <M> lines[· <X> excluded]) · Type: <content_type> · <execution description>
+```
+
+Examples:
+```
+🔍 Code review — Complexity: **Complex** (32 files, 1,840 lines · 3 excluded) · Type: general · Parallel — 5 agents (⚠️ completeness caveat)
+🔍 Code review — Complexity: **Medium** (9 files, 420 lines) · Type: general · Single agent — all 5 dimensions
+🔍 Code review — Complexity: **Small** (2 files, 60 lines) · Type: docs-only · Inline review (Code Quality only)
+```
+
+### Silent Operation
+
+After the complexity banner, the skill produces **no further output** until the final consolidated report. Specifically prohibited between the banner and the report:
+- Progress narration ("dispatching agents", "now reviewing…", "agent X returned")
+- Partial or per-agent findings printed as they arrive
+- Any intermediate analytical commentary
 
 ## Step 6: Parallel Subagent Dispatch
 
