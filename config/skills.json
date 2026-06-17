@@ -1,35 +1,16 @@
 {
   "skills": [
     {
-      "name": "architecture-evaluate",
-      "source": "local",
-      "scope": "built",
-      "description": "Creates, updates, and incrementally syncs project context documentation. Three modes: Full deep-scans the codebase to write the mandatory context files (PROJECT_DETAILS.md, ARCHITECTURE.md, PIPELINE.md) in docs/codebase/; Incremental inspects the git workspace to sync only what changed — inline API docs, root context files (README/CLAUDE/AGENTS), the docs/codebase/ context files — and detects new packages; Package generates a scoped CLAUDE.md for a module."
-    },
-    {
-      "name": "code",
-      "source": "local",
-      "scope": "built",
-      "description": "Applies coding guidelines when writing code. Thin delegator to coding-guidelines; pairs with code-review for the /code + /code-review naming pattern."
-    },
-    {
       "name": "code-review",
       "source": "local",
       "scope": "built",
-      "description": "Comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local changes or a GitHub PR; also runs standalone performance audits."
+      "description": "Comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local changes, a GitHub PR, or a range of commits (multi-commit mode); also runs standalone performance audits."
     },
     {
       "name": "codenavi",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
       "description": "Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use for bug fixes, features, refactors, or flow investigation in unfamiliar territory."
-    },
-    {
-      "name": "coding-guidelines",
-      "source": "tech-leads-club",
-      "scope": "tech-leads-club",
-      "extended": true,
-      "description": "Behavioral guidelines to reduce common LLM coding mistakes. Applied when writing or reviewing code."
     },
     {
       "name": "docs-writer",
@@ -46,6 +27,13 @@
       "description": "Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally."
     },
     {
+      "name": "kb-from-raindrop",
+      "source": "local",
+      "scope": "local-only",
+      "installScope": "none",
+      "description": "Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault, clustering bookmarks by topic. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally."
+    },
+    {
       "name": "keybindings-help",
       "source": "native",
       "scope": "native",
@@ -58,11 +46,10 @@
       "description": "Facilitates deliberate skill development during AI-assisted coding by offering interactive learning exercises after architectural work."
     },
     {
-      "name": "kb-from-raindrop",
-      "source": "local",
-      "scope": "local-only",
-      "installScope": "none",
-      "description": "Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault, clustering bookmarks by topic. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally."
+      "name": "mermaid-studio",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Expert Mermaid diagram creation, validation, and rendering with dual-engine output (SVG/PNG/ASCII). Supports all 20+ diagram types including C4 architecture, AWS architecture-beta with service icons, flowcharts, sequence, ERD, state, class, mindmap, timeline, git graph, sankey, and more. Features code-to-diagram analysis, batch rendering, 15+ themes, and syntax validation. Use when users ask to create diagrams, visualize architecture, render mermaid files, generate ASCII diagrams, document system flows, model databases, draw AWS infrastructure, analyze code structure, or anything involving \"mermaid\", \"diagram\", \"flowchart\", \"architecture diagram\", \"sequence diagram\", \"ERD\", \"C4\", \"ASCII diagram\". Do NOT use for non-Mermaid image generation, data plotting with chart libraries, or general documentation writing."
     },
     {
       "name": "security-best-practices",
@@ -112,7 +99,14 @@
       "name": "tests-code-review",
       "source": "local",
       "scope": "built",
-      "description": "Reviews test code quality, coverage patterns, and maintainability. Supports local workspace and GitHub PR review modes."
+      "description": "Reviews test code quality, coverage patterns, and maintainability. Supports local workspace, GitHub PR, and multi-commit review modes."
+    },
+    {
+      "name": "tlc-spec-driven",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "extended": true,
+      "description": "Project and feature planning with 4 adaptive phases - Specify, Design, Tasks, Execute. Auto-sizes depth by complexity. Creates atomic tasks with verification criteria, atomic git commits, requirement traceability, and persistent memory across sessions. Stack-agnostic. Use when (1) Starting new projects (initialize vision, goals, roadmap), (2) Working with existing codebases (map stack, architecture, conventions), (3) Planning features (requirements, design, task breakdown), (4) Implementing with verification and atomic commits, (5) Quick ad-hoc tasks (bug fixes, config changes), (6) Tracking decisions/blockers/deferred ideas across sessions, (7) Pausing/resuming work. Triggers on \"initialize project\", \"map codebase\", \"specify feature\", \"discuss feature\", \"design\", \"tasks\", \"implement\", \"validate\", \"verify work\", \"UAT\", \"quick fix\", \"quick task\", \"pause work\", \"resume work\". Do NOT use for architecture decomposition analysis (use architecture skills) or technical design docs (use create-technical-design-doc)."
     },
     {
       "name": "web-design-guidelines",

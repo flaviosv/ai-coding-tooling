@@ -7,15 +7,9 @@ type: template
 ## Step A: GitHub PR Mode Detection
 
 1. Extract the PR number from the user's message.
-2. Check if GitHub MCP tools are available in the current session (search for tools matching `github`, `pull_request`, `gh`). MCP is preferred — it respects per-project configuration.
-3. Fetch PR metadata and diff:
-   - **MCP available**: use the GitHub MCP tools to get PR details, changed files, and diff content.
-   - **MCP unavailable**: fall back to `gh` CLI:
-     ```bash
-     gh pr view <number> --json title,body,baseRefName,headRefName,files
-     gh pr diff <number>
-     ```
-4. If both MCP and `gh` fail, report the error and stop.
+2. **GitHub MCP is mandatory for all GitHub PR operations.** Do NOT use the `gh` CLI for fetching PR data or diffs — ever.
+3. Fetch PR metadata and diff using the GitHub MCP tools: get PR details, changed files, and diff content.
+4. If the GitHub MCP is unavailable or fails, stop immediately and inform the user — do not attempt any `gh` fallback.
 
 ---
 
@@ -31,25 +25,13 @@ Wait for user to specify which findings to post:
 
 ### B2. Create Pending Review Comments
 
-Use GitHub MCP tools if available (preferred), fall back to `gh` CLI.
+**GitHub MCP is mandatory.** Do NOT use the `gh` CLI — not even as a fallback.
 
-**Using GitHub MCP**: use the MCP tool for creating pull request reviews. Pass selected comments as inline review comments with `PENDING` event.
+**NEVER create GitHub Issues.** All findings must be posted as inline PR review comments — never as standalone issues. This is a hard requirement with no exceptions.
 
-**Using `gh` CLI fallback**:
+Use the GitHub MCP tool for creating pull request reviews. Pass selected comments as inline review comments with `PENDING` event. Each comment must be anchored to the **exact line number** identified in the finding — never posted as a top-level PR comment or at the top of the file.
 
-```bash
-gh api repos/{owner}/{repo}/pulls/{number}/reviews \
-  --input - <<'EOF'
-{
-  "event": "PENDING",
-  "comments": [
-    {"path": "<file>", "line": <line>, "body": "**[Severity/Priority]** Title\n\nExplanation\n\n**Suggestion:** fix"}
-  ]
-}
-EOF
-```
-
-Parse `{owner}/{repo}` from `gh repo view --json nameWithOwner -q '.nameWithOwner'`.
+If the GitHub MCP is unavailable, stop and inform the user — do not attempt any `gh` workaround.
 
 ### B3. Confirm Result
 

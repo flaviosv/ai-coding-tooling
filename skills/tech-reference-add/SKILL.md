@@ -64,9 +64,9 @@ Scan `skills/` and `extended/` for directories containing a `references/` or `re
 For each reference-enabled skill, reason semantically: **"Does this insight affect the workflow this skill performs?"**
 
 Reasoning examples:
-- Naming convention → `coding-guidelines`, `code-review`; performance-review not applicable
-- Query optimization → `code-review` (performance audit mode); likely `coding-guidelines`
-- Test fixture pattern → `tests`, `tests-code-review`; not `coding-guidelines`
+- Naming convention → `tlc-spec-driven` (coding-principles style refs), `code-review`; performance-review not applicable
+- Query optimization → `code-review` (performance audit mode); likely `tlc-spec-driven` (coding-principles)
+- Test fixture pattern → `tests`, `tests-code-review`; not `tlc-spec-driven`
 - Security input handling → `security-best-practices`, `code-review`; not `tests`
 
 Do not hardcode skill relationships — infer from each skill's SKILL.md description. When an insight is cross-cutting, include all skills where it would surface. If a skill's relevance is uncertain, include it in the proposal marked with `(?)` and let the user decide.
@@ -78,7 +78,7 @@ Present:
 | Skill | Target File | Action | Rationale |
 |-------|-------------|--------|-----------|
 | code-review | `skills/code-review/references/django-code-review.md` | Append | Affects review correctness |
-| coding-guidelines | `extended/coding-guidelines/reference/django-coding-guidelines.md` | Create + append | Style convention |
+| tlc-spec-driven | `extended/tlc-spec-driven/references/coding-guidelines/django-coding-guidelines.md` | Create + append | Style convention |
 | code-review | `skills/code-review/references/django-performance-review.md` | Append (?) | May surface during performance audit — confirm |
 
 Ask: **"Confirm saving to these files? Remove any you don't want or adjust the list."**
@@ -127,7 +127,7 @@ Insight: {rule}
 
 Written to
 - skills/code-review/references/django-code-review.md (appended, item 3)
-- extended/coding-guidelines/reference/django-coding-guidelines.md (created)
+- extended/tlc-spec-driven/references/coding-guidelines/django-coding-guidelines.md (created)
 
 Skipped
 - code-review (performance): removed by user
