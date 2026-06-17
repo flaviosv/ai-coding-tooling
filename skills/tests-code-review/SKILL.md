@@ -127,7 +127,7 @@ Collect the diff and test file list based on the mode from Step 1. Filter to tes
 | Mode | Commands |
 |------|----------|
 | Local workspace | `git diff HEAD`, `git diff --cached`, `git ls-files --others --exclude-standard` — filter to test files |
-| GitHub PR | `gh pr diff <PR#>` (prefer GitHub MCP if available) — filter to test files |
+| GitHub PR | GitHub MCP only — **never use `gh`** — filter to test files |
 | Multi-commit (hashes) | `git show <h1>; git show <h2>; ...` — concatenated in order, filter to test files |
 | Multi-commit (range) | `git diff <base>..<tip>` — filter to test files |
 
@@ -314,12 +314,12 @@ User: "review tests on PR #42"
 1. Step 1: PR #42 → GitHub PR mode
 2. Step 2: Load all context + checklists (same as local)
 3. Step 3: Build availability map + bundles
-4. Step 4: `gh pr diff 42` (prefer GitHub MCP) → filter to test files; collect changed test file list
+4. Step 4: fetch diff via GitHub MCP → filter to test files; collect changed test file list
 5. Step 5: Quick mode check
 6. Step 6: Dispatch 5 agents in parallel against PR test-file diff only — ignore local workspace
 7. Step 7: Await results
 8. Step 8: Consolidated report with at-a-glance table
-9. Step 9: User selects findings to post → create pending review comments via MCP or `gh api`; user submits manually on GitHub
+9. Step 9: User selects findings to post → create pending review comments via GitHub MCP; user submits manually on GitHub
 
 ### Example 3: Multi-commit review
 
