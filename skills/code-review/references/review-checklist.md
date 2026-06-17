@@ -20,16 +20,6 @@ Use this as a baseline — technology-specific checklists extend this file.
 - [ ] File uploads validated for type, size, and path — traversal and arbitrary write prevented
 - [ ] Dependency vulnerability scanning runs in CI — not just at install time
 
-## Performance
-
-- [ ] No unbounded data fetches (pagination or limits applied)
-- [ ] No N+1 patterns — related data fetched efficiently in bulk
-- [ ] No unnecessary blocking operations on hot paths
-- [ ] No redundant computations inside loops
-- [ ] Caching applied where data is expensive to compute and changes infrequently
-- [ ] Resource leaks avoided — connections, file handles, and streams are properly closed
-- [ ] Heavy or long-running operations deferred (async, queue, background job) where appropriate
-
 ## Architecture & Design
 
 - [ ] Changes follow the architectural layers defined in `ARCHITECTURE.md`
