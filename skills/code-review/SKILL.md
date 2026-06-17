@@ -245,40 +245,91 @@ After the complexity banner, the skill produces **no further output** until the 
 - Partial or per-agent findings printed as they arrive
 - Any intermediate analytical commentary
 
-## Step 6: Parallel Subagent Dispatch
+## Step 6: Dispatch
 
-**Fire all active agents in a single parallel message. Never sequentially.**
+Execute the Review Plan from Step 5. The execution mode determines how active dimensions run; the active dimension set (from content type) determines which agents/dimensions are in scope.
 
-Each agent receives a prompt with three sections:
+### Execution Modes
+
+#### Small — Inline (0 agents)
+
+Apply the reviewer stance directly in the orchestrator across all active dimensions. No subagents. Proceed to Step 8 (Consolidation) when done.
+
+#### Medium — Single Agent (1 agent, all active dimensions)
+
+Dispatch **one** delegated subagent that covers ALL active dimensions in a single pass. The subagent's `## Before You Begin` block lists the **union** of all active dimensions' checklists (deduplicated) plus the full codebase-doc set. The subagent returns findings tagged by dimension.
+
+#### Large — Parallel (one agent per active dimension)
+
+Fire all active dimension agents in a **single parallel message. Never sequentially.** Each receives its own `## Before You Begin` block (targeted to its dimension) plus the full codebase-doc set.
+
+#### Complex — Parallel + Completeness Handling
+
+Same as Large. Additionally:
+- Each dispatched agent receives the **thoroughness directive** (below) in its prompt.
+- The report header (Step 8) carries the completeness caveat.
+
+**Thoroughness directive** (Complex tier only — added to each agent's prompt):
+> This is a Complex review (large change set). Review every file in the diff thoroughly. Do not skip or skim any file. Focus on your assigned dimension across all changed files.
+
+### Agent Prompt Template
+
+Every agent (in all modes except Small inline) receives a prompt structured as:
 
 ```
-## Role
-<agent name and dimension>
+## Before You Begin
 
-## Context
-<inlined content from the agent's context bundle — present items only, relevant to this dimension>
+Read the following files before starting the review. Skip any file marked absent.
+
+Checklists (load only if present per availability map):
+- [list of this agent's assigned checklist files — see Checklist Matrix below]
+
+Codebase docs (load each if present — fall back .specs/codebase/ → docs/codebase/ → docs/):
+- .specs/codebase/STACK.md
+- .specs/codebase/ARCHITECTURE.md
+- .specs/codebase/CONVENTIONS.md
+- .specs/codebase/STRUCTURE.md
+- .specs/codebase/INTEGRATIONS.md
+- .specs/codebase/CONCERNS.md
+
+## Role
+<agent name and dimension — or "all active dimensions" for Medium single-agent>
 
 ## Diff
-<full diff from Step 4 — all agents receive the full diff; scoping is in the context, not the code>
+<full diff from Step 4>
 
 ## Return format
 Status: Complete | Blocked | Partial
-Dimension: <agent name>
+Dimension: <agent name or "all dimensions">
 Findings: [{severity, title, file, line, explanation, recommendation}]
-Files reviewed: [list]
 Issues: <any blockers encountered>
 ```
 
+The orchestrator **does not inline** any checklist or codebase-doc content — the `## Before You Begin` block is a Read instruction for the agent, not pre-loaded content.
+
+### Checklist Matrix (agent → checklists to self-load)
+
+| Agent | Checklists to load (if present) |
+|-------|--------------------------------|
+| `architecture-reviewer` | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
+| `code-quality-reviewer` | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
+| `performance-reviewer` | `performance-checklist.md`, `<stack>-*-performance-review.md` |
+| `regression-reviewer` | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
+| `security-reviewer` | None — relies on `security-best-practices` skill + built-in security knowledge |
+| `requirements-tracer` | None — uses requirements/spec file only; no codebase docs |
+
+Codebase docs: all reviewing agents except `requirements-tracer` self-load the full set: `STACK`, `ARCHITECTURE`, `CONVENTIONS`, `STRUCTURE`, `INTEGRATIONS`, `CONCERNS`. `TESTING.md` is excluded (belongs to `tests-code-review`). All loads filtered to files present in the availability map.
+
 ### Agent Roster
 
-| Agent | Dimension | Required context | Optional context | Degrades without |
-|-------|-----------|-----------------|------------------|-----------------|
-| `architecture-reviewer` | Layer violations, coupling, pattern misuse | `checklist_baseline` | `architecture`, `structure`, `stack`, `concerns` | `architecture` |
-| `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code; inline docs, API docs, obsolete/misleading comments | `checklist_clean_code`, `checklist_best_practices`, `checklist_baseline` (docs section) | `conventions`, `stack`, `concerns`, `tech_debts`, `checklist_tech_specific` | `conventions` |
-| `performance-reviewer` | N+1, allocations, blocking calls, missing indexes | `checklist_performance` | `stack`, `integrations`, `concerns`, `checklist_tech_perf` | — |
-| `regression-reviewer` | Unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions | `checklist_baseline` | `stack`, `concerns` | — |
-| `security-reviewer` | Auth, injection, secrets, data exposure | `checklist_baseline` (security section) | `integrations`, `stack`, `concerns` | — |
-| `requirements-tracer` | Does the change satisfy the stated spec/task | `requirements` | — | **Skip entirely** if `requirements` absent (no active spec file and no JIRA task detected) — omit from at-a-glance table |
+| Agent | Dimension | Degrades without |
+|-------|-----------|-----------------|
+| `architecture-reviewer` | Layer violations, coupling, pattern misuse | `architecture` |
+| `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code; inline docs, API docs, obsolete/misleading comments | `conventions` |
+| `performance-reviewer` | N+1, allocations, blocking calls, missing indexes | — |
+| `regression-reviewer` | Unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions | — |
+| `security-reviewer` | Auth, injection, secrets, data exposure | — |
+| `requirements-tracer` | Does the change satisfy the stated spec/task | **Skip entirely** if `requirements` absent — omit from at-a-glance table |
 
 ### Reviewer Stance (injected into every agent)
 
@@ -293,7 +344,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 ### Performance Audit mode exception
 
-In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents scope to changed files only. `requirements-tracer` is skipped.
+In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents scope to changed files only. `requirements-tracer` is skipped. Complexity assessment (Step 5) is skipped — Performance Audit always uses parallel dispatch.
 
 ### Agent: regression-reviewer
 
@@ -308,10 +359,6 @@ Review the diff for changes unrelated to the PR's stated purpose or showing sign
 - **Dead code** — functions or branches introduced but never called.
 - **`TODO`/`FIXME` in production** — leftover markers not resolved before merge.
 - **Type assertions hiding errors** — `as any` or forced casts masking real type errors.
-
-### Quick mode inline fallback (from Step 5)
-
-When Quick Mode Check triggered: skip subagent dispatch. Apply the reviewer stance directly inline across all five dimensions (architecture, code quality + docs, security, performance, requirements if active) without spawning agents. Proceed to Step 7 (Present Findings).
 
 ## Step 7: Await + Fallback
 
