@@ -83,9 +83,9 @@ For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templat
 
 ## Step 2: Context Collection
 
-Load the following if they exist, before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
+Check for the presence of the following files. Do **not** load their content — record only whether each file exists (`present`) or does not (`absent`). This presence/absence check feeds the availability map in Step 3.
 
-**Codebase docs** — load from `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
+**Codebase docs** — check under `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
 
 | File | Availability key |
 |------|-----------------|
@@ -96,13 +96,14 @@ Load the following if they exist, before spawning any subagent. Each item is eit
 | `INTEGRATIONS.md` | `integrations` |
 | `STRUCTURE.md` | `structure` |
 
-**Review checklists** — mandatory baselines always loaded; tech-specific only when stack matches:
+**Review checklists** — check for presence only; tech-specific only when stack matches:
 
 | File | Availability key |
 |------|-----------------|
 | `references/review-checklist.md` | `checklist_baseline` |
 | `references/clean-code-checklist.md` | `checklist_clean_code` |
 | `references/best-practices-code-review.md` | `checklist_best_practices` |
+| `references/observability-code-review.md` | `checklist_observability` |
 | `references/performance-checklist.md` | `checklist_performance` |
 | `references/<stack>-*-code-review.md` (if match) | `checklist_tech_specific` |
 | `references/<stack>-*-performance-review.md` (if match) | `checklist_tech_perf` |
@@ -111,10 +112,9 @@ Load the following if they exist, before spawning any subagent. Each item is eit
 
 | Item | Availability key |
 |------|-----------------|
-| `docs/TECH_DEBTS.md` | `tech_debts` |
 | Active spec file (`.specs/features/*/spec.md`) OR JIRA task ID detected in branch name, commit message, or PR description | `requirements` |
 
-## Step 3: Context Availability Map + Bundle Assembly
+## Step 3: Context Availability Map
 
 Build the availability map from Step 2 results:
 
@@ -125,17 +125,17 @@ availability = {
   concerns, integrations, structure,
   // checklists
   checklist_baseline, checklist_clean_code,
-  checklist_best_practices, checklist_performance,
-  checklist_tech_specific, checklist_tech_perf,
+  checklist_best_practices, checklist_observability,
+  checklist_performance, checklist_tech_specific, checklist_tech_perf,
   // other
-  tech_debts, requirements
+  requirements
 }
 // each field: present | absent
 ```
 
-Use this map to assemble a **context bundle** for each subagent — a structured text block injected into the agent's prompt containing only the items marked `present` and relevant to that agent's dimension. Bundle definitions are in Step 6.
+The orchestrator holds **this map only** — no file content. Agents self-load their own context using the `## Before You Begin` block in Step 6.
 
-If a bundle is missing a **required** item for an agent, flag that agent as `degraded`: it proceeds without that item, notes the gap in its findings, and the at-a-glance table shows `⚠️ degraded — <missing item>`.
+If a file in an agent's `## Before You Begin` list is absent from the availability map, the agent omits it silently and proceeds. If a **required** item is absent, flag that agent as `degraded`: it notes the gap in its findings and the at-a-glance table shows `⚠️ degraded — <missing item>`.
 
 ## Step 4: Diff Collection
 
