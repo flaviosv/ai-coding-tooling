@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
   triggers:
     - "review tests"
     - "test code review"
@@ -44,6 +44,7 @@ You are the villain. Find every gap, weakness, and lie in the test suite — not
 - Implementation (non-test) files — use **code-review** skill
 - Third-party test utilities or generated test code
 - Test files that have not changed in this workspace (no modifications, no new additions)
+- Noise files excluded by the EXCLUDE constant (Step 4): lockfiles, snapshot files, coverage reports, minified assets, built artifacts — these never enter any agent context
 
 **New test files are always in scope.** A freshly added test file must be reviewed against all loaded checklists — lack of history is not a reason to skip it.
 
@@ -72,139 +73,207 @@ For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templat
 
 ## Step 2: Context Collection
 
-Load the following if they exist, before spawning any subagent. Each item is either **present** (loaded) or **absent** (noted for Step 3).
+Check presence/absence of the following files before proceeding. Do **NOT** load file content — record only whether each is present or absent. Results feed the availability map in Step 3.
 
-**Codebase docs** — load from `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
+**Codebase docs** — check in `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
 
 | File | Availability key |
 |------|-----------------|
-| `STACK.md` | `stack` |
 | `ARCHITECTURE.md` | `architecture` |
-| `CONVENTIONS.md` | `conventions` |
-| `TESTING.md` | `testing` |
 | `CONCERNS.md` | `concerns` |
+| `CONVENTIONS.md` | `conventions` |
 | `INTEGRATIONS.md` | `integrations` |
+| `STACK.md` | `stack` |
 | `STRUCTURE.md` | `structure` |
+| `TESTING.md` | `testing` |
 
-**Review checklists** — mandatory baseline always loaded; tech-specific only when stack matches:
+**Review checklists** — check for presence; tech-specific only when stack matches:
 
 | File | Availability key |
 |------|-----------------|
 | `references/test-review-checklist.md` | `checklist_baseline` |
 | `references/<stack>-*-tests-code-review.md` (if match) | `checklist_tech_specific` |
 
-**Other:**
-
-| Item | Availability key |
-|------|-----------------|
-| `docs/TECH_DEBTS.md` | `tech_debts` |
-
-## Step 3: Context Availability Map + Bundle Assembly
+## Step 3: Context Availability Map
 
 Build the availability map from Step 2 results:
 
 ```
 availability = {
-  // codebase docs
-  stack, architecture, conventions, testing,
-  concerns, integrations, structure,
-  // checklists
-  checklist_baseline, checklist_tech_specific,
-  // other
-  tech_debts
+  // codebase docs (7)
+  architecture, concerns, conventions,
+  integrations, stack, structure, testing,
+  // checklists (2)
+  checklist_baseline, checklist_tech_specific
 }
-// each field: present | absent
+// each field: present | absent — 9 keys total
 ```
 
-Use this map to assemble a **context bundle** for each subagent — a structured text block injected into the agent's prompt containing only the items marked `present` and relevant to that agent's dimension. Bundle definitions are in Step 6.
+The orchestrator holds **this map only** — no file content. Agents self-load their own context using the `## Before You Begin` block defined in Step 6.
 
-If a bundle is missing a **required** item for an agent, flag that agent as `degraded`: it proceeds without that item, notes the gap in its findings, and the at-a-glance table shows `⚠️ degraded — <missing item>`.
+If an agent's required context item is absent from the map, flag that agent as `degraded`: it proceeds without that item, notes the gap in its findings, and the at-a-glance table shows `⚠️ degraded — <missing item>`.
 
 Special case: `TESTING.md` absent → `isolation-reviewer` and `performance-reviewer` run degraded; they fall back to inferring the test framework from `STACK.md` or test file patterns.
 
 ## Step 4: Diff Collection
 
-Collect the diff and test file list based on the mode from Step 1. Filter to test files in all modes:
+Define the exclusion constant used in every git command:
+
+```
+EXCLUDE = [
+  ':(exclude)*.lock'           ':(exclude)package-lock.json'  ':(exclude)yarn.lock'
+  ':(exclude)pnpm-lock.yaml'   ':(exclude)composer.lock'      ':(exclude)Gemfile.lock'
+  ':(exclude)go.sum'           ':(exclude)Cargo.lock'         ':(exclude)poetry.lock'
+  ':(exclude)*.min.js'         ':(exclude)*.min.css'          ':(exclude)*.map'
+  ':(exclude)dist/**'          ':(exclude)build/**'           ':(exclude)vendor/**'
+  ':(exclude)node_modules/**'  ':(exclude)*.generated.*'
+  ':(exclude)**/__snapshots__/**'  ':(exclude)*.snap'
+  ':(exclude)coverage/**'      ':(exclude).nyc_output/**'
+]
+```
+
+Collect the diff and test file list based on the mode from Step 1, applying EXCLUDE to every git command. Filter to test files in all modes:
 
 | Mode | Commands |
 |------|----------|
-| Local workspace | `git diff HEAD`, `git diff --cached`, `git ls-files --others --exclude-standard` — filter to test files |
-| GitHub PR | GitHub MCP only — **never use `gh`** — filter to test files |
-| Multi-commit (hashes) | `git show <h1>; git show <h2>; ...` — concatenated in order, filter to test files |
-| Multi-commit (range) | `git diff <base>..<tip>` — filter to test files |
+| Local workspace | `git diff HEAD -- $EXCLUDE`, `git diff --cached -- $EXCLUDE`, `git ls-files --others --exclude-standard` — filter to test files |
+| GitHub PR | GitHub MCP only — **never use `gh`**; filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
+| Multi-commit (hashes) | `git show <h1> -- $EXCLUDE; git show <h2> -- $EXCLUDE; ...` — concatenated in order, filter to test files |
+| Multi-commit (range) | `git diff <base>..<tip> -- $EXCLUDE` — filter to test files |
 
 Also collect:
-- `git diff --stat` (or equivalent, filtered to test files) — used in the report header
-- Changed test file list — used to route context slices to agents
+- `git diff --stat -- $EXCLUDE` (or equivalent, filtered to test files) — used in the report header
+- Changed test file list (after EXCLUDE applied) — used in complexity assessment and routing
+- Count of files excluded by EXCLUDE — stored as `excluded_count` for the report header
 - **Multi-commit only:** `git log --oneline <range>` or resolved hash+subject list — used in report header
 
-In all modes (primary test diff): skip deleted files, non-test files, and generated test code.
+In all modes (primary test diff): skip deleted files and non-test files. Noise files are already absent because EXCLUDE was applied at the git command level.
 
 **Implementation diff** (`impl_diff`) — collected separately for `gap-detector` only:
-Using the same mode-appropriate commands, filter to non-test, non-deleted, non-generated implementation files changed in this diff. If `impl_diff` is empty (no implementation files changed), `gap-detector` is skipped entirely.
+Using the same mode-appropriate commands with EXCLUDE applied, filter to non-test, non-deleted implementation files changed in this diff. If `impl_diff` is empty (no implementation files changed), `gap-detector` is skipped entirely.
 
-## Step 5: Quick Mode Check
+## Step 5: Review Complexity Assessment
 
-**Condition:** changed test file count ≤ 5 **OR** total diff lines < 200
+Using post-exclusion metrics from Step 4 (test file count and diff lines after EXCLUDE applied), produce a **Review Plan** and print a **complexity banner** before any review work begins.
 
-**If triggered:** skip Steps 6–7; fall back to inline review — apply all 6 dimensions directly without spawning agents (skip coverage gaps dimension if `impl_diff` is empty), then proceed to [Present Findings](#step-8-consolidation-and-present-findings).
+### Size tier → execution mode
 
-**Multi-commit mode:** apply this check against the combined diff totals across all commits.
+Evaluate top-down, first match wins:
 
-If the condition is not met, proceed to Step 6 (parallel subagent dispatch).
+| Tier | Condition | Execution mode | Diff cost |
+|------|-----------|----------------|-----------|
+| **Small** | ≤5 test files **OR** <200 diff lines | **Inline** — orchestrator reviews all dimensions directly, no agents | ~0 |
+| **Medium** | ≤15 test files **AND** <800 diff lines | **Single agent** — one subagent reviews ALL dimensions in one instance | 1× |
+| **Large** | ≤25 test files **AND** <1,500 diff lines | **Parallel** — one specialized subagent per active dimension | N× |
+| **Complex** | >25 test files **OR** ≥1,500 diff lines | **Parallel + completeness handling** (see below) | N× |
 
-## Step 6: Parallel Subagent Dispatch
+**Multi-commit mode:** apply tier evaluation against combined diff totals across all commits.
 
-**All 5 agents MUST be fired in a single parallel message. Never sequentially.**
+**Medium tier — gap-detector fold:**
+- If `impl_diff` is **non-empty**: the single agent receives BOTH the test diff AND `impl_diff`, covering all 6 dimensions including coverage gaps.
+- If `impl_diff` is **empty**: the single agent receives only the test diff, covering 5 dimensions (gap-detector skipped).
 
-Each agent receives a prompt with four sections:
+**Complex-tier handling:**
+- Report header carries: `⚠️ Complex review (N test files / M lines) — findings are best-effort and may be non-exhaustive. Consider splitting this PR.`
+- Each dispatched agent's prompt includes a thoroughness directive: review every file in its scope thoroughly. Agents return findings only — no coverage roll-call.
+
+### Review Plan
+
+Emit this plan before any dispatch or inline review begins:
 
 ```
+Review Plan:
+  Size tier:        Small | Medium | Large | Complex
+  Execution mode:   inline | single-agent | parallel
+  Dimensions:       [active dimension list]
+  Agents dispatched: 0 (inline) | 1 (single-agent) | N (parallel)
+  Gap-detector:     active (impl_diff non-empty) | skipped (no impl changes)
+  Complex handling: none | caveat + thoroughness directive
+  Excluded files:   N
+```
+
+### Complexity Banner
+
+Immediately after the assessment, print this one-line banner to the user **before any dispatch or inline review begins**. Required in every mode and every tier, including Small.
+
+```
+🔍 Test review — Complexity: **<Tier>** (<N> test files, <M> lines[· <X> excluded]) · <execution description>
+```
+
+Examples:
+```
+🔍 Test review — Complexity: **Small** (3 test files, 90 lines) · Inline review
+🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Single agent — 6 dimensions
+🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Single agent — 5 dimensions (no impl changes)
+🔍 Test review — Complexity: **Large** (20 test files, 900 lines) · Parallel — 5 agents
+🔍 Test review — Complexity: **Complex** (32 test files, 1,840 lines · 2 excluded) · Parallel — 6 agents (⚠️ completeness caveat)
+```
+
+### Silent operation
+
+The skill produces **exactly three** user-facing outputs: (1) the skill-invocation announcement, (2) the complexity banner, (3) the final consolidated report. **Nothing else.** No progress narration, no per-agent intermediate output, no analysis commentary between the banner and the final report.
+
+## Step 6: Dispatch
+
+Execute per the size tier determined in Step 5.
+
+### Execution modes
+
+| Tier | What to do |
+|------|------------|
+| **Small** | Orchestrator reviews all dimensions inline — no agents. Apply all 5 dimensions (plus coverage gaps if `impl_diff` non-empty) directly, then proceed to Step 8. |
+| **Medium** | Dispatch exactly ONE subagent covering ALL dimensions. It receives both the test diff AND `impl_diff` (if non-empty). It self-loads the union of checklists + the full 7-doc codebase set. |
+| **Large** | Dispatch one specialized subagent per active dimension in a **single parallel message**. Never sequentially. |
+| **Complex** | Same as Large + inject the thoroughness directive into each agent's prompt: *"Review every file in your scope thoroughly."* |
+
+For Large and Complex: `gap-detector` is dispatched only when `impl_diff` is non-empty; otherwise its at-a-glance row shows `⚠️ skipped — no implementation changes`.
+
+### Prompt template (all non-inline modes)
+
+Each agent receives:
+
+```
+## Before You Begin
+Read the following files before starting your review (skip any marked absent in the availability map):
+<checklist and codebase doc paths — see Agent Roster below>
+
 ## Role
 <agent name and dimension>
 
-## Context
-<inlined content from the agent's context bundle — present items only, relevant to this dimension>
-
-## Diff
-<full test-file diff from Step 4 — all agents receive the full diff; scoping is in the context, not the code>
-
-## Return format
-Status: Complete | Blocked | Partial
-Dimension: <agent name>
-Findings: [{severity, title, file, line, explanation, recommendation}]
-Files reviewed: [list]
-Issues: <any blockers encountered>
-```
-
-### Agent Roster
-
-| Agent | Dimension | Required context | Optional context | Degrades without |
-|-------|-----------|-----------------|------------------|-----------------|
-| `clarity-reviewer` | Test naming, AAA structure, focus, readability as docs | `checklist_baseline` (clarity section) | `conventions`, `stack` | `conventions` |
-| `coverage-reviewer` | Happy path, error paths, edge cases, integration points, access control | `checklist_baseline` (coverage section) | `architecture`, `stack`, `concerns` | — |
-| `gap-detector` | Implementation paths and behaviors missing test coverage (receives `impl_diff` + test diff; skipped if `impl_diff` is empty) | `checklist_baseline` (coverage section) | `architecture`, `stack`, `concerns` | — |
-| `isolation-reviewer` | Shared state, ordering, mocks, determinism, external deps | `checklist_baseline` (isolation section) | `testing`, `integrations`, `stack` | `testing` |
-| `maintainability-reviewer` | Helpers, data-driven patterns, mock minimalism, update cost | `checklist_baseline` (maintainability section) | `conventions`, `stack`, `checklist_tech_specific` | — |
-| `performance-reviewer` | I/O in unit tests, sleep/polling, suite speed, test separation | `checklist_baseline` (performance section) | `testing`, `stack` | `testing` |
-
-### Reviewer Stance (injected into every agent)
-
+## Reviewer Stance
 You are the villain. Find every gap, weakness, and lie in the test suite — not encourage.
-
 - Be relentless. Weak tests are worse than no tests — they create false confidence.
 - Every missing case, every flawed assertion, every poorly isolated test is a finding.
 - If a test could pass even when the code is broken, that IS a broken test — flag it.
 - State problems directly: file, line number, consequence.
 - Never sign off on a test suite that would fail to catch real bugs.
 
-### Tech Debt Recurrence (injected into all agents)
+## Diff
+<full test-file diff from Step 4; gap-detector receives impl_diff instead>
 
-If `docs/TECH_DEBTS.md` was loaded, cross-reference findings against known debts. Test code that introduces or replicates a listed anti-pattern → **Critical / P0** with reference to the specific debt entry.
+## Return format
+Status: Complete | Blocked | Partial
+Dimension: <agent name>
+Findings: [{severity, title, file, line, explanation, recommendation}]
+Issues: <any blockers encountered>
+```
+
+### Agent Roster
+
+| Agent | Dimension | `## Before You Begin` — Checklists | `## Before You Begin` — Codebase docs | Degrades without |
+|-------|-----------|-------------------------------------|----------------------------------------|-----------------|
+| `clarity-reviewer` | Test naming, AAA structure, focus, readability as docs | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `conventions` |
+| `coverage-reviewer` | Happy path, error paths, edge cases, integration points, access control | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | — |
+| `gap-detector` | Implementation paths and behaviors missing test coverage (receives `impl_diff` only; skipped if `impl_diff` empty) | None | `STACK.md`, `ARCHITECTURE.md`, `CONCERNS.md`, `INTEGRATIONS.md` | — |
+| `isolation-reviewer` | Shared state, ordering, mocks, determinism, external deps | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `testing` |
+| `maintainability-reviewer` | Helpers, data-driven patterns, mock minimalism, update cost | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | — |
+| `performance-reviewer` | I/O in unit tests, sleep/polling, suite speed, test separation | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `testing` |
+
+**Full 7-doc set** = `STACK.md`, `ARCHITECTURE.md`, `CONVENTIONS.md`, `TESTING.md`, `CONCERNS.md`, `INTEGRATIONS.md`, `STRUCTURE.md` — filtered to those marked present in the availability map.
+
+All `## Before You Begin` file paths are filtered to files marked present in the availability map. An absent file is silently omitted from the load list — the agent never attempts to Read a non-existent file.
 
 ### Agent: gap-detector
-
-**Dimension:** Coverage Gaps
 
 Cross-references `impl_diff` (implementation changes) against the test diff to identify important code paths and behaviors with no corresponding test. Skipped entirely if `impl_diff` is empty.
 
@@ -216,11 +285,7 @@ Flag as findings:
 - **Access control / permission checks** added with no test verifying enforcement.
 - **Edge cases implied by the implementation** (null/empty/zero/boundary values handled explicitly in code) with no corresponding test case.
 
-This agent does NOT judge the quality of existing tests — it only identifies what is absent.
-
-### Quick mode inline fallback (from Step 5)
-
-When Quick Mode Check triggered: skip subagent dispatch. Apply all 6 dimensions inline without spawning agents (skip coverage gaps dimension if `impl_diff` is empty), then proceed to Step 8 (Present Findings).
+This agent receives `impl_diff` only — not the test diff. It does NOT judge the quality of existing tests — it only identifies what is absent from the implementation side.
 
 ## Step 7: Await + Fallback
 
@@ -237,6 +302,8 @@ Continue to Step 8 regardless of individual agent outcomes. A failed agent never
 
 ## Step 8: Consolidation and Present Findings
 
+This step is the **third and final user-facing output** (after the skill-invocation announcement and complexity banner from Step 5). No intermediate output appears between the banner and this report.
+
 ### Report header (always first)
 
 ```
@@ -244,9 +311,10 @@ Continue to Step 8 regardless of individual agent outcomes. A failed agent never
 Scope: <test files reviewed>
 Branch: <branch>
 Commits: <hash — subject>, <hash — subject>, ...   ← multi-commit mode only
-Diff: <N files changed, +X insertions, -Y deletions>
+Diff: <N files changed, +X insertions, -Y deletions[, M excluded as snapshots/lockfiles]>
 Run: <date>
 Mode: local | GitHub PR #N | multi-commit
+[⚠️ Complex review (N test files / M lines) — findings are best-effort and may be non-exhaustive. Consider splitting this PR.]  ← Complex tier only
 ```
 
 ### At-a-glance table (always second)
@@ -323,26 +391,26 @@ Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode
 User: "review my tests"
 
 1. Step 1: No PR number, no commit refs → local workspace mode
-2. Step 2: Load all `.specs/codebase/` docs + baseline checklist + tech-specific checklist + `docs/TECH_DEBTS.md`
-3. Step 3: Build availability map; assemble context bundles per agent
-4. Step 4: `git diff HEAD` + `git diff --cached` + `git ls-files --others --exclude-standard` → filter to test files; collect `git diff --stat`
-5. Step 5: Quick mode check — if ≤ 5 test files or < 200 lines, review inline; otherwise continue
-6. Step 6: Dispatch up to 6 agents in parallel — all 5 test-quality agents + `gap-detector` (if `impl_diff` non-empty), each with their context bundle + relevant diffs
-7. Step 7: Await all results; mark any failures/degraded agents
-8. Step 8: Report header → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
+2. Step 2: Check presence/absence of all 9 context items (7 codebase docs + 2 checklists); no content loaded
+3. Step 3: Build availability map (9 keys)
+4. Step 4: `git diff HEAD -- $EXCLUDE` + `git diff --cached -- $EXCLUDE` + `git ls-files --others --exclude-standard` → filter to test files; collect `git diff --stat -- $EXCLUDE`; capture `excluded_count`; collect `impl_diff -- $EXCLUDE` filtered to non-test implementation files
+5. Step 5: Complexity assessment — e.g. 8 test files / 350 lines → Medium; emit Review Plan; print banner: `🔍 Test review — Complexity: **Medium** (8 test files, 350 lines) · Single agent — 6 dimensions`
+6. Step 6: Dispatch ONE agent covering all 6 dimensions (including gap-detector, since `impl_diff` non-empty); agent self-loads `test-review-checklist.md` + full 7-doc codebase set via `## Before You Begin`
+7. Step 7: Await result; mark any failures/degraded dimensions
+8. Step 8: Report header (with excluded count if any) → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
 
 ### Example 2: GitHub PR review
 
 User: "review tests on PR #42"
 
 1. Step 1: PR #42 → GitHub PR mode
-2. Step 2: Load all context + checklists (same as local)
-3. Step 3: Build availability map + bundles
-4. Step 4: fetch diff via GitHub MCP → filter to test files; collect changed test file list
-5. Step 5: Quick mode check
-6. Step 6: Dispatch up to 6 agents in parallel against PR diffs — `gap-detector` receives both `impl_diff` and test diff; all others receive test diff only
-7. Step 7: Await results
-8. Step 8: Consolidated report with at-a-glance table
+2. Step 2: Check presence/absence of all 9 context items; no content loaded
+3. Step 3: Build availability map (9 keys)
+4. Step 4: Fetch diff via GitHub MCP; filter changed-file list to remove EXCLUDE patterns; filter to test files; capture `excluded_count`; collect `impl_diff` (non-test implementation files, EXCLUDE applied)
+5. Step 5: Complexity assessment → emit Review Plan → print banner (e.g. `🔍 Test review — Complexity: **Large** (18 test files, 950 lines) · Parallel — 6 agents`)
+6. Step 6: Dispatch 6 agents in parallel (5 test-quality agents receive test diff; `gap-detector` receives `impl_diff` only; each self-loads via `## Before You Begin`)
+7. Step 7: Await results; mark failures/degraded agents
+8. Step 8: Consolidated report (excluded count in header) → at-a-glance table → zoned findings
 9. Step 9: User selects findings to post → create pending review comments via GitHub MCP; user submits manually on GitHub
 
 ### Example 3: Multi-commit review
@@ -350,13 +418,13 @@ User: "review tests on PR #42"
 User: "review test commits abc123 def456"
 
 1. Step 1: Commit hashes with "test commits" trigger → multi-commit mode
-2. Step 2: Load all context + checklists
-3. Step 3: Build availability map + bundles
-4. Step 4: `git show abc123; git show def456` → filter to test files, concatenated; collect commit list (hash + subject) for report header
-5. Step 5: Quick mode check applied against combined diff totals
-6. Step 6: Dispatch 5 agents in parallel against combined test-file diff
-7. Step 7: Await results
-8. Step 8: Single consolidated report — header lists both commits; at-a-glance table + findings as normal
+2. Step 2: Check presence/absence of all 9 context items; no content loaded
+3. Step 3: Build availability map (9 keys)
+4. Step 4: `git show abc123 -- $EXCLUDE; git show def456 -- $EXCLUDE` → filter to test files, concatenated; collect commit list (hash + subject) for report header; capture `excluded_count`; collect `impl_diff` with EXCLUDE applied
+5. Step 5: Complexity assessment against combined diff totals → emit Review Plan → print banner
+6. Step 6: Dispatch agents per tier (e.g. Complex → 6 parallel agents, each self-loading via `## Before You Begin`, each receiving thoroughness directive)
+7. Step 7: Await results; mark failures/degraded agents
+8. Step 8: Single consolidated report — header lists both commits + excluded count; at-a-glance table + zoned findings
 
 ## When No Stack-Specific References Exist
 
