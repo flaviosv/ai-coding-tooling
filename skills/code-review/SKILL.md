@@ -375,21 +375,27 @@ Continue to Step 8 regardless of individual agent outcomes. A failed agent never
 
 ## Step 8: Consolidation and Present Findings
 
+The **only user-facing outputs** in this skill, in this order, are: (1) the skill-invocation announcement, (2) the complexity banner (from Step 5), and (3) this consolidated report. Nothing is emitted between the banner and this report.
+
 ### Report header (always first)
 
 ```
 # <TASK-ID or branch> — Code Review
-Scope: <files reviewed>
+Scope: <N files reviewed[, M excluded as generated/lockfiles]>
 Branch: <branch>
 Commits: <hash — subject>, <hash — subject>, ...   ← multi-commit mode only
 Diff: <N files changed, +X insertions, -Y deletions>
 Run: <date>
 Mode: local | GitHub PR #N | multi-commit | performance audit
+[Tier: <tier> | Type: <content_type>]              ← omit when tier=Large/Complex AND type=general; show when type ≠ general OR tier ∈ {Large, Complex}
+[⚠️ Complex review (N files / M lines) — findings are best-effort and may be non-exhaustive. Consider splitting this PR.]  ← Complex tier only
 ```
+
+Include `excluded_count` in the `Scope` line whenever `excluded_count > 0`. Include the `Tier/Type` line whenever the content type is not `general` OR the tier is `Large` or `Complex`. Include the completeness caveat only when the tier is `Complex`.
 
 ### At-a-glance table (always second)
 
-One row per active agent dimension — always present regardless of output format:
+One row per **active** dimension only — omit rows for dimensions not in the active set. Do not show "skipped" or "not executed" for inactive dimensions; their absence is intentional.
 
 | Dimension | Status | Findings | Critical | High | Summary |
 |-----------|--------|----------|----------|------|---------|
@@ -399,6 +405,8 @@ One row per active agent dimension — always present regardless of output forma
 | Regression & Hallucination | ✅ / ⚠️ degraded / ⚠️ not executed | N | N | N | 1-line |
 | Security | ... | N | N | N | 1-line |
 | Requirements | ✅ / ⚠️ (only if active spec/JIRA) | — | — | coverage summary |
+
+Show only the rows for active dimensions. For example, a `docs-only` review shows only Code Quality (and Requirements if active).
 
 ### Output format
 
