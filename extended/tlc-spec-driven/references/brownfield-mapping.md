@@ -270,7 +270,7 @@ parent's per-file token budgets still apply.
 
 ## Pipeline Stages
 
-[ASCII diagram of pipeline flow]
+[Pipeline flow diagram — Mermaid via `mermaid-studio`, ASCII fallback]
 
 | Stage   | Purpose        | Trigger        |
 | ------- | -------------- | -------------- |
@@ -284,7 +284,7 @@ parent's per-file token budgets still apply.
 
 ## Environment Matrix
 
-[ASCII promotion flow — e.g. dev → staging → prod]
+[Promotion flow — Mermaid via `mermaid-studio`, ASCII fallback — e.g. dev → staging → prod]
 
 | Environment | Purpose | Promotion Method       |
 | ----------- | ------- | ---------------------- |
@@ -442,7 +442,7 @@ project level (internal structure, public API surface, dependency graph, integra
 
 **Scope:** analyze only files within the package dir; do **not** create
 `STACK/ARCHITECTURE/...` files. Same quality bar (factual, scannable, no code snippets unless
-necessary, ASCII diagrams encouraged).
+necessary, diagrams encouraged — Mermaid via `mermaid-studio`, ASCII fallback).
 
 ### PM1 — Validate package path
 Confirm the path exists and looks like a package for the stack (load `.specs/codebase/STACK.md`
@@ -490,12 +490,13 @@ structural change → suggest a Full-mode re-evaluation of `.specs/codebase/`.
   aggressively — tables over paragraphs, bullets over tables, omission over filler. Follow
   [Token Efficiency Rules](../../templates/token-efficiency-rules.md).
 - **No code samples** unless strictly necessary — prose, tables, bullets; code blocks only for
-  directory trees, ASCII diagrams, and exact runnable commands.
+  directory trees, diagrams, and exact runnable commands.
 - **CI/CD belongs in `PIPELINE.md` only.** Other files may reference it but not contain specifics.
 - **Factual only** — document what exists; never invent or speculate; omit sections without evidence.
 - **Never write secret values** anywhere — reference secrets by name and how they're managed.
 - **Re-evaluate on structural change** — new layer, moved/renamed top-level dirs, new package →
   suggest regenerating the whole `.specs/codebase/` set via Full mode.
 - **Delegate every `.md` write to the `docs-writer` skill** — no exceptions.
-- **Diagrams:** if `mermaid-studio` is installed, delegate diagram creation to it (parent rule);
-  otherwise use inline ASCII.
+- **Diagrams:** author every diagram (data flows, layer relationships, component interactions,
+  pipeline stages) in **Mermaid** and render it via the `mermaid-studio` skill. Only fall back to
+  inline ASCII when `mermaid-studio` is unavailable.

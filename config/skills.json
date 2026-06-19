@@ -13,11 +13,23 @@
       "description": "Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use for bug fixes, features, refactors, or flow investigation in unfamiliar territory."
     },
     {
+      "name": "confluence-assistant",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Expert in Confluence operations using Atlassian MCP. Use when the user says \"search Confluence\", \"create a Confluence page\", \"update a page\", \"find documentation in Confluence\", \"list spaces\", or \"add a comment to a page\". Do NOT use for Jira issues, general web search, or local file creation."
+    },
+    {
       "name": "docs-writer",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
       "extended": true,
       "description": "Writing, reviewing, and editing documentation and .md files."
+    },
+    {
+      "name": "jira-assistant",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club",
+      "description": "Manage Jira issues via Atlassian MCP — search, create, update, transition status, and handle sprint tasks. Auto-detects workspace configuration. Use when user says \"create a Jira ticket\", \"update my sprint\", \"check Jira status\", \"transition this issue\", \"search Jira\", or \"move ticket to done\". Do NOT use for Confluence pages (use confluence-assistant)."
     },
     {
       "name": "kb-from-folder",

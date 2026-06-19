@@ -123,6 +123,18 @@ Hard rules:
      TIER 4 · WORKFLOW — apply when executing tasks
      ═══════════════════════════════════════════════════════════════ -->
 
+## Pre-Coding Gate — tlc-spec-driven
+
+Before writing or modifying any code, check whether `tlc-spec-driven` has been invoked in this session — either manually by the user or auto-triggered by the LLM.
+
+**If it has NOT been invoked**, stop and ask:
+
+> "`tlc-spec-driven` hasn't been used yet this session. Should I invoke it before proceeding? (specify, design, tasks, or implement)"
+
+Wait for the user's answer before writing any code. If they say no or to skip, proceed without it. If they decline once, do not ask again for the rest of the session.
+
+---
+
 ## Git Commit Messages
 
 - **No co-authoring credits** — never append `Co-Authored-By:`, `Generated with`, or any tool attribution trailer to commit messages. This applies to Claude Code, any other AI tool, or any automated system.

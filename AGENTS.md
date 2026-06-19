@@ -12,6 +12,15 @@ This is **not an implementation-heavy codebase**. The vast majority of the proje
 
 # Constraints
 
+## Status Line Changes
+
+When modifying the status line script, always apply changes in this order:
+
+1. Edit `config/statusline-command.sh` (the project's source of truth).
+2. Copy the updated file to `~/.claude/statusline-command.sh` to apply it globally.
+
+Never edit the global file directly — changes must originate in `config/statusline-command.sh`.
+
 ## Skill Modification Rules
 
 - **Only modify skills whose source is `local`** — i.e., files under `skills/` or `.agents/skills/` in this repository.
