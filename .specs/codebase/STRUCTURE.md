@@ -8,8 +8,7 @@
 ai-coding-tooling/
 ├── .agents/skills/          # Project-local skills (exposed via .claude → .agents symlink)
 │   ├── kb-from-folder/
-│   ├── kb-from-raindrop/
-│   └── skill-architect/
+│   └── kb-from-raindrop/
 ├── .specs/                  # Spec-driven planning (tlc-spec-driven convention)
 │   ├── codebase/            # Brownfield codebase context docs (this set)
 │   └── project/
@@ -62,7 +61,7 @@ ai-coding-tooling/
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for agent and skill configuration.
-**Key files:** `skills.json` (18 skills), `agents.json` (1 agent: claude-code), `statusline-command.sh`
+**Key files:** `skills.json` (20 skills), `agents.json` (1 agent: claude-code), `statusline-command.sh`
 
 ### Local Skills (`skills/`)
 **Purpose:** Skills owned and maintained by this repo; installed globally via `fsvskills setup`.
@@ -70,7 +69,7 @@ ai-coding-tooling/
 
 ### Project-Local Skills (`.agents/skills/`)
 **Purpose:** Skills exposed only to Claude Code within this project (via `.claude → .agents` symlink).
-**Key files:** `kb-from-folder/`, `kb-from-raindrop/`, `skill-architect/`
+**Key files:** `kb-from-folder/`, `kb-from-raindrop/`
 
 ### Overrides (`extended/`)
 **Purpose:** Additive overlays for vendor skills — augment without forking the vendor source.

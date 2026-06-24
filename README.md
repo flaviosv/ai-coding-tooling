@@ -102,7 +102,6 @@ These skills live in `.agents/skills/`. `fsvskills setup` creates a `.claude →
 |---|---|
 | **kb-from-folder** | Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
 | **kb-from-raindrop** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
-| **skill-architect** | Expert guide for designing and building high-quality skills through structured conversation. Source: Tech Leads Club. Installed locally. |
 
 > Skill installation/update is handled by the `fsvskills` command (`bin/skills.mjs`), not by a skill. See [Managing skills](#managing-skills).
 
@@ -154,6 +153,7 @@ Installed globally by `fsvskills setup`. Treated as read-only — do not edit th
 | **codenavi** | Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use when fixing bugs, implementing features, refactoring, or investigating flows in unfamiliar territory. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
 | **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |
+| **skill-architect** | Expert guide for designing and building high-quality skills from scratch through structured conversation. Covers standalone skills and MCP-enhanced workflows. |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
 | **tlc-spec-driven** ⭐ | Spec-driven planning (Specify → Design → Tasks → Execute) **and** the project's codebase-doc owner. Run **map codebase** as the first step on a new/onboarded project to generate the `.specs/codebase/` context set + `.specs/project/PROJECT.md`. **Extended in this project** (`extended/tlc-spec-driven/`): adds `PIPELINE.md` as an 8th codebase doc plus incremental-sync and per-package modes ported from the retired `architecture-evaluate`; augments `coding-principles` with software-design/observability/stack-style references (ported from the retired `coding-guidelines`) and routes security to `security-best-practices` and UI work to `web-design-guidelines`. |

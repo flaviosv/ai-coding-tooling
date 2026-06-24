@@ -30,8 +30,6 @@ When **tlc-spec-driven** runs an **incremental documentation sync** ("update doc
 
 - **kb-from-folder** (`.agents/skills/kb-from-folder/SKILL.md`): Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
 - **kb-from-raindrop** (`.agents/skills/kb-from-raindrop/SKILL.md`): Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault, clustering bookmarks by topic. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
-- **skill-architect** (`.agents/skills/skill-architect/SKILL.md`): Expert guide for designing and building high-quality skills through structured conversation. Installed project-locally (not global).
-
 ### Tech Leads Club
 
 - **codenavi**: Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use for bug fixes, features, refactors, or flow investigation in unfamiliar territory.
@@ -41,6 +39,7 @@ When **tlc-spec-driven** runs an **incremental documentation sync** ("update doc
 - **learning-opportunities**: Facilitates deliberate skill development during AI-assisted coding by offering interactive learning exercises after architectural work.
 - **mermaid-studio**: Expert Mermaid diagram creation, validation, and rendering with dual-engine output (SVG/PNG/ASCII). Supports all 20+ diagram types including C4 architecture, AWS architecture-beta with service icons, flowcharts, sequence, ERD, state, class, mindmap, timeline, git graph, sankey, and more. Features code-to-diagram analysis, batch rendering, 15+ themes, and syntax validation. Use when users ask to create diagrams, visualize architecture, render mermaid files, generate ASCII diagrams, document system flows, model databases, draw AWS infrastructure, analyze code structure, or anything involving "mermaid", "diagram", "flowchart", "architecture diagram", "sequence diagram", "ERD", "C4", "ASCII diagram". Do NOT use for non-Mermaid image generation, data plotting with chart libraries, or general documentation writing.
 - **security-best-practices**: Language and framework specific security reviews (Python, JavaScript/TypeScript, Go).
+- **skill-architect**: Expert guide for designing and building high-quality skills from scratch through structured conversation. Use whenever someone wants to create a new skill, build a skill, design a skill, or asks for help making Agents do something consistently. Also use when someone says "turn this into a skill", "I want to automate this workflow", "how do I teach my Agent to do X", or mentions creating SKILL.md files. Covers standalone skills and MCP-enhanced workflows.
 - **subagent-creator**: Guide for creating AI subagents with isolated context for complex multi-step workflows.
 - **technical-design-doc-creator**: Creates comprehensive Technical Design Documents (TDD) following industry standards.
 - **tlc-spec-driven**: Project and feature planning with 4 adaptive phases - Specify, Design, Tasks, Execute. Auto-sizes depth by complexity. Creates atomic tasks with verification criteria, atomic git commits, requirement traceability, and persistent memory across sessions. Stack-agnostic. Use when (1) Starting new projects (initialize vision, goals, roadmap), (2) Working with existing codebases (map stack, architecture, conventions), (3) Planning features (requirements, design, task breakdown), (4) Implementing with verification and atomic commits, (5) Quick ad-hoc tasks (bug fixes, config changes), (6) Tracking decisions/blockers/deferred ideas across sessions, (7) Pausing/resuming work. Triggers on "initialize project", "map codebase", "specify feature", "discuss feature", "design", "tasks", "implement", "validate", "verify work", "UAT", "quick fix", "quick task", "pause work", "resume work". Do NOT use for architecture decomposition analysis (use architecture skills) or technical design docs (use create-technical-design-doc).
@@ -59,5 +58,5 @@ _No Matt Pocock skills installed yet. Add one with:_ `fsvskills add claude-code 
 These skills carry a project-specific overlay in `extended/<name>/` (applied as `SKILL.extended.md` and optional `references/`):
 
 - **docs-writer** — overlays the Tech Leads Club skill.
-- **skill-architect** — overlays the Local-only (project) skill.
+- **skill-architect** — overlays the Tech Leads Club skill.
 - **tlc-spec-driven** — overlays the Tech Leads Club skill.

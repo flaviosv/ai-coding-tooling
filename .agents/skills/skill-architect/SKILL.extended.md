@@ -1,1 +1,0 @@
-/Users/flaviostudart/Projects/Personal/ai/ai-coding-tooling/extended/skill-architect/SKILL.md

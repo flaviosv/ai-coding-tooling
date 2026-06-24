@@ -72,10 +72,9 @@
     {
       "name": "skill-architect",
       "source": "tech-leads-club",
-      "scope": "local-only",
-      "installScope": "local",
+      "scope": "tech-leads-club",
       "extended": true,
-      "description": "Expert guide for designing and building high-quality skills through structured conversation. Installed project-locally (not global)."
+      "description": "Expert guide for designing and building high-quality skills from scratch through structured conversation. Use whenever someone wants to create a new skill, build a skill, design a skill, or asks for help making Agents do something consistently. Also use when someone says \"turn this into a skill\", \"I want to automate this workflow\", \"how do I teach my Agent to do X\", or mentions creating SKILL.md files. Covers standalone skills and MCP-enhanced workflows."
     },
     {
       "name": "subagent-creator",
