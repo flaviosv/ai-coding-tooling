@@ -85,7 +85,7 @@ Each cycle adds one behavior. Write one test, make it pass, clean up, repeat.
 
 Check whether the project has a test conventions file:
 
-- `.specs/codebase/TESTING.md` — project-specific conventions, frameworks, coverage matrix, gate commands, base classes, fixtures, naming patterns (fall back to legacy `docs/codebase/TESTS.md` / `docs/TESTS.md`)
+- `docs/codebase/TESTING.md` — project test conventions, frameworks, coverage matrix, gate commands, fixtures, and naming patterns
 
 If this file exists, follow it precisely. It takes precedence over the generic guidance below.
 
@@ -93,7 +93,7 @@ Then load the reference files:
 
 1. Always load `references/testing-patterns.md` — FIRST principles, test structure, test doubles, design rules (generic)
 2. Always load `references/coverage-guide.md` — coverage goals and what not to test (generic)
-3. Identify the project's language and framework from `.specs/codebase/STACK.md` (fall back to `docs/codebase/PROJECT_DETAILS.md`, then `docs/PROJECT_DETAILS.md`, for projects not yet migrated to `.specs/`)
+3. Identify the project's language and framework from `docs/codebase/STACK.md`
 4. List files in `references/` and load ONLY those whose prefix matches the detected stack.
    If the stack is Python + Django, load `python-tests.md` AND `django-tests.md` if they exist.
    Skip all other tech-specific files.
@@ -150,9 +150,9 @@ Before considering a feature or fix complete:
 
 User says: "Write tests for the new payment processor module."
 
-1. Check `.specs/codebase/TESTING.md` for project conventions (fall back to legacy `docs/codebase/TESTS.md` / `docs/TESTS.md`)
+1. Check `docs/codebase/TESTING.md` for project conventions
 2. Load `references/testing-patterns.md` and `references/coverage-guide.md`
-3. Detect stack from `.specs/codebase/STACK.md` (fall back to `docs/codebase/PROJECT_DETAILS.md`, then `docs/PROJECT_DETAILS.md`) and load ALL matching stack-specific references
+3. Detect stack from `docs/codebase/STACK.md` and load ALL matching stack-specific references
 4. Write unit tests for the payment processor's core logic in isolation
 5. Write integration tests for the database and external service interactions
 6. Verify the completion checklist before finishing

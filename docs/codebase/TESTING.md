@@ -1,14 +1,14 @@
 # Testing Infrastructure
 
-**Analyzed:** 2026-06-11
+**Analyzed:** 2026-06-26
 
 ## Test Frameworks
 
-None. No test framework is installed or configured. No test files exist in the codebase.
+None. No test framework is installed or configured, and no test files exist in the codebase.
 
 ## Test Organization
 
-The only implementation code (`bin/skills.mjs`) is untested. `.md` skill and reference files are reviewed manually; no automated validation.
+The only implementation code (`bin/skills.mjs`) is untested. `.md` skill and reference files are reviewed manually; there is no automated validation.
 
 ## Test Coverage Matrix
 
@@ -23,7 +23,7 @@ The only implementation code (`bin/skills.mjs`) is untested. `.md` skill and ref
 | Gate Level | When to Use | Command |
 | ---------- | ----------- | ------- |
 | Syntax check | Before merging `bin/skills.mjs` changes | `node --check bin/skills.mjs` |
-| Manual smoke test | After any CLI change | `fsvskills list claude-code --dry-run` |
+| Manual smoke test | After any CLI change | `fsvskills list claude-code` + a `--dry-run` of the affected command |
 
 ## Notes
 

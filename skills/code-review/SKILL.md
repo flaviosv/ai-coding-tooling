@@ -85,7 +85,7 @@ For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templat
 
 Check for the presence of the following files. Do **not** load their content — record only whether each file exists (`present`) or does not (`absent`). This presence/absence check feeds the availability map in Step 3.
 
-**Codebase docs** — check under `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
+**Codebase docs** — check under `docs/codebase/`:
 
 | File | Availability key |
 |------|-----------------|
@@ -284,13 +284,13 @@ Read the following files before starting the review. Skip any file marked absent
 Checklists (load only if present per availability map):
 - [list of this agent's assigned checklist files — see Checklist Matrix below]
 
-Codebase docs (load each if present — fall back .specs/codebase/ → docs/codebase/ → docs/):
-- .specs/codebase/STACK.md
-- .specs/codebase/ARCHITECTURE.md
-- .specs/codebase/CONVENTIONS.md
-- .specs/codebase/STRUCTURE.md
-- .specs/codebase/INTEGRATIONS.md
-- .specs/codebase/CONCERNS.md
+Codebase docs (load each if present, from docs/codebase/):
+- docs/codebase/STACK.md
+- docs/codebase/ARCHITECTURE.md
+- docs/codebase/CONVENTIONS.md
+- docs/codebase/STRUCTURE.md
+- docs/codebase/INTEGRATIONS.md
+- docs/codebase/CONCERNS.md
 
 ## Role
 <agent name and dimension — or "all active dimensions" for Medium single-agent>
@@ -459,10 +459,9 @@ into the **current feature's folder, co-located with the artifacts the `tlc-spec
 Resolve the destination in this order:
 
 1. **Active TLC feature** → `.specs/features/<TASK-ID>-<slug>/code-review.md`
-2. **Active TLC quick task** → `.specs/quick/<TASK-ID>-<slug>/code-review.md`
-3. **No TLC feature folder** → `docs/plans/<TASK-ID>/code-review.md`
+2. **No TLC feature folder** → ask the user where to save it (default: the project root).
 
-Match the changed files / TASK-ID to an existing directory under `.specs/features/` or `.specs/quick/`. If none exists, use the fallback. Use `code-review_phase2.md` (then `_phase3`, …) for subsequent passes.
+Match the changed files / TASK-ID to an existing directory under `.specs/features/`. If none exists, use the fallback. Use `code-review_phase2.md` (then `_phase3`, …) for subsequent passes.
 
 ### Iterative review
 
@@ -506,7 +505,7 @@ Recommendation: <specific fix>
 User: "review my code"
 
 1. Step 1: No PR number, no commit refs → local workspace mode
-2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists; check for active spec or JIRA task ID — build availability map (no content loaded by orchestrator)
+2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check for active spec or JIRA task ID — build availability map (no content loaded by orchestrator)
 3. Step 3: Availability map ready (presence/absence only)
 4. Step 4: `git diff HEAD -- $EXCLUDE` + `git diff --cached -- $EXCLUDE` + `git ls-files --others --exclude-standard`; collect `git diff --stat -- $EXCLUDE`; record `excluded_count`
 5. Step 5: Complexity assessment — emit Review Plan and complexity banner; route to execution mode (Small → inline, Medium → single agent, Large/Complex → parallel)
@@ -519,7 +518,7 @@ User: "review my code"
 User: "review PR #42"
 
 1. Step 1: PR #42 → GitHub PR mode
-2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists; check PR description for JIRA task ID — build availability map
+2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check PR description for JIRA task ID — build availability map
 3. Step 3: Availability map ready
 4. Step 4: Fetch diff via GitHub MCP; filter changed-file list to remove EXCLUDE-matching paths; record `excluded_count`
 5. Step 5: Complexity assessment — emit banner; route to execution mode
@@ -533,7 +532,7 @@ User: "review PR #42"
 User: "do a performance audit of the orders module"
 
 1. Step 1: Trigger phrase matches → Performance Audit mode
-2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists — build availability map
+2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists — build availability map
 3. Step 3: Availability map ready
 4. Step 4: No diff — full codebase scan (EXCLUDE does not apply)
 5. Step 5: Complexity assessment skipped — Performance Audit always uses parallel dispatch
@@ -546,7 +545,7 @@ User: "do a performance audit of the orders module"
 User: "review commits abc123 def456 ghi789"
 
 1. Step 1: Commit hashes detected → multi-commit mode
-2. Step 2: Check presence of `.specs/codebase/` docs and `references/` checklists; check commit messages for JIRA task IDs — build availability map
+2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check commit messages for JIRA task IDs — build availability map
 3. Step 3: Availability map ready
 4. Step 4: `git show abc123 -- $EXCLUDE; git show def456 -- $EXCLUDE; git show ghi789 -- $EXCLUDE` — concatenated into one combined diff; collect commit list (hash + subject) for report header; record `excluded_count`
 5. Step 5: Complexity assessment applied against combined diff totals; emit banner; route to execution mode

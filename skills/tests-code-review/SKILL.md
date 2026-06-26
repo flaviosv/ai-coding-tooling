@@ -75,7 +75,7 @@ For **GitHub PR mode**, load and apply [GitHub PR Mode — Step A](../../templat
 
 Check presence/absence of the following files before proceeding. Do **NOT** load file content — record only whether each is present or absent. Results feed the availability map in Step 3.
 
-**Codebase docs** — check in `.specs/codebase/`; fall back to `docs/codebase/` then `docs/` if not yet migrated. If old structure found, suggest migrating to `.specs/codebase/`:
+**Codebase docs** — check in `docs/codebase/`:
 
 | File | Availability key |
 |------|-----------------|

@@ -1,6 +1,6 @@
 # Project
 
-See [`.specs/project/PROJECT.md`](.specs/project/PROJECT.md) for the full project concept, architecture, and workflows. *(Not yet migrated: currently at [`docs/codebase/PROJECT_DETAILS.md`](docs/codebase/PROJECT_DETAILS.md))*
+See [`docs/codebase/PROJECT.md`](docs/codebase/PROJECT.md) for the project concept and goals, and the rest of [`docs/codebase/`](docs/codebase/) (ARCHITECTURE, STACK, STRUCTURE, CONVENTIONS, INTEGRATIONS, TESTING, CONCERNS) for the full agent context set.
 
 ## Project Nature
 
@@ -31,6 +31,7 @@ Never edit the global file directly — changes must originate in `config/status
 
 Skills are managed by the **`fsvskills`** script (`bin/skills.mjs`). Its source of truth is structured JSON in `config/` (`agents.json`, `skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fsvskills add`/`delete`/`override` change the registry.
 
+- **Running `fsvskills` yourself:** the full command reference is [docs/CLI.md](docs/CLI.md) — every command, flag, and workflow. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first). The quick reminders below are a summary; `docs/CLI.md` is authoritative.
 - See [docs/AGENT-SKILLS.md](docs/AGENT-SKILLS.md) for the generated skills registry and project-specific skill overrides.
 - Add a skill: `fsvskills add claude-code <skill> --source <local|tech-leads-club|matt-pocock>`.
 - Delete a skill: `fsvskills delete claude-code <skill>` (uninstalls + deregisters; keeps `extended/<skill>/`).

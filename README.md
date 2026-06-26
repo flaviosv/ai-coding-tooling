@@ -6,7 +6,7 @@ Shared agent configuration and skills for Claude Code.
 
 Everything is managed by the **`fsvskills`** command (`bin/skills.mjs`) — a single-file Node CLI with no dependencies. It replaces the former `agent-setup`/`skill-manager` skills and the `Makefile`.
 
-> The command is **repo-local for now** — it requires this cloned repository. Making it available on any computer is a planned follow-up (see [docs/TASKS.md](docs/TASKS.md)).
+> The command is **repo-local for now** — it requires this cloned repository. Making it available on any computer (publishing to npm) is a deferred follow-up (see scope in [docs/codebase/PROJECT.md](docs/codebase/PROJECT.md)).
 
 ### Prerequisites
 
@@ -111,6 +111,7 @@ Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. 
 
 | Skill | Description |
 |---|---|
+| **architecture-evaluate** | Creates and incrementally syncs the project context docs in `docs/codebase/` (PROJECT, STACK, STRUCTURE, ARCHITECTURE, CONVENTIONS, INTEGRATIONS, TESTING, CONCERNS, PIPELINE) that agents load at session start. Full mode maps the whole codebase; Incremental mode syncs only what changed (and root files like this README); Package mode documents a single module. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes, a GitHub PR, or a range of commits (multi-commit mode). Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
 | **tech-debt-report** | Documents tech debts in `docs/tech-debts/` and maintains an anti-pattern index in `docs/TECH_DEBTS.md` so agents avoid replicating bad patterns. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
@@ -151,12 +152,16 @@ Installed globally by `fsvskills setup`. Treated as read-only — do not edit th
 | Skill | Description |
 |---|---|
 | **codenavi** | Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use when fixing bugs, implementing features, refactoring, or investigating flows in unfamiliar territory. |
+| **confluence-assistant** | Confluence operations via the Atlassian MCP — search, create, update, and comment on pages and spaces. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
+| **jira-assistant** | Manages Jira issues via the Atlassian MCP — search, create, update, transition status, and handle sprint tasks. |
+| **learning-opportunities** | Facilitates deliberate skill development during AI-assisted coding — offers interactive learning exercises after architectural work (new files, schema changes, refactors). |
+| **mermaid-studio** | Mermaid diagram creation, validation, and rendering (SVG/PNG/ASCII) across 20+ diagram types, with code-to-diagram analysis and theming. |
 | **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |
 | **skill-architect** | Expert guide for designing and building high-quality skills from scratch through structured conversation. Covers standalone skills and MCP-enhanced workflows. |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
-| **tlc-spec-driven** ⭐ | Spec-driven planning (Specify → Design → Tasks → Execute) **and** the project's codebase-doc owner. Run **map codebase** as the first step on a new/onboarded project to generate the `.specs/codebase/` context set + `.specs/project/PROJECT.md`. **Extended in this project** (`extended/tlc-spec-driven/`): adds `PIPELINE.md` as an 8th codebase doc plus incremental-sync and per-package modes ported from the retired `architecture-evaluate`; augments `coding-principles` with software-design/observability/stack-style references (ported from the retired `coding-guidelines`) and routes security to `security-best-practices` and UI work to `web-design-guidelines`. |
+| **tlc-spec-driven** ⭐ | Spec-driven planning (Specify → Design → Tasks → Execute) with complexity auto-sizing, atomic tasks, requirement traceability, and persistent memory. **Extended in this project** (`extended/tlc-spec-driven/`): augments `coding-principles` with software-design/observability/stack-style references and routes security to `security-best-practices` and UI work to `web-design-guidelines`. |
 | **web-design-guidelines** | Reviews UI code for accessibility, design, and best-practices compliance. |
 
 ### Source: [Matt Pocock](https://github.com/mattpocock/skills)

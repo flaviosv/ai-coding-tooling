@@ -20,6 +20,19 @@ Only return a solution, suggestion, answer, tech approach, or plan if you have �
 - Use Context7, web search, or ask a clarifying question to close the gap before responding
 - Never present a guess as a recommendation
 
+## Technology Version Currency
+
+**Strict constraint — no exceptions.** Training data is frozen at a cutoff date; library, framework, SDK, API, and CLI versions change constantly. Never cite a version, API surface, config option, or deprecation status from memory alone.
+
+Before recommending any technology-specific detail (version number, install command, config syntax, breaking change, migration path):
+
+1. **Use Context7 first** (`mcp__context7__*`) — fetch current docs for the library or tool in question.
+2. **Fall back to web search** if Context7 has no coverage for it.
+3. **State the source** — when citing a version or API, say where you looked (e.g. "per Context7 / React docs as of today").
+4. **Flag when you cannot verify** — if neither Context7 nor web search is available and you must answer from training data, explicitly warn: *"I could not verify the current version — confirm this against the official docs before using it."*
+
+Triggers: any mention of a package name, `npm install`, `pip install`, `cargo add`, SDK setup, version pinning, upgrade/migration paths, or deprecation questions.
+
 ## Core Principles
 
 - **Autonomous by default**: For bugs/failing tests — point at evidence (logs, errors, tests), fix root causes, no hand-holding needed.
@@ -44,28 +57,29 @@ Only return a solution, suggestion, answer, tech approach, or plan if you have �
 
 ## Session Start — Project Context
 
-The `.specs/codebase/` directory may contain context files about the project (generated and kept in sync by the `tlc-spec-driven` skill's brownfield-mapping). Read only what is relevant to the current task. **Fallback:** when a file below is absent from `.specs/codebase/`, look in `docs/codebase/` (previous convention), then `docs/` (legacy) — and if found there, suggest migrating to `.specs/codebase/`.
+The `docs/codebase/` directory may contain context files about the project (generated and kept in sync by the `architecture-evaluate` skill). Read only what is relevant to the current task.
 
 | File | Contents | When to load |
 |------|----------|--------------|
-| `.specs/codebase/ARCHITECTURE.md` | System layers, data flow, components, patterns | Writing, modifying, or reviewing code |
-| `.specs/codebase/CONCERNS.md` | Risk snapshot: tech debt, fragile areas, security/perf/scaling limits | Estimating risk or touching fragile areas |
-| `.specs/codebase/CONVENTIONS.md` | Naming, code style, error handling, documentation pattern | Writing or reviewing code |
-| `.specs/codebase/INTEGRATIONS.md` | External services, APIs, webhooks, background jobs | Working with integrations or jobs |
-| `.specs/codebase/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
-| `.specs/codebase/STACK.md` | Tech stack, key libraries, commands, env config | Understanding the project, choosing libraries, onboarding |
-| `.specs/codebase/STRUCTURE.md` | Directory layout, module organization, monorepo package map | Navigating the codebase, locating where things live |
-| `.specs/codebase/TESTING.md` | Test frameworks, coverage matrix, gate-check commands | Writing or reviewing tests |
+| `docs/codebase/ARCHITECTURE.md` | System layers, data flow, components, patterns | Writing, modifying, or reviewing code |
+| `docs/codebase/CONCERNS.md` | Risk snapshot: tech debt, fragile areas, security/perf/scaling limits | Estimating risk or touching fragile areas |
+| `docs/codebase/CONVENTIONS.md` | Naming, code style, error handling, documentation pattern | Writing or reviewing code |
+| `docs/codebase/INTEGRATIONS.md` | External services, APIs, webhooks, background jobs | Working with integrations or jobs |
+| `docs/codebase/PIPELINE.md` | CI/CD stages, deployment strategy, environment promotion | Tasks involving CI/CD, deployment, or infrastructure |
+| `docs/codebase/PROJECT.md` | Project overview, vision, goals, target users, scope | Understanding what the project is and who it's for |
+| `docs/codebase/STACK.md` | Tech stack, key libraries, commands, env config | Understanding the project, choosing libraries, onboarding |
+| `docs/codebase/STRUCTURE.md` | Directory layout, module organization, monorepo package map | Navigating the codebase, locating where things live |
+| `docs/codebase/TESTING.md` | Test frameworks, coverage matrix, gate-check commands | Writing or reviewing tests |
 
-Project **vision/goals** live in `.specs/project/PROJECT.md`; **decisions, blockers, lessons, and todos** in `.specs/project/STATE.md`. The `.specs/codebase/` set is **open-ended** — also load any additional context files it contains; a project's root `CLAUDE.md`/`AGENTS.md` may list project-specific ones. If none of these files exist, suggest **map codebase** (the `tlc-spec-driven` skill). If the context files are found under `docs/codebase/` or `docs/`, suggest migrating them to `.specs/codebase/`.
+Project **vision/goals** live in `docs/codebase/PROJECT.md` (generated by `architecture-evaluate`); **decisions, blockers, lessons, and todos** stay in `tlc-spec-driven`'s memory (`.specs/STATE.md`). The `docs/codebase/` set is **open-ended** — also load any additional context files it contains; a project's root `CLAUDE.md`/`AGENTS.md` may list project-specific ones. If none of these files exist, suggest **map codebase** (the `architecture-evaluate` skill). If the context files are found under `.specs/codebase/` or `docs/`, suggest migrating them to `docs/codebase/`.
 
-### Codebase Doc Generation & Sync (tlc-spec-driven)
+### Codebase Doc Generation & Sync (architecture-evaluate)
 
-The `.specs/codebase/` context set is created and maintained by the `tlc-spec-driven` skill's brownfield-mapping (extended in this setup). Route these intents to it:
+The `docs/codebase/` context set is created and maintained by the `architecture-evaluate` skill. Route these intents to it:
 
-- **"map codebase" / "analyze existing code" / "evaluate architecture" / "onboard project" / "create or update project docs"** → full mapping (generates/refreshes all `.specs/codebase/` docs + `.specs/project/PROJECT.md`).
-- **"update docs" / "document my changes" / "sync documentation" / "document recent changes" / "keep docs in sync"** → incremental sync (git-diff-driven; updates only what changed + inline API docs + root files).
-- **"evaluate package" / "package architecture"** → package mode (scoped `CLAUDE.md` for one package).
+- **"map codebase" / "analyze existing code" / "evaluate architecture" / "onboard project" / "create or update project docs"** → Full mode (generates/refreshes all nine `docs/codebase/` docs, including `PROJECT.md`).
+- **"update docs" / "document my changes" / "sync documentation" / "document recent changes" / "keep docs in sync"** → Incremental mode (git-diff-driven; updates only what changed + inline API docs + root files).
+- **"evaluate package" / "package architecture"** → Package mode (scoped `CLAUDE.md` for one package).
 
 ---
 
@@ -146,5 +160,3 @@ Wait for the user's answer before writing any code. If they say no or to skip, p
 - Ask yourself: "Would a staff engineer approve this?"
 - Run tests, check logs, demonstrate correctness
     - Ask for approval for such tasks
-
-@RTK.md

@@ -1,6 +1,12 @@
 {
   "skills": [
     {
+      "name": "architecture-evaluate",
+      "source": "local",
+      "scope": "built",
+      "description": "Creates, updates, and incrementally syncs the project context documentation that agents load at session start. Three modes. Full mode deep-scans the codebase (brownfield mapping) and writes nine context files to docs/codebase/ — PROJECT.md (overview, vision, goals), STACK.md, STRUCTURE.md, ARCHITECTURE.md, CONVENTIONS.md, INTEGRATIONS.md, TESTING.md, CONCERNS.md, and PIPELINE.md. Incremental mode inspects the git workspace and syncs only what changed — inline API docs in source files, root context files (README.md, CLAUDE.md, AGENTS.md), and the context files in docs/codebase/ — and detects new packages. Package mode generates a scoped CLAUDE.md for an individual package/module. Use when the user says \"evaluate architecture\", \"map codebase\", \"analyze existing code\", \"document current architecture\", \"update architecture docs\", \"refresh project context\", \"onboard project\", \"create project docs\", \"update project docs\", \"update docs\", \"document my changes\", \"sync documentation\", \"document recent changes\", \"evaluate package\", or \"package architecture\"."
+    },
+    {
       "name": "code-review",
       "source": "local",
       "scope": "built",
@@ -10,7 +16,7 @@
       "name": "codenavi",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use for bug fixes, features, refactors, or flow investigation in unfamiliar territory."
+      "description": "Your pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes — if it doesn't know, it says so. Maintains a .notebook/ knowledge base that grows across sessions, turning every discovery into lasting intelligence. Summons available skills, MCPs, and docs when the mission demands. Use when fixing bugs, implementing features, refactoring, investigating flows, or any development task in unfamiliar territory. Triggers on \"fix this\", \"implement this\", \"how does this work\", \"investigate this flow\", \"help me with this code\". Do NOT use for greenfield scaffolding, CI/CD, or infrastructure provisioning."
     },
     {
       "name": "confluence-assistant",
@@ -23,7 +29,7 @@
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
       "extended": true,
-      "description": "Writing, reviewing, and editing documentation and .md files."
+      "description": "Use this skill for writing, reviewing, and editing documentation (`/docs` directory or any .md file)."
     },
     {
       "name": "jira-assistant",
@@ -55,7 +61,7 @@
       "name": "learning-opportunities",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Facilitates deliberate skill development during AI-assisted coding by offering interactive learning exercises after architectural work."
+      "description": "Facilitates deliberate skill development during AI-assisted coding. Offers interactive learning exercises after architectural work (new files, schema changes, refactors). Use when completing features, making design decisions, or when user asks to understand code better. Triggers on \"learning exercise\", \"help me understand\", \"teach me\", \"why does this work\", or after creating new files/modules. Do not trigger during urgent debugging, quick fixes, or when user says \"just ship it\"."
     },
     {
       "name": "mermaid-studio",
@@ -67,7 +73,7 @@
       "name": "security-best-practices",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Language and framework specific security reviews (Python, JavaScript/TypeScript, Go)."
+      "description": "Perform language and framework specific security best-practice reviews and suggest improvements. Trigger only when the user explicitly requests security best practices guidance, a security review/report, or secure-by-default coding help. Trigger only for supported languages (python, javascript/typescript, go). Do not trigger for general code review, debugging, or non-security tasks."
     },
     {
       "name": "skill-architect",
@@ -80,7 +86,7 @@
       "name": "subagent-creator",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Guide for creating AI subagents with isolated context for complex multi-step workflows."
+      "description": "Guide for creating AI subagents with isolated context for complex multi-step workflows. Use when users want to create a subagent, specialized agent, verifier, debugger, or orchestrator that requires isolated context and deep specialization. Works with any agent that supports subagent delegation. Triggers on \"create subagent\", \"new agent\", \"specialized assistant\", \"create verifier\"."
     },
     {
       "name": "tech-debt-report",
@@ -98,7 +104,7 @@
       "name": "technical-design-doc-creator",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Creates comprehensive Technical Design Documents (TDD) following industry standards."
+      "description": "Creates comprehensive Technical Design Documents (TDD) following industry standards with mandatory sections, optional sections, and interactive gathering of missing information."
     },
     {
       "name": "tests",
@@ -117,13 +123,13 @@
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
       "extended": true,
-      "description": "Project and feature planning with 4 adaptive phases - Specify, Design, Tasks, Execute. Auto-sizes depth by complexity. Creates atomic tasks with verification criteria, atomic git commits, requirement traceability, and persistent memory across sessions. Stack-agnostic. Use when (1) Starting new projects (initialize vision, goals, roadmap), (2) Working with existing codebases (map stack, architecture, conventions), (3) Planning features (requirements, design, task breakdown), (4) Implementing with verification and atomic commits, (5) Quick ad-hoc tasks (bug fixes, config changes), (6) Tracking decisions/blockers/deferred ideas across sessions, (7) Pausing/resuming work. Triggers on \"initialize project\", \"map codebase\", \"specify feature\", \"discuss feature\", \"design\", \"tasks\", \"implement\", \"validate\", \"verify work\", \"UAT\", \"quick fix\", \"quick task\", \"pause work\", \"resume work\". Do NOT use for architecture decomposition analysis (use architecture skills) or technical design docs (use create-technical-design-doc)."
+      "description": "Feature planning and implementation with 4 adaptive phases — Specify, Design, Tasks, Execute. Auto-sizes depth by complexity. Creates atomic tasks with verification criteria, atomic git commits, and requirement traceability. Features an independent Verifier (author != verifier, evidence-or-zero), persistent decision log (STATE.md), and test-coverage-matrix-driven tests, plus a self-improving lessons layer that turns verification failures into reusable project-local guidance. Stack-agnostic. Use when (1) Planning features (requirements, design, task breakdown), (2) Implementing with verification and atomic commits, (3) Validating or verifying an implementation against a spec. Triggers on \"specify feature\", \"discuss feature\", \"design\", \"tasks\", \"implement\", \"validate\", \"verify work\", \"UAT\", \"record decision\", \"pause work\", \"resume work\". Do NOT use for architecture decomposition analysis (use architecture skills) or technical design docs (use create-technical-design-doc)."
     },
     {
       "name": "web-design-guidelines",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Reviews UI code for accessibility, design, and best-practices compliance."
+      "description": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\"."
     }
   ]
 }

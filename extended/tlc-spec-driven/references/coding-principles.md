@@ -24,11 +24,11 @@ logging at write time, per its rules — not as an afterthought.
 
 ## Stack-Specific Style (conditional)
 
-Detect the stack from `.specs/codebase/STACK.md` (fall back to `docs/codebase/PROJECT_DETAILS.md`,
-then `docs/PROJECT_DETAILS.md`, for projects not yet migrated to `.specs/`). Then load **only**
+Detect the stack from `docs/codebase/STACK.md` (fall back to `.specs/codebase/STACK.md`, then legacy
+`docs/codebase/PROJECT_DETAILS.md` / `docs/PROJECT_DETAILS.md`). Then load **only**
 matching `coding-guidelines/<language>-*.md` / `coding-guidelines/<language>-<framework>-*.md`
 files from this directory (e.g. `php-coding-guidelines.md` for a PHP stack). Skip non-matching
-files. Apply [Reference Loading Constraint](../../templates/reference-loading-constraint.md).
+files. Apply [Reference Loading Constraint](../../../templates/reference-loading-constraint.md).
 
 If no stack-specific file matches, proceed with the always-load set above.
 

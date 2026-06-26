@@ -5,12 +5,12 @@
 | Element | Pattern | Examples |
 | ------- | ------- | -------- |
 | Branch names | kebab-case with context prefix | `sdd-migration-tlc-spec-driven` |
-| CLI flags | kebab-case | `--dry-run`, `--all`, `--force` |
+| CLI flags | kebab-case | `--dry-run`, `--all`, `--force`, `--local` |
 | Constants | UPPER_SNAKE_CASE | `SCRIPT_DIR`, `ROOT`, `SKILL_NAME_RE`, `DOC_MARKER` |
 | Files (JS) | kebab-case | `skills.mjs` |
 | Files (config) | kebab-case | `agents.json`, `skills.json` |
 | Functions | camelCase | `cmdSetup`, `installSkill`, `readSkillDescription` |
-| Skills (dirs) | kebab-case | `code-review`, `tech-debt-report`, `tlc-spec-driven` |
+| Skills (dirs) | kebab-case | `code-review`, `tech-debt-report`, `architecture-evaluate` |
 | Variables | camelCase | `agentId`, `skillsDir`, `dryRun` |
 
 ## Code Organization
@@ -42,8 +42,9 @@ Throw `UserError` for expected user mistakes; let unexpected errors propagate na
 
 - `.md` files are the primary deliverable — clarity and correctness matter over code heuristics.
 - `bin/skills.mjs` uses sparse inline comments at section boundaries only; no multi-line docstrings.
-- `SKILL.md` files use YAML frontmatter (`name`, `description`, `version`, `triggers`).
-- `extended/<skill>/SKILL.md` uses frontmatter from `templates/extension-frontmatter.md` (`name`, `extends`, `description`, `metadata.version`, `metadata.parent_skill`, `metadata.source`).
-- Reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.
-- `skills/<name>/reference.md` (no technology prefix, at skill root) is a workflow or orchestration reference — distinct from tech-specific checklists placed under `references/<tech>-<skill>.md`.
+- `SKILL.md` files use YAML frontmatter (`name`, `description`, `metadata.version`, `metadata.triggers`).
+- `extended/<skill>/SKILL.md` uses the frontmatter from `templates/extension-frontmatter.md` (`name`, `extends`, `description`, `metadata.version`, `metadata.parent_skill`, `metadata.source`).
+- Tech-specific reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.
+- `skills/<name>/reference.md` (no technology prefix, at the skill root) is a workflow/orchestration reference — distinct from tech-specific checklists under `references/<tech>-<skill>.md`.
 - `docs/AGENT-SKILLS.md` is auto-generated below its marker; hand-written content above the marker is preserved on every regeneration.
+- Markdown tables and enumerated bullet lists are kept sorted alphabetically by the primary column.

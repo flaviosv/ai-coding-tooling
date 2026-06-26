@@ -1,10 +1,22 @@
 # Architecture
 
-**Pattern:** Configuration distribution system — symlink-based, no runtime application, no build step, no server.
-
 ## Overview / Pattern
 
-`ai-coding-tooling` is a **symlink distribution system**, not a runtime application. A single repository holds all agent instructions and skills; `fsvskills` links them into the expected locations for each supported AI tool. The only executable logic is `bin/skills.mjs`.
+`ai-coding-tooling` is a **symlink distribution system**, not a runtime application — no server, no build step, no scheduled work. A single repository holds all agent instructions and skills; `fsvskills` links them into the locations Claude Code expects. The only executable logic is `bin/skills.mjs`.
+
+## High-Level Structure
+
+```
+Repository (single source of truth)
+  ├── Global (~/.claude/, via fsvskills setup)
+  │     ├── AGENTS.global.md  ──────────► ~/.claude/CLAUDE.md                       (symlink)
+  │     ├── skills/<name>/  ────────────► ~/.claude/skills/<name>/                  (symlink)
+  │     ├── extended/<skill>/SKILL.md ──► ~/.claude/skills/<skill>/SKILL.extended.md
+  │     └── extended/<skill>/references/ ► ~/.claude/skills/<skill>/references.extended/
+  └── Project-local (this repo, via fsvskills setup)
+        ├── .agents/  ◄──────────────── .claude  (symlink)
+        └── AGENTS.md  ◄─────────────── CLAUDE.md (symlink)
+```
 
 ## Layers
 
@@ -17,20 +29,6 @@
 | Skills (local) | Skill definitions owned by this repo | `skills/`, `.agents/skills/` |
 | Skills (vendor) | Third-party skills, read-only | `~/.claude/skills/<name>/` (installed via npx) |
 | Templates | Reusable authoring patterns for skills | `templates/` |
-
-## Distribution Model
-
-```
-Repository (single source of truth)
-  ├── Global (~/.claude/, via fsvskills setup)
-  │     ├── AGENTS.global.md  ──────────► ~/.claude/CLAUDE.md              (symlink)
-  │     ├── skills/<name>/  ────────────► ~/.claude/skills/<name>/          (symlink)
-  │     ├── extended/<skill>/SKILL.md ──► ~/.claude/skills/<skill>/SKILL.extended.md
-  │     └── extended/<skill>/references/ ► ~/.claude/skills/<skill>/references.extended/
-  └── Project-local (this repo, via fsvskills setup)
-        ├── .agents/  ◄──────────────── .claude  (symlink)
-        └── AGENTS.md  ◄─────────────── CLAUDE.md (symlink)
-```
 
 ## Dependency Rules
 
@@ -53,7 +51,7 @@ Stateless. All persistent state lives in `config/skills.json` and `config/agents
 
 - `UserError` (custom `Error` subclass) for expected user mistakes: caught at the CLI entry point (`main()`), printed with `fail()`, exits with code 1.
 - Unexpected errors are re-thrown (not caught), producing a stack trace.
-- `runNpx` catches subprocess failures, calls `fail()`, and returns `false` — caller decides whether to abort or continue.
+- `runNpx` catches subprocess failures, calls `fail()`, and returns `false` — the caller decides whether to abort or continue.
 
 ## Observability
 
@@ -63,6 +61,6 @@ No structured logging, no tracing, no metrics. Output is ANSI-colored terminal t
 
 - **Registry-driven CLI:** every command reads `skills.json` + `agents.json` as the sole source of truth — no filesystem scanning to determine install state.
 - **Command-pattern CLI:** each sub-command maps to a named function (`cmdSetup`, `cmdAdd`, `cmdDelete`, etc.); no class-based dispatch.
-- **Dry-run support:** global `DRY` flag checked before every filesystem operation; any command can be safely previewed.
+- **Dry-run support:** a global `DRY` flag is checked before every filesystem operation; any command can be safely previewed.
 - **Safe symlink operations:** `linkSafe` never clobbers existing files; `relinkOverlay` only re-links if the target is already a symlink.
-- **Overlay naming:** `extended/<skill>/references/` installs as `references/` (if parent has none) or `references.extended/` (collision-aware).
+- **Collision-aware overlays:** `extended/<skill>/references/` installs as `references/` (if the parent has none) or `references.extended/` (when the parent already ships `references/`).
