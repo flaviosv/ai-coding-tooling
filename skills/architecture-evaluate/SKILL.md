@@ -82,9 +82,9 @@ These apply to every mode.
 - **Reading existing context for input** — when this skill loads a context file to inform its own work (not to write it), read it from `docs/codebase/<file>`.
 - **The folder is the source of truth.** Treat the actual contents of `docs/codebase/` as authoritative. Sweep the real directory and preserve every `.md` present, including files added by hand beyond the canonical nine. Never regenerate or sync only the fixed list while ignoring what's on disk.
 - **Out of scope — owned by `tlc-spec-driven`.** Never create or modify `.specs/STATE.md` (the decisions/handoff memory), feature specs under `.specs/features/`, or `docs/TECH_DEBTS.md` (the `tech-debt-report` ledger). This skill documents the codebase; those are other skills' artifacts. `CONCERNS.md` is the living risk snapshot and is separate from the `TD-XX` ledger — when a concern is already a tracked `TD-XX`, reference it rather than restating it.
-- **No code samples** unless strictly necessary. Use prose, tables, bullets. Code blocks only for directory trees, ASCII diagrams, and exact runnable commands. No method signatures, SQL queries, or implementation examples.
+- **No code samples** unless strictly necessary. Use prose, tables, bullets. Code blocks only for directory trees, ASCII or Mermaid diagrams, and exact runnable commands. No method signatures, SQL queries, or implementation examples.
 - **CI/CD belongs in `PIPELINE.md` only.** Other files may reference it but must not contain pipeline specifics.
-- **Diagrams** — author data flows, layer relationships, component interactions, and pipeline stages as simple box-and-arrow **ASCII** diagrams at the conceptual level. If richer diagrams are wanted and the `mermaid-studio` skill is available, render through it; otherwise ASCII is the default.
+- **Diagrams** — author data flows, layer relationships, component interactions, and pipeline stages as **Mermaid** diagrams when the `mermaid-studio` skill is available — delegate creation through it. Fall back to simple box-and-arrow **ASCII** diagrams when `mermaid-studio` is not available. Converting existing ASCII diagrams to Mermaid is always permitted when `mermaid-studio` is present.
 - **Factual only** — document what exists in the codebase. Never invent or speculate. Omit any section with no evidence.
 - **Never write secret values** into any document. Reference secrets by name and describe only how they are managed (provider, injection mechanism) — everywhere, not just `PIPELINE.md`.
 - **Conditional sections** — every section in every output file is conditional. Only include it if the codebase provides evidence for it; omit empty sections entirely.
@@ -382,7 +382,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 
 ## High-Level Structure
 
-[ASCII diagram or description based on actual organization]
+[Mermaid diagram (via mermaid-studio) or ASCII diagram if mermaid-studio is unavailable]
 
 ## Layers
 
@@ -396,7 +396,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 
 ## Request / Data Flow
 
-[ASCII diagram or numbered list of how a typical request flows through the system]
+[Mermaid diagram (via mermaid-studio) or numbered list / ASCII diagram if mermaid-studio is unavailable]
 
 ## Communication Patterns
 
@@ -689,7 +689,7 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 
 ## Pipeline Stages
 
-[ASCII flow diagram]
+[Mermaid flowchart (via mermaid-studio) or ASCII flow diagram if mermaid-studio is unavailable]
 
 | Stage | Purpose | Trigger |
 | ----- | ------- | ------- |
@@ -703,7 +703,7 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 
 ## Environment Matrix
 
-[ASCII promotion flow — e.g. dev → staging → prod]
+[Mermaid diagram (via mermaid-studio) or ASCII promotion flow if mermaid-studio is unavailable — e.g. dev → staging → prod]
 
 | Environment | Purpose | Promotion Method |
 | ----------- | ------- | ---------------- |
@@ -899,7 +899,7 @@ Triggered with a specific package/module path (e.g. "evaluate architecture for `
 - Analyze ONLY files within the given package directory.
 - Go deeper than project-level: internal structure, public API surface, dependency graph, integration boundaries.
 - Do NOT create the `docs/codebase/` set — package mode produces only the package's `CLAUDE.md`.
-- Same quality bar (factual, scannable, no code snippets unless strictly necessary, ASCII diagrams encouraged).
+- Same quality bar (factual, scannable, no code snippets unless strictly necessary, Mermaid diagrams preferred via `mermaid-studio` when available, ASCII diagrams as fallback).
 
 ## PM Step 1: Validate Package Path
 
@@ -922,7 +922,7 @@ Up to 500 lines; the depth the package warrants (a small utility may need 50; a 
 | Section | Content |
 |---------|---------|
 | **Purpose** | What this package does and why it exists within the larger project |
-| **Architecture** | Internal structure, layers, patterns. ASCII diagram if multi-layered |
+| **Architecture** | Internal structure, layers, patterns. Mermaid diagram (via mermaid-studio) or ASCII if unavailable, when multi-layered |
 | **Key Components** | Component / Role table |
 | **Public API** | Exported interfaces, functions, types, contracts — the package boundary |
 | **Internal Design** | Non-obvious implementation details: algorithms, state, concurrency, caching |
