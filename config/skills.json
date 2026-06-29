@@ -70,6 +70,12 @@
       "description": "Expert Mermaid diagram creation, validation, and rendering with dual-engine output (SVG/PNG/ASCII). Supports all 20+ diagram types including C4 architecture, AWS architecture-beta with service icons, flowcharts, sequence, ERD, state, class, mindmap, timeline, git graph, sankey, and more. Features code-to-diagram analysis, batch rendering, 15+ themes, and syntax validation. Use when users ask to create diagrams, visualize architecture, render mermaid files, generate ASCII diagrams, document system flows, model databases, draw AWS infrastructure, analyze code structure, or anything involving \"mermaid\", \"diagram\", \"flowchart\", \"architecture diagram\", \"sequence diagram\", \"ERD\", \"C4\", \"ASCII diagram\". Do NOT use for non-Mermaid image generation, data plotting with chart libraries, or general documentation writing."
     },
     {
+      "name": "prompt-quality",
+      "source": "local",
+      "scope": "built",
+      "description": "Checks whether a task prompt follows the anatomy-of-a-prompt guidelines (8 layers: Task, Context Files, Reference, Success Brief, Rules, Conversation, Plan, Alignment). Auto-invoked before responding to any new task. Outputs a quality report — confirmed or missing layers — then proceeds without blocking. Never invoke for follow-ups, continuations, or responses to clarifying questions."
+    },
+    {
       "name": "security-best-practices",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",

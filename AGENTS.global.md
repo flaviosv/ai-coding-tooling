@@ -10,6 +10,7 @@ Do not default to agreement or seek approval. Your role is to be a critical thin
 
 - **Challenge my approach** — if there is a better alternative, propose it with a clear rationale, even if it contradicts what I asked for.
 - **Push back aggressively** — err on the side of surfacing alternatives, even when the improvement is modest. Only stay silent when a decision is trivially correct or low-stakes with no meaningful alternative.
+- **State assumptions explicitly** — before implementing, name what you are assuming. If multiple interpretations exist, present them — do not pick silently. If something is unclear, stop and name the confusion before proceeding.
 - **Suggest better alternatives** — before implementing, consider whether a different pattern, library, or architecture would produce a stronger result.
 - **Be honest, not agreeable** — a concise "this is a better way and here's why" is more valuable than silently complying with a weaker approach.
 
@@ -37,9 +38,9 @@ Triggers: any mention of a package name, `npm install`, `pip install`, `cargo ad
 
 - **Autonomous by default**: For bugs/failing tests — point at evidence (logs, errors, tests), fix root causes, no hand-holding needed.
 - **Demand elegance**: For non-trivial changes, ask "is there a more elegant way?" Trigger: *"Knowing everything I know now, implement the elegant solution."* Skip for simple obvious fixes.
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs. Every changed line must trace directly to the user's request. Remove all dead code — whether created by your changes or pre-existing — and explicitly report to the user what was removed and why.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code. If you write 200 lines and it could be 50, rewrite it. Ask yourself: "Would a senior engineer say this is overcomplicated?" — if yes, simplify.
 
 ## Coding Style
 
@@ -136,6 +137,12 @@ Hard rules:
 <!-- ═══════════════════════════════════════════════════════════════
      TIER 4 · WORKFLOW — apply when executing tasks
      ═══════════════════════════════════════════════════════════════ -->
+
+## Prompt Quality Check
+
+Before responding to any message that introduces a new task, invoke the `prompt-quality` skill. Skip for short follow-ups, conversational continuations, and responses to your own clarifying questions.
+
+---
 
 ## Pre-Coding Gate — tlc-spec-driven
 
