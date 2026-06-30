@@ -94,6 +94,15 @@ Check presence/absence of the following files before proceeding. Do **NOT** load
 | `references/test-review-checklist.md` | `checklist_baseline` |
 | `references/<stack>-*-tests-code-review.md` (if match) | `checklist_tech_specific` |
 
+**Sonar project key** — check for presence; extract key if present:
+
+| File | Availability key |
+|------|-----------------|
+| `sonar-project.properties` | `sonar_props` |
+| `.sonarlint/connectedMode.json` | `sonar_sonarlint` |
+
+Extract `sonar.projectKey` from `sonar-project.properties` if present; fall back to `projectKey` field in `.sonarlint/connectedMode.json`. Store the resolved key as `sonar_project_key` (string value, or `absent` if neither file exists).
+
 ## Step 3: Context Availability Map
 
 Build the availability map from Step 2 results:
@@ -104,9 +113,11 @@ availability = {
   architecture, concerns, conventions,
   integrations, stack, structure, testing,
   // checklists (2)
-  checklist_baseline, checklist_tech_specific
+  checklist_baseline, checklist_tech_specific,
+  // sonar
+  sonar_project_key  // resolved key string, or 'absent'
 }
-// each field: present | absent — 9 keys total
+// each field: present | absent (except sonar_project_key: string or 'absent')
 ```
 
 The orchestrator holds **this map only** — no file content. Agents self-load their own context using the `## Before You Begin` block defined in Step 6.
@@ -151,6 +162,73 @@ In all modes (primary test diff): skip deleted files and non-test files. Noise f
 
 **Implementation diff** (`impl_diff`) — collected separately for `gap-detector` only:
 Using the same mode-appropriate commands with EXCLUDE applied, filter to non-test, non-deleted implementation files changed in this diff. If `impl_diff` is empty (no implementation files changed), `gap-detector` is skipped entirely.
+
+## Step 4.5: Sonar Context Resolution
+
+Run after Step 4 (diff file list and impl_diff known) and before Step 5 (complexity assessment). Result is stored as `sonar_context`.
+
+**MCP tools**: `search_sonar_issues_in_projects`, `get_component_measures`, `search_files_by_coverage` (from the `sonarqube` MCP server)
+
+```
+IF sonar_project_key == 'absent':
+    sonar_context = { status: 'skipped', skip_reason: 'no project key found' }
+    GOTO Step 5
+
+IF sonarqube MCP tools are unavailable in this session:
+    sonar_context = { status: 'skipped', skip_reason: 'MCP not installed' }
+    GOTO Step 5
+
+ATTEMPT:
+    # Test-quality issues (maintainability smells in diff files)
+    issues = search_sonar_issues_in_projects(
+        projects=[sonar_project_key],
+        branch=<current git branch>,              # omit for PR mode; use pullRequest=<PR key>
+        issueStatuses=["OPEN"],
+        impactSoftwareQualities=["MAINTAINABILITY"],
+        files=[sonar_project_key + ":" + f for f in diff_file_list]
+    )
+
+    # Coverage metrics for new code
+    measures = get_component_measures(
+        projectKey=sonar_project_key,
+        branch=<current git branch>,
+        metricKeys=["new_coverage", "new_lines_to_cover", "new_uncovered_lines"]
+    )
+
+    # Files in diff with worst coverage (for gap-detector)
+    low_coverage_files = search_files_by_coverage(
+        projectKey=sonar_project_key,
+        branch=<current git branch>,
+        maxCoverage=80
+    )
+    # intersect with diff_file_list to keep only changed files
+
+    sonar_context = {
+        status: 'active',
+        project_key: sonar_project_key,
+        branch: <current branch>,
+        issues_by_agent: {
+            coverage_reviewer: issues[:30]  # test-quality smells, sorted severity desc
+        },
+        coverage: {
+            new_coverage_pct:       measures.new_coverage,
+            new_lines_to_cover:     measures.new_lines_to_cover,
+            new_uncovered_lines:    measures.new_uncovered_lines,
+            low_coverage_diff_files: [f in low_coverage_files that are also in diff_file_list]
+        }
+    }
+
+ON server unreachable / connection error:
+    sonar_context = { status: 'skipped', skip_reason: 'server unreachable' }
+ON MCP tool returns empty for this branch:
+    sonar_context = { status: 'skipped', skip_reason: 'no data for branch <branch> — run sonar-scanner first' }
+ON measures unavailable but issues present (partial):
+    set sonar_context.status = 'active', omit coverage block, note in header as 'active (partial)'
+ON timeout:
+    sonar_context = { status: 'skipped', skip_reason: 'query timeout' }
+```
+
+In every skipped state: proceed identically to pre-integration behavior. No agent receives a Sonar block.
 
 ## Step 5: Review Complexity Assessment
 
@@ -251,6 +329,31 @@ You are the villain. Find every gap, weakness, and lie in the test suite — not
 ## Diff
 <full test-file diff from Step 4; gap-detector receives impl_diff instead>
 
+## Sonar Coverage Data
+<inject for gap-detector ONLY when sonar_context.status == 'active' AND sonar_context.coverage is present>
+<omit this entire section — do not inject an empty block — when coverage data is unavailable>
+
+SonarQube coverage data for new code on branch `<branch>`:
+- New code coverage: <new_coverage_pct>%
+- New lines to cover: <new_lines_to_cover>
+- New uncovered lines: <new_uncovered_lines>
+
+Files in this diff with coverage below 80%:
+<list sonar_context.coverage.low_coverage_diff_files>
+
+Use this as a starting point — focus your gap analysis on these uncovered areas.
+
+## Sonar Test Quality Issues
+<inject for coverage-reviewer ONLY when sonar_context.status == 'active' AND sonar_context.issues_by_agent.coverage_reviewer is non-empty>
+<omit this entire section — do not inject an empty block — when no issues are mapped to this agent>
+
+SonarQube detected the following test quality issues on branch `<branch>` in files within this diff.
+Use as additional signal — they do not replace your analysis.
+
+| Severity | Rule | File | Line | Message |
+|----------|------|------|------|---------|
+<one row per issue from sonar_context.issues_by_agent.coverage_reviewer, sorted severity desc, max 30>
+
 ## Return format
 Status: Complete | Blocked | Partial
 Dimension: <agent name>
@@ -314,8 +417,21 @@ Commits: <hash — subject>, <hash — subject>, ...   ← multi-commit mode onl
 Diff: <N files changed, +X insertions, -Y deletions[, M excluded as snapshots/lockfiles]>
 Run: <date>
 Mode: local | GitHub PR #N | multi-commit
+Sonar: <status line — see variants below>
 [⚠️ Complex review (N test files / M lines) — findings are best-effort and may be non-exhaustive. Consider splitting this PR.]  ← Complex tier only
 ```
+
+**Sonar status line variants:**
+
+| Condition | Status line |
+|-----------|-------------|
+| Active with coverage | `Sonar: active — new code coverage <N>% · branch <branch>` |
+| Active, no coverage data | `Sonar: active (partial) — issues only, coverage unavailable` |
+| Skipped — no project key | `Sonar: skipped — no project key found` |
+| Skipped — MCP not installed | `Sonar: skipped — MCP not installed` |
+| Skipped — server unreachable | `Sonar: skipped — server unreachable` |
+| No branch data | `Sonar: no data for branch <branch> — run sonar-scanner first` |
+| Skipped — query timeout | `Sonar: skipped — query timeout` |
 
 ### At-a-glance table (always second)
 

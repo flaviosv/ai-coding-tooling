@@ -114,6 +114,15 @@ Check for the presence of the following files. Do **not** load their content —
 |------|-----------------|
 | Active spec file (`.specs/features/*/spec.md`) OR JIRA task ID detected in branch name, commit message, or PR description | `requirements` |
 
+**Sonar project key** — check for presence; extract key if present:
+
+| File | Availability key |
+|------|-----------------|
+| `sonar-project.properties` | `sonar_props` |
+| `.sonarlint/connectedMode.json` | `sonar_sonarlint` |
+
+Extract `sonar.projectKey` from `sonar-project.properties` if present; fall back to `projectKey` field in `.sonarlint/connectedMode.json`. Store the resolved key as `sonar_project_key` (string value, or `absent` if neither file exists).
+
 ## Step 3: Context Availability Map
 
 Build the availability map from Step 2 results:
@@ -128,9 +137,10 @@ availability = {
   checklist_best_practices, checklist_observability,
   checklist_performance, checklist_tech_specific, checklist_tech_perf,
   // other
-  requirements
+  requirements,
+  sonar_project_key  // resolved key string, or 'absent'
 }
-// each field: present | absent
+// each field: present | absent (except sonar_project_key: string or 'absent')
 ```
 
 The orchestrator holds **this map only** — no file content. Agents self-load their own context using the `## Before You Begin` block in Step 6.
@@ -173,6 +183,52 @@ Also collect:
 - **Multi-commit only:** `git log --oneline <range>` or resolved hash+subject list — used in report header
 
 In all modes: skip deleted files and test files when building the changed file list. Noise files (lockfiles, generated, minified) are already absent because EXCLUDE was applied at the diff command level.
+
+## Step 4.5: Sonar Context Resolution
+
+Run after Step 4 (diff file list is known) and before Step 5 (complexity assessment). Result is stored as `sonar_context`.
+
+**MCP tool**: `search_sonar_issues_in_projects` (from the `sonarqube` MCP server)
+
+```
+IF sonar_project_key == 'absent':
+    sonar_context = { status: 'skipped', skip_reason: 'no project key found' }
+    GOTO Step 5
+
+IF sonarqube MCP tools are unavailable in this session:
+    sonar_context = { status: 'skipped', skip_reason: 'MCP not installed' }
+    GOTO Step 5
+
+ATTEMPT:
+    # For GitHub PR mode, pass pullRequest=<PR key> instead of branch
+    issues = search_sonar_issues_in_projects(
+        projects=[sonar_project_key],
+        branch=<current git branch>,         # omit for PR mode; use pullRequest=<PR key>
+        issueStatuses=["OPEN"],
+        files=[sonar_project_key + ":" + f for f in diff_file_list]
+    )
+    security_issues = [i for i in issues where "SECURITY" in i.impactSoftwareQualities]
+    quality_issues  = [i for i in issues where "RELIABILITY" or "MAINTAINABILITY" in i.impactSoftwareQualities]
+    sonar_context = {
+        status: 'active',
+        project_key: sonar_project_key,
+        branch: <current branch>,
+        issues_by_agent: {
+            security_reviewer:     security_issues (sorted by severity desc, cap 30),
+            code_quality_reviewer: quality_issues  (sorted by severity desc, cap 30)
+        },
+        summary: { total: N, security: N, quality: N }
+    }
+
+ON server unreachable / connection error:
+    sonar_context = { status: 'skipped', skip_reason: 'server unreachable' }
+ON MCP tool returns empty for this branch:
+    sonar_context = { status: 'skipped', skip_reason: 'no data for branch <branch> — run sonar-scanner first' }
+ON timeout:
+    sonar_context = { status: 'skipped', skip_reason: 'query timeout' }
+```
+
+In every skipped state: proceed identically to pre-integration behavior. No agent receives a `## Sonar Findings` block.
 
 ## Step 5: Review Complexity Assessment
 
@@ -298,6 +354,17 @@ Codebase docs (load each if present, from docs/codebase/):
 ## Diff
 <full diff from Step 4>
 
+## Sonar Findings
+<inject this block ONLY when sonar_context.status == 'active' AND this agent has entries in sonar_context.issues_by_agent>
+<omit this entire section — do not inject an empty block — when no issues are mapped to this agent>
+
+SonarQube detected the following issues on branch `<branch>` in files within this diff.
+Use as additional signal — they do not replace your analysis.
+
+| Type | Severity | Rule | File | Line | Message |
+|------|----------|------|------|------|---------|
+<one row per issue from sonar_context.issues_by_agent[this_agent], sorted severity desc, max 30>
+
 ## Return format
 Status: Complete | Blocked | Partial
 Dimension: <agent name or "all dimensions">
@@ -387,9 +454,22 @@ Commits: <hash — subject>, <hash — subject>, ...   ← multi-commit mode onl
 Diff: <N files changed, +X insertions, -Y deletions>
 Run: <date>
 Mode: local | GitHub PR #N | multi-commit | performance audit
+Sonar: <status line — see variants below>
 [Tier: <tier> | Type: <content_type>]              ← omit when tier=Large/Complex AND type=general; show when type ≠ general OR tier ∈ {Large, Complex}
 [⚠️ Complex review (N files / M lines) — findings are best-effort and may be non-exhaustive. Consider splitting this PR.]  ← Complex tier only
 ```
+
+**Sonar status line variants:**
+
+| Condition | Status line |
+|-----------|-------------|
+| Active with issues | `Sonar: active — N issues (S security, Q quality) · branch <branch>` |
+| Active, 0 issues | `Sonar: active — 0 issues · branch <branch>` |
+| Skipped — no project key | `Sonar: skipped — no project key found` |
+| Skipped — MCP not installed | `Sonar: skipped — MCP not installed` |
+| Skipped — server unreachable | `Sonar: skipped — server unreachable` |
+| No branch data | `Sonar: no data for branch <branch> — run sonar-scanner first` |
+| Skipped — query timeout | `Sonar: skipped — query timeout` |
 
 Include `excluded_count` in the `Scope` line whenever `excluded_count > 0`. Include the `Tier/Type` line whenever the content type is not `general` OR the tier is `Large` or `Complex`. Include the completeness caveat only when the tier is `Complex`.
 
