@@ -56,3 +56,15 @@ Prompt quality: Missing Layer X (Name), Layer Y (Name)
 ```
 
 Then respond normally. Never block or delay execution based on this check.
+
+## Step 4 — Repository push intent
+
+If the task will modify files AND the current working directory is a git repository, check whether the prompt specifies what to do with the changes (commit, push, open PR, etc.).
+
+If push intent is **not specified**, append one line to the quality report block:
+
+```
+Repository: file changes expected — push/commit intent not specified
+```
+
+Never block or ask for confirmation — report only.
