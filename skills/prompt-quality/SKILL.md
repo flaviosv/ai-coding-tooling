@@ -1,7 +1,7 @@
 ---
 name: prompt-quality
 description: >
-  Checks whether a task prompt follows the anatomy-of-a-prompt guidelines (8 layers: Task, Context Files, Reference, Success Brief, Rules, Conversation, Plan, Alignment). Auto-invoked before responding to any new task. Outputs a quality report — confirmed or missing layers — then proceeds without blocking. Never invoke for follow-ups, continuations, or responses to clarifying questions.
+  Checks whether a task prompt follows the anatomy-of-a-prompt guidelines (9 layers: Task, Context Files, Reference, Success Brief, Rules, Conversation, Plan, Alignment, Push Intent). Auto-invoked before responding to any new task. Outputs a quality report — confirmed or missing layers — then proceeds without blocking. Never invoke for follow-ups, continuations, or responses to clarifying questions.
 ---
 
 # Prompt Quality
@@ -24,7 +24,7 @@ Complexity signals: "implement", "build", "create", "design", "refactor across",
 
 ## Step 2 — Check required layers
 
-Simple tasks require layers 1, 3, 4, 5. Complex tasks require all 8.
+Simple tasks require layers 1, 3, 4, 5. Complex tasks require all 8. Layer 9 is conditional — required whenever the task will modify files in a git repository.
 
 | Layer | Name | Present when |
 |-------|------|-------------|
@@ -36,6 +36,7 @@ Simple tasks require layers 1, 3, 4, 5. Complex tasks require all 8.
 | 6 | Conversation | Explicitly defers execution — "DO NOT start", "don't execute yet", "ask me questions first", "clarify before starting" |
 | 7 | Plan | Asks Claude to prove understanding before producing output — "list the rules that matter", "which constraints apply", "before you write, list…" |
 | 8 | Alignment | Requests an execution plan and alignment — "execution plan", "5 steps maximum", "only begin once we've aligned" |
+| 9 | Push Intent | When the task will modify files in a git repository — specifies what to do with the changes: commit, push, open PR, or nothing |
 
 ## Step 3 — Output
 
@@ -56,15 +57,3 @@ Prompt quality: Missing Layer X (Name), Layer Y (Name)
 ```
 
 Then respond normally. Never block or delay execution based on this check.
-
-## Step 4 — Repository push intent
-
-If the task will modify files AND the current working directory is a git repository, check whether the prompt specifies what to do with the changes (commit, push, open PR, etc.).
-
-If push intent is **not specified**, append one line to the quality report block:
-
-```
-Repository: file changes expected — push/commit intent not specified
-```
-
-Never block or ask for confirmation — report only.
