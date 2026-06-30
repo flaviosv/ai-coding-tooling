@@ -54,6 +54,18 @@ Currently provided:
 The overlay's sections add to, or refine, the parent's — apply both together. If a future
 overlay is added under `references.extended/`, the same rule applies automatically.
 
+## Phase Artifact Numbering
+
+Number artifacts in each phase so they can be referenced precisely in conversation and across documents:
+
+| Phase | Artifact | Prefix | Example |
+|-------|----------|--------|---------|
+| Design | Design components / decisions | `DC-` | `DC-1`, `DC-2` |
+| Specify | User stories | `US-` | `US-1`, `US-2` |
+| Tasks | Atomic tasks | `T-` | `T-1`, `T-2` |
+
+Apply numbering sequentially within each feature. Use the prefix+number when discussing, reviewing, or cross-linking artifacts (e.g. "T-3 implements US-2"). Numbering is always applied in the Specify phase; apply it in Design and Tasks phases when those phases are not skipped.
+
 ## Technical Design Docs → `technical-design-doc-creator`
 
 **Overrides the parent.** The parent's description routes formal technical design docs to
