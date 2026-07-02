@@ -6,9 +6,10 @@ description: >
   tlc-spec-driven SKILL.md. The parent governs spec-driven planning. This extension
   (1) declares how reference-level overlays load, (2) prioritizes planning before
   implementation for non-trivial work, (3) names feature artifacts `<TASK-ID>-<slug>`,
-  and (4) augments coding-principles with software-design/observability/stack-style
+  (4) augments coding-principles with software-design/observability/stack-style
   references and routes security to the security-best-practices skill and UI work to
-  web-design-guidelines.
+  web-design-guidelines, and (5) requires a persisted per-feature commit log
+  (`commits.md`) of every atomic commit hash traceable to that feature.
 metadata:
   version: "1.0.0"
   parent_skill: tlc-spec-driven
@@ -50,6 +51,9 @@ Currently provided:
 | Parent reference | Loads-after overlay |
 |------------------|---------------------|
 | `references/coding-principles.md` | `references.extended/coding-principles.md` |
+| `references/implement.md` | `references.extended/implement.md` |
+| `references/specify.md` | `references.extended/specify.md` |
+| `references/design.md` | `references.extended/design.md` |
 
 The overlay's sections add to, or refine, the parent's — apply both together. If a future
 overlay is added under `references.extended/`, the same rule applies automatically.
@@ -60,11 +64,27 @@ Number artifacts in each phase so they can be referenced precisely in conversati
 
 | Phase | Artifact | Prefix | Example |
 |-------|----------|--------|---------|
-| Design | Design components / decisions | `DC-` | `DC-1`, `DC-2` |
 | Specify | User stories | `US-` | `US-1`, `US-2` |
-| Tasks | Atomic tasks | `T-` | `T-1`, `T-2` |
+| Design | Design components / decisions (one shared sequence) | `DC-` | `DC-1`, `DC-2` |
+| Tasks | Atomic tasks | `T` | `T1`, `T2` |
 
-Apply numbering sequentially within each feature. Use the prefix+number when discussing, reviewing, or cross-linking artifacts (e.g. "T-3 implements US-2"). Numbering is always applied in the Specify phase; apply it in Design and Tasks phases when those phases are not skipped.
+Apply numbering sequentially within each feature. Use the prefix+number when discussing, reviewing, or cross-linking artifacts (e.g. "T2 implements US-1"). Numbering is always applied in the Specify phase; apply it in Design and Tasks phases when those phases are not skipped.
+
+The parent's `tasks.md` template already numbers tasks natively as `T1`, `T2` throughout its
+dependency graphs and diagrams — that satisfies this rule as-is, no overlay needed. The parent's
+`specify.md` and `design.md` templates have no ID slot for stories/components/decisions, so
+`references.extended/specify.md` and `references.extended/design.md` (loaded per the Reference
+Extension Convention above) patch those templates with the `US-`/`DC-` id.
+
+## Commit Log: `commits.md`
+
+Every feature that produces at least one atomic commit maintains
+`.specs/features/[feature]/commits.md` — a sequential list of that feature's commit hashes,
+created on the first commit (never earlier) and appended to immediately after each subsequent
+commit lands. Only commits traceable to this feature's tasks or fix tasks qualify — commits made
+outside the feature's context are never added. Full mechanics (what qualifies, format, Verifier
+cross-check): `references.extended/implement.md`, loaded per the Reference Extension Convention
+above.
 
 ## Technical Design Docs → `technical-design-doc-creator`
 
