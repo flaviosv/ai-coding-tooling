@@ -13,6 +13,8 @@ metadata:
   triggers:
     - "check my code"
     - "code review"
+    - "code review the"
+    - "do a code review"
     - "optimize performance"
     - "performance audit"
     - "performance bottleneck"
@@ -21,6 +23,7 @@ metadata:
     - "review my code"
     - "review PR #123"
     - "review this PR"
+    - "run a code review"
     - "slow code"
     - "slow query"
 ---
