@@ -38,6 +38,12 @@
       "description": "A relentless interview to sharpen a plan or design."
     },
     {
+      "name": "grilling",
+      "source": "matt-pocock",
+      "scope": "matt-pocock",
+      "description": "Grill the user relentlessly about a plan or design. Use when the user wants to stress-test a plan before building, or uses any 'grill' trigger phrases."
+    },
+    {
       "name": "jira-assistant",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",

@@ -46,6 +46,7 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 ### Matt Pocock
 
 - **grill-me**: A relentless interview to sharpen a plan or design.
+- **grilling**: Grill the user relentlessly about a plan or design. Use when the user wants to stress-test a plan before building, or uses any 'grill' trigger phrases.
 
 ### Native (built-in)
 
