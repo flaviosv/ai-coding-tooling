@@ -28,11 +28,6 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 - **tests** (`skills/tests/SKILL.md`): Writes and maintains tests — unit, integration, and coverage analysis. Technology agnostic.
 - **tests-code-review** (`skills/tests-code-review/SKILL.md`): Reviews test code quality, coverage patterns, and maintainability. Supports local workspace, GitHub PR, and multi-commit review modes.
 
-### Local-only (project)
-
-- **kb-from-folder** (`.agents/skills/kb-from-folder/SKILL.md`): Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
-- **kb-from-raindrop** (`.agents/skills/kb-from-raindrop/SKILL.md`): Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault, clustering bookmarks by topic. Project-local; exposed to Claude via the .claude -> .agents symlink, not installed globally.
-
 ### Tech Leads Club
 
 - **codenavi**: Your pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes — if it doesn't know, it says so. Maintains a .notebook/ knowledge base that grows across sessions, turning every discovery into lasting intelligence. Summons available skills, MCPs, and docs when the mission demands. Use when fixing bugs, implementing features, refactoring, investigating flows, or any development task in unfamiliar territory. Triggers on "fix this", "implement this", "how does this work", "investigate this flow", "help me with this code". Do NOT use for greenfield scaffolding, CI/CD, or infrastructure provisioning.
@@ -61,5 +56,6 @@ _No Matt Pocock skills installed yet. Add one with:_ `fsvskills add claude-code 
 These skills carry a project-specific overlay in `extended/<name>/` (applied as `SKILL.extended.md` and optional `references/`):
 
 - **docs-writer** — overlays the Tech Leads Club skill.
+- **mermaid-studio** — overlays the Tech Leads Club skill.
 - **skill-architect** — overlays the Tech Leads Club skill.
 - **tlc-spec-driven** — overlays the Tech Leads Club skill.
