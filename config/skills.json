@@ -32,6 +32,12 @@
       "description": "Use this skill for writing, reviewing, and editing documentation (`/docs` directory or any .md file)."
     },
     {
+      "name": "grill-me",
+      "source": "matt-pocock",
+      "scope": "matt-pocock",
+      "description": "A relentless interview to sharpen a plan or design."
+    },
+    {
       "name": "jira-assistant",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",

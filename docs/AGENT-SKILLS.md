@@ -45,7 +45,7 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 
 ### Matt Pocock
 
-_No Matt Pocock skills installed yet. Add one with:_ `fsvskills add claude-code <skill> --source matt-pocock`
+- **grill-me**: A relentless interview to sharpen a plan or design.
 
 ### Native (built-in)
 
