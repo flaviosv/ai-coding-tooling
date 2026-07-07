@@ -6,6 +6,12 @@ It does not replace the parent — the parent's Before/During/After rules stay i
 
 Apply these **before every implementation**, alongside the parent file.
 
+## Code Comments (always apply)
+
+Do not add comments to explain what the code does — clear names and structure should already
+convey that. Add a comment only when it is strictly necessary to explain complex business logic
+(a non-obvious rule, invariant, or external constraint the code itself cannot convey).
+
 ## Software Design Principles (always load)
 
 Load `coding-guidelines/best-practices-coding-guidelines.md` from this directory whenever you
