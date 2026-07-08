@@ -75,7 +75,7 @@ fsvskills delete claude-code some-skill
 
 ### `update <agent> <skills|--all>`
 
-Re-runs the vendor installer for the named skills (comma- or space-separated) or all vendor skills with `--all`. Local and native skills have nothing to update.
+Runs each vendor's `update` subcommand for the named skills (comma- or space-separated) or all vendor skills with `--all`. Local and native skills have nothing to update. Tech Leads Club updates run from the home directory (the vendor `update` has no `--global` flag and auto-detects agents from cwd) so global skills are never duplicated into this repo's `.agents/`.
 
 ```bash
 fsvskills update claude-code tlc-spec-driven

@@ -29,7 +29,7 @@
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
       "extended": true,
-      "description": "Use this skill for writing, reviewing, and editing documentation (`/docs` directory or any .md file)."
+      "description": "Write, review, and edit documentation files with consistent structure, tone, and technical accuracy. Use when creating docs, reviewing markdown files, writing READMEs, updating `/docs` directories, or when user says \"write documentation\", \"review this doc\", \"improve this README\", \"create a guide\", or \"edit markdown\". Do NOT use for code comments, inline JSDoc, or API reference generation."
     },
     {
       "name": "grill-me",
@@ -59,7 +59,7 @@
       "name": "learning-opportunities",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Facilitates deliberate skill development during AI-assisted coding. Offers interactive learning exercises after architectural work (new files, schema changes, refactors). Use when completing features, making design decisions, or when user asks to understand code better. Triggers on \"learning exercise\", \"help me understand\", \"teach me\", \"why does this work\", or after creating new files/modules. Do not trigger during urgent debugging, quick fixes, or when user says \"just ship it\"."
+      "description": "Facilitates deliberate skill development during AI-assisted coding. Offers interactive learning exercises after architectural work (new files, schema changes, refactors). Use when completing features, making design decisions, or when user asks to understand code better. Triggers on \"learning exercise\", \"help me understand\", \"teach me\", \"why does this work\", or after creating new files/modules. Do NOT use for urgent debugging, quick fixes, or when user says \"just ship it\"."
     },
     {
       "name": "mermaid-studio",
@@ -78,20 +78,20 @@
       "name": "security-best-practices",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Perform language and framework specific security best-practice reviews and suggest improvements. Trigger only when the user explicitly requests security best practices guidance, a security review/report, or secure-by-default coding help. Trigger only for supported languages (python, javascript/typescript, go). Do not trigger for general code review, debugging, or non-security tasks."
+      "description": "Perform language and framework specific security best-practice reviews and suggest improvements. Use when the user explicitly requests security best practices guidance, a security review or report, or secure-by-default coding help. Supports Python, JavaScript/TypeScript, and Go. Do NOT use for general code review, debugging, threat modeling (use security-threat-model), or non-security tasks."
     },
     {
       "name": "skill-architect",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
       "extended": true,
-      "description": "Expert guide for designing and building high-quality skills from scratch through structured conversation. Use whenever someone wants to create a new skill, build a skill, design a skill, or asks for help making Agents do something consistently. Also use when someone says \"turn this into a skill\", \"I want to automate this workflow\", \"how do I teach my Agent to do X\", or mentions creating SKILL.md files. Covers standalone skills and MCP-enhanced workflows."
+      "description": "Expert guide for designing and building high-quality skills from scratch through structured conversation. Use when someone wants to create a new skill, build a skill, design a skill, or asks for help making Agents do something consistently. Also use when someone says \"turn this into a skill\", \"I want to automate this workflow\", \"how do I teach my Agent to do X\", or mentions creating SKILL.md files. Covers standalone skills and MCP-enhanced workflows. Do NOT use for creating subagents (use subagent-creator) or technical design documents (use create-technical-design-doc)."
     },
     {
       "name": "subagent-creator",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Guide for creating AI subagents with isolated context for complex multi-step workflows. Use when users want to create a subagent, specialized agent, verifier, debugger, or orchestrator that requires isolated context and deep specialization. Works with any agent that supports subagent delegation. Triggers on \"create subagent\", \"new agent\", \"specialized assistant\", \"create verifier\"."
+      "description": "Guide for creating AI subagents with isolated context for complex multi-step workflows. Use when users want to create a subagent, specialized agent, verifier, debugger, or orchestrator that requires isolated context and deep specialization. Works with any agent that supports subagent delegation. Triggers on \"create subagent\", \"new agent\", \"specialized assistant\", \"create verifier\". Do NOT use for Cursor-specific subagents (use cursor-subagent-creator instead)."
     },
     {
       "name": "tech-debt-report",
@@ -109,7 +109,7 @@
       "name": "technical-design-doc-creator",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Creates comprehensive Technical Design Documents (TDD) following industry standards with mandatory sections, optional sections, and interactive gathering of missing information."
+      "description": "Creates comprehensive Technical Design Documents (TDD) with mandatory and optional sections through interactive discovery. Use when user asks to \"write a design doc\", \"create a TDD\", \"technical spec\", \"architecture document\", \"RFC\", \"design proposal\", or needs to document a technical decision before implementation. Do NOT use for README files, API docs, or general documentation (use docs-writer instead)."
     },
     {
       "name": "tests",
@@ -140,7 +140,7 @@
       "name": "web-design-guidelines",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\"."
+      "description": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\". Focuses on visual design and interaction patterns. Do NOT use for performance audits (use core-web-vitals), SEO (use seo), or comprehensive site audits (use web-quality-audit)."
     }
   ]
 }

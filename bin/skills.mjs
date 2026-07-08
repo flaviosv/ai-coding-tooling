@@ -142,12 +142,12 @@ function unlinkIfSymlink(dest) {
   ok(`removed ${dest}`);
 }
 
-function runNpx(args, label) {
+function runNpx(args, label, { cwd } = {}) {
   const printable = `npx ${args.join(' ')}`;
   if (DRY) { log(`${c.dim}[dry-run]${c.reset} ${printable}`); return true; }
   info(printable);
   try {
-    execFileSync('npx', args, { stdio: 'inherit' });
+    execFileSync('npx', args, { stdio: 'inherit', cwd });
     ok(label);
     return true;
   } catch (e) {
@@ -234,9 +234,12 @@ function updateSkill(skill, agent) {
   const installScope = skill.installScope || 'global';
   switch (skill.source) {
     case 'tech-leads-club': {
-      const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', agent.npxId];
-      if (installScope !== 'local') args.push('--global');
-      return runNpx(args, `updated ${name} (Tech Leads Club)`);
+      // The vendor `update` subcommand has no scope flag; it auto-detects agent
+      // configs from cwd. For global skills, run outside the repo so it never
+      // materializes a project-local copy from this repo's .agents/ config.
+      const args = ['@tech-leads-club/agent-skills', 'update', '--skill', name];
+      const cwd = installScope === 'local' ? undefined : os.homedir();
+      return runNpx(args, `updated ${name} (Tech Leads Club)`, { cwd });
     }
     case 'matt-pocock': {
       const args = ['skills', 'update', name, '--yes'];
