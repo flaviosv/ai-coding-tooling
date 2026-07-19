@@ -25,6 +25,12 @@
       "description": "Expert in Confluence operations using Atlassian MCP. Use when the user says \"search Confluence\", \"create a Confluence page\", \"update a page\", \"find documentation in Confluence\", \"list spaces\", or \"add a comment to a page\". Do NOT use for Jira issues, general web search, or local file creation."
     },
     {
+      "name": "cv-builder",
+      "source": "local",
+      "scope": "built",
+      "description": "Build a professional CV/resume from scratch or keep one updated. Runs a deep grilling interview that extracts a person's full experience catalog into a resumable experiences.md, then curates it into a recruiter-grade cv.md and a RenderCV cv.yaml rendered to PDF. Acts as a recruiter and coach; every claim is kept interview-defensible. Requires the grilling skill for the interview and RenderCV (via uvx) for rendering. Use when someone says \"build my CV\", \"create my resume\", \"update my CV\", \"improve my resume\", \"CV from scratch\", \"work on my experience catalog\", or wants a RenderCV/PDF CV. Do NOT use for cover letters, LinkedIn profile writing, or job-application tracking."
+    },
+    {
       "name": "docs-writer",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
