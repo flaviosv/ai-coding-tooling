@@ -47,7 +47,7 @@ if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it 
 ### Matt Pocock
 
 - **grill-me**: A relentless interview to sharpen a plan or design.
-- **grilling**: Grill the user relentlessly about a plan or design. Use when the user wants to stress-test a plan before building, or uses any 'grill' trigger phrases.
+- **grilling**: Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
 - **to-prd**: Turn the current conversation into a PRD and publish it to the project issue tracker — no interview, just synthesis of what you've already discussed.
 
 ### Native (built-in)
