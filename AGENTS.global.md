@@ -50,6 +50,10 @@ Triggers: any mention of a package name, `npm install`, `pip install`, `cargo ad
 
 - **Alphabetical ordering**: All markdown tables and bullet lists that enumerate items (skills, dependencies, components, files, etc.) must be sorted alphabetically by the primary column or item name. Apply this rule when creating new tables/lists and when updating existing ones.
 
+## Infrastructure Environment
+
+- All of my infrastructure runs on Kubernetes via **k3s**. When suggesting or writing deployment configs, orchestration commands, or infra changes, default to k3s/kubectl-compatible approaches (manifests, Helm charts) rather than other orchestrators (e.g. Docker Swarm, Nomad) or full upstream Kubernetes distros, unless I say otherwise.
+
 ---
 
 <!-- ═══════════════════════════════════════════════════════════════

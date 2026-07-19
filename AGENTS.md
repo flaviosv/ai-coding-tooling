@@ -36,3 +36,11 @@ Skills are managed by the **`fsvskills`** script (`bin/skills.mjs`). Its source 
 - Add a skill: `fsvskills add claude-code <skill> --source <local|tech-leads-club|matt-pocock>`.
 - Delete a skill: `fsvskills delete claude-code <skill>` (uninstalls + deregisters; keeps `extended/<skill>/`).
 - Override a vendor skill: `fsvskills override claude-code <skill>` (scaffolds `extended/<skill>/`).
+
+## Known Limitation: `fsvskills update` for Matt Pocock Skills
+
+`fsvskills update claude-code --all` (or targeting a `matt-pocock` skill by name) reports `updated <name> (Matt Pocock)` even when nothing actually changed. The underlying `skills` npx CLI only tracks installs for `update` via a `skills-lock.json` file, but **global-scope installs are never written to that lock file** — so `skills update <name> -g` can never find them, and silently no-ops ("No installed skills found matching") while still exiting 0.
+
+- **Workaround:** force a fresh fetch directly, bypassing `fsvskills`'s own "already installed → skip" check: `npx skills add mattpocock/skills --skill <name> --agent claude-code --global --yes`.
+- **Symptom to watch for:** if a Matt Pocock skill needs an update, don't trust `fsvskills update`'s success message alone for that source — verify content changed, or just run the workaround directly.
+- `to-prd` was confirmed **removed/renamed upstream** in `mattpocock/skills` as of 2026-07-17 — it no longer appears in the repo's skill list, so the workaround above will fail for it (`No matching skills found for: to-prd`). The locally installed copy was left untouched. If `to-prd` is needed going forward, check `mattpocock/skills` for its replacement before assuming it's gone for good.
