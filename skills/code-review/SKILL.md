@@ -174,7 +174,7 @@ Collect the diff and file list based on the mode from Step 1, applying EXCLUDE t
 | Mode | Commands |
 |------|----------|
 | Local workspace | `git diff HEAD -- $EXCLUDE`, `git diff --cached -- $EXCLUDE`, `git ls-files --others --exclude-standard` |
-| GitHub PR | `gh` if available and authenticated, else GitHub MCP (see [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md)); filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
+| GitHub PR | `gh` (see [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md)); filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
 | Multi-commit (hashes) | `git show <h1> -- $EXCLUDE; git show <h2> -- $EXCLUDE; ...` — concatenated in order |
 | Multi-commit (range) | `git diff <base>..<tip> -- $EXCLUDE` |
 | Performance Audit | No diff — full codebase scan (EXCLUDE does not apply) |
@@ -599,12 +599,12 @@ User: "review PR #42"
 1. Step 1: PR #42 → GitHub PR mode
 2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check PR description for JIRA task ID — build availability map
 3. Step 3: Availability map ready
-4. Step 4: Fetch diff via `gh` (or GitHub MCP if `gh` unavailable); filter changed-file list to remove EXCLUDE-matching paths; record `excluded_count`
+4. Step 4: Fetch diff via `gh`; filter changed-file list to remove EXCLUDE-matching paths; record `excluded_count`
 5. Step 5: Complexity assessment — emit banner; route to execution mode
 6. Step 6: Dispatch per Review Plan execution mode against PR diff only — ignore local workspace; agents self-load context via `## Before You Begin`
 7. Step 7: Await results
 8. Step 8: Consolidated report with at-a-glance table (active dimensions only)
-9. Step 9: User selects findings to post → create pending review comments via `gh` (or GitHub MCP); user submits manually on GitHub
+9. Step 9: User selects findings to post → create pending review comments via `gh`; user submits manually on GitHub
 
 ### Example 3: Performance audit
 

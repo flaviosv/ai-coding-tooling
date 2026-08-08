@@ -40,11 +40,11 @@ Triggers: any mention of a package name, `npm install`, `pip install`, `cargo ad
 - **Demand elegance**: For non-trivial changes, ask "is there a more elegant way?" Trigger: *"Knowing everything I know now, implement the elegant solution."* Skip for simple obvious fixes.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs. Every changed line must trace directly to the user's request. Remove all dead code — whether created by your changes or pre-existing — and explicitly report to the user what was removed and why.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code. If you write 200 lines and it could be 50, rewrite it. Ask yourself: "Would a senior engineer say this is overcomplicated?" — if yes, simplify.
+- **Simplicity First**: The simplest solution that meets the quality bar wins — added complexity must be justified, never assumed. Apply this check at every phase, not just at code time: specification (scope requirements to what's actually needed, no gold-plating), design (fewest moving parts — components, layers, abstractions — that satisfy the requirements), tasks (smallest set of atomic tasks, no speculative or "just in case" work), implementation (impact minimal code — if you write 200 lines and it could be 50, rewrite it), and tests (cover only the guarantees that matter, no redundant or bootstrap-testing coverage). Ask yourself: "Would a senior engineer say this is overcomplicated?" — if yes, simplify.
 
 ## Coding Style
 
-- **No explanatory comments**: Do not add comments to explain what code does. Only add a comment when the code is genuinely complex (non-obvious algorithm, subtle invariant, external constraint) or the user explicitly asks for it.
+- **No explanatory comments**: Comments are welcome ONLY to explain genuinely complex logic (non-obvious algorithm, subtle invariant, external constraint) or when the user explicitly asks for it. Never add a comment to narrate what a variable is used for, explain a configuration value, or restate a single line of code — if it needs that, the code itself should be clearer instead.
 
 ## Markdown Formatting
 
