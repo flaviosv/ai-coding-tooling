@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.4.1"
+  version: "2.5.0"
   triggers:
     - "review tests"
     - "test code review"
@@ -128,7 +128,7 @@ The orchestrator holds **this map only** — no file content. Agents self-load t
 
 If an agent's required context item is absent from the map, flag that agent as `degraded`: it proceeds without that item, notes the gap in its findings, and the at-a-glance table shows `⚠️ degraded — <missing item>`.
 
-Special case: `TESTING.md` absent → `isolation-reviewer` and `performance-reviewer` run degraded; they fall back to inferring the test framework from `STACK.md` or test file patterns.
+Special case: `TESTING.md` absent → the isolation and performance dimensions run degraded (the agent(s) covering them fall back to inferring the test framework from `STACK.md` or test file patterns). At Medium tier this affects the single all-dimensions agent's isolation/performance findings; at Large/Complex tier this affects the merged `execution-reviewer` agent as a whole (see Step 6 Merge Rule).
 
 ## Step 4: Diff Collection
 
@@ -287,8 +287,8 @@ Examples:
 🔍 Test review — Complexity: **Small** (3 test files, 90 lines) · Inline review
 🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Single agent — 6 dimensions
 🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Single agent — 5 dimensions (no impl changes)
-🔍 Test review — Complexity: **Large** (20 test files, 900 lines) · Parallel — 5 agents
-🔍 Test review — Complexity: **Complex** (32 test files, 1,840 lines · 2 excluded) · Parallel — 6 agents (⚠️ completeness caveat)
+🔍 Test review — Complexity: **Large** (20 test files, 900 lines) · Parallel — 3 agents
+🔍 Test review — Complexity: **Complex** (32 test files, 1,840 lines · 2 excluded) · Parallel — 4 agents (⚠️ completeness caveat)
 ```
 
 ### Silent operation
@@ -309,6 +309,8 @@ Execute per the size tier determined in Step 5.
 | **Medium** | Dispatch exactly ONE subagent covering ALL dimensions. It receives both the test diff AND `impl_diff` (if non-empty). It self-loads the union of checklists + the full 7-doc codebase set. |
 | **Large** | Dispatch one specialized subagent per active dimension in a **single parallel message**. Never sequentially. |
 | **Complex** | Same as Large + inject the thoroughness directive into each agent's prompt: *"Review every file in your scope thoroughly."* |
+
+**Merge rule (Large/Complex tiers only):** `isolation-reviewer` + `performance-reviewer` dispatch together as a single `execution-reviewer` agent (union of checklists — identical set either way — findings tagged by original dimension). `clarity-reviewer` + `maintainability-reviewer` dispatch together as a single `craft-reviewer` agent, same mechanism. `coverage-reviewer` and `gap-detector` are untouched by either merge. This reduces Large/Complex-tier dispatch from 5 dimension agents to 3 (`coverage-reviewer`, `execution-reviewer`, `craft-reviewer`), plus `gap-detector` when active. Medium tier is unaffected — it already dispatches a single agent covering every dimension.
 
 For Large and Complex: `gap-detector` is dispatched only when `impl_diff` is non-empty; otherwise its at-a-glance row shows `⚠️ skipped — no implementation changes`.
 
@@ -371,12 +373,10 @@ Issues: <any blockers encountered>
 
 | Agent | Dimension | `## Before You Begin` — Checklists | `## Before You Begin` — Codebase docs | Degrades without |
 |-------|-----------|-------------------------------------|----------------------------------------|-----------------|
-| `clarity-reviewer` | Test naming, AAA structure, focus, readability as docs | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `conventions` |
 | `coverage-reviewer` | Happy path, error paths, edge cases, integration points, access control | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | — |
+| `craft-reviewer` (Large/Complex tier — clarity + maintainability merged, see Step 6 Merge Rule) | Merged: test naming, AAA structure, focus, readability as docs (**clarity** tag) + helpers, data-driven patterns, mock minimalism, update cost (**maintainability** tag). Findings tagged by original dimension. | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `conventions` |
+| `execution-reviewer` (Large/Complex tier — isolation + performance merged, see Step 6 Merge Rule) | Merged: shared state, ordering, mocks, determinism, external deps (**isolation** tag) + I/O in unit tests, sleep/polling, suite speed, test separation (**performance** tag). Findings tagged by original dimension. | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `testing` |
 | `gap-detector` | Implementation paths and behaviors missing test coverage (receives `impl_diff` only; skipped if `impl_diff` empty) | None | `STACK.md`, `ARCHITECTURE.md`, `CONCERNS.md`, `INTEGRATIONS.md` | — |
-| `isolation-reviewer` | Shared state, ordering, mocks, determinism, external deps | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `testing` |
-| `maintainability-reviewer` | Helpers, data-driven patterns, mock minimalism, update cost | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | — |
-| `performance-reviewer` | I/O in unit tests, sleep/polling, suite speed, test separation | `test-review-checklist.md`, `<stack>-*-tests-code-review.md` (if present) | Full 7-doc set | `testing` |
 
 **Full 7-doc set** = `STACK.md`, `ARCHITECTURE.md`, `CONVENTIONS.md`, `TESTING.md`, `CONCERNS.md`, `INTEGRATIONS.md`, `STRUCTURE.md` — filtered to those marked present in the availability map.
 
@@ -529,8 +529,8 @@ User: "review tests on PR #42"
 2. Step 2: Check presence/absence of all 9 context items; no content loaded
 3. Step 3: Build availability map (9 keys)
 4. Step 4: Fetch diff via `gh`; filter changed-file list to remove EXCLUDE patterns; filter to test files; capture `excluded_count`; collect `impl_diff` (non-test implementation files, EXCLUDE applied)
-5. Step 5: Complexity assessment → emit Review Plan → print banner (e.g. `🔍 Test review — Complexity: **Large** (18 test files, 950 lines) · Parallel — 6 agents`)
-6. Step 6: Dispatch 6 agents in parallel (5 test-quality agents receive test diff; `gap-detector` receives `impl_diff` only; each self-loads via `## Before You Begin`)
+5. Step 5: Complexity assessment → emit Review Plan → print banner (e.g. `🔍 Test review — Complexity: **Large** (18 test files, 950 lines) · Parallel — 4 agents`)
+6. Step 6: Dispatch 4 agents in parallel (`coverage-reviewer`, `execution-reviewer`, and `craft-reviewer` receive the test diff; `gap-detector` receives `impl_diff` only; each self-loads via `## Before You Begin`)
 7. Step 7: Await results; mark failures/degraded agents
 8. Step 8: Consolidated report (excluded count in header) → at-a-glance table → zoned findings
 9. Step 9: User selects findings to post → create pending review comments via `gh`; user submits manually on GitHub
@@ -544,7 +544,7 @@ User: "review test commits abc123 def456"
 3. Step 3: Build availability map (9 keys)
 4. Step 4: `git show abc123 -- $EXCLUDE; git show def456 -- $EXCLUDE` → filter to test files, concatenated; collect commit list (hash + subject) for report header; capture `excluded_count`; collect `impl_diff` with EXCLUDE applied
 5. Step 5: Complexity assessment against combined diff totals → emit Review Plan → print banner
-6. Step 6: Dispatch agents per tier (e.g. Complex → 6 parallel agents, each self-loading via `## Before You Begin`, each receiving thoroughness directive)
+6. Step 6: Dispatch agents per tier (e.g. Complex → 4 parallel agents, each self-loading via `## Before You Begin`, each receiving thoroughness directive)
 7. Step 7: Await results; mark failures/degraded agents
 8. Step 8: Single consolidated report — header lists both commits + excluded count; at-a-glance table + zoned findings
 
