@@ -13,6 +13,8 @@
 !config/**
 !extended
 !extended/**
+!.specs
+!.specs/**
 !skills
 !skills/**
 !templates

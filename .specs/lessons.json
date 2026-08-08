@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 3,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::when merging two dispatched review agents into one explicitly update the failure degraded handling text step 7 or equivalent to state both tagged dimensions are affected not just the success case agent roster checklist matrix entries",
+      "text": "When merging two dispatched review agents into one, explicitly update the failure/degraded-handling text (Step 7 or equivalent) to state both tagged dimensions are affected -- not just the success-case Agent Roster/Checklist Matrix entries",
+      "signal": "ac_gap",
+      "scope": "review-skills",
+      "status": "candidate",
+      "features": [
+        "review-dispatch-efficiency"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "RD-06, RD-13 (review-skills)"
+      ],
+      "created": "2026-08-08T23:43:41Z",
+      "last_seen": "2026-08-08T23:43:41Z"
+    },
+    {
+      "id": "L-002",
+      "key": "spec_deviation::when two planned tasks edit the same shared table or section in one file plan them as a single task commit from the start non interactive git cannot cleanly split one coherent table edit into two commits after the fact",
+      "text": "When two planned tasks edit the same shared table or section in one file, plan them as a single task/commit from the start -- non-interactive git cannot cleanly split one coherent table edit into two commits after the fact",
+      "signal": "spec_deviation",
+      "scope": "tlc-spec-driven",
+      "status": "candidate",
+      "features": [
+        "review-dispatch-efficiency"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "tasks.md T2/T3 SPEC_DEVIATION note, commit 39a47c7 (tlc-spec-driven)"
+      ],
+      "created": "2026-08-08T23:43:42Z",
+      "last_seen": "2026-08-08T23:43:42Z"
+    }
+  ]
+}
