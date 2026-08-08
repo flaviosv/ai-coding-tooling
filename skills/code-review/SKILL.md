@@ -452,6 +452,8 @@ Wait for all dispatched agents to return. For each agent, resolve its outcome:
 | Degraded (missing required context) | Mark dimension as `⚠️ degraded — <missing item>` |
 | `requirements-tracer` skipped (no spec/JIRA) | Omit row from at-a-glance table entirely |
 
+**Merged agent (`design-quality-reviewer`) failure or timeout:** mark BOTH the Architecture and Code Quality & Docs at-a-glance rows as `⚠️ not executed — <reason>` — one agent's failure means both tagged dimensions went unreviewed. Same rule for degraded: if the merged agent runs degraded, both rows show `⚠️ degraded — <missing item>` (the specific missing item may differ per tag, e.g. `architecture` absent but `conventions` present degrades only the Architecture-tagged findings — note this distinction in the row's summary text when it applies).
+
 Continue to Step 8 regardless of individual agent outcomes. A failed agent never blocks the report.
 
 ## Step 8: Consolidation and Present Findings
@@ -513,10 +515,10 @@ Show only the rows for active dimensions. For example, a `docs-only` review show
 
 Agent dimensions map directly to zones. Zone letter assignment:
 
-| Zone | Letter | Agent |
+| Zone | Letter | Dispatched by |
 |------|--------|-------|
-| Architecture | A | `architecture-reviewer` |
-| Code Quality & Docs | Q | `code-quality-reviewer` |
+| Architecture | A | `design-quality-reviewer` (merged with Code Quality when both active — see Step 6 Merge Rule) |
+| Code Quality & Docs | Q | `design-quality-reviewer` (merged, general content) or standalone `code-quality-reviewer` (narrowed content types) |
 | Performance | P | `performance-reviewer` |
 | Regression & Hallucination | H | `regression-reviewer` |
 | Requirements | R | `requirements-tracer` |
