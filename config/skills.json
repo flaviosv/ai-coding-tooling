@@ -70,12 +70,6 @@
       "description": "Guide for creating AI subagents with isolated context for complex multi-step workflows. Use when users want to create a subagent, specialized agent, verifier, debugger, or orchestrator that requires isolated context and deep specialization. Works with any agent that supports subagent delegation. Triggers on \"create subagent\", \"new agent\", \"specialized assistant\", \"create verifier\". Do NOT use for Cursor-specific subagents (use cursor-subagent-creator instead)."
     },
     {
-      "name": "tech-debt-report",
-      "source": "local",
-      "scope": "built",
-      "description": "Maintains a permanent numbered tech-debt ledger in docs/TECH_DEBTS.md (a documentation ledger, intentionally NOT auto-loaded into context); per-debt solution plans are written to docs/tech-debts/TD-XX.md when planning a fix. Rows are never deleted."
-    },
-    {
       "name": "tech-reference-add",
       "source": "local",
       "scope": "built",
