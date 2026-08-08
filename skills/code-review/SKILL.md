@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.6.0"
+  version: "2.6.1"
   triggers:
     - "check my code"
     - "code review"
@@ -248,7 +248,7 @@ Evaluate **top-down, first match wins**:
 | Tier | Condition (post-exclusion) | Execution mode |
 |------|---------------------------|----------------|
 | **Small** | ≤5 files **OR** <200 diff lines | **Inline** — orchestrator reviews active dimensions directly, 0 agents |
-| **Medium** | ≤15 files **AND** <800 diff lines | **Parallel** — 1 subagent per active dimension dispatched together (N× diff) |
+| **Medium** | ≤15 files **AND** <800 diff lines | **Single agent** — 1 delegated subagent covers ALL active dimensions (1× diff) |
 | **Large** | ≤25 files **AND** <1,500 diff lines | **Parallel** — 1 subagent per active dimension dispatched together (N× diff) |
 | **Complex** | >25 files **OR** ≥1,500 diff lines | **Parallel + completeness handling** — same as Large, plus caveat and thoroughness directive |
 
@@ -279,9 +279,9 @@ The assessment emits an explicit plan consumed by Step 6:
 Review Plan:
   Size tier:         Small | Medium | Large | Complex
   Content type:      general | docs-only | config-infra-only | frontend-assets-only
-  Execution mode:    inline | parallel
+  Execution mode:    inline | single-agent | parallel
   Active dimensions: [<dimension list>]
-  Agents dispatched: 0 (inline) | N (parallel)
+  Agents dispatched: 0 (inline) | 1 (single-agent) | N (parallel)
   Complex handling:  none | caveat + thoroughness directive
   Excluded files:    N
 ```
@@ -297,7 +297,7 @@ Immediately after the assessment, print this one-line banner to the user **befor
 Examples:
 ```
 🔍 Code review — Complexity: **Complex** (32 files, 1,840 lines · 3 excluded) · Type: general · Parallel — 5 agents (⚠️ completeness caveat)
-🔍 Code review — Complexity: **Medium** (9 files, 420 lines) · Type: general · Parallel — 5 agents
+🔍 Code review — Complexity: **Medium** (9 files, 420 lines) · Type: general · Single agent — all 5 dimensions
 🔍 Code review — Complexity: **Small** (2 files, 60 lines) · Type: docs-only · Inline review (Code Quality only)
 ```
 
@@ -320,7 +320,11 @@ Execute the Review Plan from Step 5. The execution mode determines how active di
 
 Apply the reviewer stance directly in the orchestrator across all active dimensions. No subagents. Proceed to Step 8 (Consolidation) when done.
 
-#### Medium / Large — Parallel (one agent per active dimension)
+#### Medium — Single Agent (1 agent, all active dimensions)
+
+Dispatch **one** delegated subagent that covers ALL active dimensions in a single pass. The subagent's `## Before You Begin` block lists the **union** of all active dimensions' checklists (deduplicated) plus the full codebase-doc set. The subagent returns findings tagged by dimension.
+
+#### Large — Parallel (one agent per active dimension)
 
 Fire all active dimension agents in a **single parallel message. Never sequentially.** Each receives its own `## Before You Begin` block (targeted to its dimension) plus the full codebase-doc set.
 
@@ -354,7 +358,7 @@ Codebase docs (load each if present, from docs/codebase/):
 - docs/codebase/CONCERNS.md
 
 ## Role
-<agent name and dimension>
+<agent name and dimension — or "all active dimensions" for Medium single-agent>
 
 ## Diff
 <full diff from Step 4>
@@ -593,8 +597,8 @@ User: "review my code"
 2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check for active spec or JIRA task ID — build availability map (no content loaded by orchestrator)
 3. Step 3: Availability map ready (presence/absence only)
 4. Step 4: `git diff HEAD -- $EXCLUDE` + `git diff --cached -- $EXCLUDE` + `git ls-files --others --exclude-standard`; collect `git diff --stat -- $EXCLUDE`; record `excluded_count`
-5. Step 5: Complexity assessment — emit Review Plan and complexity banner; route to execution mode (Small → inline, Medium/Large/Complex → parallel)
-6. Step 6: Dispatch per Review Plan (one agent per active dimension, fired in parallel); each agent self-loads checklists + codebase docs via `## Before You Begin`
+5. Step 5: Complexity assessment — emit Review Plan and complexity banner; route to execution mode (Small → inline, Medium → single agent, Large/Complex → parallel)
+6. Step 6: Dispatch per Review Plan (e.g. Medium: 1 agent covering all active dimensions; Large: N parallel agents); each agent self-loads checklists + codebase docs via `## Before You Begin`
 7. Step 7: Await all results; mark any failures/degraded agents
 8. Step 8: Report header (with excluded count if any) → at-a-glance table (active dimensions only) → zoned findings; iterative review until P0/P1 resolved
 
