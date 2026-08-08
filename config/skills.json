@@ -105,6 +105,12 @@
       "description": "Perform language and framework specific security best-practice reviews and suggest improvements. Use when the user explicitly requests security best practices guidance, a security review or report, or secure-by-default coding help. Supports Python, JavaScript/TypeScript, and Go. Do NOT use for general code review, debugging, threat modeling (use security-threat-model), or non-security tasks."
     },
     {
+      "name": "ship-spec",
+      "source": "local",
+      "scope": "built",
+      "description": "Delivers a completed tlc-spec-driven feature end-to-end: creates the feature branch, runs tlc-spec-driven's Execute phase for every task, pushes and opens a GitHub draft PR once tests pass, then runs code-review and tests-code-review against the PR and publishes every finding as pending PR comments. Re-invoking it against a feature that already has an open PR switches to comment-triage mode — fetches your PR review-thread comments and fixes or replies to each. Invoked explicitly via /ship-spec only — it never triggers on natural language (saying \"implement the spec\" routes to tlc-spec-driven's own Execute phase, not here). Requires an existing tlc-spec-driven feature (`.specs/features/*/tasks.md`) and the `gh` CLI. Do NOT use for planning or task breakdown (use tlc-spec-driven), or for reviewing code outside this delivery flow (use code-review / tests-code-review directly)."
+    },
+    {
       "name": "skill-architect",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
