@@ -49,7 +49,7 @@ Execute (Step 3) must have completed with every task committed and the Verifier 
 
 ### On Collision
 
-If `feature/<task_id>` already exists locally or on the remote: ask whether to continue on it or use a different task_id — never silently overwrite or force-push over it.
+If `feature/<task_id>_<description>` already exists locally or on the remote: ask whether to continue on it or use a different task_id — never silently overwrite or force-push over it.
 
 ### Credentials
 
@@ -72,19 +72,21 @@ This is the entire mode switch. There is no separate sub-command — re-invoking
 
 **Task ID:** use the `task_id=` argument if given. Otherwise, derive it from the feature folder's tracker-ID prefix (`.specs/features/PROJ-42-user-auth/` → `PROJ-42`). If the folder has no prefix, ask — do not fall back to the bare slug.
 
+**Description slug:** generate a short kebab-case slug (2–4 words) summarizing the feature — reuse the feature folder's own slug portion when present (`.specs/features/PROJ-42-user-auth/` → `user-auth`), otherwise derive one from `spec.md`'s title. This is generated, never asked for.
+
 Guard check: confirm `.specs/features/<feature>/tasks.md` exists for the resolved feature. Missing → stop per Guardrails.
 
 ## Step 3: Branch and Execute
 
 1. `git checkout <base>`.
-2. `git checkout -b feature/<task_id>` (see Guardrails → On Collision if it already exists).
+2. `git checkout -b feature/<task_id>_<description>` (see Guardrails → On Collision if it already exists).
 3. Invoke tlc-spec-driven's Execute phase for every task in `.specs/features/<feature>/tasks.md`. It owns its own per-task gate checks, atomic Conventional-Commits commits, and the mandatory end-of-feature Verifier — do not add parallel logic for any of that here.
 4. If Execute reports success (all tasks committed, Verifier passed): continue to Step 4.
 5. If Execute's bounded fix-loop can't converge: stop per Guardrails → Before Opening the PR.
 
 ## Step 4: Push
 
-`git push -u origin feature/<task_id>`.
+`git push -u origin feature/<task_id>_<description>`.
 
 ## Step 5: Open the Draft PR
 
@@ -133,8 +135,8 @@ Entered per Step 1 when the target branch already has an open PR. The user has b
 User: `/ship-spec base=main task_id=PROJ-42`
 
 1. Step 1: no `feature/*` branch checked out yet with an open PR → Delivery Mode
-2. Step 2: feature resolved from `.specs/STATE.md` Handoff; base=`main`, task_id=`PROJ-42` both given inline; `tasks.md` confirmed present
-3. Step 3: checkout `main` → branch `feature/PROJ-42` → Execute runs all tasks, Verifier passes
+2. Step 2: feature resolved from `.specs/STATE.md` Handoff; base=`main`, task_id=`PROJ-42` both given inline; `tasks.md` confirmed present; description slug generated as `rate-limiting` from the feature folder's own slug
+3. Step 3: checkout `main` → branch `feature/PROJ-42_rate-limiting` → Execute runs all tasks, Verifier passes
 4. Step 4: push
 5. Step 5: `gh pr create --draft` → PR #128, title `[PROJ-42] Add rate limiting to the orders API`, body assembled from `spec.md`/`tasks.md`/`commits.md`/`validation.md`
 6. Step 6: `/code-review` reviews PR #128 (9 findings) → posted all 9 as pending comments; `/tests-code-review` reviews PR #128 (3 findings) → posted all 3
@@ -142,9 +144,9 @@ User: `/ship-spec base=main task_id=PROJ-42`
 
 ### Example 2: Comment-triage round
 
-User: `/ship-spec` (on branch `feature/PROJ-42`, PR #128 already open)
+User: `/ship-spec` (on branch `feature/PROJ-42_rate-limiting`, PR #128 already open)
 
-1. Step 1: `feature/PROJ-42` has an open PR → Comment-Triage Mode
+1. Step 1: `feature/PROJ-42_rate-limiting` has an open PR → Comment-Triage Mode
 2. Fetch 5 unresolved review threads
 3. Thread 1: "extract this into a helper" → fix instruction → refactor, commit `refactor(orders): extract rate-limit check into helper`, reply + resolve
 4. Thread 2: "why didn't you use a token bucket here?" → question → reply explaining the sliding-window choice and its tradeoff, resolve
