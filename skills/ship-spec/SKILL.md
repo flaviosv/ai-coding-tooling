@@ -13,7 +13,7 @@ description: >
   code-review / tests-code-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.2.1"
+  version: "1.3.0"
 ---
 
 # Ship Spec
@@ -27,7 +27,7 @@ Delivers a tlc-spec-driven feature from "tasks are written" to "draft PR open wi
 - Do NOT run against a feature with no `tasks.md` — that means the Tasks phase never completed.
 - Do NOT reimplement anything tlc-spec-driven's Execute phase already owns: task execution, atomic commits, gate checks, the end-of-feature Verifier. Invoke it; don't duplicate it.
 - Do NOT auto-fix, filter, or withhold `code-review`/`tests-code-review` findings before publishing — every finding from both skills is posted, unfiltered, every run.
-- Do NOT invoke `code-review`/`tests-code-review` directly in this conversation — always delegate through an isolated Sonnet subagent per Step 6. Both skills self-collect a full diff and produce a full findings report; neither belongs in ship-spec's own context.
+- Do NOT invoke `code-review`/`tests-code-review` directly in this conversation — always delegate through a single isolated Sonnet subagent that runs both, per Step 6. Both skills self-collect a full diff and produce a full findings report; neither belongs in ship-spec's own context.
 - Do NOT submit, approve, or request-changes on the PR review — pending state only, same as `code-review`/`tests-code-review`'s own GitHub PR Constraints.
 - Do NOT create GitHub Issues.
 - Do NOT re-run `code-review`/`tests-code-review` after comment-triage fixes — the user reviews those manually.
@@ -35,9 +35,10 @@ Delivers a tlc-spec-driven feature from "tasks are written" to "draft PR open wi
 - Do NOT add explanatory code comments when fixing a finding, unless the code is genuinely non-obvious (complex algorithm, subtle invariant, external constraint) — the fix should read as self-explanatory, same standard as any other change.
 - Do NOT implement a comment-triage fix directly in this conversation — delegate the read/edit/test/commit work to an isolated Sonnet subagent per Comment-Triage Mode's fix step; keep only classification and reply/reject reasoning here.
 - Do NOT resolve a thread still under discussion — a question you replied to stays open in case the user follows up; only they resolve it once satisfied.
-- Do NOT run the `code-review`/`tests-code-review` subagents in parallel in Step 6 — both create a pending review on the same PR under the same GitHub identity; a concurrent second pending-review operation would collide with the first.
+- Do NOT invoke `code-review` and `tests-code-review` in parallel within Step 6's subagent — both create a pending review on the same PR under the same GitHub identity; a concurrent second pending-review operation would collide with the first. The single-subagent structure enforces this by construction (both invocations happen sequentially inside one conversation), but the underlying constraint still applies if that structure ever changes.
+- On a partial failure (one skill posted successfully, the other didn't) within Step 6's subagent: retry with a fresh subagent instructed to run ONLY the failed skill — never re-run the skill that already posted, since that would create a second, duplicate pending review under the same identity.
 - Do NOT set `isolation: worktree` on the Step 6 or Comment-Triage subagents — they must share the current checkout (the feature branch already checked out locally), not a separate worktree, so a triage fix lands as a commit ready for the existing `git push` step.
-- If a Step 6 or Comment-Triage subagent reports it could not complete (PR not found, auth failure, skill-invocation error, or — for a triage fix — a blocker it can't resolve): retry once with a fresh subagent. If it fails a second time, stop and report the failure — do not fabricate a finding count, skip a skill, or mark a triage thread resolved on a failed fix.
+- If a Step 6 or Comment-Triage subagent reports it could not complete (PR not found, auth failure, skill-invocation error, or — for a triage fix — a blocker it can't resolve): retry once with a fresh subagent (for a Step 6 partial failure, scoped to the failed skill only — see above). If it fails a second time, stop and report the failure — do not fabricate a finding count, skip a skill, or mark a triage thread resolved on a failed fix.
 
 ### Before Starting
 
@@ -110,12 +111,16 @@ Record the returned PR number.
 
 ## Step 6: Review and Publish
 
-For each of `code-review` and `tests-code-review`, in turn, delegate to an isolated subagent rather than invoking the skill in this conversation — both skills self-collect a full diff and produce a full findings report internally; once posted, neither needs to live in ship-spec's own context.
+Delegate to a single isolated subagent rather than invoking either skill in this conversation — both skills self-collect a full diff and produce a full findings report internally; once posted, neither needs to live in ship-spec's own context.
 
-1. Spawn a subagent (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`) whose prompt: invokes `<skill>` in **GitHub PR mode** against the PR number from Step 5 (e.g. "review PR #N" / "review tests on PR #N"); instructs it to post **all** findings unfiltered as pending review comments — this is the "user explicitly selects which findings to post" step each skill's GitHub PR Constraints require, satisfied once by `/ship-spec` being invoked at all, for every finding, because this PR was opened specifically to carry them for review (do not filter by severity, do not ask again per finding); and instructs it to return **only** a compact result — total finding count and a per-severity breakdown, nothing else — or, if it couldn't complete, the failure reason (see Guardrails for the retry rule).
-2. Run `code-review`'s subagent to completion before starting `tests-code-review`'s — never in parallel (see Guardrails).
+1. Spawn one subagent (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`) whose prompt instructs it to, within its own conversation:
+   a. Invoke `code-review` in **GitHub PR mode** against the PR number from Step 5 ("review PR #N"); post **all** findings unfiltered as pending review comments — this is the "user explicitly selects which findings to post" step `code-review`'s GitHub PR Constraints require, satisfied once by `/ship-spec` being invoked at all, for every finding, because this PR was opened specifically to carry them for review (do not filter by severity, do not ask again per finding).
+   b. Wait for `code-review`'s pending review to finish posting, THEN invoke `tests-code-review` the same way ("review tests on PR #N"), same unfiltered-posting instruction — strictly sequential, never parallel (see Guardrails).
+   c. Return **only** one compact result covering both: each skill's total finding count and a per-severity breakdown. If one skill couldn't complete, return its failure reason in place of its counts — the other skill's result, if it succeeded, is still reported normally (see Guardrails for the scoped retry rule).
 
-Each skill posts via its own existing Step 9 / [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md) mechanics: pending review state, `event` field omitted, never submitted, each comment anchored to its exact line. Only the two compact summaries return to this conversation — not the underlying diffs or findings text.
+Running both invocations sequentially inside one subagent conversation is what satisfies "never in parallel" (see Guardrails) — it's a property of the dispatch structure, not a separate step to police.
+
+Each skill posts via its own existing Step 9 / [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md) mechanics: pending review state, `event` field omitted, never submitted, each comment anchored to its exact line — this still produces TWO separate pending reviews, one per skill, exactly as before. Only the one compact summary returns to this conversation — not the underlying diffs or findings text.
 
 ## Step 7: Report
 
@@ -149,7 +154,7 @@ User: `/ship-spec base=main task_id=PROJ-42`
 3. Step 3: checkout `main` → branch `feature/PROJ-42_rate-limiting` → Execute runs all tasks, Verifier passes
 4. Step 4: push
 5. Step 5: `gh pr create --draft` → PR #128, title `[PROJ-42] Add rate limiting to the orders API`, body assembled from `spec.md`/`tasks.md`/`commits.md`/`validation.md`
-6. Step 6: Sonnet subagent invokes `code-review` on PR #128 → 9 findings posted as pending comments, returns count only; Sonnet subagent invokes `tests-code-review` on PR #128 → 3 findings posted, returns count only
+6. Step 6: one Sonnet subagent invokes `code-review` on PR #128 → 9 findings posted as pending comments; then, sequentially within the same subagent, invokes `tests-code-review` on PR #128 → 3 findings posted; returns one compact result covering both
 7. Step 7: "PR #128 opened as draft: <url>. 12 findings published as pending review comments (9 code-review, 3 tests-code-review)."
 
 ### Example 2: Comment-triage round
