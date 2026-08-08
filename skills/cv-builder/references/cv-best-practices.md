@@ -85,8 +85,17 @@ Tenure matters less than what a role proves — a 5-month role with a strong, ow
 
 Every achievement is a Situation → Task → Action → Result. The **Result** (with a metric) is what makes a bullet land and what an interviewer probes. Keep a story bank in the catalog; the CV bullet is the compressed Result-forward version.
 
+## LinkedIn adaptation (linkedin.md)
+
+`linkedin.md` is a second, richer distillation of the same catalog — not a copy of `cv.md`. There is no page limit, but LinkedIn enforces its own field limits and renders no markdown beyond `-` bullets (`#`, `**`, `__`, links, tables, and `---` rules all show up as literal characters).
+
+- **Headline** (≤220 chars): the same positioning line as the CV — `Title · Specialization · Focus`.
+- **About** (≤2,600 chars total, Summary + Skills combined): the Summary can run fuller than the CV's tight formula — LinkedIn readers expect a bit more voice — but stays fact-based, no filler. Skills stay the same expertise-only, categorized list as the CV.
+- **Experience** (≤2,000 chars per entry): more room than the CV's 3-5 bullet cap — add a short context paragraph (mandate/scope) before the bullets, and pull in a secondary win or two from `experiences.md` that didn't survive the CV's page budget. A bit more freedom than the CV, not a different register — stay curated and skimmable, not verbose.
+- Every hard rule above (no firsts, anonymize clients, defensible metrics only, attribution honesty) applies identically — LinkedIn is public and permanent.
+
 ## Final passes before done
 
 1. **Recruiter review** — read the whole CV as a 30-second top-down scan. Is the positioning unmistakable? Any weak, redundant, or undefendable line? Any bullet a recruiter's eye bounces off?
-2. **LinkedIn cross-check** — CV skills align with LinkedIn; nothing listed that can't be defended.
-3. **Length** — target the agreed page count; tune design before cutting content, then cut weakest-first.
+2. **CV/LinkedIn cross-check** — skills and claims stay consistent between `cv.md` and `linkedin.md`; nothing listed that can't be defended.
+3. **Length** — CV: target the agreed page count (default 2, max 3); tune design before cutting content, then cut weakest-first. LinkedIn: stay within each field's character limit.

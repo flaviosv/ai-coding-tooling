@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Validate the structure of cv.md and its consistency with cv.yaml.
+"""Validate cv.md (structure + cv.yaml consistency) or linkedin.md (plain-text + LinkedIn field limits).
 
-Checks (stdlib only, no PyYAML):
-  - Required sections present and in order.
-  - Header has a name (H1), a positioning line, and a contact line.
-  - Each Experience entry (### heading) has at least one bullet.
-  - No leftover placeholder text.
-  - Company set in cv.md matches the company set in cv.yaml (if cv.yaml exists).
+Mode is chosen by the input filename: "linkedin.md" -> LinkedIn validation, anything else -> CV validation.
 
-Usage: python3 validate_cv.py [path/to/cv.md]   (default: cv/cv.md, else ./cv.md)
+Usage: python3 validate_cv.py [path/to/cv.md|path/to/linkedin.md]   (default: cv/cv.md, else ./cv.md)
 Exit code 0 = pass, 1 = problems found.
 """
 import re
@@ -18,6 +13,18 @@ from pathlib import Path
 REQUIRED_ORDER = ["Summary", "Stack & Skills", "Experience", "Education"]
 OPTIONAL = ["Earlier Experience", "Certifications", "Languages"]
 PLACEHOLDERS = ["TODO", "_(pending)_", "_(pending", "PLACEHOLDER", "[ ]", "TBD", "FIXME", "XXX"]
+
+LINKEDIN_LIMITS = {"Headline": 220, "About": 2600, "Experience entry": 2000}
+DISALLOWED_MARKDOWN = [
+    (r"^#{1,6}\s", "heading (#)"),
+    (r"\*\*[^*]+\*\*", "bold (**)"),
+    (r"__[^_]+__", "bold (__)"),
+    (r"\[[^\]]+\]\([^)]+\)", "link ([text](url))"),
+    (r"^```", "code fence"),
+    (r"^\|.*\|\s*$", "table row"),
+    (r"^>\s", "blockquote"),
+    (r"^(---|===)\s*$", "horizontal rule"),
+]
 
 
 def resolve_input(argv) -> Path:
@@ -56,11 +63,7 @@ def companies_from_yaml(text: str):
     return {m.group(1).strip().strip('"\'') for m in re.finditer(r"^\s*-?\s*company:\s*(.+?)\s*$", text, re.M)}
 
 
-def main() -> int:
-    md_path = resolve_input(sys.argv)
-    if not md_path.exists():
-        print(f"error: cv.md not found: {md_path}", file=sys.stderr)
-        return 1
+def validate_cv(md_path: Path) -> int:
     md = md_path.read_text(encoding="utf-8")
     lines = [l for l in md.splitlines()]
     errors, warnings = [], []
@@ -120,6 +123,91 @@ def main() -> int:
         return 1
     print(f"\nOK — cv.md valid ({len(warnings)} warning(s)).")
     return 0
+
+
+def validate_linkedin(md_path: Path) -> int:
+    text = md_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    errors, warnings = [], []
+
+    for pattern, label in DISALLOWED_MARKDOWN:
+        for i, line in enumerate(lines, 1):
+            if re.search(pattern, line):
+                errors.append(f"line {i}: disallowed markdown — {label}: {line.strip()[:60]!r}")
+
+    def find_line(label):
+        for i, line in enumerate(lines):
+            if line.strip() == label:
+                return i
+        return None
+
+    about_i = find_line("ABOUT")
+    experience_i = find_line("EXPERIENCE")
+    education_i = find_line("EDUCATION")
+    if about_i is None:
+        errors.append("missing ABOUT section marker.")
+    if experience_i is None:
+        errors.append("missing EXPERIENCE section marker.")
+
+    # Headline = first non-empty line after the name (line 1)
+    non_empty = [l for l in lines if l.strip()]
+    if len(non_empty) >= 2:
+        headline = non_empty[1]
+        if len(headline) > LINKEDIN_LIMITS["Headline"]:
+            errors.append(f"Headline is {len(headline)} chars, over the {LINKEDIN_LIMITS['Headline']} limit.")
+    else:
+        warnings.append("could not find a Headline line (name + headline near the top).")
+
+    if about_i is not None and experience_i is not None:
+        about_text = "\n".join(lines[about_i + 1:experience_i]).strip()
+        if len(about_text) > LINKEDIN_LIMITS["About"]:
+            errors.append(f"About section is {len(about_text)} chars, over the {LINKEDIN_LIMITS['About']} limit.")
+
+    if experience_i is not None:
+        end_i = education_i if education_i is not None else len(lines)
+        # entry headers look like "Company — Title" (em dash), never a bullet line
+        header_re = re.compile(r"^\S.* — .+\S$")
+        headers = [
+            i for i in range(experience_i + 1, end_i)
+            if lines[i].strip() and not lines[i].strip().startswith("-") and header_re.match(lines[i])
+        ]
+        if not headers:
+            warnings.append("no Experience entries found under the EXPERIENCE marker.")
+        for idx, h in enumerate(headers):
+            entry_end = headers[idx + 1] if idx + 1 < len(headers) else end_i
+            body = lines[h + 1:entry_end]
+            # skip the location/dates line right after the header, count the rest as the description
+            first_nonblank = next((k for k, l in enumerate(body) if l.strip()), None)
+            desc = "\n".join(body[first_nonblank + 1:]).strip() if first_nonblank is not None else ""
+            if len(desc) > LINKEDIN_LIMITS["Experience entry"]:
+                errors.append(
+                    f"Experience entry '{lines[h].strip()[:60]}' description is {len(desc)} chars, "
+                    f"over the {LINKEDIN_LIMITS['Experience entry']} limit."
+                )
+
+    for ph in PLACEHOLDERS:
+        if ph in text:
+            errors.append(f"leftover placeholder text found: '{ph}'")
+
+    for w in warnings:
+        print(f"WARN: {w}")
+    for e in errors:
+        print(f"FAIL: {e}")
+    if errors:
+        print(f"\n{len(errors)} error(s), {len(warnings)} warning(s).")
+        return 1
+    print(f"\nOK — linkedin.md valid ({len(warnings)} warning(s)).")
+    return 0
+
+
+def main() -> int:
+    md_path = resolve_input(sys.argv)
+    if not md_path.exists():
+        print(f"error: file not found: {md_path}", file=sys.stderr)
+        return 1
+    if md_path.name == "linkedin.md":
+        return validate_linkedin(md_path)
+    return validate_cv(md_path)
 
 
 if __name__ == "__main__":

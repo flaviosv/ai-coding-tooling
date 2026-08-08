@@ -7,9 +7,10 @@
 
 Read this first on every session/fresh context; update it after every meaningful step.
 
-- **Phase:** Setup | Extraction | Review | Build cv.md | Render cv.yaml
+- **Phase:** Setup | Extraction | Review | Build cv.md | Render cv.yaml | Build linkedin.md
+- **Target:** cv | linkedin | both (default: both)
 - **Positioning:** <target role · specialization · focus — or "not decided yet">
-- **Page target:** <e.g. 2 pages>
+- **Page target:** 2 pages (3 max) — default; override only if the person requests
 - **Render/layout state:** <theme, margins, current page count — or "not rendered yet">
 - **Next action:** <the one thing to do next>
 
@@ -67,7 +68,7 @@ Copy this block per role during its interview.
 
 ## Decisions log
 
-Record every resolved decision so it is never re-litigated: positioning, client-anonymization choices, which skills are kept/cut/JD-only, metrics confirmed or dropped, title wording, page-count target. Include the CV rules applied (see the skill's `cv-best-practices.md`).
+Record every resolved decision so it is never re-litigated: positioning, target scope (cv/linkedin/both), client-anonymization choices, which skills are kept/cut/JD-only, metrics confirmed or dropped, title wording, page-count target (default 2, max 3). Include the CV rules applied (see the skill's `cv-best-practices.md`).
 
 ## Final synthesis (built once enough roles are mined)
 

@@ -58,8 +58,10 @@ def main() -> int:
     if pdf:
         print(f"pdf:    {pdf}")
     print(f"pages:  {len(pngs)}")
-    if len(pngs) > 2:
-        print("note: over 2 pages — inspect the PNGs and tune the design: block if a shorter CV is wanted.")
+    if len(pngs) > 3:
+        print("warning: over the 3-page ceiling — tune the design: block (margins, allow_page_break, spacing) and cut weakest content before treating this as done.")
+    elif len(pngs) > 2:
+        print("note: over the 2-page target — inspect the PNGs and tune the design: block if a shorter CV is wanted.")
     return 0
 
 

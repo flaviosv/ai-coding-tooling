@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.2.0"
+  version: "2.3.0"
   triggers:
     - "review tests"
     - "test code review"
@@ -148,7 +148,7 @@ Collect the diff and test file list based on the mode from Step 1, applying EXCL
 | Mode | Commands |
 |------|----------|
 | Local workspace | `git diff HEAD -- $EXCLUDE`, `git diff --cached -- $EXCLUDE`, `git ls-files --others --exclude-standard` — filter to test files |
-| GitHub PR | GitHub MCP only — **never use `gh`**; filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
+| GitHub PR | `gh` if available and authenticated, else GitHub MCP (see [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md)); filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
 | Multi-commit (hashes) | `git show <h1> -- $EXCLUDE; git show <h2> -- $EXCLUDE; ...` — concatenated in order, filter to test files |
 | Multi-commit (range) | `git diff <base>..<tip> -- $EXCLUDE` — filter to test files |
 
@@ -241,15 +241,11 @@ Evaluate top-down, first match wins:
 | Tier | Condition | Execution mode | Diff cost |
 |------|-----------|----------------|-----------|
 | **Small** | ≤5 test files **OR** <200 diff lines | **Inline** — orchestrator reviews all dimensions directly, no agents | ~0 |
-| **Medium** | ≤15 test files **AND** <800 diff lines | **Single agent** — one subagent reviews ALL dimensions in one instance | 1× |
+| **Medium** | ≤15 test files **AND** <800 diff lines | **Parallel** — one specialized subagent per active dimension | N× |
 | **Large** | ≤25 test files **AND** <1,500 diff lines | **Parallel** — one specialized subagent per active dimension | N× |
 | **Complex** | >25 test files **OR** ≥1,500 diff lines | **Parallel + completeness handling** (see below) | N× |
 
 **Multi-commit mode:** apply tier evaluation against combined diff totals across all commits.
-
-**Medium tier — gap-detector fold:**
-- If `impl_diff` is **non-empty**: the single agent receives BOTH the test diff AND `impl_diff`, covering all 6 dimensions including coverage gaps.
-- If `impl_diff` is **empty**: the single agent receives only the test diff, covering 5 dimensions (gap-detector skipped).
 
 **Complex-tier handling:**
 - Report header carries: `⚠️ Complex review (N test files / M lines) — findings are best-effort and may be non-exhaustive. Consider splitting this PR.`
@@ -262,9 +258,9 @@ Emit this plan before any dispatch or inline review begins:
 ```
 Review Plan:
   Size tier:        Small | Medium | Large | Complex
-  Execution mode:   inline | single-agent | parallel
+  Execution mode:   inline | parallel
   Dimensions:       [active dimension list]
-  Agents dispatched: 0 (inline) | 1 (single-agent) | N (parallel)
+  Agents dispatched: 0 (inline) | N (parallel)
   Gap-detector:     active (impl_diff non-empty) | skipped (no impl changes)
   Complex handling: none | caveat + thoroughness directive
   Excluded files:   N
@@ -281,8 +277,8 @@ Immediately after the assessment, print this one-line banner to the user **befor
 Examples:
 ```
 🔍 Test review — Complexity: **Small** (3 test files, 90 lines) · Inline review
-🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Single agent — 6 dimensions
-🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Single agent — 5 dimensions (no impl changes)
+🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Parallel — 6 agents
+🔍 Test review — Complexity: **Medium** (10 test files, 480 lines) · Parallel — 5 agents (no impl changes)
 🔍 Test review — Complexity: **Large** (20 test files, 900 lines) · Parallel — 5 agents
 🔍 Test review — Complexity: **Complex** (32 test files, 1,840 lines · 2 excluded) · Parallel — 6 agents (⚠️ completeness caveat)
 ```
@@ -300,11 +296,10 @@ Execute per the size tier determined in Step 5.
 | Tier | What to do |
 |------|------------|
 | **Small** | Orchestrator reviews all dimensions inline — no agents. Apply all 5 dimensions (plus coverage gaps if `impl_diff` non-empty) directly, then proceed to Step 8. |
-| **Medium** | Dispatch exactly ONE subagent covering ALL dimensions. It receives both the test diff AND `impl_diff` (if non-empty). It self-loads the union of checklists + the full 7-doc codebase set. |
-| **Large** | Dispatch one specialized subagent per active dimension in a **single parallel message**. Never sequentially. |
-| **Complex** | Same as Large + inject the thoroughness directive into each agent's prompt: *"Review every file in your scope thoroughly."* |
+| **Medium / Large** | Dispatch one specialized subagent per active dimension in a **single parallel message**. Never sequentially. |
+| **Complex** | Same as Medium/Large + inject the thoroughness directive into each agent's prompt: *"Review every file in your scope thoroughly."* |
 
-For Large and Complex: `gap-detector` is dispatched only when `impl_diff` is non-empty; otherwise its at-a-glance row shows `⚠️ skipped — no implementation changes`.
+For Medium, Large, and Complex: `gap-detector` is dispatched only when `impl_diff` is non-empty; otherwise its at-a-glance row shows `⚠️ skipped — no implementation changes`.
 
 ### Prompt template (all non-inline modes)
 
@@ -510,8 +505,8 @@ User: "review my tests"
 2. Step 2: Check presence/absence of all 9 context items (7 codebase docs + 2 checklists); no content loaded
 3. Step 3: Build availability map (9 keys)
 4. Step 4: `git diff HEAD -- $EXCLUDE` + `git diff --cached -- $EXCLUDE` + `git ls-files --others --exclude-standard` → filter to test files; collect `git diff --stat -- $EXCLUDE`; capture `excluded_count`; collect `impl_diff -- $EXCLUDE` filtered to non-test implementation files
-5. Step 5: Complexity assessment — e.g. 8 test files / 350 lines → Medium; emit Review Plan; print banner: `🔍 Test review — Complexity: **Medium** (8 test files, 350 lines) · Single agent — 6 dimensions`
-6. Step 6: Dispatch ONE agent covering all 6 dimensions (including gap-detector, since `impl_diff` non-empty); agent self-loads `test-review-checklist.md` + full 7-doc codebase set via `## Before You Begin`
+5. Step 5: Complexity assessment — e.g. 8 test files / 350 lines → Medium; emit Review Plan; print banner: `🔍 Test review — Complexity: **Medium** (8 test files, 350 lines) · Parallel — 6 agents`
+6. Step 6: Dispatch 6 agents in parallel, one per active dimension (including `gap-detector`, since `impl_diff` non-empty); each self-loads its checklists + codebase docs via `## Before You Begin`
 7. Step 7: Await result; mark any failures/degraded dimensions
 8. Step 8: Report header (with excluded count if any) → at-a-glance table → zoned findings; iterative review until P0/P1 resolved
 
@@ -522,12 +517,12 @@ User: "review tests on PR #42"
 1. Step 1: PR #42 → GitHub PR mode
 2. Step 2: Check presence/absence of all 9 context items; no content loaded
 3. Step 3: Build availability map (9 keys)
-4. Step 4: Fetch diff via GitHub MCP; filter changed-file list to remove EXCLUDE patterns; filter to test files; capture `excluded_count`; collect `impl_diff` (non-test implementation files, EXCLUDE applied)
+4. Step 4: Fetch diff via `gh` (or GitHub MCP if `gh` unavailable); filter changed-file list to remove EXCLUDE patterns; filter to test files; capture `excluded_count`; collect `impl_diff` (non-test implementation files, EXCLUDE applied)
 5. Step 5: Complexity assessment → emit Review Plan → print banner (e.g. `🔍 Test review — Complexity: **Large** (18 test files, 950 lines) · Parallel — 6 agents`)
 6. Step 6: Dispatch 6 agents in parallel (5 test-quality agents receive test diff; `gap-detector` receives `impl_diff` only; each self-loads via `## Before You Begin`)
 7. Step 7: Await results; mark failures/degraded agents
 8. Step 8: Consolidated report (excluded count in header) → at-a-glance table → zoned findings
-9. Step 9: User selects findings to post → create pending review comments via GitHub MCP; user submits manually on GitHub
+9. Step 9: User selects findings to post → create pending review comments via `gh` (or GitHub MCP); user submits manually on GitHub
 
 ### Example 3: Multi-commit review
 

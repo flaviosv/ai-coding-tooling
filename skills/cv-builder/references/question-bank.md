@@ -33,6 +33,15 @@ The extraction script for Phase 2. Work it **one question at a time** through th
 
 ---
 
+## F. Job-tailoring probes (Job-Tailoring Mode)
+
+Not a full re-run of the extraction interview — grill **only** what the match/gap analysis leaves ambiguous, one question at a time.
+
+1. When two catalog items could both satisfy a JD requirement: which should lead, and why (recency, closer scope match, stronger metric)?
+2. When a JD requirement has zero support in `experiences.md`: is there real but undocumented experience here, or is it an honest gap?
+3. When the JD's seniority/focus differs from the base CV's positioning: does the person want to reposition for this application (e.g. lead with a different specialization), and how far?
+4. When a catalog bullet that lost the base CV's page budget now looks JD-relevant: confirm it should resurface here.
+
 ## Cross-cutting guards
 
 - **One question at a time.** Multiple questions at once overwhelm and thin out the answers.

@@ -38,16 +38,34 @@
       "description": "Write, review, and edit documentation files with consistent structure, tone, and technical accuracy. Use when creating docs, reviewing markdown files, writing READMEs, updating `/docs` directories, or when user says \"write documentation\", \"review this doc\", \"improve this README\", \"create a guide\", or \"edit markdown\". Do NOT use for code comments, inline JSDoc, or API reference generation."
     },
     {
+      "name": "domain-modeling",
+      "source": "matt-pocock",
+      "scope": "matt-pocock",
+      "description": "Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, record an architectural decision, or when another skill needs to maintain the domain model."
+    },
+    {
       "name": "grill-me",
       "source": "matt-pocock",
       "scope": "matt-pocock",
       "description": "A relentless interview to sharpen a plan or design."
     },
     {
+      "name": "grill-with-docs",
+      "source": "matt-pocock",
+      "scope": "matt-pocock",
+      "description": "A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go."
+    },
+    {
       "name": "grilling",
       "source": "matt-pocock",
       "scope": "matt-pocock",
       "description": "Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases."
+    },
+    {
+      "name": "interview-evaluate",
+      "source": "local",
+      "scope": "built",
+      "description": "Evaluate a completed job-interview transcript against your CV, scoring each answer's relevance, accuracy, depth calibration, STAR structure (behavioral questions), CV alignment, and technical rigor (technical questions), then writes a dated Markdown report to interviews/. Requires a cv.* file (.md, .pdf, .docx primary; other formats need explicit approval) in the working folder, and reads the transcript from a file path you provide — never accepts transcript text pasted into the prompt. Use when the user says \"evaluate my interview\", \"review my interview performance\", \"how did I do in this interview\", \"grade my interview answers\", or invokes /interview-evaluate. Do NOT use for building or updating a CV (use cv-builder) or for general interview prep/question banks."
     },
     {
       "name": "jira-assistant",
