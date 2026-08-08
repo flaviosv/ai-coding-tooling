@@ -155,7 +155,6 @@ Installed globally by `fsvskills setup`. Treated as read-only — do not edit th
 | **confluence-assistant** | Confluence operations via the Atlassian MCP — search, create, update, and comment on pages and spaces. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
 | **jira-assistant** | Manages Jira issues via the Atlassian MCP — search, create, update, transition status, and handle sprint tasks. |
-| **learning-opportunities** | Facilitates deliberate skill development during AI-assisted coding — offers interactive learning exercises after architectural work (new files, schema changes, refactors). |
 | **mermaid-studio** | Mermaid diagram creation, validation, and rendering (SVG/PNG/ASCII) across 20+ diagram types, with code-to-diagram analysis and theming. |
 | **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |
 | **skill-architect** | Expert guide for designing and building high-quality skills from scratch through structured conversation. Covers standalone skills and MCP-enhanced workflows. |

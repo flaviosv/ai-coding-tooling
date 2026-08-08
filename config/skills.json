@@ -50,12 +50,6 @@
       "description": "Manage Jira issues via Atlassian MCP — search, create, update, transition status, and handle sprint tasks. Auto-detects workspace configuration. Use when user says \"create a Jira ticket\", \"update my sprint\", \"check Jira status\", \"transition this issue\", \"search Jira\", or \"move ticket to done\". Do NOT use for Confluence pages (use confluence-assistant)."
     },
     {
-      "name": "learning-opportunities",
-      "source": "tech-leads-club",
-      "scope": "tech-leads-club",
-      "description": "Facilitates deliberate skill development during AI-assisted coding. Offers interactive learning exercises after architectural work (new files, schema changes, refactors). Use when completing features, making design decisions, or when user asks to understand code better. Triggers on \"learning exercise\", \"help me understand\", \"teach me\", \"why does this work\", or after creating new files/modules. Do NOT use for urgent debugging, quick fixes, or when user says \"just ship it\"."
-    },
-    {
       "name": "mermaid-studio",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
