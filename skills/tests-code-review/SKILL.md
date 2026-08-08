@@ -407,6 +407,8 @@ Wait for all dispatched agents to return. For each agent, resolve its outcome:
 | Degraded (missing required context) | Mark dimension as `⚠️ degraded — <missing item>` |
 | `gap-detector` skipped (`impl_diff` empty) | Mark dimension as `⚠️ skipped — no implementation changes` |
 
+**Merged agent failure or timeout (Large/Complex tier):** if `execution-reviewer` fails, mark BOTH the Isolation and Performance at-a-glance rows as `⚠️ not executed — <reason>`. If `craft-reviewer` fails, mark BOTH the Clarity and Maintainability rows the same way. One merged agent's failure means both its tagged dimensions went unreviewed. Same rule for degraded mode — both rows show `⚠️ degraded — <missing item>` when the merged agent runs degraded.
+
 Continue to Step 8 regardless of individual agent outcomes. A failed agent never blocks the report.
 
 ## Step 8: Consolidation and Present Findings
@@ -461,14 +463,14 @@ One row per agent dimension:
 
 **Zoned format** — use when findings are many or span multiple dimensions (default for subagent reviews):
 
-| Zone | Letter | Agent |
+| Zone | Letter | Dispatched by |
 |------|--------|-------|
-| Clarity | C | `clarity-reviewer` |
+| Clarity | C | `craft-reviewer` (Large/Complex, merged with Maintainability — see Step 6 Merge Rule) or the single Medium-tier agent |
 | Coverage | V | `coverage-reviewer` |
 | Coverage Gaps | G | `gap-detector` |
-| Isolation | I | `isolation-reviewer` |
-| Maintainability | M | `maintainability-reviewer` |
-| Performance | P | `performance-reviewer` |
+| Isolation | I | `execution-reviewer` (Large/Complex, merged with Performance) or the single Medium-tier agent |
+| Maintainability | M | `craft-reviewer` (Large/Complex, merged with Clarity) or the single Medium-tier agent |
+| Performance | P | `execution-reviewer` (Large/Complex, merged with Isolation) or the single Medium-tier agent |
 
 Finding IDs: `<ZoneLetter><N>` (e.g. `C1`, `V3`, `I2`). All findings start as `Open`.
 
