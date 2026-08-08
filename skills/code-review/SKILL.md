@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.6.1"
+  version: "2.7.0"
   triggers:
     - "check my code"
     - "code review"
@@ -223,6 +223,9 @@ ATTEMPT:
         issues_by_agent: {
             security_reviewer:     security_issues (sorted by severity desc, cap 30),
             code_quality_reviewer: quality_issues  (sorted by severity desc, cap 30)
+            # consumed by whichever agent is actually dispatched for the code-quality
+            # dimension — `design-quality-reviewer` when merged with architecture
+            # (content type general), or standalone `code-quality-reviewer` otherwise
         },
         summary: { total: N, security: N, quality: N }
     }
@@ -296,7 +299,7 @@ Immediately after the assessment, print this one-line banner to the user **befor
 
 Examples:
 ```
-🔍 Code review — Complexity: **Complex** (32 files, 1,840 lines · 3 excluded) · Type: general · Parallel — 5 agents (⚠️ completeness caveat)
+🔍 Code review — Complexity: **Complex** (32 files, 1,840 lines · 3 excluded) · Type: general · Parallel — 4 agents (⚠️ completeness caveat)
 🔍 Code review — Complexity: **Medium** (9 files, 420 lines) · Type: general · Single agent — all 5 dimensions
 🔍 Code review — Complexity: **Small** (2 files, 60 lines) · Type: docs-only · Inline review (Code Quality only)
 ```
@@ -324,9 +327,11 @@ Apply the reviewer stance directly in the orchestrator across all active dimensi
 
 Dispatch **one** delegated subagent that covers ALL active dimensions in a single pass. The subagent's `## Before You Begin` block lists the **union** of all active dimensions' checklists (deduplicated) plus the full codebase-doc set. The subagent returns findings tagged by dimension.
 
-#### Large — Parallel (one agent per active dimension)
+#### Large — Parallel (one agent per active dimension, merge rule applies)
 
 Fire all active dimension agents in a **single parallel message. Never sequentially.** Each receives its own `## Before You Begin` block (targeted to its dimension) plus the full codebase-doc set.
+
+**Merge rule:** when BOTH `architecture-reviewer` and `code-quality-reviewer` are in the active dimension set, they dispatch together as a single `design-quality-reviewer` agent — union of both checklists, findings returned tagged by original dimension. This happens only for content type `general` (the only content type where both are active per Axis 2's table — `architecture-reviewer` never appears in the active set for `docs-only`/`config-infra-only`/`frontend-assets-only`). Whenever only `code-quality-reviewer` is active, it dispatches alone exactly as before the merge. This reduces the general-content, all-dimensions-active case from 5 agents to 4.
 
 #### Complex — Parallel + Completeness Handling
 
@@ -387,8 +392,8 @@ The orchestrator **does not inline** any checklist or codebase-doc content — t
 
 | Agent | Checklists to load (if present) |
 |-------|--------------------------------|
-| `architecture-reviewer` | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
-| `code-quality-reviewer` | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
+| `design-quality-reviewer` (architecture + code-quality merged — see Merge Rule in Step 6) | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
+| `code-quality-reviewer` (standalone — dispatched alone when architecture isn't in the active set, see Merge Rule) | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
 | `performance-reviewer` | `performance-checklist.md`, `<stack>-*-performance-review.md` |
 | `regression-reviewer` | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
 | `security-reviewer` | None — relies on `security-best-practices` skill + built-in security knowledge |
@@ -400,8 +405,8 @@ Codebase docs: all reviewing agents except `requirements-tracer` self-load the f
 
 | Agent | Dimension | Degrades without |
 |-------|-----------|-----------------|
-| `architecture-reviewer` | Layer violations, coupling, pattern misuse | `architecture` |
-| `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code; inline docs, API docs, obsolete/misleading comments | `conventions` |
+| `design-quality-reviewer` | Merged agent: layer violations, coupling, pattern misuse (**architecture** tag) + naming, complexity, SOLID, DRY, KISS, clean code, inline/API docs, obsolete comments (**code-quality** tag). Findings returned tagged by original dimension — the at-a-glance table and zoned report keep separate Architecture / Code Quality & Docs rows, unchanged by the merge. | `architecture` and/or `conventions` (each tag degrades independently per its own missing doc) |
+| `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code; inline docs, API docs, obsolete/misleading comments. Dispatched standalone (not merged) whenever `architecture-reviewer` isn't in the active dimension set. | `conventions` |
 | `performance-reviewer` | N+1, allocations, blocking calls, missing indexes | — |
 | `regression-reviewer` | Unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions | — |
 | `security-reviewer` | Auth, injection, secrets, data exposure | — |
@@ -420,7 +425,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 ### Performance Audit mode exception
 
-In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents scope to changed files only. `requirements-tracer` is skipped. Complexity assessment (Step 5) is skipped — Performance Audit always uses parallel dispatch.
+In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents, including `code-quality-reviewer`, scope to changed files only. `requirements-tracer` is skipped. Complexity assessment (Step 5) is skipped — Performance Audit always uses parallel dispatch. **The design-quality-reviewer merge does NOT apply here** — architecture and code-quality intentionally use different scopes in this mode (full codebase vs. changed files), so they dispatch as separate agents exactly as before, unlike the tier-based dispatch path where both always share the same diff.
 
 ### Agent: regression-reviewer
 
