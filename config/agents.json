@@ -5,7 +5,6 @@
     "npxId": "claude-code",
     "statuslinePath": "~/.claude/statusline-command.sh",
     "projectDir": ".claude",
-    "projectConfig": "CLAUDE.md",
-    "native": ["keybindings-help"]
+    "projectConfig": "CLAUDE.md"
   }
 }

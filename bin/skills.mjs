@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // fsvskills — skill manager for AI coding agents. config/skills.json is the
-// authoritative source map (sources: local, tech-leads-club, matt-pocock, native).
+// authoritative source map (sources: local, tech-leads-club, matt-pocock).
 // Vendor calls go through execFileSync with an argument array, never a shell
 // string, so skill names cannot inject commands.
 
@@ -94,7 +94,6 @@ function resolveAgent(agents, id) {
     skillsDir: expandHome(a.skillsDir),
     statuslinePath: a.statuslinePath ? expandHome(a.statuslinePath) : null,
     npxId: a.npxId,
-    native: a.native || [],
     projectDir: a.projectDir || null,
     projectConfig: a.projectConfig || null,
   };
@@ -192,10 +191,8 @@ function installSkill(skill, agent, { force = false } = {}) {
   const name = validateSkillName(skill.name);
   const installScope = skill.installScope || 'global';
 
-  if (skill.source === 'native' || agent.native.includes(name) || installScope === 'none'
-      || (!force && installScope === 'local')) {
-    const reason = skill.source === 'native' ? 'native'
-      : installScope === 'local' ? 'project-local'
+  if (installScope === 'none' || (!force && installScope === 'local')) {
+    const reason = installScope === 'local' ? 'project-local'
       : `not installed: ${installScope}`;
     skip(`${name} (${reason})`);
     return true;
@@ -473,7 +470,7 @@ function cmdList(agentId) {
   for (const s of skills) {
     const dest = skillDest(s, agent);
     let state;
-    if (s.source === 'native' || s.installScope === 'none') state = `${c.dim}n/a${c.reset}`;
+    if (s.installScope === 'none') state = `${c.dim}n/a${c.reset}`;
     else if (!lexists(dest)) state = `${c.yellow}missing${c.reset}`;
     else if (isSymlink(dest)) state = `${c.green}symlink${c.reset}`;
     else state = `${c.green}installed${c.reset}`;
@@ -529,13 +526,12 @@ function removeConfigSymlink(configPath) {
 }
 
 // Uninstall a skill: unlink symlinks, rm -rf vendor dirs.
-// Skips native, installScope=none, and project-local skills unless force=true.
+// Skips installScope=none and project-local skills unless force=true.
 function uninstallSkill(skill, agent, { force = false } = {}) {
   const name = validateSkillName(skill.name);
   const installScope = skill.installScope || 'global';
-  if (skill.source === 'native' || installScope === 'none' || (!force && installScope === 'local')) {
-    const reason = skill.source === 'native' ? 'native'
-      : installScope === 'local' ? 'project-local'
+  if (installScope === 'none' || (!force && installScope === 'local')) {
+    const reason = installScope === 'local' ? 'project-local'
       : 'installScope=none';
     skip(`${name} (${reason})`);
     return;
@@ -611,7 +607,6 @@ const SCOPE_SECTIONS = [
   { key: 'local-only', title: 'Local-only (project)' },
   { key: 'tech-leads-club', title: 'Tech Leads Club' },
   { key: 'matt-pocock', title: 'Matt Pocock' },
-  { key: 'native', title: 'Native (built-in)' },
 ];
 
 function skillPath(s) {
@@ -689,7 +684,7 @@ ${c.bold}Commands:${c.reset}
   statusline [--force]          Install the Claude Code status line script
   help                          Show this message
 
-${c.bold}Sources:${c.reset} local · tech-leads-club · matt-pocock · native
+${c.bold}Sources:${c.reset} local · tech-leads-club · matt-pocock
 ${c.bold}Flags:${c.reset}   --dry-run (print actions, change nothing) · --all (update only) · --force (statusline only) · --local (add only)`;
 
 function parseArgs(argv) {

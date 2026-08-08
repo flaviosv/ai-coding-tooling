@@ -17,7 +17,7 @@ The agent id is the first positional arg for most commands and is currently **`c
 ## Concepts
 
 - **Agent** — a target tool (`claude-code`); carries its config path, global `skillsDir`, and `npxId`.
-- **Source** — where a skill comes from: `local` (this repo's `skills/`), `tech-leads-club` / `matt-pocock` (vendor, via `npx`), or `native` (built into the agent; not installed).
+- **Source** — where a skill comes from: `local` (this repo's `skills/`) or `tech-leads-club` / `matt-pocock` (vendor, via `npx`).
 - **Scope / install location** — global (`~/.claude/skills/`) by default; **project-local** (`.agents/skills/`) for `local-only` skills or when `--local` is passed to `add`.
 - **Registry** — `config/skills.json` (skills) + `config/agents.json` (agents). `docs/AGENT-SKILLS.md` is regenerated from the registry on `add` / `delete` / `override`.
 - **Overlay** — `extended/<skill>/` augments a vendor skill without forking; installed as `SKILL.extended.md` + `references.extended/` beside the vendor skill.
@@ -30,7 +30,7 @@ The agent id is the first positional arg for most commands and is currently **`c
 | `--dry-run` | all | Print the actions, change nothing |
 | `--force` | `statusline` | Overwrite the existing status line script |
 | `--local` | `add` | Install into `.agents/skills/` (project-local) instead of the global skills dir |
-| `--source <s>` | `add` | Set the source when registering a new skill: `local` · `tech-leads-club` · `matt-pocock` · `native` |
+| `--source <s>` | `add` | Set the source when registering a new skill: `local` · `tech-leads-club` · `matt-pocock` |
 
 ## Commands
 
@@ -75,7 +75,7 @@ fsvskills delete claude-code some-skill
 
 ### `update <agent> <skills|--all>`
 
-Runs each vendor's `update` subcommand for the named skills (comma- or space-separated) or all vendor skills with `--all`. Local and native skills have nothing to update. Tech Leads Club updates run from the home directory (the vendor `update` has no `--global` flag and auto-detects agents from cwd) so global skills are never duplicated into this repo's `.agents/`.
+Runs each vendor's `update` subcommand for the named skills (comma- or space-separated) or all vendor skills with `--all`. Local skills have nothing to update. Tech Leads Club updates run from the home directory (the vendor `update` has no `--global` flag and auto-detects agents from cwd) so global skills are never duplicated into this repo's `.agents/`.
 
 ```bash
 fsvskills update claude-code tlc-spec-driven
