@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.5.0"
+  version: "2.6.0"
   triggers:
     - "check my code"
     - "code review"
@@ -68,6 +68,10 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 - Each comment must be anchored to the **exact line number** identified in the finding — never posted as a top-level PR comment or at the top of the file.
 - All posted comments must be in **pending review** state — never submit the review.
 - The user reviews and submits manually on GitHub.
+
+### Subagent Model (hard requirement)
+
+Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex, Performance Audit) — **must run on the most recent Sonnet model**, regardless of what model the current session is running on (even if the session is on Opus). When dispatching, explicitly set the model on each agent call; never omit it to let a dispatched agent inherit the session's model.
 
 ## Step 1: Mode Detection
 
@@ -307,6 +311,8 @@ After the complexity banner, the skill produces **no further output** until the 
 ## Step 6: Dispatch
 
 Execute the Review Plan from Step 5. The execution mode determines how active dimensions run; the active dimension set (from content type) determines which agents/dimensions are in scope.
+
+**Every agent dispatched below must be pinned to the most recent Sonnet model** (see [Subagent Model](#subagent-model-hard-requirement) in Guardrails) — set this explicitly on every dispatch, independent of the session's own model.
 
 ### Execution Modes
 
