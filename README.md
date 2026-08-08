@@ -151,8 +151,6 @@ Installed globally by `fsvskills setup`. Treated as read-only — do not edit th
 
 | Skill | Description |
 |---|---|
-| **codenavi** | Pathfinder for navigating unknown codebases. Investigates with precision, implements surgically, and never assumes. Use when fixing bugs, implementing features, refactoring, or investigating flows in unfamiliar territory. |
-| **confluence-assistant** | Confluence operations via the Atlassian MCP — search, create, update, and comment on pages and spaces. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
 | **jira-assistant** | Manages Jira issues via the Atlassian MCP — search, create, update, transition status, and handle sprint tasks. |
 | **mermaid-studio** | Mermaid diagram creation, validation, and rendering (SVG/PNG/ASCII) across 20+ diagram types, with code-to-diagram analysis and theming. |
@@ -160,8 +158,7 @@ Installed globally by `fsvskills setup`. Treated as read-only — do not edit th
 | **skill-architect** | Expert guide for designing and building high-quality skills from scratch through structured conversation. Covers standalone skills and MCP-enhanced workflows. |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
-| **tlc-spec-driven** ⭐ | Spec-driven planning (Specify → Design → Tasks → Execute) with complexity auto-sizing, atomic tasks, requirement traceability, and persistent memory. **Extended in this project** (`extended/tlc-spec-driven/`): augments `coding-principles` with software-design/observability/stack-style references and routes security to `security-best-practices` and UI work to `web-design-guidelines`. |
-| **web-design-guidelines** | Reviews UI code for accessibility, design, and best-practices compliance. |
+| **tlc-spec-driven** ⭐ | Spec-driven planning (Specify → Design → Tasks → Execute) with complexity auto-sizing, atomic tasks, requirement traceability, and persistent memory. **Extended in this project** (`extended/tlc-spec-driven/`): augments `coding-principles` with software-design/observability/stack-style references and routes security to `security-best-practices`. |
 
 ### Source: [Matt Pocock](https://github.com/mattpocock/skills)
 

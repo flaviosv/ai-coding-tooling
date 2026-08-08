@@ -44,9 +44,3 @@ For any task touching authentication/authorization, input handling, secrets, ser
 deserialization, file or network I/O, or other external trust boundaries: invoke the
 `security-best-practices` skill and apply its stack-matched references **before** the gate check
 and commit. Security is not covered by the style references above — it is delegated to that skill.
-
-## Web / UI → `web-design-guidelines` skill
-
-If the change includes **HTML or CSS** — template files, JSX/TSX with `className`, inline styles,
-or `.css`/`.scss`/`.less` files — also invoke the `web-design-guidelines` skill and apply its
-rules to the markup/styling changes.

@@ -62,7 +62,7 @@ Installs one skill and registers it if it is new to `skills.json`. For `local` s
 ```bash
 fsvskills add claude-code architecture-evaluate --source local       # global install
 fsvskills add claude-code my-skill --source local --local            # project-local (.agents/skills/)
-fsvskills add claude-code codenavi --source tech-leads-club
+fsvskills add claude-code jira-assistant --source tech-leads-club
 ```
 
 ### `delete <agent> <skill>`

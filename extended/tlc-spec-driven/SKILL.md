@@ -7,8 +7,8 @@ description: >
   (1) declares how reference-level overlays load, (2) prioritizes planning before
   implementation for non-trivial work, (3) names feature artifacts `<TASK-ID>-<slug>`,
   (4) augments coding-principles with software-design/observability/stack-style
-  references and routes security to the security-best-practices skill and UI work to
-  web-design-guidelines, and (5) requires a persisted per-feature commit log
+  references and routes security to the security-best-practices skill, and (5)
+  requires a persisted per-feature commit log
   (`commits.md`) of every atomic commit hash traceable to that feature.
 metadata:
   version: "1.0.0"
