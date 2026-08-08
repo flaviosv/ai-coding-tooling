@@ -142,12 +142,6 @@ Hard rules:
      TIER 4 · WORKFLOW — apply when executing tasks
      ═══════════════════════════════════════════════════════════════ -->
 
-## Prompt Quality Check
-
-Before responding to any message that introduces a new task, invoke the `prompt-quality` skill. Skip for short follow-ups, conversational continuations, and responses to your own clarifying questions.
-
----
-
 ## Pre-Coding Gate — tlc-spec-driven
 
 Before writing or modifying any code, check whether `tlc-spec-driven` has been invoked in this session — either manually by the user or auto-triggered by the LLM.
