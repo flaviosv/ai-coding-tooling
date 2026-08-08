@@ -152,7 +152,7 @@ Collect the diff and test file list based on the mode from Step 1, applying EXCL
 | Mode | Commands |
 |------|----------|
 | Local workspace | `git diff HEAD -- $EXCLUDE`, `git diff --cached -- $EXCLUDE`, `git ls-files --others --exclude-standard` — filter to test files |
-| GitHub PR | `gh` if available and authenticated, else GitHub MCP (see [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md)); filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
+| GitHub PR | `gh` (see [GitHub PR Mode — Step A](../../templates/github-pr-review-mode.md)); filter the changed-file list to remove any path matching the EXCLUDE patterns before assembling the diff for agents |
 | Multi-commit (hashes) | `git show <h1> -- $EXCLUDE; git show <h2> -- $EXCLUDE; ...` — concatenated in order, filter to test files |
 | Multi-commit (range) | `git diff <base>..<tip> -- $EXCLUDE` — filter to test files |
 
@@ -523,12 +523,12 @@ User: "review tests on PR #42"
 1. Step 1: PR #42 → GitHub PR mode
 2. Step 2: Check presence/absence of all 9 context items; no content loaded
 3. Step 3: Build availability map (9 keys)
-4. Step 4: Fetch diff via `gh` (or GitHub MCP if `gh` unavailable); filter changed-file list to remove EXCLUDE patterns; filter to test files; capture `excluded_count`; collect `impl_diff` (non-test implementation files, EXCLUDE applied)
+4. Step 4: Fetch diff via `gh`; filter changed-file list to remove EXCLUDE patterns; filter to test files; capture `excluded_count`; collect `impl_diff` (non-test implementation files, EXCLUDE applied)
 5. Step 5: Complexity assessment → emit Review Plan → print banner (e.g. `🔍 Test review — Complexity: **Large** (18 test files, 950 lines) · Parallel — 6 agents`)
 6. Step 6: Dispatch 6 agents in parallel (5 test-quality agents receive test diff; `gap-detector` receives `impl_diff` only; each self-loads via `## Before You Begin`)
 7. Step 7: Await results; mark failures/degraded agents
 8. Step 8: Consolidated report (excluded count in header) → at-a-glance table → zoned findings
-9. Step 9: User selects findings to post → create pending review comments via `gh` (or GitHub MCP); user submits manually on GitHub
+9. Step 9: User selects findings to post → create pending review comments via `gh`; user submits manually on GitHub
 
 ### Example 3: Multi-commit review
 

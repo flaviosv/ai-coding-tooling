@@ -38,7 +38,7 @@ gh api graphql -f query='
             id
             isResolved
             comments(first: 50) {
-              nodes { id body path line author { login } }
+              nodes { id body path line author { login } pullRequestReview { state } }
             }
           }
         }
@@ -47,7 +47,7 @@ gh api graphql -f query='
   }' -f owner="<owner>" -f repo="<repo>" -F pr=<pr number>
 ```
 
-Skip nodes where `isResolved: true`. Each surviving node's `id` (a `PRRT_...` thread id) is what Step 5 (reply) and Step 6 (resolve) below need.
+Skip nodes where `isResolved: true`, and skip nodes whose comments all have `pullRequestReview.state: PENDING` — that thread belongs to a review the user hasn't submitted yet, not one they've published for triage. Each surviving node's `id` (a `PRRT_...` thread id) is what Step 5 (reply) and Step 6 (resolve) below need.
 
 ## Replying to a Thread
 

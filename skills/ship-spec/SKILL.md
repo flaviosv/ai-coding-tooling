@@ -13,7 +13,7 @@ description: >
   code-review / tests-code-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.0.0"
+  version: "1.2.1"
 ---
 
 # Ship Spec
@@ -27,9 +27,17 @@ Delivers a tlc-spec-driven feature from "tasks are written" to "draft PR open wi
 - Do NOT run against a feature with no `tasks.md` — that means the Tasks phase never completed.
 - Do NOT reimplement anything tlc-spec-driven's Execute phase already owns: task execution, atomic commits, gate checks, the end-of-feature Verifier. Invoke it; don't duplicate it.
 - Do NOT auto-fix, filter, or withhold `code-review`/`tests-code-review` findings before publishing — every finding from both skills is posted, unfiltered, every run.
+- Do NOT invoke `code-review`/`tests-code-review` directly in this conversation — always delegate through an isolated Sonnet subagent per Step 6. Both skills self-collect a full diff and produce a full findings report; neither belongs in ship-spec's own context.
 - Do NOT submit, approve, or request-changes on the PR review — pending state only, same as `code-review`/`tests-code-review`'s own GitHub PR Constraints.
 - Do NOT create GitHub Issues.
 - Do NOT re-run `code-review`/`tests-code-review` after comment-triage fixes — the user reviews those manually.
+- Do NOT act on a review thread whose review is still pending/unsubmitted — comment-triage only processes **published** (submitted) review comments. Step 6's own pending review sits untouched until the user submits it.
+- Do NOT add explanatory code comments when fixing a finding, unless the code is genuinely non-obvious (complex algorithm, subtle invariant, external constraint) — the fix should read as self-explanatory, same standard as any other change.
+- Do NOT implement a comment-triage fix directly in this conversation — delegate the read/edit/test/commit work to an isolated Sonnet subagent per Comment-Triage Mode's fix step; keep only classification and reply/reject reasoning here.
+- Do NOT resolve a thread still under discussion — a question you replied to stays open in case the user follows up; only they resolve it once satisfied.
+- Do NOT run the `code-review`/`tests-code-review` subagents in parallel in Step 6 — both create a pending review on the same PR under the same GitHub identity; a concurrent second pending-review operation would collide with the first.
+- Do NOT set `isolation: worktree` on the Step 6 or Comment-Triage subagents — they must share the current checkout (the feature branch already checked out locally), not a separate worktree, so a triage fix lands as a commit ready for the existing `git push` step.
+- If a Step 6 or Comment-Triage subagent reports it could not complete (PR not found, auth failure, skill-invocation error, or — for a triage fix — a blocker it can't resolve): retry once with a fresh subagent. If it fails a second time, stop and report the failure — do not fabricate a finding count, skip a skill, or mark a triage thread resolved on a failed fix.
 
 ### Before Starting
 
@@ -81,7 +89,7 @@ Guard check: confirm `.specs/features/<feature>/tasks.md` exists for the resolve
 1. `git checkout <base>`.
 2. `git checkout -b feature/<task_id>_<description>` (see Guardrails → On Collision if it already exists).
 3. Invoke tlc-spec-driven's Execute phase for every task in `.specs/features/<feature>/tasks.md`. It owns its own per-task gate checks, atomic Conventional-Commits commits, and the mandatory end-of-feature Verifier — do not add parallel logic for any of that here.
-4. If Execute reports success (all tasks committed, Verifier passed): continue to Step 4.
+4. If Execute reports success (all tasks committed, Verifier passed): tell the user the implementation is confirmed done and ask them to run `/compact` before continuing — context built up over Execute's task loop is no longer needed for what follows. Wait for their go-ahead, then continue to Step 4. (This is a recommendation, not something `ship-spec` can trigger itself — nothing here forces or verifies that `/compact` actually ran.)
 5. If Execute's bounded fix-loop can't converge: stop per Guardrails → Before Opening the PR.
 
 ## Step 4: Push
@@ -102,12 +110,12 @@ Record the returned PR number.
 
 ## Step 6: Review and Publish
 
-For each of `code-review` and `tests-code-review`, in turn:
+For each of `code-review` and `tests-code-review`, in turn, delegate to an isolated subagent rather than invoking the skill in this conversation — both skills self-collect a full diff and produce a full findings report internally; once posted, neither needs to live in ship-spec's own context.
 
-1. Invoke it in **GitHub PR mode** against the PR number from Step 5 (e.g. "review PR #N" / "review tests on PR #N"). It self-collects the diff via `gh` (or MCP), runs its own dimension agents, and returns its local findings report exactly as it does standalone.
-2. Immediately instruct it to post **all** findings: this is the "user explicitly selects which findings to post" step each skill's GitHub PR Constraints require — `/ship-spec` being invoked at all *is* that explicit instruction, made once, for every finding, because this PR was opened specifically to carry them for review. Do not filter by severity, do not skip either skill, do not ask again per finding.
+1. Spawn a subagent (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`) whose prompt: invokes `<skill>` in **GitHub PR mode** against the PR number from Step 5 (e.g. "review PR #N" / "review tests on PR #N"); instructs it to post **all** findings unfiltered as pending review comments — this is the "user explicitly selects which findings to post" step each skill's GitHub PR Constraints require, satisfied once by `/ship-spec` being invoked at all, for every finding, because this PR was opened specifically to carry them for review (do not filter by severity, do not ask again per finding); and instructs it to return **only** a compact result — total finding count and a per-severity breakdown, nothing else — or, if it couldn't complete, the failure reason (see Guardrails for the retry rule).
+2. Run `code-review`'s subagent to completion before starting `tests-code-review`'s — never in parallel (see Guardrails).
 
-Each skill posts via its own existing Step 9 / [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md) mechanics: pending review state, `event` field omitted, never submitted, each comment anchored to its exact line.
+Each skill posts via its own existing Step 9 / [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md) mechanics: pending review state, `event` field omitted, never submitted, each comment anchored to its exact line. Only the two compact summaries return to this conversation — not the underlying diffs or findings text.
 
 ## Step 7: Report
 
@@ -117,16 +125,18 @@ Report the PR URL, and the finding count from each skill (e.g. "12 findings from
 
 Entered per Step 1 when the target branch already has an open PR. The user has been reviewing and commenting on it directly in GitHub.
 
-1. Fetch open review threads via GraphQL `reviewThreads` (see [GitHub Delivery Mechanics](references/github-delivery.md) for the exact query). Skip threads already `isResolved: true`.
-2. For each unresolved thread, read the human's comment and classify it:
-   - **Fix instruction** — a directive on what to change.
-   - **Question or opinion** — something being asked or solicited.
-   For either kind, agree and act (fix the code, or answer as asked) or push back with a better approach / different answer when one exists — never comply blindly.
+1. Fetch open review threads via GraphQL `reviewThreads` (see [GitHub Delivery Mechanics](references/github-delivery.md) for the exact query). Skip threads already `isResolved: true`. Skip any thread whose review is still `PENDING` (unsubmitted) — only threads on a **published** (submitted) review are in scope; a pending review means the user is still triaging, not asking you to act.
+2. For each unresolved, published thread, classify by finding origin and whether the user added a comment on top of it:
+   - **tests-code-review finding** — always fix, with or without a user comment on it. No exceptions, no pushback.
+   - **code-review finding, no extra user comment** — fix it directly.
+   - **finding phrased as, or followed by, a question** — reply with the answer; don't fix unless the answer implies a change. Leave the thread unresolved — it's still under discussion; only the user resolves it once satisfied.
+   - **code-review finding with an extra user comment** — if the comment confirms/directs the fix, fix it as directed. If it suggests an approach you disagree with, don't comply blindly: reply rejecting it with your reasoning (and the approach you're taking instead, if any).
+   - **standalone comment, not anchored to a code-review/tests-code-review finding** — fix it with the approach the user suggested, unless you disagree: then don't comply blindly, reply rejecting it with your reasoning (same as the rule above).
 3. Process threads one at a time, directly — no batch "here's my plan" step first; invoking this mode is itself the user's go-ahead.
-4. For a fix: make the change as a normal atomic commit following tlc-spec-driven's Conventional Commits + atomic-commit convention (same as Step 3 uses). For a question: no commit, just an answer.
-5. Reply on that thread explaining what changed (or answering the question), then resolve it via GraphQL `resolveReviewThread` (see [GitHub Delivery Mechanics](references/github-delivery.md)).
+4. For a fix: keep the classification and fix direction from step 2 in this conversation, but delegate the implementation to an isolated subagent (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`) — pass it the thread's finding/comment and the fix direction decided above; instruct it to make the change as a normal atomic commit following tlc-spec-driven's Conventional Commits + atomic-commit convention (same as Step 3 uses), and to return only the commit hash and a one-line summary of what changed — or, if it hit a blocker it can't resolve, the reason (see Guardrails for the retry rule). For a question or a rejection: no commit, no subagent — compose the reply directly in this conversation.
+5. Reply on that thread explaining what changed (using the subagent's one-line summary for a fix), answering the question, or explaining the rejection. Resolve it via GraphQL `resolveReviewThread` (see [GitHub Delivery Mechanics](references/github-delivery.md)) for a fix or a rejection — those are closed decisions. For a question, reply only and leave it unresolved; the discussion may still be open.
 6. If any commits were made: `git push` to the existing feature branch — this updates the same open PR, no new PR is created.
-7. Report a short summary: threads processed, commits pushed (if any). Do not re-run `code-review` or `tests-code-review` — the user does their own manual pass after this.
+7. Report a short summary: threads processed, commits pushed (if any), and any thread left blocked after a failed retry (with the reason). Do not re-run `code-review` or `tests-code-review` — the user does their own manual pass after this.
 
 ## Examples
 
@@ -139,7 +149,7 @@ User: `/ship-spec base=main task_id=PROJ-42`
 3. Step 3: checkout `main` → branch `feature/PROJ-42_rate-limiting` → Execute runs all tasks, Verifier passes
 4. Step 4: push
 5. Step 5: `gh pr create --draft` → PR #128, title `[PROJ-42] Add rate limiting to the orders API`, body assembled from `spec.md`/`tasks.md`/`commits.md`/`validation.md`
-6. Step 6: `/code-review` reviews PR #128 (9 findings) → posted all 9 as pending comments; `/tests-code-review` reviews PR #128 (3 findings) → posted all 3
+6. Step 6: Sonnet subagent invokes `code-review` on PR #128 → 9 findings posted as pending comments, returns count only; Sonnet subagent invokes `tests-code-review` on PR #128 → 3 findings posted, returns count only
 7. Step 7: "PR #128 opened as draft: <url>. 12 findings published as pending review comments (9 code-review, 3 tests-code-review)."
 
 ### Example 2: Comment-triage round
@@ -147,9 +157,10 @@ User: `/ship-spec base=main task_id=PROJ-42`
 User: `/ship-spec` (on branch `feature/PROJ-42_rate-limiting`, PR #128 already open)
 
 1. Step 1: `feature/PROJ-42_rate-limiting` has an open PR → Comment-Triage Mode
-2. Fetch 5 unresolved review threads
-3. Thread 1: "extract this into a helper" → fix instruction → refactor, commit `refactor(orders): extract rate-limit check into helper`, reply + resolve
-4. Thread 2: "why didn't you use a token bucket here?" → question → reply explaining the sliding-window choice and its tradeoff, resolve
-5. Thread 3: reviewer's suggestion is worse than the current approach → push back in the reply with the reasoning, resolve
-6. ...remaining threads processed the same way
-7. Push (1 new commit) → "3 threads fixed (1 commit pushed), 2 threads answered. PR #128 updated."
+2. Fetch 6 review threads: 1 still `PENDING` (not yet submitted) → skipped; 5 published and unresolved → processed
+3. Thread 1: a `tests-code-review` finding, no user comment → always fix → Sonnet subagent implements and commits `test(orders): cover rate-limit edge case`, reply + resolve
+4. Thread 2: a `code-review` finding, no extra comment → fix directly → Sonnet subagent implements and commits `refactor(orders): extract rate-limit check into helper`, reply + resolve
+5. Thread 3: "why didn't you use a token bucket here?" → question → reply explaining the sliding-window choice and its tradeoff (no subagent — no fix involved), left unresolved — discussion may continue
+6. Thread 4: `code-review` finding + user comment "yes, fix this" → fix as directed → Sonnet subagent implements and commits, reply + resolve
+7. Thread 5: `code-review` finding + user comment suggesting a worse approach → reject in the reply with reasoning, no commit, resolve
+8. Push (3 new commits) → "5 threads processed (3 fixed, 1 rejected, 1 answered and left open), 1 pending thread left untouched. PR #128 updated."
