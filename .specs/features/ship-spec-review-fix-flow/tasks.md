@@ -253,10 +253,10 @@ T7 → T8
 - Skill: NONE
 
 **Done when**:
-- [ ] Example 1 shows one merged pending review with a combined finding count, not "9 findings... then 3 findings" as two separate events
-- [ ] Example 2 shows: fetch → classify (new labels) → plan file written → re-fetch/diff → concurrent draft (capped 4, Haiku) → serialized commits → reply/resolve per classification → push
-- [ ] `metadata.version` bumped and frontmatter `description` matches actual behavior
-- [ ] Full read-through of the file finds no remaining reference to the old two-separate-reviews or origin-based-classification mechanisms anywhere (Guardrails, Steps, Examples)
+- [x] Example 1 shows one merged pending review with a combined finding count, not "9 findings... then 3 findings" as two separate events
+- [x] Example 2 shows: pending-review guard (step 0) → fetch → classify (new labels) → plan file written → re-fetch/diff → concurrent draft (capped 4, Haiku) → serialized commits → reply/resolve per classification → push → report
+- [x] `metadata.version` bumped (1.3.0 → 1.4.0); frontmatter `description` already accurate, no change needed (never claimed two-separate-reviews or sequential-only, verified)
+- [x] Full read-through + grep sweep finds no remaining reference to the old two-separate-reviews, sequential-only, or origin-based-classification mechanisms anywhere (Guardrails, Steps, Examples). Also fixed one consistency gap found in this pass: step 5's apply+commit sub-step didn't explicitly say it's subagent-delegated, which could read as contradicting the existing "never implement a triage fix directly in this conversation" guardrail — clarified.
 
 **Tests**: none
 **Gate**: inspection
