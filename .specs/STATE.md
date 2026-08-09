@@ -18,6 +18,22 @@
 - **Date**: 2026-08-08
 - **Status**: active
 
+### AD-003
+- **Decision**: GitHub allows only **one pending (unsubmitted) PR review per user per PR at a time**. Any skill/flow that posts GitHub PR review comments as a pending review — regardless of how many logical sources of findings contribute to it — must merge everything into a single `comments` array and issue exactly one `POST .../pulls/{PR}/reviews` call (event omitted). A second such call while one is still pending returns HTTP 422 ("A review cannot be created because a pending review already exists"), and there is no API to incrementally append to an already-open pending review. This holds regardless of dispatch timing (sequential or parallel) — it is not a race condition to work around, it's a hard one-per-PR ceiling.
+- **Reason**: Confirmed against GitHub's REST API docs and community-reported behavior while designing `ship-spec-review-fix-flow` (2026-08-08). Discovered because the then-current `ship-spec` Step 6 text claimed two skills (`code-review`, `tests-code-review`) each produce their own separate pending review — that claim does not match documented GitHub behavior and should be treated as an unverified/likely-latent-bug risk in the shipped skill, independent of this feature.
+- **Trade-off**: Any flow wanting to publish findings from multiple independent analysis sources on one PR must run the analysis concurrently (cheap to parallelize, no GitHub writes) and defer merging + the single publish call until all sources are ready — you lose "publish as each source finishes independently," which is a real, permanent constraint of the platform, not a temporary design choice.
+- **Scope**: Any current or future skill posting GitHub PR review comments as a pending review (`skills/ship-spec/`, `skills/code-review/`, `skills/tests-code-review/`, and their shared `templates/github-pr-review-mode.md`).
+- **Date**: 2026-08-08
+- **Status**: active
+
+### AD-004
+- **Decision**: AD-001's prohibition on model-tier downgrades is scoped to **analytical/judgment-bearing agents** (e.g. review dimension agents, classification/validation steps) where output quality depends on model capability. It does **not** extend to subagents performing **purely mechanical execution of an already-fully-decided change** — where the judgment call (what to change, and why) was already made by a default-model step before dispatch, and the subagent's job is just to apply it and run a narrow, already-identified test. Those may use a cheaper tier (e.g. Haiku).
+- **Reason**: Surfaced while designing `ship-spec-review-fix-flow`'s fix-drafting subagents (2026-08-08) — the fix direction is fully decided by classification (default model) before the drafting subagent is ever dispatched, making this categorically different from AD-001's concern (a reviewer's own judgment determining review quality).
+- **Trade-off**: None taken — this clarifies AD-001's boundary rather than weakening it; judgment-bearing steps (classification, pushback validation, question-answering) still stay on the default model under both decisions.
+- **Scope**: Any current or future skill dispatching subagents to execute an already-decided change (`skills/ship-spec/` Comment-Triage fix-drafting today; any future skill with the same shape).
+- **Date**: 2026-08-08
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: `.specs/features/review-dispatch-efficiency` (RD-EFFICIENCY) — implementation complete, Verifier PASS
