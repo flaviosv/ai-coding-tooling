@@ -161,6 +161,10 @@ T7 → T8
 
 ---
 
+### T5 + T6 (combined commit — see SPEC_DEVIATION below): Plan generation, staleness check, split-phase execution, and reply/resolve behavior
+
+**SPEC_DEVIATION**: T5, T6, and the reply/resolve portion of T7 landed in one commit instead of three. Reason: all three rewrite the same numbered step sequence in Comment-Triage Mode (steps 3 onward), and the step numbers shift as new steps are inserted — splitting into separate commits would require either leaving intermediate commits with stale step-number cross-references, or writing the reply/resolve step (T7's content) with behavior that's known-wrong at T5/T6's commit time and then rewriting it again in T7. Writing the full, correct step sequence once — including reply/resolve behavior matching T4's new classification labels — avoids a self-contradictory intermediate state. T7's remaining scope (the worktree-isolation guardrail clarification) is unaffected and still lands as its own commit. Same pattern as the `review-dispatch-efficiency` feature's T2/T3 consolidation (shared-table edits can't be cleanly split post-hoc).
+
 ### T5: Add plan-file generation and re-fetch staleness check
 
 **What**: Insert a new step between classification and execution: write the classified, grouped plan to `.specs/features/<feature>/fix-code-review.md` (flat list, `## Parallel` / `## Sequential` headers per `design.md`'s Data Models section) — reversing the current "no batch plan step" rule (deliberate). Immediately after writing the plan (no approval gate), perform one additional GraphQL fetch of the same query, diff against the plan, and silently drop any item no longer present/changed/resolved.
@@ -174,11 +178,11 @@ T7 → T8
 - Skill: NONE
 
 **Done when**:
-- [ ] Plan-file step writes `.specs/features/<feature>/fix-code-review.md`, grouped by same-file/thread dependency (Sequential) vs. everything else (Parallel), before any fix execution
-- [ ] Zero-threads case still writes the file noting zero items, then stops
-- [ ] No approval gate between plan-write and execution — explicitly stated
-- [ ] Re-fetch + diff step runs immediately after plan-write, drops stale items silently, no per-item GitHub reads
-- [ ] "No batch plan step" language from the current step 3 removed/reversed
+- [x] Plan-file step writes `.specs/features/<feature>/fix-code-review.md`, grouped by same-file/thread dependency (Sequential) vs. everything else (Parallel), before any fix execution
+- [x] Zero-threads case still writes the file noting zero items, then stops
+- [x] No approval gate between plan-write and execution — explicitly stated
+- [x] Re-fetch + diff step runs immediately after plan-write, drops stale items silently, no per-item GitHub reads
+- [x] "No batch plan step" language from the current step 3 removed/reversed
 
 **Tests**: none
 **Gate**: inspection
@@ -199,13 +203,13 @@ T7 → T8
 - Skill: NONE
 
 **Done when**:
-- [ ] Parallel-bucket drafting explicitly capped at 4 concurrent subagents, `model: claude-haiku-4-5-20251001`, explicitly no git writes during drafting
-- [ ] Batches of >4 items process in successive groups of ≤4 concurrent drafts
-- [ ] Commit application step explicitly serialized ("one at a time... never two commits attempted concurrently")
-- [ ] Sequential-bucket items explicitly drafted+committed one at a time, in required order, no concurrent drafting
-- [ ] A drafted change that no longer matches current file state at commit time is marked blocked, not force-applied
-- [ ] Each commit's test scope explicitly limited to that item's own relevant test(s) — no full gate/verify cycle language remains
-- [ ] Classification/reply steps explicitly state they stay on the default model, never Haiku
+- [x] Parallel-bucket drafting explicitly capped at 4 concurrent subagents, `model: claude-haiku-4-5-20251001`, explicitly no git writes during drafting
+- [x] Batches of >4 items process in successive groups of ≤4 concurrent drafts
+- [x] Commit application step explicitly serialized ("one at a time... never two commits attempted concurrently")
+- [x] Sequential-bucket items explicitly drafted+committed one at a time, in required order, no concurrent drafting
+- [x] A drafted change that no longer matches current file state at commit time is marked blocked, not force-applied
+- [x] Each commit's test scope explicitly limited to that item's own relevant test(s) — no full gate/verify cycle language remains
+- [x] Classification/reply steps explicitly state they stay on the default model, never Haiku
 
 **Tests**: none
 **Gate**: inspection
@@ -213,13 +217,13 @@ T7 → T8
 
 ---
 
-### T7: Update Guardrails for worktree/retry consistency and reply/resolve behavior
+### T7: Update worktree-isolation guardrail for split-phase concurrency
 
-**What**: Update the Guardrails bullet on worktree isolation (currently written for sequential dispatch) to explicitly cover the new concurrent-drafting shape (still no worktree — drafting has no git writes to isolate; only the serialized commit step touches the checkout). Update Comment-Triage step 5 (reply/resolve) to match T4's new classification: silent resolve (no reply) for auto-fix/apply-as-directed, reply-and-leave-open for pushback/answer-only — replacing the old origin-based reply wording.
-**Where**: `skills/ship-spec/SKILL.md` (Guardrails section, Comment-Triage Mode step 5)
+**What**: Update the Guardrails bullet on worktree isolation (currently written for the old sequential dispatch) to explicitly cover the new concurrent-drafting shape — still no worktree, because drafting (T6) performs no git writes to isolate; only the serialized commit step touches the checkout. (The reply/resolve wording update originally scoped to this task landed early, folded into T5+T6's combined commit — see that task's SPEC_DEVIATION note — since it's part of the same numbered-step sequence and leaving it stale in between would have been self-contradictory.)
+**Where**: `skills/ship-spec/SKILL.md` (Guardrails section)
 **Depends on**: T6
-**Reuses**: Existing `resolveReviewThread` / reply mutation mechanics (`references/github-delivery.md`, unchanged)
-**Requirement**: SSF-04, SSF-05, SSF-06, SSF-13
+**Reuses**: N/A
+**Requirement**: SSF-13
 
 **Tools**:
 - MCP: NONE
@@ -227,8 +231,8 @@ T7 → T8
 
 **Done when**:
 - [ ] Worktree-isolation guardrail explicitly addresses why split-phase drafting (T6) doesn't need it
-- [ ] Step 5 reply/resolve wording matches T4's four classification outcomes exactly (no stale origin-based language remains anywhere in the file)
-- [ ] Guardrail on unsubmitted-review fix-trigger message (SSF-04's PENDING-review guard) present and explicit
+- [ ] Step 6 (reply/resolve, renumbered) wording already matches T4's four classification outcomes exactly (verify only — no stale origin-based language remains anywhere in the file)
+- [ ] Guardrail on unsubmitted-review fix-trigger message (SSF-04's PENDING-review guard) present and explicit (verify only — already present from earlier work)
 
 **Tests**: none
 **Gate**: inspection
