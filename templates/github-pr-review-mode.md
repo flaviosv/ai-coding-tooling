@@ -33,6 +33,12 @@ Wait for user to specify which findings to post:
 
 If `gh` is not available or not authenticated, stop and inform the user.
 
+### B2'. Return-Only Variant
+
+Used only when the invoking caller explicitly requests it (e.g. `ship-spec`'s merged-post flow, which needs to combine this skill's findings with another skill's before issuing a single `POST`). This is an alternative to B2, not a step that runs after it.
+
+Assemble the exact same `comments` array B2 would (`path`, `line`, `body` per finding, each anchored to the exact line number) — but do **not** issue the `gh api ... POST` call. Return the assembled array to the caller instead. B1's finding-selection step still applies as normal (or is satisfied by the caller the same way it is for B2). Skip B3 entirely in this variant — nothing has been posted yet, so there is no result to confirm here; the caller is responsible for confirming once it completes its own `POST`.
+
 ### B3. Confirm Result
 
 Report:
