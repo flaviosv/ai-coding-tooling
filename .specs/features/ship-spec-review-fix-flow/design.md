@@ -35,13 +35,14 @@ Two independent redesigns share one file (`ship-spec/SKILL.md`) plus one shared 
 
 ```mermaid
 graph TD
-    subgraph "Step 6 — Concurrent Analysis, Merged Publish"
-        A[PR opened, Step 5] --> B1[Subagent: code-review analysis only]
-        A --> B2[Subagent: tests-code-review analysis only]
-        B1 -->|comments array, return-only variant| M[Merge findings]
-        B2 -->|comments array, return-only variant| M
-        M --> P[ONE POST .../reviews - pending]
-        P --> S7[Step 7: report + stop]
+    subgraph "Step 6 — One Subagent, Concurrent Internal Dispatch, Merged Publish"
+        A[PR opened, Step 5] --> W[ship-spec dispatches ONE isolated subagent]
+        W -->|concurrent tool calls, same turn| B1[code-review Return-Only Variant]
+        W -->|concurrent tool calls, same turn| B2[tests-code-review Return-Only Variant]
+        B1 -->|comments array, inside subagent's own context| M[Merge findings - inside subagent]
+        B2 -->|comments array, inside subagent's own context| M
+        M --> P[ONE POST .../reviews - pending, inside subagent]
+        P -->|compact summary ONLY| S7[Step 7: report + stop, in ship-spec's own context]
     end
 
     subgraph "Fix Trigger — Comment-Triage Mode"
@@ -83,31 +84,24 @@ graph TD
 
 ## Components
 
-### Step 6 — Analysis Subagents (concurrent)
+### Step 6 — Single Subagent, Concurrent Internal Dispatch, Merge & Publish
 
-- **Purpose**: Run `code-review`'s and `tests-code-review`'s full analysis (diff collection, dimension-agent dispatch) concurrently, returning findings without posting.
-- **Location**: `skills/ship-spec/SKILL.md` Step 6 (dispatch instructions); `skills/code-review/SKILL.md` Step 9 and `skills/tests-code-review/SKILL.md` Step 9 (variant reference)
+- **Purpose**: Run `code-review`'s and `tests-code-review`'s full analysis (diff collection, dimension-agent dispatch) concurrently, merge their findings, and issue the single allowed `POST .../reviews` call — all inside one isolated, disposable subagent context, so `ship-spec`'s own conversation only ever sees a compact summary.
+- **Location**: `skills/ship-spec/SKILL.md` Step 6 (dispatch instructions + in-subagent merge/post logic); `skills/code-review/SKILL.md` Step 9 and `skills/tests-code-review/SKILL.md` Step 9 (variant reference).
 - **Interfaces**:
-  - Each subagent invocation: `Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`, two calls issued in the same turn (not sequential awaits) — prompt instructs "invoke `<skill>` in GitHub PR mode, Return-Only Variant, against PR #N; return the assembled `comments` array and finding counts, do not post."
-  - Return shape: `{comments: [{path, line, body}, ...], counts: {total, by_severity}}` per skill, or a failure reason string in place of the above.
+  - Outer dispatch (unchanged from today): `Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`, ONE subagent.
+  - Inside that subagent's own turn: two concurrent tool calls (not sequential awaits) — "invoke `code-review` in GitHub PR mode, Return-Only Variant, against PR #N" and "invoke `tests-code-review` the same way" — each returning `{comments: [{path, line, body}, ...], counts: {total, by_severity}}` or a failure reason.
+  - Still inside the subagent: merge both `comments` arrays (or just the succeeded one's, on partial failure), issue one `gh api repos/{owner}/{repo}/pulls/{PR}/reviews --method POST --input payload.json` call (`event` omitted), then return **only** the compact summary (counts per skill, PR confirmation, any failure reason) to `ship-spec`.
 - **Dependencies**: PR must already exist (Step 5); `gh auth status` must succeed (Guardrails, unchanged).
-- **Reuses**: existing diff-collection and dimension-agent dispatch logic inside `code-review`/`tests-code-review` (untouched) up through what was formerly Step 9's B2 payload assembly.
+- **Reuses**: existing diff-collection and dimension-agent dispatch logic inside `code-review`/`tests-code-review` (untouched) up through what was formerly Step 9's B2 payload assembly; `templates/github-pr-review-mode.md` B2's exact payload/POST mechanics.
 
 ### GitHub PR Mode — Return-Only Variant
 
-- **Purpose**: Let a skill assemble its GitHub PR review comments array without issuing the `POST`, so a caller (here, `ship-spec`) can merge multiple skills' arrays into one call.
+- **Purpose**: Let a skill assemble its GitHub PR review comments array without issuing the `POST`, so a caller (here, the Step 6 subagent) can merge multiple skills' arrays into one call.
 - **Location**: `templates/github-pr-review-mode.md`, new subsection under Step B (e.g. "B2'. Return-Only Variant").
 - **Interfaces**: Same inputs as B2 (selected findings, PR diff context); output is the `comments` array as a returned value instead of a `gh api POST` side effect. B1's interactive "user selects findings" prompt is skipped the same way `ship-spec` already skips it for the normal path (documented precedent: Step 6's existing note that `/ship-spec` invocation itself satisfies that gate).
 - **Dependencies**: None beyond what B2 already needs.
 - **Reuses**: B2's exact comment-shape logic (`path`, `line`, `body`, exact-line anchoring) — this variant only changes the last step (return vs. POST), not the assembly logic.
-
-### Step 6 — Merge & Publish
-
-- **Purpose**: Combine both skills' `comments` arrays into one, issue the single allowed `POST .../reviews` call, and handle the partial-failure case.
-- **Location**: `skills/ship-spec/SKILL.md` Step 6 (orchestrator-level, no subagent — this runs in `ship-spec`'s own turn since it's a single cheap API call, not a full skill invocation).
-- **Interfaces**: `mergedComments = codeReviewResult.comments ++ testsCodeReviewResult.comments` (or just the succeeded one's, on partial failure); one `gh api repos/{owner}/{repo}/pulls/{PR}/reviews --method POST --input payload.json` call, `event` omitted.
-- **Dependencies**: Both analysis subagents' results (or one, on partial failure — never zero, per Guardrails' existing "stop and report" rule on full failure).
-- **Reuses**: `templates/github-pr-review-mode.md` B2's exact payload/POST mechanics.
 
 ### Comment-Triage Mode — Classification
 
@@ -189,7 +183,7 @@ Overwritten fresh each triage run — not accumulated across runs. `pushback`/`a
 
 | Decision | Choice | Rationale |
 | --- | --- | --- |
-| Step 6 publish mechanism | Concurrent analysis, single merged `POST` | Only mechanism GitHub's API actually supports for two sources of line-anchored findings on one PR without auto-submitting (AD-003) |
+| Step 6 publish mechanism | One subagent (unchanged dispatch shape), concurrent internal tool calls, single merged `POST`, all inside that subagent | Only mechanism GitHub's API actually supports for two sources of line-anchored findings on one PR without auto-submitting (AD-003); one subagent instead of two keeps `ship-spec`'s own context free of raw findings text (preserves the existing context-isolation guarantee) and avoids paying a second cold-start — strictly cheaper than the two-subagent alternative originally specified |
 | Where the Return-Only Variant lives | Shared `templates/github-pr-review-mode.md`, not duplicated per-skill | Single source of truth for the `comments` array shape; both `code-review` and `tests-code-review` already share Step B, keeping the return-only path shared avoids drift |
 | Concurrent fix-commit safety | Split-phase: parallel drafting (no git writes), serial commit application | Resolves the conflict between requested concurrency and the existing "no worktree, shared checkout" rule; confirmed with the user via AskUserQuestion |
 | Model tier for fix-drafting | Haiku (`claude-haiku-4-5-20251001`) | Fix direction is already fully decided by classification (default model) before dispatch — mechanical execution, not judgment; see `AD-004` |
