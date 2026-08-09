@@ -13,7 +13,7 @@ description: >
   code-review / tests-code-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.4.0"
+  version: "1.4.3"
 ---
 
 # Ship Spec
@@ -44,7 +44,7 @@ Delivers a tlc-spec-driven feature from "tasks are written" to "draft PR open wi
 
 - Target feature's `.specs/features/<feature>/tasks.md` must exist. Missing → stop: "No tasks.md for this feature — run tlc-spec-driven's Tasks phase first."
 - `gh auth status` must succeed, or GitHub MCP tools must be available. Neither → stop before touching git: "No way to reach GitHub — install/authenticate `gh`, or connect a GitHub MCP server."
-- `git status --porcelain` must be clean before checkout. Dirty → stop: "Uncommitted changes present — commit, stash, or discard them first."
+- `git status --porcelain` must be clean before checkout. Dirty → stop and report the exact output (which files, staged or not) — do not stash, commit, discard, or otherwise touch them yourself under any circumstance. State that uncommitted changes are present and wait for the user to decide how to handle them (commit, stash, discard, or something else); only resume once they've done so and the tree is clean.
 
 ### Before Opening the PR
 
@@ -53,7 +53,7 @@ Execute (Step 3) must have completed with every task committed and the Verifier 
 ### When to Stop and Ask
 
 - No `base` argument and none inferable → ask which branch to check out from.
-- No `task_id` argument, and the feature folder has no tracker-ID prefix (e.g. `.specs/features/code-review-subagent-orchestration/` has none) → ask for one. Never fall back to the bare slug silently.
+- No `task_id` argument → always ask for one, even when the feature folder's name carries what looks like a tracker-ID prefix. Never derive it from the folder name and never fall back to the bare slug silently.
 - More than one tlc-spec-driven feature exists and none is unambiguous from session context → list the candidates and ask.
 
 ### On Collision
@@ -79,7 +79,7 @@ This is the entire mode switch. There is no separate sub-command — re-invoking
 
 **Base branch:** use the `base=` argument if given (e.g. `/ship-spec base=main task_id=PROJ-42`). Otherwise ask.
 
-**Task ID:** use the `task_id=` argument if given. Otherwise, derive it from the feature folder's tracker-ID prefix (`.specs/features/PROJ-42-user-auth/` → `PROJ-42`). If the folder has no prefix, ask — do not fall back to the bare slug.
+**Task ID:** use the `task_id=` argument if given. Otherwise, always ask — never derive it from the feature folder's name, even when it carries what looks like a tracker-ID prefix (e.g. `.specs/features/PROJ-42-user-auth/`). Do not fall back to the bare slug.
 
 **Description slug:** generate a short kebab-case slug (2–4 words) summarizing the feature — reuse the feature folder's own slug portion when present (`.specs/features/PROJ-42-user-auth/` → `user-auth`), otherwise derive one from `spec.md`'s title. This is generated, never asked for.
 
@@ -90,7 +90,7 @@ Guard check: confirm `.specs/features/<feature>/tasks.md` exists for the resolve
 1. `git checkout <base>`.
 2. `git checkout -b feature/<task_id>_<description>` (see Guardrails → On Collision if it already exists).
 3. Invoke tlc-spec-driven's Execute phase for every task in `.specs/features/<feature>/tasks.md`. It owns its own per-task gate checks, atomic Conventional-Commits commits, and the mandatory end-of-feature Verifier — do not add parallel logic for any of that here.
-4. If Execute reports success (all tasks committed, Verifier passed): tell the user the implementation is confirmed done and ask them to run `/compact` before continuing — context built up over Execute's task loop is no longer needed for what follows. Wait for their go-ahead, then continue to Step 4. (This is a recommendation, not something `ship-spec` can trigger itself — nothing here forces or verifies that `/compact` actually ran.)
+4. If Execute reports success (all tasks committed, Verifier passed): tell the user the implementation is confirmed done and continue directly to Step 4 — no `/compact` prompt here; that comes after the PR is opened (see Step 5).
 5. If Execute's bounded fix-loop can't converge: stop per Guardrails → Before Opening the PR.
 
 ## Step 4: Push
@@ -108,6 +108,8 @@ Use `gh pr create --draft` (fall back to the GitHub MCP tool for PR creation, th
   - **Test results** ← `.specs/features/<feature>/validation.md` (the Verifier's report — already captures final pass/coverage state; do not re-run tests separately for this)
 
 Record the returned PR number.
+
+Tell the user the PR is open (include the URL) and ask them to run `/compact` before continuing — context built up over Execute's task loop and the push/PR steps is no longer needed for what follows (Step 6's review runs entirely inside its own isolated subagent). Wait for their go-ahead, then continue to Step 6. (This is a recommendation, not something `ship-spec` can trigger itself — nothing here forces or verifies that `/compact` actually ran.)
 
 ## Step 6: Review and Publish
 
