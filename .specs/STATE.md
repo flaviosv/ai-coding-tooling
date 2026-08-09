@@ -36,11 +36,15 @@
 
 ## Handoff
 
-- **Feature**: `.specs/features/review-dispatch-efficiency` (RD-EFFICIENCY) — implementation complete, Verifier PASS
-- **Phase / Task**: Post-implementation validation pending (not a tasks.md task — a real-world measurement step deferred to a future session)
-- **Completed**: T1, T2, T3, T4 (all committed and Verifier-passed, 2 iterations — see `validation.md`). Related, already-shipped same-day: the Medium-tier regression fix (`5ecaacd`, `91ff220`), separate from this feature.
-- **In-progress**: none — feature is fully done; only the deferred measurement below remains
-- **Next step**: Run `python3 ~/.claude/tools/review-token-usage.py --json .specs/features/review-dispatch-efficiency/after-fix.jsonl` once fresh `code-review`/`tests-code-review` usage exists in the recargapay project (post commits `cc829ab`/`39a47c7`/`80b44de`/`82f91b8`/`0766349`). Compare against `.specs/features/review-dispatch-efficiency/baseline-before-fix.jsonl`. Full instructions in `spec.md`'s "Pending Validation" section.
-- **Blockers**: none — purely waiting on real future usage data to exist; nothing to fix or decide
-- **Uncommitted files**: none (working tree clean; `.specs/` itself is gitignored by project convention, so its contents — including this file — are local-only, not pushed)
+- **Feature**: `.specs/features/ship-spec-review-fix-flow` — implementation complete, Verifier PASS (2 iterations)
+- **Phase / Task**: Post-implementation real-world validation pending (not a tasks.md task — spec.md's Success Criteria all require a live `ship-spec` run, deferred to a future session)
+- **Completed**: T1–T9 (T9 = post-Verifier fix round; all committed, Verifier-passed 2 iterations — see `validation.md`). Also: `AD-003` (GitHub one-pending-review-per-PR limit) and `AD-004` (model-tier scope boundary) recorded; 3 new candidate lessons distilled (L-003, L-004, L-005).
+- **In-progress**: none — feature is fully done; only the deferred real-run validation below remains
+- **Next step**: Next time `/ship-spec` runs a real delivery (Step 6) and a real comment-triage round, check spec.md's 6 Success Criteria boxes against what actually happens: one merged pending review (no HTTP 422), silent resolve for no-comment findings, reply+leave-open for questions, `fix-code-review.md` written and correctly grouped before execution, clean serialized `git log` (no interleaved commits), and Haiku confirmed on the fix-drafting subagents. Check each box off individually against real evidence, not assumed from the spec text.
+- **Blockers**: none — purely waiting on a real future `ship-spec` invocation; nothing to fix or decide
+- **Uncommitted files**: none (working tree clean; `.specs/` is now tracked in git per repo convention as of the `review-dispatch-efficiency` feature — this file and the whole feature folder are committed and pushed-eligible)
 - **Branch**: main
+
+---
+
+- **Prior feature**: `.specs/features/review-dispatch-efficiency` (RD-EFFICIENCY) — implementation complete, Verifier PASS. Real-world token-usage validation still deferred (see `spec.md`'s "Pending Validation" section: run `python3 ~/.claude/tools/review-token-usage.py --json .specs/features/review-dispatch-efficiency/after-fix.jsonl` once fresh usage exists in the recargapay project, compare against `baseline-before-fix.jsonl`). Unrelated to and unaffected by `ship-spec-review-fix-flow` above.

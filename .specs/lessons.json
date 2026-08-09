@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 3,
+  "next_id": 6,
   "lessons": [
     {
       "id": "L-001",
@@ -40,6 +40,60 @@
       ],
       "created": "2026-08-08T23:43:42Z",
       "last_seen": "2026-08-08T23:43:42Z"
+    },
+    {
+      "id": "L-003",
+      "key": "ac_gap::when specifying failure handling for a multi invocation flow explicitly define the all failed branch not just the partial failure branch partial failure logic alone silently leaves full failure undefined and risks an empty invalid write",
+      "text": "When specifying failure handling for a multi-invocation flow, explicitly define the all-failed branch, not just the partial-failure branch — partial-failure logic alone silently leaves full failure undefined and risks an empty/invalid write.",
+      "signal": "ac_gap",
+      "scope": "ship-spec",
+      "status": "candidate",
+      "features": [
+        "ship-spec-review-fix-flow"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "spec.md Edge Case / design.md Error Handling Strategy — Step 6 full-failure path (ship-spec)"
+      ],
+      "created": "2026-08-09T01:03:47Z",
+      "last_seen": "2026-08-09T01:03:47Z"
+    },
+    {
+      "id": "L-004",
+      "key": "ac_gap::after changing a subagent s model tier or dispatch mechanism in a steps section grep the guardrails section too guardrail bullets restate mechanism details and go stale silently when only the steps are updated",
+      "text": "After changing a subagent's model tier or dispatch mechanism in a Steps section, grep the Guardrails section too — guardrail bullets restate mechanism details and go stale silently when only the Steps are updated.",
+      "signal": "ac_gap",
+      "scope": "ship-spec",
+      "status": "candidate",
+      "features": [
+        "ship-spec-review-fix-flow"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "skills/ship-spec/SKILL.md:36 — stale Sonnet-subagent Guardrails text vs Haiku drafting mechanism (ship-spec)"
+      ],
+      "created": "2026-08-09T01:03:47Z",
+      "last_seen": "2026-08-09T01:03:47Z"
+    },
+    {
+      "id": "L-005",
+      "key": "ac_gap::when design md commits to surfacing not fixing a pre existing limitation verify a task in tasks md actually implements that reporting commitments logged in out of scope or edge case tables can fall through task decomposition unnoticed",
+      "text": "When design.md commits to surfacing (not fixing) a pre-existing limitation, verify a task in tasks.md actually implements that reporting — commitments logged in Out-of-Scope or edge-case tables can fall through task decomposition unnoticed.",
+      "signal": "ac_gap",
+      "scope": "ship-spec",
+      "status": "candidate",
+      "features": [
+        "ship-spec-review-fix-flow"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "spec.md Edge Case (page-cap reporting) — no task in tasks.md ever implemented it (ship-spec)"
+      ],
+      "created": "2026-08-09T01:03:47Z",
+      "last_seen": "2026-08-09T01:03:47Z"
     }
   ]
 }

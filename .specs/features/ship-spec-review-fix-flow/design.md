@@ -1,7 +1,7 @@
 # Ship-Spec Review & Fix-Triage Redesign Design
 
 **Spec**: `.specs/features/ship-spec-review-fix-flow/spec.md`
-**Status**: Implemented — pending Verifier
+**Status**: Implemented — Verifier PASS (2026-08-08, 2 iterations; see `validation.md`)
 
 ---
 

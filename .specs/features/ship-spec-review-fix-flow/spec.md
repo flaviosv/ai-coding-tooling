@@ -6,11 +6,11 @@
 
 ## Goals
 
-- [ ] `code-review` and `tests-code-review` run concurrently in Step 6, each publishing its own pending review independently — no longer gated on the other finishing first
-- [ ] Fix-triage classifies purely by comment presence/content (no comment / question / suggestion) instead of finding origin, applied uniformly to both skills' findings
-- [ ] Fix-triage writes an explicit, lightweight plan (`fix-code-review.md`) before executing, without adding a user-approval gate between plan and execution
-- [ ] Independent fixes are drafted concurrently (capped at 4) while all git writes stay serialized on the shared checkout — no worktree isolation, no git corruption risk
-- [ ] Fix drafting runs on Haiku (classification/replies stay on the default model) to cut cost, since the fix direction is already decided before dispatch
+- [x] `code-review` and `tests-code-review` analyze concurrently in Step 6 (one subagent, two concurrent internal invocations), publishing one merged pending review as soon as both finish — no longer gated on running sequentially. (Revised from "each publishing independently" once GitHub's one-pending-review-per-PR limit made two independent publishes impossible — see `AD-003`.)
+- [x] Fix-triage classifies purely by comment presence/content (no comment / question / suggestion) instead of finding origin, applied uniformly to both skills' findings
+- [x] Fix-triage writes an explicit, lightweight plan (`fix-code-review.md`) before executing, without adding a user-approval gate between plan and execution
+- [x] Independent fixes are drafted concurrently (capped at 4) while all git writes stay serialized on the shared checkout — no worktree isolation, no git corruption risk
+- [x] Fix drafting runs on Haiku (classification/replies stay on the default model) to cut cost, since the fix direction is already decided before dispatch
 
 ## Out of Scope
 
@@ -149,30 +149,30 @@ Every ambiguity is resolved or recorded here — nothing is left silently unclea
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| SSF-01 | P1: Concurrent analysis, single merged pending review | Design | Pending |
-| SSF-02 | P1: Concurrent analysis, single merged pending review | Design | Pending |
-| SSF-03 | P1: Comment-presence-driven fix classification | Design | Pending |
-| SSF-04 | P1: Comment-presence-driven fix classification | Design | Pending |
-| SSF-05 | P1: Comment-presence-driven fix classification | Design | Pending |
-| SSF-06 | P1: Comment-presence-driven fix classification | Design | Pending |
-| SSF-07 | P1: Lightweight plan generation with immediate execution | Design | Pending |
-| SSF-08 | P1: Lightweight plan generation with immediate execution | Design | Pending |
-| SSF-09 | P1: Lightweight plan generation with immediate execution | Design | Pending |
-| SSF-10 | P1: Lightweight plan generation with immediate execution | Design | Pending |
-| SSF-11 | P1: Safe concurrent fix execution | Design | Pending |
-| SSF-12 | P1: Safe concurrent fix execution | Design | Pending |
-| SSF-13 | P1: Safe concurrent fix execution | Design | Pending |
-| SSF-14 | P1: Safe concurrent fix execution | Design | Pending |
-| SSF-15 | P1: Safe concurrent fix execution | Design | Pending |
-| SSF-16 | P1: Safe concurrent fix execution | Design | Pending |
-| SSF-17 | P2: Model tiering for fix drafting | Design | Pending |
-| SSF-18 | P2: Model tiering for fix drafting | Design | Pending |
+| SSF-01 | P1: Concurrent analysis, single merged pending review | Execute | ✅ Verified |
+| SSF-02 | P1: Concurrent analysis, single merged pending review | Execute | ✅ Verified |
+| SSF-03 | P1: Comment-presence-driven fix classification | Execute | ✅ Verified |
+| SSF-04 | P1: Comment-presence-driven fix classification | Execute | ✅ Verified |
+| SSF-05 | P1: Comment-presence-driven fix classification | Execute | ✅ Verified |
+| SSF-06 | P1: Comment-presence-driven fix classification | Execute | ✅ Verified |
+| SSF-07 | P1: Lightweight plan generation with immediate execution | Execute | ✅ Verified |
+| SSF-08 | P1: Lightweight plan generation with immediate execution | Execute | ✅ Verified |
+| SSF-09 | P1: Lightweight plan generation with immediate execution | Execute | ✅ Verified |
+| SSF-10 | P1: Lightweight plan generation with immediate execution | Execute | ✅ Verified |
+| SSF-11 | P1: Safe concurrent fix execution | Execute | ✅ Verified |
+| SSF-12 | P1: Safe concurrent fix execution | Execute | ✅ Verified |
+| SSF-13 | P1: Safe concurrent fix execution | Execute | ✅ Verified |
+| SSF-14 | P1: Safe concurrent fix execution | Execute | ✅ Verified |
+| SSF-15 | P1: Safe concurrent fix execution | Execute | ✅ Verified |
+| SSF-16 | P1: Safe concurrent fix execution | Execute | ✅ Verified |
+| SSF-17 | P2: Model tiering for fix drafting | Execute | ✅ Verified |
+| SSF-18 | P2: Model tiering for fix drafting | Execute | ✅ Verified |
 
 **ID format:** `SSF-[NUMBER]` (Ship-Spec Fix-triage)
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 18 total, 0 mapped to tasks yet, 18 unmapped ⚠️ (expected pre-Design)
+**Coverage:** 18 total, 18 mapped to tasks (T3–T8), 0 unmapped — Verifier PASS after 1 fix round (2 iterations), see `validation.md`
 
 ---
 
@@ -186,3 +186,5 @@ How we know the feature is successful:
 - [ ] `fix-code-review.md` is written and correctly grouped (parallel vs. sequential) before any commit lands
 - [ ] `git log` after a multi-item fix run shows no interleaved/corrupted commits — one commit per item, cleanly ordered
 - [ ] Fix-drafting subagents are confirmed to run on Haiku; classification/replies confirmed to run on the default model
+
+**All 6 boxes above require a real `ship-spec` run against a live PR — none can be checked via static inspection.** All 18 requirements (SSF-01–18) are Verifier-PASS on inspection-based evidence (`validation.md`); this section remains open until exercised for real, in a future session, on an actual feature delivery. When that happens, check off each box against what actually occurred (screenshot/log the pending review, the `fix-code-review.md` content, and `git log` output as evidence) rather than assuming success from the spec text alone.
