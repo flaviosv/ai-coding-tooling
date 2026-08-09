@@ -230,9 +230,9 @@ T7 → T8
 - Skill: NONE
 
 **Done when**:
-- [ ] Worktree-isolation guardrail explicitly addresses why split-phase drafting (T6) doesn't need it
-- [ ] Step 6 (reply/resolve, renumbered) wording already matches T4's four classification outcomes exactly (verify only — no stale origin-based language remains anywhere in the file)
-- [ ] Guardrail on unsubmitted-review fix-trigger message (SSF-04's PENDING-review guard) present and explicit (verify only — already present from earlier work)
+- [x] Worktree-isolation guardrail explicitly addresses why split-phase drafting (T6) doesn't need it
+- [x] Step 6 (reply/resolve, renumbered) wording already matches T4's four classification outcomes exactly (verified — no stale origin-based language remains anywhere in the file)
+- [x] Explicit unsubmitted-review fix-trigger message (SSF-07 AC1) — gap found during this task's inspection: step 1 only *silently filtered* pending threads, never reported it. Added new step 0 to Comment-Triage Mode: stop and tell the user before fetching/classifying/executing anything if the Step-6 review is still pending. Scope expansion beyond this task's original "verify only" plan, documented here since it's a real requirement (SSF-07) that had no implementation until now.
 
 **Tests**: none
 **Gate**: inspection
