@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/ship-spec-review-fix-flow/design.md`
-**Status**: Draft
+**Status**: Done — all 8 tasks committed, dispatching Verifier
 
 ---
 
