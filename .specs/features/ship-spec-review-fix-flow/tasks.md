@@ -77,10 +77,10 @@ T7 → T8
 - Skill: NONE
 
 **Done when**:
-- [ ] New subsection exists under Step B, clearly named as a variant (not replacing B1–B3)
-- [ ] Assembled `comments` array shape matches B2's exactly (`path`, `line`, `body`)
-- [ ] Explicitly states no `gh api POST` is issued in this variant — the array is returned to the caller instead
-- [ ] B1, B2, B3 text is unchanged (diff shows only an addition)
+- [x] New subsection exists under Step B, clearly named as a variant (not replacing B1–B3)
+- [x] Assembled `comments` array shape matches B2's exactly (`path`, `line`, `body`)
+- [x] Explicitly states no `gh api POST` is issued in this variant — the array is returned to the caller instead
+- [x] B1, B2, B3 text is unchanged (diff shows only an addition)
 
 **Tests**: none
 **Gate**: inspection
@@ -101,10 +101,10 @@ T7 → T8
 - Skill: NONE
 
 **Done when**:
-- [ ] `code-review/SKILL.md` Step 9 references the Return-Only Variant conditionally
-- [ ] `tests-code-review/SKILL.md` Step 9 references it identically
-- [ ] Neither skill's existing direct-invocation posting path (B1–B3) changed
-- [ ] Both skills' `metadata.version` bumped (patch — behavior addition, backward compatible)
+- [x] `code-review/SKILL.md` Step 9 references the Return-Only Variant conditionally
+- [x] `tests-code-review/SKILL.md` Step 9 references it identically
+- [x] Neither skill's existing direct-invocation posting path (B1–B3) changed
+- [x] Both skills' `metadata.version` bumped (patch — behavior addition, backward compatible)
 
 **Tests**: none
 **Gate**: inspection
@@ -124,13 +124,13 @@ T7 → T8
 - MCP: NONE
 - Skill: NONE
 
-**Done when**:
-- [ ] Step 6 dispatches both analysis subagents concurrently (not sequential awaits), each using the Return-Only Variant
-- [ ] Step 6 merges both results and issues exactly one `POST .../reviews` call
-- [ ] Partial-failure case (one subagent fails) posts a single review with only the succeeded skill's findings, and retries only the failed skill once per the existing retry-rule guardrail
-- [ ] Full-failure case (both fail) stops before any `POST`, reports both failures
-- [ ] Guardrails L29–30 (delegation wording), L38 ("never in parallel"), L39 (partial-failure retry) updated to match the new mechanism — no stale text claiming two separate pending reviews
-- [ ] Step 7 (report + stop) unchanged
+**Done when** (updated to match the T3 SPEC_DEVIATION — one subagent with internal concurrency, not two top-level subagents):
+- [x] Step 6's one subagent issues two concurrent tool calls within its own turn (not sequential awaits), each using the Return-Only Variant
+- [x] The subagent merges both results and issues exactly one `POST .../reviews` call, entirely inside its own context
+- [x] Partial-failure case (one invocation fails) posts a single review with only the succeeded skill's findings, and retries only the failed invocation once per the existing retry-rule guardrail
+- [x] Full-failure case (both fail) stops before any `POST`, reports both failures — fixed post-Verifier (Fix 1, see `validation.md`); was genuinely unmet at first commit, closed in the fix→re-verify round
+- [x] Guardrails L29–30 (delegation wording), L38→ replaced with the real one-pending-review-per-PR constraint, L39 (partial + full failure retry) updated to match the new mechanism — no stale text claiming two separate pending reviews
+- [x] Step 7 (report + stop) unchanged, except now also handles the full-failure report case (Fix 1)
 
 **Tests**: none
 **Gate**: inspection
@@ -151,9 +151,9 @@ T7 → T8
 - Skill: NONE
 
 **Done when**:
-- [ ] Step 2's five classification bullets rewritten to the comment-presence rule, with no reference to finding origin as a classification input
-- [ ] Each of the four outcomes (auto-fix / answer-only / apply-as-directed / pushback) explicitly stated
-- [ ] Step 1 (fetch) unchanged
+- [x] Step 2's five classification bullets rewritten to the comment-presence rule, with no reference to finding origin as a classification input
+- [x] Each of the four outcomes (auto-fix / answer-only / apply-as-directed / pushback) explicitly stated
+- [x] Step 1 (fetch) unchanged
 
 **Tests**: none
 **Gate**: inspection
@@ -261,6 +261,24 @@ T7 → T8
 **Tests**: none
 **Gate**: inspection
 **Commit**: `docs(ship-spec): update examples and version for review-fix-flow redesign`
+
+---
+
+### T9: Verifier fix round 1 (post-implementation, iteration 1)
+
+**What**: Fix the 3 gaps from the first Verifier pass (`validation.md`): (1) Major — Step 6 had no defined behavior when both analysis invocations fail; added explicit "do not POST, report both failures" handling to Step 6, Guardrails, and Step 7. (2) Medium — Guardrails still named "Sonnet subagent" for the whole comment-triage fix step, stale since T6's Haiku split-phase rewrite; updated to describe the two-phase (Haiku draft / subagent commit-application) reality. (3) Minor — the `spec.md` Edge Case committing to a >100-thread page-cap reporting note was never implemented; added to Comment-Triage steps 1 and 8. Also ticked T1/T2/T3/T4's Done-when checkboxes, which were left unticked despite complete work (bookkeeping-only, flagged by the Verifier), and updated T3's Done-when text to match its own documented SPEC_DEVIATION (one subagent, not two).
+**Where**: `skills/ship-spec/SKILL.md` (Step 6, Guardrails, Comment-Triage steps 1/8), `.specs/features/ship-spec-review-fix-flow/tasks.md` (checkbox/text corrections)
+**Depends on**: T8 (all original tasks), Verifier iteration 1
+**Requirement**: SSF-02 (full-failure path), SSF-17 (Guardrails accuracy), spec.md Edge Case (page-cap reporting)
+
+**Done when**:
+- [x] Step 6 explicitly handles both-invocations-fail: no POST issued, both failure reasons returned, Step 7 reports failures instead of claiming findings were published
+- [x] Guardrails no longer names "Sonnet" for the comment-triage fix step — reflects Haiku drafting + subagent commit-application
+- [x] Comment-Triage step 1 notes the page-cap condition; step 8's report includes the possible-truncation note when it applies
+
+**Tests**: none
+**Gate**: inspection
+**Commit**: `fix(ship-spec): address Verifier gaps — full-failure handling, stale Guardrails, page-cap note`
 
 ---
 
