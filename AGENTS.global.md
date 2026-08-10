@@ -140,6 +140,7 @@ Wait for the user's answer before writing any code. If they say no or to skip, p
 ## Git Commit Messages
 
 - **No co-authoring credits** — never append `Co-Authored-By:`, `Generated with`, or any tool attribution trailer to commit messages. This applies to Claude Code, any other AI tool, or any automated system.
+- **Conventional Commits** — every commit message must follow the [Conventional Commits](https://www.conventionalcommits.org/) structure: `<type>[optional scope]: <description>` (e.g. `fix(auth): handle expired token refresh`). Use standard types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`) and a scope when the change is localized to a specific module/area.
 
 ## Verification Before Done
 
