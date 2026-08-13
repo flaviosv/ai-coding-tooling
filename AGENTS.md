@@ -27,6 +27,11 @@ Never edit the global file directly — changes must originate in `config/status
 - **Never modify skills installed globally** (e.g. `~/.claude/skills/`) or sourced from external vendors (Tech Leads Club, Matt Pocock). Those are treated as read-only dependencies; override them via `extended/<skill>/` instead.
 - If a globally installed skill needs changes, raise it with the user instead of editing it directly.
 
+## Change Request Workflow
+
+- Commit directly to `main` — no feature-branch-first workflow for this repository; most of it is `.md` skill/config content, not application code with a release/PR-gated `main`. (`ship-spec`'s own `/ship-spec` feature-delivery flow is the one exception — it still creates and PRs a `feature/*` branch within its own explicit workflow.)
+- After completing any change request, commit and push to `origin` automatically — do not wait to be asked, and do not leave finished work sitting as uncommitted local changes.
+
 # Skills
 
 Skills are managed by the **`fsvskills`** script (`bin/skills.mjs`). Its source of truth is structured JSON in `config/` (`agents.json`, `skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fsvskills add`/`delete`/`override` change the registry.
