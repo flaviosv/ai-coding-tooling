@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.7.1"
+  version: "2.7.2"
   triggers:
     - "check my code"
     - "code review"
@@ -569,7 +569,7 @@ After fixes:
 
 ## Step 9: Post to GitHub (GitHub PR mode only)
 
-Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md). If invoked by `ship-spec`'s merged-post flow (Step 6), use [Step B2' — Return-Only Variant](../../templates/github-pr-review-mode.md) instead of B2's posting path — return the assembled comments array rather than posting it.
+Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md). If invoked by `complete-review`'s merged-post flow (Step 2), use [Step B2' — Return-Only Variant](../../templates/github-pr-review-mode.md) instead of B2's posting path — return the assembled comments array rather than posting it.
 
 ## Performance Audit Report Format
 

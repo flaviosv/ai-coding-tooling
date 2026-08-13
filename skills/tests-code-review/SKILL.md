@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.5.1"
+  version: "2.5.2"
   triggers:
     - "review tests"
     - "test code review"
@@ -506,7 +506,7 @@ After fixes:
 
 ## Step 9: Post to GitHub (GitHub PR mode only)
 
-Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md). If invoked by `ship-spec`'s merged-post flow (Step 6), use [Step B2' — Return-Only Variant](../../templates/github-pr-review-mode.md) instead of B2's posting path — return the assembled comments array rather than posting it.
+Load and apply [GitHub PR Mode — Step B](../../templates/github-pr-review-mode.md). If invoked by `complete-review`'s merged-post flow (Step 2), use [Step B2' — Return-Only Variant](../../templates/github-pr-review-mode.md) instead of B2's posting path — return the assembled comments array rather than posting it.
 
 ## Examples
 
