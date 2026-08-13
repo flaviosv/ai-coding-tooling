@@ -26,6 +26,12 @@
       "description": "Write, review, and edit documentation files with consistent structure, tone, and technical accuracy. Use when creating docs, reviewing markdown files, writing READMEs, updating `/docs` directories, or when user says \"write documentation\", \"review this doc\", \"improve this README\", \"create a guide\", or \"edit markdown\". Do NOT use for code comments, inline JSDoc, or API reference generation."
     },
     {
+      "name": "fix-review",
+      "source": "local",
+      "scope": "built",
+      "description": "Fixes GitHub PR review findings — from complete-review/code-review/tests-code-review or added manually — by fetching every open review thread fresh from GitHub (always the source of truth), reading each thread's full exchange to decide what it's asking for, and committing fixes onto the PR's existing branch — never a new PR. Also handles findings that exist only in the current conversation and were never posted to GitHub — fixes all of them on a branch you name (asks if none known) and leaves commits unpushed. Every fix needs a passing directly-relevant test — no full spec-verification cycle. Anything unclear is reported back unfixed rather than guessed at. Use when the user says \"fix review findings\", \"fix review comments\", \"triage PR feedback\", \"resolve review comments\", \"apply the review fixes\", or invokes /fix-review. Do NOT use to generate findings or post a review (use complete-review / code-review / tests-code-review) or for spec planning (use tlc-spec-driven)."
+    },
+    {
       "name": "grill-me",
       "source": "matt-pocock",
       "scope": "matt-pocock",
@@ -66,7 +72,7 @@
       "name": "ship-spec",
       "source": "local",
       "scope": "built",
-      "description": "Delivers a completed tlc-spec-driven feature end-to-end: creates the feature branch, runs tlc-spec-driven's Execute phase for every task, pushes and opens a GitHub draft PR once tests pass, then runs code-review and tests-code-review against the PR and publishes every finding as pending PR comments. Re-invoking it against a feature that already has an open PR switches to comment-triage mode — fetches your PR review-thread comments and fixes or replies to each. Invoked explicitly via /ship-spec only — it never triggers on natural language (saying \"implement the spec\" routes to tlc-spec-driven's own Execute phase, not here). Requires an existing tlc-spec-driven feature (`.specs/features/*/tasks.md`) and the `gh` CLI. Do NOT use for planning or task breakdown (use tlc-spec-driven), or for reviewing code outside this delivery flow (use code-review / tests-code-review / complete-review directly)."
+      "description": "Delivers a completed tlc-spec-driven feature end-to-end: creates the feature branch, runs tlc-spec-driven's Execute phase for every task, pushes and opens a GitHub draft PR once tests pass, then runs code-review and tests-code-review against the PR and publishes every finding as pending PR comments. Re-invoking it against a feature that already has an open PR switches to comment-triage mode — fetches your PR review-thread comments and fixes or replies to each. Invoked explicitly via /ship-spec only — it never triggers on natural language (saying \"implement the spec\" routes to tlc-spec-driven's own Execute phase, not here). Requires an existing tlc-spec-driven feature (`.specs/features/*/tasks.md`) and the `gh` CLI. Do NOT use for planning or task breakdown (use tlc-spec-driven), for reviewing code outside this delivery flow (use code-review / tests-code-review / complete-review directly), or for fixing PR review comments outside this delivery flow (use fix-review directly)."
     },
     {
       "name": "skill-architect",
