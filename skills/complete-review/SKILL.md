@@ -3,7 +3,7 @@ name: complete-review
 description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by ship-spec) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
 metadata:
   author: Flavio Studart
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Complete Review
@@ -34,6 +34,7 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 - The `Agent` tool has no reasoning-effort parameter — compensate by putting an explicit "work at high effort: be thorough, verify every finding against the actual diff before including it" instruction in every subagent's prompt.
 - Report each PR's result to the user **as soon as its completion notification arrives** — do not batch and wait for all subagents before saying anything. After the last one finishes, add one final summary table across every PR reviewed this run.
 - If a subagent's run fails outright (PR not found, no review posted), report that PR's failure plainly in both the per-PR update and the final table — never imply a review was posted when it wasn't.
+- Track each qualifying PR's subagent name (returned by the `Agent` tool call in Step 4) against its PR number for the rest of this conversation — don't discard the mapping once a subagent reports back in Step 5. It's what a later "a new commit/comment landed on PR #N" update routes through (see New Commits or Comments After Step 4), and that can happen well after the subagent has already finished.
 
 ### Before Starting
 
@@ -156,11 +157,28 @@ Agent
     - Anything that blocked or limited the review
 ```
 
+Record the name this `Agent` call returns against PR `<N>` right away — that's the mapping Step 5 and New Commits or Comments After Step 4 depend on.
+
 ### Step 5: Report as each subagent completes
 
 Each subagent's completion arrives as a separate task notification — do not wait for all of them. As soon as one arrives, post a short per-PR update: the pending-review URL (or the failure reason), the finding count by severity, and the one-line most-important-finding highlight from the subagent's report.
 
 Once every subagent for this run has reported, post one final summary table with all PRs reviewed, their finding counts, and top headline each — plus a one-line reminder that every review was posted as **pending**, not submitted, so nothing goes out until you submit it manually on GitHub.
+
+### New Commits or Comments After Step 4
+
+If, later in this same conversation, you're told a new commit was pushed or a new review comment was posted on a PR this Batch Mode run already spawned a subagent for — whether that subagent is still running or already reported back in Step 5 — do NOT spawn a new `Agent` for it. This applies to Batch Mode only; Single PR Mode's Step 2 subagent is synchronous (`run_in_background: false`) and returns before the conversation continues, so there's no long-lived subagent to route a later update to there.
+
+1. Look up that PR's subagent name from the mapping captured in Step 4. If none exists — the PR wasn't part of this conversation's Batch Mode run — this doesn't apply; treat it as an ordinary new request instead (Mode Detection, Single PR Mode).
+2. `SendMessage` to that subagent by name — never a fresh `Agent` call — instructing it to:
+   a. Determine what's new since it last posted: the commit SHA(s) added after the commit its own pending review was based on (`gh pr view <N> --json commits`, compared against what it last saw).
+   b. If nothing new landed as a commit (e.g. only a comment, no new push), there's nothing to delta-review — reply that and stop; do not re-run either skill.
+   c. Otherwise, scope `code-review` and `tests-code-review`'s Return-Only Variant to that delta only — the diff introduced by the new commit(s), not the full PR again — same as Single PR Mode Step 2a but with the commit range narrowed to just what's new.
+   d. Merge the resulting findings into its own already-posted pending review, following the same merge procedure as Single PR Mode Step 2b (fetch the existing pending review's comments, merge, delete the old one, repost a single new pending review) — same identity, same one-pending-review-per-PR constraint.
+   e. Report back the incremental result: how many new findings, by severity, and the new total on the pending review.
+3. Relay that subagent's incremental result to the user the same way Step 5 relays a first-pass result — don't wait for anything else in the batch.
+
+If the subagent's name is no longer reachable (`ListAgents` doesn't show it, or `SendMessage` errors), fall back once to a fresh Single PR Mode run scoped to the same delta described in step 2c, and say explicitly that continuity with the original subagent was lost.
 
 ## Examples
 
@@ -237,3 +255,11 @@ User: "review pending PRs" (run from a plain directory, no `.git`)
 1. Step 1 (Mode Detection): batch language → Batch Mode
 2. Batch Mode Step 1: no git remote found → ask "Which repo should I check — `owner/repo`?"
 3. User replies "acme/widgets" → proceed from Batch Mode Step 2 using that repo
+
+### Example 10: New commit lands on a PR whose Batch Mode subagent already reported
+
+Continuing Example 6: PR #12's subagent finished and reported 4 findings (1 High). Ten minutes later, in the same conversation, the user says "a new commit just landed on PR #12."
+
+1. PR #12's subagent name, captured in Batch Mode Step 4, is still tracked from this run.
+2. `SendMessage` to that subagent (not a new `Agent` call). It runs `gh pr view 12 --json commits`, finds one commit past what it last reviewed, diffs just that commit, runs `code-review` and `tests-code-review`'s Return-Only Variant against the delta only, and finds 1 new finding. It fetches its own already-posted pending review (7 comments), merges the 1 new one in (8 total), deletes the old pending review, reposts the merged one, and reports back.
+3. Reported to the user immediately: "PR #12 — 1 new finding from the latest commit, merged into the existing pending review (8 comments total now) — still pending, not submitted."
