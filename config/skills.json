@@ -63,6 +63,12 @@
       "description": "Autonomous senior-operator mode for AI agents that resolve tasks end to end without babysitting and never create new problems. The agent verifies every claim against real evidence (web search dated to the current month and year, the codebase, and available tools, MCPs, and CLIs); it never guesses, never fakes confidence, and never claims something is done without proof. It stays silent and keeps working, interrupting the user only on three stops, namely a destructive or irreversible action, a dead-end with no evidence after exhausting sources, or genuine ambiguity that changes the outcome. Output is short, literal, and human. Use when the user says \"not-your-babysitter\", \"nanny mode\", \"work autonomously\", \"stop babysitting\", or \"no hand-holding\", or wants an agent that solves problems on its own, especially hands-on engineering and operational tasks. Do not use when the user explicitly wants a tutorial, a verbose walkthrough, or open-ended brainstorming."
     },
     {
+      "name": "review-pending-prs",
+      "source": "local",
+      "scope": "built",
+      "description": "Finds every open GitHub PR assigned to you as a requested reviewer in the current repo that you have not reviewed yet, then reviews all of them at once — one isolated Sonnet subagent per PR, running complete-review at high effort in parallel — and reports each PR's result as soon as its subagent finishes, plus a final summary table. Detects owner/repo from the current git remote; asks for one if the working directory isn't a git repo. Skips any PR that already carries a review (any state) authored by you, so re-running it never double-reviews the same PR. Use when the user says \"review my pending PRs\", \"review all PRs assigned to me\", \"review pending PRs\", \"review the PRs I haven't reviewed yet\", or invokes /review-pending-prs. Do NOT use to review one specific, already-known PR (use complete-review directly) or to triage feedback on PRs you already reviewed (use fix-review)."
+    },
+    {
       "name": "security-best-practices",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
