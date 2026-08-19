@@ -1,0 +1,125 @@
+---
+name: qa-steps
+description: Generates a detailed, step-by-step Manual QA test plan for a Jira ticket, optionally enriched with a linked GitHub PR's diff and description. Fetches the ticket's description, comments, and attachments via Jira MCP, and the PR's diff via gh CLI when provided, then produces a structured plan (Setup, numbered Steps, optional technical spot-checks, Notes) and posts it as a comment on the Jira ticket — never on the PR. Use when the user says "give me the QA steps for", "what's the QA test plan for", "manual QA process for this ticket/PR", "how do I test this", or invokes /qa-steps. Do NOT use for writing automated tests (use the tests skill) or general code review (use code-review).
+license: CC-BY-4.0
+metadata:
+  author: flaviostudart@gmail.com
+  version: 1.0.0
+---
+
+# QA Steps
+
+Turns a Jira ticket — optionally cross-referenced with a GitHub PR — into a precise, executable Manual QA test plan, and posts it as a comment on the ticket.
+
+## Instructions
+
+### Step 1: Resolve the ticket and (optional) PR
+
+- Ticket key/URL is **required**. Take it from an explicit `/qa-steps <TICKET-KEY> [PR-number-or-URL]` argument, or from a ticket already referenced earlier in the conversation.
+- If no ticket key/URL can be identified, stop and ask for it before doing anything else — never guess a ticket.
+- PR is optional. If given, it only enriches the plan with real code-change detail; the ticket is still the source of truth for scope.
+
+### Step 2: Fetch the Jira ticket
+
+Use the Jira/Atlassian MCP tools (same integration `jira-assistant` uses) to fetch the ticket's summary, full description, all comments, and its attachment list (including inline images where the MCP exposes them).
+
+- If the MCP is not connected/authenticated or the ticket isn't found, stop and tell the user — do not fabricate ticket content from the key alone.
+- Read every comment, not just the description — acceptance criteria, edge cases, and repro steps are often clarified there rather than in the original description.
+
+### Step 3: Fetch the PR (only if one was given)
+
+```bash
+gh pr view <number> --json title,body,url,files
+gh pr diff <number>
+```
+
+Read the actual diff, not just the description — map QA steps to the real changed files, endpoints, and field names instead of guessing from the ticket text alone.
+
+If `gh` fails (PR not found, not authenticated), proceed with a ticket-only plan and note in the output that PR-derived detail was skipped.
+
+### Step 4: Load project technical context (optional)
+
+Check whether `docs/codebase/STACK.md` and `docs/codebase/ARCHITECTURE.md` exist in the current repo. If they do, use them to write one optional, clearly-labeled higher-confidence technical spot-check (e.g. a DB query in the project's actual DB technology, a `curl` against a real endpoint, a log grep) — never invent stack details that aren't backed by these files or the PR diff.
+
+If these files don't exist, skip this step entirely; the plan stays behavioral-only. Never ask the user to run `architecture-evaluate` as a prerequisite — this step is opportunistic, not required.
+
+### Step 5: Identify every distinct test scenario
+
+From the ticket's description, comments, and (if present) the PR diff, enumerate every distinct testable scenario: the main fix/feature, edge cases called out in comments, and any regression explicitly mentioned. For tickets covering more than one scenario, give each its own numbered **Steps** block rather than collapsing them into a single flow — a plan that silently skips a scenario is worse than a longer plan.
+
+### Step 6: Write the plan
+
+Follow this exact structure (mirrors a proven format — do not compress it):
+
+```markdown
+# Manual QA test plan — <TICKET-KEY>[ (PR #<number>)]
+
+<One sentence: what this verifies, in terms of the actual bug/feature — not "tests the changes in PROJ-217".>
+
+## Setup
+- <Accounts, browser/session setup, environment, feature flags — whatever a tester needs before starting.>
+
+## Steps
+1. **<Action-oriented step name>**
+   - <Concrete sub-step: exact screen, field, value. Use realistic throwaway values (e.g. a `+qa` email alias), not vague placeholders.>
+   - <...>
+2. **<Next step>**
+   - ...
+   - Call out the **core assertion** and its **fail condition** explicitly on whichever step actually exercises the ticket's bug/feature — this is the step a QA reviewer must not skim past.
+
+<n>. (Optional, higher-confidence) <Technical spot-check title>
+   \`\`\`<language>
+   <query/command from Step 4's project context>
+   \`\`\`
+   <What result to expect, and what a failure would mean.>
+
+## Notes
+- <Map specific steps back to the ticket's acceptance criteria / reproduction steps.>
+- <Explicitly flag which step's failure should be treated as a blocker.>
+```
+
+Write every step so a QA engineer unfamiliar with the ticket could execute it without opening Jira or the PR — spell out exact UI paths, field values, and expected results; a vague step like "verify it works" is a failure of this skill, not an acceptable output.
+
+### Step 7: Post the plan to Jira
+
+Post the full plan as a comment on the ticket via the Jira MCP — automatically, without asking for confirmation first. Never post it to the PR. After posting, confirm to the user that it was posted and include the comment link if the MCP returns one, alongside showing the plan in the chat.
+
+If posting fails (permissions, MCP error), still show the plan in chat and tell the user explicitly that it was **not** posted, with the reason.
+
+## Examples
+
+### Example 1: Ticket + PR
+
+User says: `/qa-steps PROJ-217 175`
+
+Actions: Fetch PROJ-217 via Jira MCP (description, comments, attachments) → fetch PR 175 via `gh pr view`/`gh pr diff` → load `docs/codebase/STACK.md` if present → identify scenarios (main fix + any edge cases from comments) → write the plan, including an optional DB/API spot-check if project context supports it → post as a comment on PROJ-217 → show the plan in chat with a link to the posted comment.
+
+### Example 2: Ticket only, natural language
+
+User says: "What's the QA test plan for PROJ-88?"
+
+Actions: Fetch PROJ-88 via Jira MCP → no PR given, so skip Step 3 and any diff-derived detail → write a behavioral-only or context-only plan depending on whether `docs/codebase/` exists → post as a comment on PROJ-88 → show it in chat.
+
+### Example 3: No ticket identifiable
+
+User says: "Give me the step-by-step QA process for this."
+
+Actions: No ticket key/URL in the argument or recent conversation → ask for the ticket key or URL before doing anything else. Do not proceed on a guess.
+
+## Troubleshooting
+
+### Jira MCP not connected or ticket not found
+
+Stop immediately and tell the user. Do not write a plan from the ticket key alone — a plan built on a guessed description is actively misleading.
+
+### `gh` not installed, not authenticated, or PR not found
+
+Proceed with a ticket-only plan. State plainly in the chat response (not just buried in the plan) that PR-derived detail was skipped and why.
+
+### Ticket has no clear acceptance criteria
+
+Ask the user to clarify scope rather than inventing acceptance criteria. If the title alone is enough to infer a reasonable scope, you may proceed, but say explicitly in the plan's summary line that scope was inferred from the title.
+
+### Posting to Jira fails
+
+Show the plan in chat regardless, and tell the user clearly that it was not posted, with the error reason, so they can post it manually if needed.

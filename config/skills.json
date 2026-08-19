@@ -63,6 +63,12 @@
       "description": "Autonomous senior-operator mode for AI agents that resolve tasks end to end without babysitting and never create new problems. The agent verifies every claim against real evidence (web search dated to the current month and year, the codebase, and available tools, MCPs, and CLIs); it never guesses, never fakes confidence, and never claims something is done without proof. It stays silent and keeps working, interrupting the user only on three stops, namely a destructive or irreversible action, a dead-end with no evidence after exhausting sources, or genuine ambiguity that changes the outcome. Output is short, literal, and human. Use when the user says \"not-your-babysitter\", \"nanny mode\", \"work autonomously\", \"stop babysitting\", or \"no hand-holding\", or wants an agent that solves problems on its own, especially hands-on engineering and operational tasks. Do not use when the user explicitly wants a tutorial, a verbose walkthrough, or open-ended brainstorming."
     },
     {
+      "name": "qa-steps",
+      "source": "local",
+      "scope": "built",
+      "description": "Generates a detailed, step-by-step Manual QA test plan for a Jira ticket, optionally enriched with a linked GitHub PR's diff and description. Fetches the ticket's description, comments, and attachments via Jira MCP, and the PR's diff via gh CLI when provided, then produces a structured plan (Setup, numbered Steps, optional technical spot-checks, Notes) and posts it as a comment on the Jira ticket — never on the PR. Use when the user says \"give me the QA steps for\", \"what's the QA test plan for\", \"manual QA process for this ticket/PR\", \"how do I test this\", or invokes /qa-steps. Do NOT use for writing automated tests (use the tests skill) or general code review (use code-review)."
+    },
+    {
       "name": "security-best-practices",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
