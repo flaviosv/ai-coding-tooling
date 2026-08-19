@@ -4,12 +4,16 @@ description: Generates a detailed, step-by-step Manual QA test plan for a Jira t
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.0.0
+  version: 2.0.0
 ---
 
 # QA Steps
 
 Turns a Jira ticket — optionally cross-referenced with a GitHub PR — into a precise, executable Manual QA test plan, and posts it as a comment on the ticket.
+
+## Role
+
+Adopt this persona for the entire skill: *"I'm a QA Engineer and I need to run manual validation on the informed PR / Jira ticket."* Write every scenario and step the way that QA Engineer would actually perform it by hand — concrete, hands-on actions on the real surface a user or caller touches — never an abstract test-case description a QA engineer would have to re-interpret before executing.
 
 ## Instructions
 
@@ -43,13 +47,20 @@ Check whether `docs/codebase/STACK.md` and `docs/codebase/ARCHITECTURE.md` exist
 
 If these files don't exist, skip this step entirely; the plan stays behavioral-only. Never ask the user to run `architecture-evaluate` as a prerequisite — this step is opportunistic, not required.
 
-### Step 5: Identify every distinct test scenario
+### Step 5: Identify every distinct test scenario and its testing surface
 
 From the ticket's description, comments, and (if present) the PR diff, enumerate every distinct testable scenario: the main fix/feature, edge cases called out in comments, and any regression explicitly mentioned. For tickets covering more than one scenario, give each its own numbered **Steps** block rather than collapsing them into a single flow — a plan that silently skips a scenario is worse than a longer plan.
 
+For each scenario, decide its primary testing surface using this priority order — apply it per scenario, since one ticket can mix surfaces:
+
+1. **UI interaction (default)** — if the scenario is reachable through a screen, page, component, or form, the primary Steps walk through the UI end-to-end. This is the default whenever a UI surface exists, even when the underlying fix is backend — QA validates through what a user actually sees and clicks.
+2. **API calling (fallback)** — only when the scenario has no reachable UI (a backend-only ticket, an internal API, a webhook, a service-to-service change), the primary Steps become direct calls against the real endpoint (`curl`/Postman-style: method, URL, headers, payload, expected status code and response body).
+3. **DB (secondary only)** — a DB check is never the primary way to test a scenario. It stays what Step 4 already produces: an optional, clearly-labeled spot-check that confirms the UI/API action actually changed persisted state.
+4. **Manual test suite run / other CLI commands (conditional)** — include running the test suite or another CLI command as Steps only when the ticket/PR's own change is focused on that surface (e.g. a fix to a flaky test, a new CLI subcommand, a build/tooling script, a lint rule). If the CLI/test suite is incidental to a UI or API feature, leave it out entirely — never add a generic "run `npm test`" step as boilerplate.
+
 ### Step 6: Write the plan
 
-Follow this exact structure (mirrors a proven format — do not compress it):
+Write each scenario's **Steps** block on the surface Step 5 assigned it — UI walkthrough by default, direct API calls only as the fallback, CLI/test-suite commands only when that's the scenario's own surface. Follow this exact structure (mirrors a proven format — do not compress it):
 
 ```markdown
 # Manual QA test plan — <TICKET-KEY>[ (PR #<number>)]
@@ -92,7 +103,7 @@ If posting fails (permissions, MCP error), still show the plan in chat and tell 
 
 User says: `/qa-steps PROJ-217 175`
 
-Actions: Fetch PROJ-217 via Jira MCP (description, comments, attachments) → fetch PR 175 via `gh pr view`/`gh pr diff` → load `docs/codebase/STACK.md` if present → identify scenarios (main fix + any edge cases from comments) → write the plan, including an optional DB/API spot-check if project context supports it → post as a comment on PROJ-217 → show the plan in chat with a link to the posted comment.
+Actions: Fetch PROJ-217 via Jira MCP (description, comments, attachments) → fetch PR 175 via `gh pr view`/`gh pr diff` → load `docs/codebase/STACK.md` if present → identify scenarios (main fix + any edge cases from comments) and assign each its surface (UI walkthrough by default, API-only fallback if the diff shows no UI surface) → write the plan, including an optional DB spot-check if project context supports it → post as a comment on PROJ-217 → show the plan in chat with a link to the posted comment.
 
 ### Example 2: Ticket only, natural language
 
