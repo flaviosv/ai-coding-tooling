@@ -1,10 +1,10 @@
 ---
 name: qa-steps
-description: Generates a detailed, step-by-step Manual QA test plan for a Jira ticket, optionally enriched with a linked GitHub PR's diff and description. Fetches the ticket's description, comments, and attachments via Jira MCP, and the PR's diff via gh CLI when provided, then produces a structured plan (Setup, numbered Steps, optional technical spot-checks, Notes) and posts it as a comment on the Jira ticket — never on the PR. Use when the user says "give me the QA steps for", "what's the QA test plan for", "manual QA process for this ticket/PR", "how do I test this", or invokes /qa-steps. Do NOT use for writing automated tests (use the tests skill) or general code review (use code-review).
+description: Generates a detailed, step-by-step Manual QA test plan for a Jira ticket, optionally enriched with a linked GitHub PR's diff and description. Fetches the ticket's description, comments, and attachments via Jira MCP, and the PR's diff via gh CLI when provided, then produces a structured plan (Setup, numbered Steps, optional technical spot-checks, Notes), shows it inline in chat, and — only after the user confirms — posts it as a comment on the Jira ticket — never on the PR. Use when the user says "give me the QA steps for", "what's the QA test plan for", "manual QA process for this ticket/PR", "how do I test this", or invokes /qa-steps. Do NOT use for writing automated tests (use the tests skill) or general code review (use code-review).
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 2.0.0
+  version: 2.1.0
 ---
 
 # QA Steps
@@ -14,6 +14,8 @@ Turns a Jira ticket — optionally cross-referenced with a GitHub PR — into a 
 ## Role
 
 Adopt this persona for the entire skill: *"I'm a QA Engineer and I need to run manual validation on the informed PR / Jira ticket."* Write every scenario and step the way that QA Engineer would actually perform it by hand — concrete, hands-on actions on the real surface a user or caller touches — never an abstract test-case description a QA engineer would have to re-interpret before executing.
+
+Every plan targets the team's **staging environment**, never the engineer's local machine. Never write a step, URL, host, or spot-check that assumes local infrastructure (`localhost`, a local dev server, `docker-compose`, a local `.env`, a locally-run DB) — a QA engineer executing this plan has no access to the reporter's machine and no reason to run one up. When a concrete host/URL is needed (an API call, a spot-check), use the project's staging domain/URL if it's known from `docs/codebase/` or the PR; otherwise use a clearly-labeled placeholder like `<staging-url>` rather than defaulting to a local one.
 
 ## Instructions
 
@@ -43,7 +45,7 @@ If `gh` fails (PR not found, not authenticated), proceed with a ticket-only plan
 
 ### Step 4: Load project technical context (optional)
 
-Check whether `docs/codebase/STACK.md` and `docs/codebase/ARCHITECTURE.md` exist in the current repo. If they do, use them to write one optional, clearly-labeled higher-confidence technical spot-check (e.g. a DB query in the project's actual DB technology, a `curl` against a real endpoint, a log grep) — never invent stack details that aren't backed by these files or the PR diff.
+Check whether `docs/codebase/STACK.md` and `docs/codebase/ARCHITECTURE.md` exist in the current repo. If they do, use them to write one optional, clearly-labeled higher-confidence technical spot-check (e.g. a DB query in the project's actual DB technology, a `curl` against a real endpoint, a log grep) — against staging, never a local DB/server — never invent stack details that aren't backed by these files or the PR diff.
 
 If these files don't exist, skip this step entirely; the plan stays behavioral-only. Never ask the user to run `architecture-evaluate` as a prerequisite — this step is opportunistic, not required.
 
@@ -54,7 +56,7 @@ From the ticket's description, comments, and (if present) the PR diff, enumerate
 For each scenario, decide its primary testing surface using this priority order — apply it per scenario, since one ticket can mix surfaces:
 
 1. **UI interaction (default)** — if the scenario is reachable through a screen, page, component, or form, the primary Steps walk through the UI end-to-end. This is the default whenever a UI surface exists, even when the underlying fix is backend — QA validates through what a user actually sees and clicks.
-2. **API calling (fallback)** — only when the scenario has no reachable UI (a backend-only ticket, an internal API, a webhook, a service-to-service change), the primary Steps become direct calls against the real endpoint (`curl`/Postman-style: method, URL, headers, payload, expected status code and response body).
+2. **API calling (fallback)** — only when the scenario has no reachable UI (a backend-only ticket, an internal API, a webhook, a service-to-service change), the primary Steps become direct calls against the real staging endpoint (`curl`/Postman-style: method, URL, headers, payload, expected status code and response body) — never a `localhost`/local-dev URL.
 3. **DB (secondary only)** — a DB check is never the primary way to test a scenario. It stays what Step 4 already produces: an optional, clearly-labeled spot-check that confirms the UI/API action actually changed persisted state.
 4. **Manual test suite run / other CLI commands (conditional)** — include running the test suite or another CLI command as Steps only when the ticket/PR's own change is focused on that surface (e.g. a fix to a flaky test, a new CLI subcommand, a build/tooling script, a lint rule). If the CLI/test suite is incidental to a UI or API feature, leave it out entirely — never add a generic "run `npm test`" step as boilerplate.
 
@@ -68,7 +70,7 @@ Write each scenario's **Steps** block on the surface Step 5 assigned it — UI w
 <One sentence: what this verifies, in terms of the actual bug/feature — not "tests the changes in PROJ-217".>
 
 ## Setup
-- <Accounts, browser/session setup, environment, feature flags — whatever a tester needs before starting.>
+- <Accounts, browser/session setup, staging URL/environment, feature flags — whatever a tester needs before starting on staging.>
 
 ## Steps
 1. **<Action-oriented step name>**
@@ -91,11 +93,15 @@ Write each scenario's **Steps** block on the surface Step 5 assigned it — UI w
 
 Write every step so a QA engineer unfamiliar with the ticket could execute it without opening Jira or the PR — spell out exact UI paths, field values, and expected results; a vague step like "verify it works" is a failure of this skill, not an acceptable output.
 
-### Step 7: Post the plan to Jira
+Show the full plan inline in the chat response as plain markdown (not just a summary) — this is the primary deliverable of this step, before anything is posted anywhere.
 
-Post the full plan as a comment on the ticket via the Jira MCP — automatically, without asking for confirmation first. Never post it to the PR. After posting, confirm to the user that it was posted and include the comment link if the MCP returns one, alongside showing the plan in the chat.
+### Step 7: Ask permission, then post to Jira
 
-If posting fails (permissions, MCP error), still show the plan in chat and tell the user explicitly that it was **not** posted, with the reason.
+After showing the plan, ask the user whether to post it as a comment on the ticket. Do not post automatically and do not skip the question. Never offer to post it to the PR.
+
+- If the user confirms, post the full plan as a comment on the ticket via the Jira MCP. Confirm to the user that it was posted and include the comment link if the MCP returns one.
+- If the user declines, or asks for changes first, stop there — the plan already shown in chat stands as the deliverable; revise and re-show it if they ask for edits, then ask again before posting.
+- If posting fails after the user confirms (permissions, MCP error), tell the user explicitly that it was **not** posted, with the reason, so they can post it manually if needed.
 
 ## Examples
 
@@ -103,13 +109,13 @@ If posting fails (permissions, MCP error), still show the plan in chat and tell 
 
 User says: `/qa-steps PROJ-217 175`
 
-Actions: Fetch PROJ-217 via Jira MCP (description, comments, attachments) → fetch PR 175 via `gh pr view`/`gh pr diff` → load `docs/codebase/STACK.md` if present → identify scenarios (main fix + any edge cases from comments) and assign each its surface (UI walkthrough by default, API-only fallback if the diff shows no UI surface) → write the plan, including an optional DB spot-check if project context supports it → post as a comment on PROJ-217 → show the plan in chat with a link to the posted comment.
+Actions: Fetch PROJ-217 via Jira MCP (description, comments, attachments) → fetch PR 175 via `gh pr view`/`gh pr diff` → load `docs/codebase/STACK.md` if present → identify scenarios (main fix + any edge cases from comments) and assign each its surface (UI walkthrough by default, API-only fallback if the diff shows no UI surface) → write the plan, including an optional DB spot-check if project context supports it → show the plan in chat → ask whether to post it to PROJ-217 → on confirmation, post it and share the comment link.
 
 ### Example 2: Ticket only, natural language
 
 User says: "What's the QA test plan for PROJ-88?"
 
-Actions: Fetch PROJ-88 via Jira MCP → no PR given, so skip Step 3 and any diff-derived detail → write a behavioral-only or context-only plan depending on whether `docs/codebase/` exists → post as a comment on PROJ-88 → show it in chat.
+Actions: Fetch PROJ-88 via Jira MCP → no PR given, so skip Step 3 and any diff-derived detail → write a behavioral-only or context-only plan depending on whether `docs/codebase/` exists → show it in chat → ask whether to post it to PROJ-88 → on confirmation, post it.
 
 ### Example 3: No ticket identifiable
 
@@ -133,4 +139,4 @@ Ask the user to clarify scope rather than inventing acceptance criteria. If the 
 
 ### Posting to Jira fails
 
-Show the plan in chat regardless, and tell the user clearly that it was not posted, with the error reason, so they can post it manually if needed.
+Tell the user clearly that it was not posted, with the error reason, so they can post it manually if needed. The plan is already shown in chat from Step 6, regardless of posting outcome.
