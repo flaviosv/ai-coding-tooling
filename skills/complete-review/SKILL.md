@@ -3,7 +3,7 @@ name: complete-review
 description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by ship-spec) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
 metadata:
   author: Flavio Studart
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Complete Review
@@ -23,6 +23,8 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 - On a partial failure (one invocation's analysis returned findings, the other didn't): retry ONLY the failed invocation once, scoped to that skill alone — never re-run the invocation that already returned findings. Issue the single merged POST only after both invocations have resolved (success or final failure) — never post twice, and never post before both have resolved. On a **full failure** (both invocations fail even after their scoped retry): do NOT issue any POST — there is no review to publish. Report both failure reasons and stop; never proceed as if a review was posted.
 - If a subagent reports it could not complete (PR not found, auth failure, skill-invocation error): retry once with a fresh subagent (scoped to the failed skill only, on a partial failure — see above). If it fails a second time, stop and report the failure — do not fabricate a finding count or skip a skill.
 - Never print `gh auth token` output or any token/credential value. Reference `gh`'s own auth state by status only ("authenticated" / "not authenticated").
+- For environments with more than one `gh` account logged in, see [gh Account Resolution](../../templates/gh-account-resolution.md) for scoping every `gh` call to the correct account — not applied here by default; adopt it only if this skill starts running somewhere that actually hits the multi-account problem.
+- **`human_review` parameter (optional, caller-supplied, Single PR Mode only).** Absent (the default) → behavior is exactly as documented above: Step 2 posts immediately, nothing changes for a plain `/complete-review` invocation or any other caller that doesn't pass it. Passed as `true` by a caller (e.g. a delivery skill threading its own review-gate setting through) → Step 2 assembles findings but withholds the POST; see Single PR Mode Step 2's Human Review branch and the [Publish Mode](#publish-mode) section below. This gate does not apply to Batch Mode — its whole premise is an unattended sweep across many PRs, so Batch Mode always publishes immediately regardless of this parameter.
 
 ### Batch Mode
 
@@ -44,9 +46,10 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 
 ## Step 1: Mode Detection
 
-1. If a specific PR number is already established in this conversation (stated explicitly by the user, e.g. "/complete-review PR #123", or produced by an earlier step, e.g. `ship-spec` just opened one) — **Single PR Mode**.
-2. If the request names no specific PR and instead asks for a sweep across PRs waiting on your review (e.g. "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet") — **Batch Mode**.
-3. If neither is clear — no PR number stated, and the request doesn't clearly ask for a batch sweep — ask the user: "Should I review one specific PR (give me the number), or run a batch review of every open PR waiting on your review?" Do not guess.
+1. If the request explicitly asks to publish findings already computed and held by an earlier `human_review: true` run (e.g. "publish complete-review findings for PR #N from `<findings_path>`") — **Publish Mode**.
+2. If a specific PR number is already established in this conversation (stated explicitly by the user, e.g. "/complete-review PR #123", or produced by an earlier step, e.g. `ship-spec` just opened one) — **Single PR Mode**.
+3. If the request names no specific PR and instead asks for a sweep across PRs waiting on your review (e.g. "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet") — **Batch Mode**.
+4. If neither is clear — no PR number stated, and the request doesn't clearly ask for a batch sweep — ask the user: "Should I review one specific PR (give me the number), or run a batch review of every open PR waiting on your review?" Do not guess.
 
 ## Single PR Mode
 
@@ -62,8 +65,12 @@ Delegate to a single isolated subagent rather than invoking either skill in this
 
 1. Spawn one subagent (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`) whose prompt instructs it to, within its own conversation:
    a. Issue two concurrent tool calls in the same turn (not sequential awaits) — one invoking `code-review` in **GitHub PR mode, Return-Only Variant**, against the resolved PR number ("review PR #N; return findings only, do not post"), one invoking `tests-code-review` the same way ("review tests on PR #N; return findings only, do not post"). Neither invocation touches GitHub — each only assembles its `comments` array (`path`/`line`/`body` per finding) and returns it, alongside its own Step 5 complexity banner (tier, file/line counts, execution mode) — capture that banner verbatim, it's part of what this subagent reports back. Every finding is included, for every run — do not filter by severity, do not ask again per finding.
-   b. Once both invocations have resolved (success or final failure after the scoped retry — see Guardrails): if **both** failed, do **not** issue any `POST` call — there is nothing to post. If **at least one** succeeded, merge both `comments` arrays into one (or use just the succeeded one's, on a partial failure). Before posting, check for an existing pending review on this PR authored by the same identity `gh` is authenticated as (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews --jq '.[] | select(.state=="PENDING" and .user.login==$me)'`, with `$me` from `gh api user --jq .login`). If one exists: fetch its comments (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews/{review_id}/comments`), merge them into this run's comment set — drop exact `path`+`line`+`body` duplicates so re-running against an unsubmitted PR doesn't double-post the same finding — then delete the old pending review (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews/{review_id} --method DELETE`). Either way, issue **exactly one** `gh api repos/{owner}/{repo}/pulls/{PR}/reviews --method POST --input payload.json` call with the fully merged set, `event` field omitted (pending state) — this POST must never fire more than once per run, and never with an empty `comments` array. Never stop to ask the user how to handle an existing pending review — merging into it automatically, as just described, is the only way to add to one, since GitHub has no API to incrementally append comments to a pending review in place.
-   c. Return **only** one compact result covering both: each skill's total finding count, a per-severity breakdown, and its complexity banner from step 1a. If one skill's invocation ultimately failed, return its failure reason in place of its counts and banner — the other skill's result, if it succeeded, is still reported normally (see Guardrails for the scoped retry rule). If **both** failed, return both failure reasons and no counts. Note whether step 1b found and merged an existing pending review, and how many comments were carried over from it.
+   b. Once both invocations have resolved (success or final failure after the scoped retry — see Guardrails): if **both** failed, do **not** issue any `POST` call — there is nothing to post. If **at least one** succeeded, merge both `comments` arrays into one (or use just the succeeded one's, on a partial failure).
+
+      **Human Review branch.** If this invocation was passed `human_review: true`: do not check for or post to any pending review yet. Instead write the merged `comments` array and both banners to `findings_path` — required whenever `human_review: true` is passed; if the caller passed `human_review: true` without a `findings_path`, stop and ask rather than inventing a location. Return a compact result with `awaiting_approval: true`, the finding counts/banners, and the `findings_path` used, and stop — do not proceed to the POST below. The caller shows these to whoever needs to approve them; publishing happens later via [Publish Mode](#publish-mode), not here.
+
+      Otherwise (the default — `human_review` absent or `false`): before posting, check for an existing pending review on this PR authored by the same identity `gh` is authenticated as (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews --jq '.[] | select(.state=="PENDING" and .user.login==$me)'`, with `$me` from `gh api user --jq .login`). If one exists: fetch its comments (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews/{review_id}/comments`), merge them into this run's comment set — drop exact `path`+`line`+`body` duplicates so re-running against an unsubmitted PR doesn't double-post the same finding — then delete the old pending review (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews/{review_id} --method DELETE`). Either way, issue **exactly one** `gh api repos/{owner}/{repo}/pulls/{PR}/reviews --method POST --input payload.json` call with the fully merged set, `event` field omitted (pending state) — this POST must never fire more than once per run, and never with an empty `comments` array. Never stop to ask the user how to handle an existing pending review — merging into it automatically, as just described, is the only way to add to one, since GitHub has no API to incrementally append comments to a pending review in place.
+   c. Return **only** one compact result covering both: each skill's total finding count, a per-severity breakdown, and its complexity banner from step 1a. If one skill's invocation ultimately failed, return its failure reason in place of its counts and banner — the other skill's result, if it succeeded, is still reported normally (see Guardrails for the scoped retry rule). If **both** failed, return both failure reasons and no counts. Note whether step 1b found and merged an existing pending review, and how many comments were carried over from it. (Human Review branch: this step doesn't run — Step 2b's own return already happened.)
 
 Running both analysis invocations concurrently inside one subagent conversation is safe precisely because neither writes to GitHub — the one-pending-review-per-PR constraint (see Guardrails) is respected by construction, since only step 1b's single merged POST ever writes to GitHub.
 
@@ -72,6 +79,24 @@ Each skill assembles its findings via its own existing Step 9 / [GitHub PR Mode 
 ### Step 3: Report
 
 Report the PR URL, each skill's complexity banner from Step 2c, and the finding count from each skill (e.g. "code-review — Complex (32 files, 1,840 lines) · Parallel, 4 agents · 7 findings. tests-code-review — Medium (9 test files, 420 lines) · Single agent · 2 findings. 9 findings published as one pending review — submit manually on GitHub when ready."). If Step 2b merged into an existing pending review, say so and how many comments carried over (e.g. "3 comments carried over from an already-pending review, plus 9 new — 12 total"). If Step 2 hit a full failure (both invocations failed, no review posted — see Guardrails), report the PR URL alongside both failure reasons instead — never claim findings were published when they weren't.
+
+## Publish Mode
+
+Entered when the request explicitly asks to publish findings already computed and held by an earlier Single PR Mode run that was passed `human_review: true`. This mode never re-runs `code-review`/`tests-code-review` — it only posts what's already on disk, exactly as held.
+
+### Step 1: Read the Held Findings
+
+Read `findings_path` — given explicitly by the caller, never inferred. Missing or unreadable → stop and report; do not fabricate a findings set or fall back to re-analyzing the PR. The file holds the merged `comments` array and both skills' banners exactly as Single PR Mode Step 2's Human Review branch wrote them.
+
+### Step 2: Publish
+
+Same mechanics as Single PR Mode Step 2b's non-human-review path: check for an existing pending review under the authenticated identity, merge if found (fetch its comments, drop exact `path`+`line`+`body` duplicates, delete the old one), then issue exactly one `gh api .../reviews --method POST` call with the held `comments` array, `event` field omitted. Never re-analyze the PR — the findings posted are exactly what was held, unfiltered, regardless of how long ago Step 1 of Single PR Mode ran.
+
+### Step 3: Report
+
+Same format as Single PR Mode Step 3, using the banners read from `findings_path` in Step 1.
+
+After a successful publish, the caller is responsible for the `findings_path` file's lifecycle (deleting it if it was meant to be transient) — this skill only reads it once and doesn't manage cleanup.
 
 ## Batch Mode
 
@@ -256,7 +281,20 @@ User: "review pending PRs" (run from a plain directory, no `.git`)
 2. Batch Mode Step 1: no git remote found → ask "Which repo should I check — `owner/repo`?"
 3. User replies "acme/widgets" → proceed from Batch Mode Step 2 using that repo
 
-### Example 10: New commit lands on a PR whose Batch Mode subagent already reported
+### Example 10: Human Review gate, held then published
+
+Caller (e.g. `build-feature`) invokes: "run complete-review for PR #512, human_review: true, findings_path: .specs/features/PROJ-9-widget/complete-review-findings.json"
+
+1. Step 1 (Mode Detection): PR number given, not a publish request → Single PR Mode
+2. Single PR Mode Step 1: resolved as #512
+3. Single PR Mode Step 2: both invocations succeed (6 findings, 1 finding). Step 2b's Human Review branch fires: writes the merged 7-comment set plus both banners to `.specs/features/PROJ-9-widget/complete-review-findings.json`, does not check for or post to any pending review. Returns `awaiting_approval: true`, the counts/banners, and the `findings_path`.
+4. Single PR Mode Step 3: "7 findings ready for review (6 code-review, 1 tests-code-review) — held at `.specs/features/PROJ-9-widget/complete-review-findings.json`, not yet published."
+5. Later, once the caller's human approves: caller invokes "publish complete-review findings for PR #512 from .specs/features/PROJ-9-widget/complete-review-findings.json" → Step 1 (Mode Detection): explicit publish request → Publish Mode
+6. Publish Mode Step 1: reads the 7 held comments and both banners from the file
+7. Publish Mode Step 2: no existing pending review found → posts one pending review with all 7 comments
+8. Publish Mode Step 3: "7 findings published as one pending review on PR #512 (6 code-review, 1 tests-code-review) — submit manually on GitHub when ready."
+
+### Example 11: New commit lands on a PR whose Batch Mode subagent already reported
 
 Continuing Example 6: PR #12's subagent finished and reported 4 findings (1 High). Ten minutes later, in the same conversation, the user says "a new commit just landed on PR #12."
 
