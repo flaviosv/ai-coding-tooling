@@ -1,9 +1,9 @@
 ---
 name: complete-review
-description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by ship-spec) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
+description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by build-feature) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
 metadata:
   author: Flavio Studart
-  version: "1.4.0"
+  version: "1.4.1"
 ---
 
 # Complete Review
@@ -16,7 +16,7 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 - Do NOT auto-fix, filter, or withhold findings before publishing — every finding from both skills is posted, unfiltered, every run.
 - Do NOT submit, approve, or request-changes on the PR review — pending state only, same as `code-review`/`tests-code-review`'s own GitHub PR Constraints.
 - Do NOT create GitHub Issues.
-- Do NOT reply to or resolve existing review threads — this skill only publishes the new pending review; triaging prior comments is a separate concern (e.g. `fix-review`, or `ship-spec`'s own comment-triage mode).
+- Do NOT reply to or resolve existing review threads — this skill only publishes the new pending review; triaging prior comments is a separate concern (e.g. `fix-review`, or `build-feature`'s own re-entry mode for an already-delivered PR).
 - Each invocation's Step 5 complexity banner (tier, file/line counts, execution mode) is real signal, not noise to discard — the subagent must capture both skills' banners and return them alongside the finding counts, and the report step must relay them to the user. This is informational only: complete-review does not change how it drives `code-review`/`tests-code-review` based on their own complexity determination — each skill already routes its own execution (inline/single-agent/parallel) internally; nothing here overrides that.
 - GitHub allows only **one pending (unsubmitted) review per identity per PR at a time**, and there is no API to incrementally add comments to an already-open pending review — a second `POST .../reviews` call while one is pending returns HTTP 422 ("A review cannot be created because a pending review already exists"). If the subagent finds a pending review already on the PR under the same identity `gh` is authenticated as (e.g. left over from an earlier, still-unsubmitted `complete-review` run), it merges into it automatically instead of failing or asking the user what to do. This means the subagent must issue **exactly one** `POST .../reviews` call per PR, after merging both skills' findings (and any carried-over comments) — never one POST per skill. `code-review` and `tests-code-review`'s analysis invocations MAY run concurrently within the subagent precisely because neither one writes to GitHub — only the single merged POST does.
 - Never touch a pending review authored by a **different** identity than the one `gh` is authenticated as — that belongs to a human reviewer mid-draft, not to this skill. Only merge into or delete a pending review you can confirm you (the authenticated identity) created.
@@ -47,7 +47,7 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 ## Step 1: Mode Detection
 
 1. If the request explicitly asks to publish findings already computed and held by an earlier `human_review: true` run (e.g. "publish complete-review findings for PR #N from `<findings_path>`") — **Publish Mode**.
-2. If a specific PR number is already established in this conversation (stated explicitly by the user, e.g. "/complete-review PR #123", or produced by an earlier step, e.g. `ship-spec` just opened one) — **Single PR Mode**.
+2. If a specific PR number is already established in this conversation (stated explicitly by the user, e.g. "/complete-review PR #123", or produced by an earlier step, e.g. `build-feature` just opened one) — **Single PR Mode**.
 3. If the request names no specific PR and instead asks for a sweep across PRs waiting on your review (e.g. "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet") — **Batch Mode**.
 4. If neither is clear — no PR number stated, and the request doesn't clearly ask for a batch sweep — ask the user: "Should I review one specific PR (give me the number), or run a batch review of every open PR waiting on your review?" Do not guess.
 
@@ -55,7 +55,7 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 
 ### Step 1: Resolve the PR
 
-Use a PR number only if it's already established in this conversation — stated explicitly by the user (e.g. "/complete-review PR #123", "run a complete review on PR 456"), or produced by an earlier step in this same conversation (e.g. ship-spec's Step 5 just opened one). Do not infer it from git/gh state (current branch, `gh pr view` against the checkout, etc.) — only what's already known from the conversation counts as "declared."
+Use a PR number only if it's already established in this conversation — stated explicitly by the user (e.g. "/complete-review PR #123", "run a complete review on PR 456"), or produced by an earlier step in this same conversation (e.g. build-feature just opened one). Do not infer it from git/gh state (current branch, `gh pr view` against the checkout, etc.) — only what's already known from the conversation counts as "declared."
 
 If no PR number is known from the conversation, ask the user for one before continuing. Do not proceed on an assumption.
 
@@ -224,7 +224,7 @@ User: `/complete-review`
 2. User replies "PR #789" → Single PR Mode, resolved as #789, continue to Step 2
 3. Steps 2 and 3 proceed as in Example 1
 
-### Example 3: Single PR Mode, invoked mid-flow by another skill (e.g. ship-spec)
+### Example 3: Single PR Mode, invoked mid-flow by another skill (e.g. build-feature)
 
 The invoking skill states the PR number explicitly when delegating (e.g. "run complete-review for PR #128, just opened") — that statement is what makes the PR "already declared in the conversation," so Mode Detection and Step 1 resolve it without asking, and Steps 2–3 proceed exactly as in Example 1.
 

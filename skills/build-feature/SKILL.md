@@ -1,9 +1,9 @@
 ---
 name: build-feature
-description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — all through isolated subagents, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use for an already-planned feature with tasks.md written (use ship-spec) or to fix PR comments outside this flow (use fix-review).
+description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — all through isolated subagents, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Build Feature
@@ -55,7 +55,7 @@ Apply [gh Account Resolution](../../templates/gh-account-resolution.md) once at 
 
 ### PR
 
-- Opened as a draft immediately after the first push (Step 4), with a minimal stub body (task ID and description only — `spec.md` doesn't exist yet at this point). Rewritten in full (Step 11) once tlc-spec-driven's Execute phase completes, sourced from `spec.md`/`tasks.md`/`commits.md`/`validation.md` — same sourcing `ship-spec` uses, invent nothing new.
+- Opened as a draft immediately after the first push (Step 4), with a minimal stub body (task ID and description only — `spec.md` doesn't exist yet at this point). Rewritten in full (Step 11) once tlc-spec-driven's Execute phase completes, sourced from `spec.md`/`tasks.md`/`commits.md`/`validation.md` — invent nothing new.
 - Never merged, by this skill, under any circumstance.
 - Marked ready (`gh pr ready <PR>`) only as the very last successful step (Step 16) — after every other step, including any `human_review` pause, has actually completed.
 
@@ -149,7 +149,7 @@ Invoke `fix-review` for this PR — it operates inside the already-open worktree
 
 ## Step 14: architecture-evaluate (Full, Sonnet)
 
-Spawn a Sonnet subagent to run `architecture-evaluate` in Full mode against everything pushed to this branch this run. Classify touched `docs/codebase/` files as new vs. existing (`git status --porcelain -- docs/codebase/`, same logic as `ship-spec`'s Step 8): if every touched file is new, leave them uncommitted for manual review; otherwise commit as one Conventional Commits commit and push.
+Spawn a Sonnet subagent to run `architecture-evaluate` in Full mode against everything pushed to this branch this run. Classify touched `docs/codebase/` files as new vs. existing (`git status --porcelain -- docs/codebase/`): if every touched file is new, leave them uncommitted for manual review; otherwise commit as one Conventional Commits commit and push.
 
 ## Step 15: design-sync (Conditional, Sonnet)
 

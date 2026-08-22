@@ -29,7 +29,7 @@ Never edit the global file directly — changes must originate in `config/status
 
 ## Change Request Workflow
 
-- Commit directly to `main` — no feature-branch-first workflow for this repository; most of it is `.md` skill/config content, not application code with a release/PR-gated `main`. (`ship-spec`'s own `/ship-spec` feature-delivery flow is the one exception — it still creates and PRs a `feature/*` branch within its own explicit workflow.)
+- Commit directly to `main` — no feature-branch-first workflow for this repository; most of it is `.md` skill/config content, not application code with a release/PR-gated `main`. (`build-feature`'s own `/build-feature` flow is the one exception — it still creates and PRs a `feature/*` branch within its own explicit workflow.)
 - After completing any change request, commit and push to `origin` automatically — do not wait to be asked, and do not leave finished work sitting as uncommitted local changes.
 
 # Skills
