@@ -114,7 +114,6 @@ Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. 
 | **architecture-evaluate** | Creates and incrementally syncs the project context docs in `docs/codebase/` (PROJECT, STACK, STRUCTURE, ARCHITECTURE, CONVENTIONS, INTEGRATIONS, TESTING, CONCERNS, PIPELINE) that agents load at session start. Full mode maps the whole codebase; Incremental mode syncs only what changed (and root files like this README); Package mode documents a single module. |
 | **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes, a GitHub PR, or a range of commits (multi-commit mode). Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
-| **tests** | Writes and maintains tests — unit, integration, and coverage analysis. |
 | **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace, GitHub PR, and multi-commit review modes. |
 
 > ⭐ **Highlighted skills:**
