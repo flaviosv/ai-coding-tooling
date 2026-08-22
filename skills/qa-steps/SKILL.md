@@ -4,7 +4,7 @@ description: Generates a detailed, step-by-step Manual QA test plan for a Jira t
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 2.1.0
+  version: 2.1.1
 ---
 
 # QA Steps
@@ -41,7 +41,7 @@ gh pr diff <number>
 
 Read the actual diff, not just the description — map QA steps to the real changed files, endpoints, and field names instead of guessing from the ticket text alone.
 
-If `gh` fails (PR not found, not authenticated), proceed with a ticket-only plan and note in the output that PR-derived detail was skipped.
+If `gh` fails (PR not found, not authenticated), proceed with a ticket-only plan and note in the output that PR-derived detail was skipped. For environments with more than one `gh` account logged in, see [gh Account Resolution](../../templates/gh-account-resolution.md) for scoping this call to the correct account — not applied here by default; adopt it only if this skill starts running somewhere that actually hits the multi-account problem.
 
 ### Step 4: Load project technical context (optional)
 
