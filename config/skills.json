@@ -7,6 +7,12 @@
       "description": "Creates, updates, and incrementally syncs the project context documentation that agents load at session start. Three modes. Full mode deep-scans the codebase (brownfield mapping) and writes nine context files to docs/codebase/ — PROJECT.md (overview, vision, goals), STACK.md, STRUCTURE.md, ARCHITECTURE.md, CONVENTIONS.md, INTEGRATIONS.md, TESTING.md, CONCERNS.md, and PIPELINE.md. Incremental mode inspects the git workspace and syncs only what changed — inline API docs in source files, root context files (README.md, CLAUDE.md, AGENTS.md), and the context files in docs/codebase/ — and detects new packages. Package mode generates a scoped CLAUDE.md for an individual package/module. Use when the user says \"evaluate architecture\", \"map codebase\", \"analyze existing code\", \"document current architecture\", \"update architecture docs\", \"refresh project context\", \"onboard project\", \"create project docs\", \"update project docs\", \"update docs\", \"document my changes\", \"sync documentation\", \"document recent changes\", \"evaluate package\", or \"package architecture\"."
     },
     {
+      "name": "build-feature",
+      "source": "local",
+      "scope": "built",
+      "description": "Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — all through isolated subagents, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says \"build feature\", \"start a new feature end to end\", \"deliver this feature autonomously\", or invokes /build-feature. Do NOT use for an already-planned feature with tasks.md written (use ship-spec) or to fix PR comments outside this flow (use fix-review)."
+    },
+    {
       "name": "code-review",
       "source": "local",
       "scope": "built",
