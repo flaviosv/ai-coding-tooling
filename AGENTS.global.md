@@ -149,3 +149,11 @@ Wait for the user's answer before writing any code. If they say no or to skip, p
 - Ask yourself: "Would a staff engineer approve this?"
 - Run tests, check logs, demonstrate correctness
     - Ask for approval for such tasks
+
+## Test Execution Scope
+
+Scope test execution to the size of the change — this avoids burning time and tokens on full suite runs that a punctual fix doesn't need.
+
+- **Punctual fixes** (a change confined to a specific piece of code, function, or a handful of tests): avoid a full test execution (unit + integration + e2e). Run only the tests covering the affected code — the specific test file(s), module, or targeted test pattern.
+- **Full features or cross-cutting fixes** (changes that touch multiple intersecting areas — shared modules, contracts between components, or several subsystems at once): running the full suite is warranted and allowed.
+- When unsure which category a change falls into, err toward the narrower run and widen it only if the change's blast radius turns out to be broader than expected.
