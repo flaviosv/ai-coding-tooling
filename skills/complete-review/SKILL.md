@@ -3,7 +3,7 @@ name: complete-review
 description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by build-feature) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
 metadata:
   author: Flavio Studart
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Complete Review
@@ -18,11 +18,11 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 - Do NOT create GitHub Issues.
 - Do NOT reply to or resolve existing review threads — this skill only publishes the new pending review; triaging prior comments is a separate concern (e.g. `fix-review`, or `build-feature`'s own re-entry mode for an already-delivered PR).
 - Each invocation's Step 5 complexity banner (tier, file/line counts, execution mode) is real signal, not noise to discard — the subagent must capture both skills' banners and return them alongside the finding counts, and the report step must relay them to the user. This is informational only: complete-review does not change how it drives `code-review`/`tests-code-review` based on their own complexity determination — each skill already routes its own execution (inline/single-agent/parallel) internally; nothing here overrides that.
-- GitHub allows only **one pending (unsubmitted) review per identity per PR at a time**, and there is no API to incrementally add comments to an already-open pending review — a second `POST .../reviews` call while one is pending returns HTTP 422 ("A review cannot be created because a pending review already exists"). If the subagent finds a pending review already on the PR under the same identity `gh` is authenticated as (e.g. left over from an earlier, still-unsubmitted `complete-review` run), it merges into it automatically instead of failing or asking the user what to do. This means the subagent must issue **exactly one** `POST .../reviews` call per PR, after merging both skills' findings (and any carried-over comments) — never one POST per skill. `code-review` and `tests-code-review`'s analysis invocations MAY run concurrently within the subagent precisely because neither one writes to GitHub — only the single merged POST does.
-- Never touch a pending review authored by a **different** identity than the one `gh` is authenticated as — that belongs to a human reviewer mid-draft, not to this skill. Only merge into or delete a pending review you can confirm you (the authenticated identity) created.
-- **Secondary rate limit on the merged `POST .../reviews` call (or the `DELETE` used to merge into an existing one).** GitHub's abuse-detection secondary rate limit (HTTP 403, message containing "secondary rate limit" / "temporarily blocked from content creation") is scoped **per authenticated account, not per-repo** — a single bulk POST creating a review with many inline comments can trip it on its own, and it compounds if this skill is running against more than one PR under the same `gh` identity around the same moment (e.g. two concurrent `build-feature` runs). On this specific error: confirm via a read-only GET that nothing partial got created, then retry the identical POST once after a 60-second wait; if it fails again, retry once more after a 5-minute wait; if it fails a third time, stop and report rather than queuing further automatic retries with escalating wait times — the findings are still safe (on disk at `findings_path`, or in the subagent's own return value), so nothing is lost by stopping.
-- **Never delete a review this skill just successfully created.** If a post-creation check (e.g. comparing the posted comment count against what was sent) looks short, do not delete and repost to "fix" it — GitHub's comment-listing endpoints default to 30 items per page, so an unpaginated count check will always look short on any review with more than 30 comments; that's the far more likely explanation, not actual data loss. Re-check with `--paginate` before concluding anything is missing. If the paginated count is still wrong, stop and report to the user instead of deleting and recreating — a delete/re-POST cycle against a PR that already has a review you just posted is itself a common secondary-rate-limit trigger, on top of a working review that didn't need touching.
-- On a partial failure (one invocation's analysis returned findings, the other didn't): retry ONLY the failed invocation once, scoped to that skill alone — never re-run the invocation that already returned findings. Issue the single merged POST only after both invocations have resolved (success or final failure) — never post twice, and never post before both have resolved. On a **full failure** (both invocations fail even after their scoped retry): do NOT issue any POST — there is no review to publish. Report both failure reasons and stop; never proceed as if a review was posted.
+- GitHub allows only **one pending (unsubmitted) review per identity per PR at a time**. Growing one is never a delete-and-recreate — see [Posting Mechanics](#posting-mechanics): the subagent finds any existing pending review under the authenticated identity and appends new findings to it directly, via GraphQL. `code-review` and `tests-code-review`'s analysis invocations MAY run concurrently within the subagent precisely because neither one writes to GitHub — only Posting Mechanics does, and only after both have resolved.
+- Never touch a pending review authored by a **different** identity than the one `gh` is authenticated as — that belongs to a human reviewer mid-draft, not to this skill. Only merge into a pending review you can confirm you (the authenticated identity) created — and per Posting Mechanics, "merge into" never means deleting it.
+- **Secondary rate limit.** GitHub's abuse-detection secondary rate limit (HTTP 403, message containing "secondary rate limit" / "temporarily blocked from content creation") is scoped **per authenticated account, not per-repo or per-call** — it compounds if this skill runs against more than one PR under the same `gh` identity around the same moment (e.g. two concurrent `build-feature` runs). It was also, empirically, reliably triggered by a single bulk `POST .../reviews` call carrying many inline comments (80 in one payload tripped it on every attempt across a 26-minute span; ≤20 always worked) — this is exactly why Posting Mechanics no longer issues that call at all. It can still fire on an individual small append call; handle that per Posting Mechanics step 4 (60s retry, then 5min retry, then skip that one finding and move on) — never fall back to a bulk POST as a workaround for a slow append loop, and never queue further automatic retries beyond those two.
+- **Never delete a pending review this skill controls, under any circumstance** — see [Posting Mechanics](#posting-mechanics) step 5. There is no longer a reason to: growing a review is always an append, so a partial failure leaves a partial-but-valid review, not a reason to tear it down. If a comment-count check ever looks short, re-check with pagination (GitHub's list endpoints default to 30 items per page) before concluding anything is missing — never delete and recreate to "fix" a suspected mismatch.
+- On a partial failure (one invocation's analysis returned findings, the other didn't): retry ONLY the failed invocation once, scoped to that skill alone — never re-run the invocation that already returned findings. Post via Posting Mechanics only after both invocations have resolved (success or final failure) — never start posting before both have resolved. On a **full failure** (both invocations fail even after their scoped retry): do NOT post anything — there is no review to publish. Report both failure reasons and stop; never proceed as if a review was posted.
 - If a subagent reports it could not complete (PR not found, auth failure, skill-invocation error): retry once with a fresh subagent (scoped to the failed skill only, on a partial failure — see above). If it fails a second time, stop and report the failure — do not fabricate a finding count or skip a skill.
 - Never print `gh auth token` output or any token/credential value. Reference `gh`'s own auth state by status only ("authenticated" / "not authenticated").
 - For environments with more than one `gh` account logged in, see [gh Account Resolution](../../templates/gh-account-resolution.md) for scoping every `gh` call to the correct account — not applied here by default; adopt it only if this skill starts running somewhere that actually hits the multi-account problem.
@@ -46,6 +46,57 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 - Single PR Mode: the resolved PR must exist and be reachable via `gh pr view <PR>`. If it doesn't, stop and report — do not guess a PR number.
 - Batch Mode: resolve your own GitHub login first (`mcp__github__get_me`, or `gh api user --jq .login`) — every later query and the "already reviewed by you" check depend on it.
 
+## Posting Mechanics
+
+Shared by Single PR Mode Step 2b, Publish Mode Step 2, and Batch Mode's "New Commits or Comments After Step 4" merge — every place this skill writes a review to GitHub uses exactly this procedure.
+
+REST's `POST .../reviews` only creates a review with its full comment set in one call — there's no REST way to add to an existing one, which is why this skill used to delete and recreate a pending review to grow it. That was never atomic (a repost failing right after a successful delete leaves the PR with **zero** pending comments — this actually happened once), and posting many comments in one bulk call can itself trip GitHub's secondary rate limit (confirmed empirically: 80 comments in one payload was reliably blocked across a 26-minute span of retries; ≤20 always worked). GraphQL avoids both problems — it supports true incremental appends, confirmed directly against GitHub's live schema (`AddPullRequestReviewThreadInput.pullRequestReviewId`: *"The Node ID of the review to modify"*), not assumed from docs.
+
+1. **Resolve the PR's node ID and check for an existing pending review, in one query:**
+   ```
+   gh api graphql -f query='
+     query($owner: String!, $repo: String!, $pr: Int!, $me: String!) {
+       repository(owner: $owner, name: $repo) {
+         pullRequest(number: $pr) {
+           id
+           reviews(first: 1, states: PENDING, author: $me) {
+             nodes {
+               id
+               comments(first: 100) {
+                 nodes { path line body }
+                 pageInfo { hasNextPage endCursor }
+               }
+             }
+           }
+         }
+       }
+     }' -f owner={owner} -f repo={repo} -F pr={PR} -f me={gh_login}
+   ```
+   `$me` comes from `gh api user --jq .login`. If `reviews.nodes` is non-empty, that's the authenticated identity's own existing pending review — reuse its `id` for step 3 instead of creating a new one. If `pageInfo.hasNextPage` is true, page through with `after` before trusting the comment count for dedup — an unpaginated read will always look short past 100 comments.
+
+2. **Create an empty pending review, only if step 1 found none:**
+   ```
+   gh api graphql -f query='
+     mutation($prId: ID!) {
+       addPullRequestReview(input: { pullRequestId: $prId }) { pullRequestReview { id } }
+     }' -f prId={pull_request_node_id}
+   ```
+   `event` omitted → pending state, matching the REST behavior this replaces. Zero threads at creation — every comment is added in step 3.
+
+3. **Append each new finding as its own thread, paced at least 1 second apart** (GitHub's own documented remedy for bulk POST/PATCH/PUT/DELETE calls):
+   ```
+   gh api graphql -f query='
+     mutation($reviewId: ID!, $path: String!, $line: Int!, $side: DiffSide!, $body: String!) {
+       addPullRequestReviewThread(input: {
+         pullRequestReviewId: $reviewId, path: $path, line: $line, side: $side, body: $body
+       }) { thread { id } }
+     }' -f reviewId={review_id} -f path={path} -F line={line} -f side={side} -f body={body}
+   ```
+   Default `side` to `RIGHT` for any finding that doesn't carry one — `code-review`/`tests-code-review`'s `comments` array doesn't currently include it. Before appending, skip any finding whose exact `path`+`line`+`body` already exists on the review (from step 1's paginated fetch) — same dedup rule as before, applied as "don't append it again" instead of "merge before a single POST."
+
+4. **On a single append failing** (secondary rate limit or anything else): retry that one comment after a 60-second wait, then once more after 5 minutes; if it still fails, skip it, note which finding didn't post, and keep appending the rest — never abort the whole run over one failed comment, and never delete the review because of it. Report every skipped finding in the Report step so nothing silently goes missing.
+5. **Never delete a pending review this skill created or is appending to**, for any reason — growing one is always an append, so there is no scenario where deleting and recreating is the right response. If the whole thing genuinely needs redoing, stop and ask the user rather than deleting anything.
+
 ## Step 1: Mode Detection
 
 1. If the request explicitly asks to publish findings already computed and held by an earlier `human_review: true` run (e.g. "publish complete-review findings for PR #N from `<findings_path>`") — **Publish Mode**.
@@ -67,14 +118,14 @@ Delegate to a single isolated subagent rather than invoking either skill in this
 
 1. Spawn one subagent (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: false`) whose prompt instructs it to, within its own conversation:
    a. Issue two concurrent tool calls in the same turn (not sequential awaits) — one invoking `code-review` in **GitHub PR mode, Return-Only Variant**, against the resolved PR number ("review PR #N; return findings only, do not post"), one invoking `tests-code-review` the same way ("review tests on PR #N; return findings only, do not post"). Neither invocation touches GitHub — each only assembles its `comments` array (`path`/`line`/`body` per finding) and returns it, alongside its own Step 5 complexity banner (tier, file/line counts, execution mode) — capture that banner verbatim, it's part of what this subagent reports back. Every finding is included, for every run — do not filter by severity, do not ask again per finding.
-   b. Once both invocations have resolved (success or final failure after the scoped retry — see Guardrails): if **both** failed, do **not** issue any `POST` call — there is nothing to post. If **at least one** succeeded, merge both `comments` arrays into one (or use just the succeeded one's, on a partial failure).
+   b. Once both invocations have resolved (success or final failure after the scoped retry — see Guardrails): if **both** failed, do **not** post anything — there is nothing to post. If **at least one** succeeded, merge both `comments` arrays into one (or use just the succeeded one's, on a partial failure).
 
       **Human Review branch.** If this invocation was passed `human_review: true`: do not check for or post to any pending review yet. Instead write the merged `comments` array and both banners to `findings_path` — required whenever `human_review: true` is passed; if the caller passed `human_review: true` without a `findings_path`, stop and ask rather than inventing a location. Return a compact result with `awaiting_approval: true`, the finding counts/banners, and the `findings_path` used, and stop — do not proceed to the POST below. The caller shows these to whoever needs to approve them; publishing happens later via [Publish Mode](#publish-mode), not here.
 
-      Otherwise (the default — `human_review` absent or `false`): before posting, check for an existing pending review on this PR authored by the same identity `gh` is authenticated as (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews --jq '.[] | select(.state=="PENDING" and .user.login==$me)'`, with `$me` from `gh api user --jq .login`). If one exists: fetch its comments (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews/{review_id}/comments`), merge them into this run's comment set — drop exact `path`+`line`+`body` duplicates so re-running against an unsubmitted PR doesn't double-post the same finding — then delete the old pending review (`gh api repos/{owner}/{repo}/pulls/{PR}/reviews/{review_id} --method DELETE`). Either way, issue **exactly one** `gh api repos/{owner}/{repo}/pulls/{PR}/reviews --method POST --input payload.json` call with the fully merged set, `event` field omitted (pending state) — this POST must never fire more than once per run, and never with an empty `comments` array. Never stop to ask the user how to handle an existing pending review — merging into it automatically, as just described, is the only way to add to one, since GitHub has no API to incrementally append comments to a pending review in place. If this POST (or the merge `DELETE` before it) hits a secondary rate limit, or a post-success check makes the review look incomplete, see Guardrails — do not improvise a retry schedule or delete a review that just succeeded.
+      Otherwise (the default — `human_review` absent or `false`): post via [Posting Mechanics](#posting-mechanics) — resolve the PR's node ID and any existing pending review under this identity, create an empty review only if none exists, then append every finding (minus exact duplicates already on an existing review) as individually-paced threads. Never stop to ask the user how to handle an existing pending review — appending to it automatically, per Posting Mechanics, is always the right move, and never with an empty `comments` array to append.
    c. Return **only** one compact result covering both: each skill's total finding count, a per-severity breakdown, and its complexity banner from step 1a. If one skill's invocation ultimately failed, return its failure reason in place of its counts and banner — the other skill's result, if it succeeded, is still reported normally (see Guardrails for the scoped retry rule). If **both** failed, return both failure reasons and no counts. Note whether step 1b found and merged an existing pending review, and how many comments were carried over from it. (Human Review branch: this step doesn't run — Step 2b's own return already happened.)
 
-Running both analysis invocations concurrently inside one subagent conversation is safe precisely because neither writes to GitHub — the one-pending-review-per-PR constraint (see Guardrails) is respected by construction, since only step 1b's single merged POST ever writes to GitHub.
+Running both analysis invocations concurrently inside one subagent conversation is safe precisely because neither writes to GitHub — the one-pending-review-per-PR constraint (see Guardrails) is respected by construction, since only step 1b's call into Posting Mechanics ever writes to GitHub.
 
 Each skill assembles its findings via its own existing Step 9 / [GitHub PR Mode — Step B2' Return-Only Variant](../../templates/github-pr-review-mode.md), returning its `comments` array to this subagent instead of posting — this produces exactly ONE pending review covering both skills' findings, not two. Only the one compact summary returns to this conversation — not the underlying diffs, findings text, or comments arrays.
 
@@ -92,7 +143,7 @@ Read `findings_path` — given explicitly by the caller, never inferred. Missing
 
 ### Step 2: Publish
 
-Same mechanics as Single PR Mode Step 2b's non-human-review path: check for an existing pending review under the authenticated identity, merge if found (fetch its comments, drop exact `path`+`line`+`body` duplicates, delete the old one), then issue exactly one `gh api .../reviews --method POST` call with the held `comments` array, `event` field omitted. Never re-analyze the PR — the findings posted are exactly what was held, unfiltered, regardless of how long ago Step 1 of Single PR Mode ran. Same secondary-rate-limit / never-delete-a-success guardrail applies here too (see Guardrails).
+Same mechanics as Single PR Mode Step 2b's non-human-review path — post the held `comments` array via [Posting Mechanics](#posting-mechanics): resolve the PR's node ID and any existing pending review, create one only if none exists, then append every held comment (minus exact duplicates already present) as individually-paced threads. Never re-analyze the PR — the findings posted are exactly what was held, unfiltered, regardless of how long ago Step 1 of Single PR Mode ran.
 
 ### Step 3: Report
 
@@ -201,7 +252,7 @@ If, later in this same conversation, you're told a new commit was pushed or a ne
    a. Determine what's new since it last posted: the commit SHA(s) added after the commit its own pending review was based on (`gh pr view <N> --json commits`, compared against what it last saw).
    b. If nothing new landed as a commit (e.g. only a comment, no new push), there's nothing to delta-review — reply that and stop; do not re-run either skill.
    c. Otherwise, scope `code-review` and `tests-code-review`'s Return-Only Variant to that delta only — the diff introduced by the new commit(s), not the full PR again — same as Single PR Mode Step 2a but with the commit range narrowed to just what's new.
-   d. Merge the resulting findings into its own already-posted pending review, following the same merge procedure as Single PR Mode Step 2b (fetch the existing pending review's comments, merge, delete the old one, repost a single new pending review) — same identity, same one-pending-review-per-PR constraint, same secondary-rate-limit/never-delete-a-success guardrail.
+   d. Merge the resulting findings into its own already-posted pending review via [Posting Mechanics](#posting-mechanics) — fetch its id and existing comments (paginated), skip exact duplicates, append only the genuinely new findings as individually-paced threads onto that same review. No delete, no repost — same identity, same one-pending-review-per-PR constraint.
    e. Report back the incremental result: how many new findings, by severity, and the new total on the pending review.
 3. Relay that subagent's incremental result to the user the same way Step 5 relays a first-pass result — don't wait for anything else in the batch.
 
@@ -243,7 +294,7 @@ User: `/complete-review PR #202`
 User: `/complete-review PR #310` (a prior `complete-review` run on this PR was never submitted on GitHub)
 
 1. Step 1 (Mode Detection): PR number given → Single PR Mode; Step 1 resolves PR #310
-2. Single PR Mode Step 2: both invocations succeed (4 findings, 1 finding). Before posting, the subagent finds a pending review already on PR #310 under its own identity, with 6 comments from the earlier run. It fetches those 6 comments, merges them with this run's 5 new ones (no exact duplicates), deletes the old pending review, and posts one new pending review with all 11 comments — no user prompt at any point.
+2. Single PR Mode Step 2: both invocations succeed (4 findings, 1 finding). Posting Mechanics' step 1 finds a pending review already on PR #310 under its own identity, with 6 comments from the earlier run. None of this run's 5 new findings duplicate those 6, so all 5 are appended as individual threads directly onto that same review, paced a second apart — no delete, no repost, no user prompt at any point. The review now has 11 comments total.
 3. Single PR Mode Step 3: "code-review — Small (2 files, 60 lines) · Inline · 4 findings. tests-code-review — Small (1 test file, 30 lines) · Inline · 1 finding. 6 comments carried over from an already-pending review, plus 5 new — 11 total, published as one pending review on PR #310 — submit manually on GitHub when ready."
 
 ### Example 6: Batch Mode, several PRs pending review
@@ -301,5 +352,5 @@ Caller (e.g. `build-feature`) invokes: "run complete-review for PR #512, human_r
 Continuing Example 6: PR #12's subagent finished and reported 4 findings (1 High). Ten minutes later, in the same conversation, the user says "a new commit just landed on PR #12."
 
 1. PR #12's subagent name, captured in Batch Mode Step 4, is still tracked from this run.
-2. `SendMessage` to that subagent (not a new `Agent` call). It runs `gh pr view 12 --json commits`, finds one commit past what it last reviewed, diffs just that commit, runs `code-review` and `tests-code-review`'s Return-Only Variant against the delta only, and finds 1 new finding. It fetches its own already-posted pending review (7 comments), merges the 1 new one in (8 total), deletes the old pending review, reposts the merged one, and reports back.
+2. `SendMessage` to that subagent (not a new `Agent` call). It runs `gh pr view 12 --json commits`, finds one commit past what it last reviewed, diffs just that commit, runs `code-review` and `tests-code-review`'s Return-Only Variant against the delta only, and finds 1 new finding. It fetches its own already-posted pending review's id and comments (7), confirms the new finding isn't already among them, and appends it as one new thread directly onto that same review (8 total) — no delete, no repost — then reports back.
 3. Reported to the user immediately: "PR #12 — 1 new finding from the latest commit, merged into the existing pending review (8 comments total now) — still pending, not submitted."
