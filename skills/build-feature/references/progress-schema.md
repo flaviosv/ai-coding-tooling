@@ -41,8 +41,8 @@ One line per completed step, appended as it finishes:
 - Step 8 (tasks): done — tasks.md
 - Step 9 (commit spec artifacts): done — <commit sha>
 - Step 10 (execute): done — Verifier: PASS
-- Step 11 (PR description): done
-- Step 12 (complete-review): done — <N> findings published | held pending approval
+- Step 11 (push + PR description): done
+- Step 12 (complete-review): done — <N> findings published as pending review; checkpoint approved | n/a (human_review=no or excluded)
 - Step 13 (fix-review): done — <N> fixed, <N> blocked
 - Step 14 (architecture-evaluate): done — <N> files, committed | left uncommitted (all new)
 - Step 15 (design-sync): done | skipped (no .design-sync/config.json)
