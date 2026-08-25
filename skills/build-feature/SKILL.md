@@ -3,7 +3,7 @@ name: build-feature
 description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — all through isolated subagents, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Build Feature
@@ -48,6 +48,10 @@ When handing work to a subagent, pass resolved metadata and file **paths** (bran
 - If `EnterWorktree` fails for any reason (a symlinked `.claude`, or anything else): stop and report the failure plainly. Do not fall back to raw `git worktree add` — a failure here means something about this repo isn't compatible with the native tool, and that's worth surfacing, not silently working around.
 - A branch-name collision (the target branch already exists locally or on the remote) is a not-your-babysitter-style stop regardless of `human_review` — report it and halt; never auto-suffix or guess a resolution.
 - After Step 16 (PR marked ready), the worktree **stays** — it is not removed at the end of a successful run. Cleanup is signal-driven only: at the start of any later invocation, check every tracked spec with a `progress.md` marked complete and a worktree still present — for each, `gh pr view <PR> --json state`; if `MERGED` or `CLOSED`, remove that worktree (`ExitWorktree` if it's the current one, or a direct worktree removal for another tracked spec's) before doing anything else this run. Sweep opportunistically across **all** tracked specs found this way, not just the one this invocation is about — a PR merged via the GitHub UI, never re-triggering build-feature itself, would otherwise leave its worktree on disk forever.
+
+### Waiting on dispatched subagents
+
+Every step below that spawns a subagent directly via the `Agent` tool — Steps 4–5, 7a, 7b, 8, 10, 14, 15, not just the concurrent pair in Step 4–5 — waits for it the same way: load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md). This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Steps 12–13 invoke `complete-review`/`fix-review` via the Skill tool rather than a direct `Agent` call — each of those skills' own internal dispatch (if it runs any) already owns its own wait handling; nothing here overrides that.
 
 ### gh account resolution
 
@@ -102,7 +106,7 @@ Dispatch both in the same turn, as two independent subagent calls — neither de
 - **Quick gate** (Sonnet subagent): read `architecture-evaluate`'s own "Keeping Docs Up to Date" trigger table plus the recent commit history on `base_branch`, and decide whether Full, Incremental, or no run is warranted. If triggered, invoke `architecture-evaluate` in that mode inside the same subagent call. Returns a structured result — triggered or not, and if triggered, what it changed.
 - **Grilling** (Opus subagent): run a `grilling`-style session on the feature's scope, using `task_id` and `description` as the seed. Always attempted regardless of `human_review` — grilling is a scoping aid, not a review gate, and generalizes the "if there are no questions, skip it" rule to "if there's no one to usefully ask, skip it": if the frontier is empty on round 1, it exits immediately rather than being pre-judged as unnecessary. Returns the session's research notes as structured text (this becomes `grilling-session.md`'s content in Step 6) — this subagent does not write any file itself.
 
-Load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md) — wait for both before Step 6 (Step 5 doesn't exist — folded into this step's own dispatch); the grilling subagent can run long on a wide scope, so give it a longer stall ceiling than the protocol's 15-minute default before checking with `TaskOutput`.
+Wait for both before Step 6, per the Agent Wait Protocol guardrail above (Step 5 doesn't exist — folded into this step's own dispatch). The grilling subagent can run long on a wide scope, so give it a longer stall ceiling than the protocol's 15-minute default before checking with `TaskOutput`.
 
 ## Step 6: Pre-Create the Feature Folder
 
