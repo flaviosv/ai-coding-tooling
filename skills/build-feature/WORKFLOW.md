@@ -17,12 +17,13 @@ flowchart TD
 
     S1 --> S2[Step 2: Push branch]
     S2 --> S3[Step 3: Draft PR — stub body]
-    S3 --> S4a[Step 4a: Quick arch-eval gate<br/>Sonnet]
-    S3 --> S4b[Step 4b: Grilling<br/>Opus]
-    S4a --> S6
-    S4b --> S6[Step 6: Create feature folder<br/>+ grilling-session.md]
+    S3 --> S4[Step 4: Quick arch-eval gate<br/>Sonnet subagent, dispatched — not awaited]
+    S4 -.background.-> S7aWait
+    S3 --> S5[Step 5: Grilling<br/>live in this conversation, not a subagent]
+    S5 --> S6[Step 6: Create feature folder<br/>+ grilling-session.md]
 
-    S6 --> S7a[Step 7a: Specify — Opus]
+    S6 --> S7aWait[Collect Step 4's result<br/>Agent Wait Protocol]
+    S7aWait --> S7a[Step 7a: Specify — Opus]
     S7a --> CP1{human_review<br/>and spec not excluded?}
     CP1 -- yes --> Wait1[Pause: approve spec.md]
     CP1 -- no --> S7b
@@ -56,6 +57,6 @@ flowchart TD
 ## Key architectural notes (not in SKILL.md, kept here for maintainers)
 
 - **Steps 7a/7b are two separate Opus subagent calls, not one.** A single subagent call returns once, at the end — it can't pause mid-conversation for a `human_review` checkpoint. Making `spec` and `design` independently gate-able requires two calls, the second reading `spec.md` fresh off disk rather than sharing conversation state with the first.
-- **Steps 4a/4b run concurrently** (two `Agent` calls in one turn) — safe because only 4a ever touches git; 4b (grilling) never pushes.
+- **Grilling (Step 5) is not a subagent dispatch, deliberately.** An `Agent`-tool subagent runs once, in the background, to completion — it cannot pause mid-run for a real reply from the user, and grilling's whole mechanic is multi-round back-and-forth with the user. So Step 5 runs `grilling` directly, in this conversation, via the `Skill` tool. Step 4 (the quick arch-eval gate) is still a background subagent — dispatched at the start of Step 4, then collected only once Step 5's conversation concludes, right before Step 7a. Fire-and-collect-later, not concurrent-and-awaited-together as it was before this design's fix — the two steps don't need to finish at the same moment, only before Step 7a needs Step 4's result.
 - **The orchestrator never writes large file content into its own context.** Every subagent gets metadata and paths; it does its own reads. This is what keeps a 15+ step run from blowing the orchestrator's context window.
 - **Worktree cleanup is signal-driven, not automatic-on-completion.** A PR merged via the GitHub UI, with build-feature never re-invoked, would otherwise leave the worktree on disk forever — the sweep at Step 0 checks every tracked spec's worktree, not just the current one.

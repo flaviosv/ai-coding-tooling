@@ -1,14 +1,14 @@
 ---
 name: build-feature
-description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — all through isolated subagents, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
+description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — through isolated subagents for every step but grilling itself (run live, in this conversation), resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # Build Feature
 
-Takes a feature from nothing but a task ID and a description to a PR marked ready for review, with no human interaction required beyond what `human_review` asks for. An orchestrator that never does the work itself — every step delegates to an isolated subagent and reports back a structured result, so this conversation's own context stays small enough to survive a run with a dozen-plus steps.
+Takes a feature from nothing but a task ID and a description to a PR marked ready for review, with no human interaction required beyond what `human_review` asks for. An orchestrator that does almost none of the work itself — every step but one delegates to an isolated subagent and reports back a structured result, so this conversation's own context stays small enough to survive a run with a dozen-plus steps. The one exception is grilling (Step 5): it's a live, multi-round conversation with the user, which only this conversation — not an isolated subagent — can actually hold.
 
 ## Parameters
 
@@ -51,7 +51,9 @@ When handing work to a subagent, pass resolved metadata and file **paths** (bran
 
 ### Waiting on dispatched subagents
 
-Every step below that spawns a subagent directly via the `Agent` tool — Steps 4–5, 7a, 7b, 8, 10, 14, 15, not just the concurrent pair in Step 4–5 — waits for it the same way: load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md). This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Steps 12–13 invoke `complete-review`/`fix-review` via the Skill tool rather than a direct `Agent` call — each of those skills' own internal dispatch (if it runs any) already owns its own wait handling; nothing here overrides that.
+Every step below that spawns a subagent directly via the `Agent` tool — Steps 4, 7a, 7b, 8, 10, 14, 15 — waits for it the same way: load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md). This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Step 4 is the one exception in *timing*, not mechanism: it's dispatched at the start of Step 4 but not collected until just before Step 7a starts, once Step 5's grilling session has run its course — the protocol still governs how that eventual wait happens.
+
+Step 5 (grilling) is not a subagent dispatch and the wait protocol does not apply to it: it runs directly in this conversation via the `Skill` tool, and each round ends this turn waiting for the user's actual reply — the same mechanism as the `spec`/`design` checkpoints in Steps 7a/7b, not a background task with a stall ceiling. Steps 12–13 invoke `complete-review`/`fix-review` via the Skill tool rather than a direct `Agent` call — each of those skills' own internal dispatch (if it runs any) already owns its own wait handling; nothing here overrides that.
 
 ### gh account resolution
 
@@ -85,7 +87,7 @@ Before anything else, look for `.specs/features/<task_id>-<slug>/progress.md` (d
 - **Not found** → fresh run, continue to Step 1.
 - **Found, status `complete`, PR merged or closed** → this is the cleanup case described under Worktree above; report and stop, nothing else to do for this spec.
 - **Found, status `complete`, PR still open** → this is a later re-invocation for fresh review comments, not a new delivery. Invoke `fix-review` directly for the tracked PR, working inside the existing worktree (already checked out, no new one needed — see `references/progress-schema.md` for exactly what `progress.md` records to make this possible without re-deriving anything). Once it returns, run Step 14 (architecture-evaluate) if it reports any commits pushed, then report and stop. Do not re-mark the PR ready (it already is) and do not touch Steps 1–13 or 15–16.
-- **Found, status `in-progress`** → resume at the first step `progress.md` marks incomplete, using the state it recorded (worktree path, branch name, PR number, resolved gh login, feature folder path, which of `spec`/`design`/`complete-review` already completed or is mid-pause). See `references/progress-schema.md` for the exact field set.
+- **Found, status `in-progress`** → resume at the first step `progress.md` marks incomplete, using the state it recorded (worktree path, branch name, PR number, resolved gh login, feature folder path, which of `spec`/`design`/`complete-review` already completed or is mid-pause). Grilling (Step 5) has no partial-round state to recover — nothing is logged for it until the session concludes — so an interruption mid-grilling simply resumes by restarting Step 5 from round 1; Step 4's quick-gate result, if it already reported back before the interruption, is not redispatched. See `references/progress-schema.md` for the exact field set.
 
 ## Step 1: Worktree and Branch
 
@@ -99,22 +101,27 @@ Per the Worktree guardrail above. Record `worktree_path` and the exact branch na
 
 `gh pr create --draft --base <target_branch> --head feature/<task_id>_<description> --title "[<task_id>] <description>" --body "<stub — task ID and description only>"`. Fall back to the GitHub MCP tool, then `gh api graphql`'s `createPullRequest` mutation with `draft: true`, only if `gh` itself is unavailable. Record the returned PR number in `progress.md`.
 
-## Step 4–5: Quick Architecture-Evaluate Gate + Grilling — Concurrent
+## Step 4: Quick Architecture-Evaluate Gate (Background)
 
-Dispatch both in the same turn, as two independent subagent calls — neither depends on the other, and only one of them ever touches git, so there's no push race:
+Dispatch a Sonnet subagent: read `architecture-evaluate`'s own "Keeping Docs Up to Date" trigger table plus the recent commit history on `base_branch`, and decide whether Full, Incremental, or no run is warranted. If triggered, invoke `architecture-evaluate` in that mode inside the same subagent call. Returns a structured result — triggered or not, and if triggered, what it changed.
 
-- **Quick gate** (Sonnet subagent): read `architecture-evaluate`'s own "Keeping Docs Up to Date" trigger table plus the recent commit history on `base_branch`, and decide whether Full, Incremental, or no run is warranted. If triggered, invoke `architecture-evaluate` in that mode inside the same subagent call. Returns a structured result — triggered or not, and if triggered, what it changed.
-- **Grilling** (Opus subagent): run a `grilling`-style session on the feature's scope, using `task_id` and `description` as the seed. Always attempted regardless of `human_review` — grilling is a scoping aid, not a review gate, and generalizes the "if there are no questions, skip it" rule to "if there's no one to usefully ask, skip it": if the frontier is empty on round 1, it exits immediately rather than being pre-judged as unnecessary. Returns the session's research notes as structured text (this becomes `grilling-session.md`'s content in Step 6) — this subagent does not write any file itself.
+Dispatch it and move straight to Step 5 without waiting — it only touches `docs/codebase/`, never git the feature branch is on, and nothing until Step 7a depends on its result. Collect that result (per the Agent Wait Protocol) once Step 5 concludes, before Step 7a starts.
 
-Wait for both before Step 6, per the Agent Wait Protocol guardrail above (Step 5 doesn't exist — folded into this step's own dispatch). The grilling subagent can run long on a wide scope, so give it a longer stall ceiling than the protocol's 15-minute default before checking with `TaskOutput`.
+## Step 5: Grilling (Interactive — this conversation, not a subagent)
+
+Grilling is a live, multi-round conversation: each round ends by waiting for the user's actual answers before the next one starts (see the `grilling` skill — rounds, frontier, "wait for the user's answers"). A subagent can't do that — dispatched via the `Agent` tool it runs once, in the background, to completion, and reports a single result on its own schedule; it has no way to pause mid-run for a reply from the actual user. So run `grilling` directly, via the `Skill` tool, in this conversation, using `task_id` and `description` as the seed.
+
+Always attempted regardless of `human_review` — grilling is a scoping aid, not a review gate, and generalizes the "if there are no questions, skip it" rule to "if there's no one to usefully ask, skip it": if the frontier is empty on round 1, it exits immediately rather than being pre-judged as unnecessary. Where the `grilling` skill itself calls for dispatching a sub-agent to find an environmental fact, follow its own guidance — that's internal to how grilling resolves one question, not a substitute for the live conversation with the user.
+
+Each round after the first ends this turn, waiting for the user's next message before continuing — the same mechanism as the `spec`/`design` checkpoints in Steps 7a/7b, never invented or advanced speculatively. The moment the frontier is empty (or empty already on round 1), grilling is done — continue straight to Step 6 in that same turn, no separate pause beyond what its own rounds already required. Keep the session's notes; they become `grilling-session.md`'s content in Step 6.
 
 ## Step 6: Pre-Create the Feature Folder
 
-Derive `<slug>` (kebab-case, 2–4 words) from `description`. Create `.specs/features/<task_id>-<slug>/` and write `grilling-session.md` into it from Step 4's grilling subagent output — before Specify runs, so Specify's own folder-creation logic (if any) finds it already there rather than colliding with it.
+Derive `<slug>` (kebab-case, 2–4 words) from `description`. Create `.specs/features/<task_id>-<slug>/` and write `grilling-session.md` into it from Step 5's grilling notes — before Specify runs, so Specify's own folder-creation logic (if any) finds it already there rather than colliding with it.
 
 ## Step 7a: Specify (Opus)
 
-Spawn an Opus subagent to run tlc-spec-driven's Specify phase against the pre-created feature folder path. Writes `spec.md`.
+First, collect Step 4's quick-gate result (per the Agent Wait Protocol) if it hasn't already reported back — a multi-round grilling session almost always outlasts it, so this is typically an instant check, not a real wait. Then spawn an Opus subagent to run tlc-spec-driven's Specify phase against the pre-created feature folder path. Writes `spec.md`.
 
 **Checkpoint — `spec`:** if `human_review=yes` and `spec` is not in `human_review_exclude`, show `spec.md` to the user and end this turn, waiting for their next message before continuing to 7b — never invent an approval or continue speculatively. Otherwise continue immediately. (Every other checkpoint in this skill — `design` in 7b, `complete-review` in Step 12 — pauses the same way.)
 
@@ -178,19 +185,20 @@ User: `/build-feature base_branch=main task_id=PROJ-42 description="add rate lim
 1. Step 0: no `progress.md` for `PROJ-42-add-rate-limiting` → fresh run
 2. Step 1: worktree created at `.claude/worktrees/PROJ-42-add-rate-limiting`, branch renamed to `feature/PROJ-42_add-rate-limiting-to-orders-api`
 3. Steps 2–3: pushed, draft PR #512 opened with a stub body
-4. Step 4: quick gate finds nothing triggered; grilling runs 2 rounds of questions, user answers both, notes captured
-5. Step 6: `.specs/features/PROJ-42-add-rate-limiting/grilling-session.md` written
-6. Step 7a: Specify writes `spec.md` → `human_review=yes` (default), `spec` not excluded → shown to user, approved
-7. Step 7b: Design writes `design.md` (feature sized Large) → shown, approved
-8. Step 8: Tasks writes `tasks.md`
-9. Step 9: spec artifacts committed and pushed
-10. Step 10: Execute runs all tasks, Verifier passes
-11. Step 11: PR #512's description rewritten with problem/what-was-done/test-results
-12. Step 12: `complete-review` invoked with `human_review: true` → 9 findings held at `complete-review-findings.json`, shown to user, approved → Publish Mode posts them as one pending review
-13. Step 13: `fix-review` fixes 6 of 9 findings, replies to and resolves them, leaves 1 answered-only and 2 blocked with reasons
-14. Step 14: `architecture-evaluate` Full mode updates 2 already-tracked files → committed and pushed
-15. Step 15: no `.design-sync/config.json` at the worktree root → skipped silently
-16. Step 16: `gh pr ready 512` → `progress.md` marked complete → report: "PR #512 marked ready for review: <url>. 9 findings published, 6 auto-fixed. Worktree left in place."
+4. Step 4: quick-gate subagent dispatched in the background, finds nothing triggered
+5. Step 5: grilling runs live in this conversation — as many rounds as the design tree needs (say, 3), the user answering each round in turn, until the frontier is empty; notes captured, continues straight to Step 6
+6. Step 6: `.specs/features/PROJ-42-add-rate-limiting/grilling-session.md` written
+7. Step 7a: quick-gate result collected (already returned); Specify writes `spec.md` → `human_review=yes` (default), `spec` not excluded → shown to user, approved
+8. Step 7b: Design writes `design.md` (feature sized Large) → shown, approved
+9. Step 8: Tasks writes `tasks.md`
+10. Step 9: spec artifacts committed and pushed
+11. Step 10: Execute runs all tasks, Verifier passes
+12. Step 11: PR #512's description rewritten with problem/what-was-done/test-results
+13. Step 12: `complete-review` invoked with `human_review: true` → 9 findings held at `complete-review-findings.json`, shown to user, approved → Publish Mode posts them as one pending review
+14. Step 13: `fix-review` fixes 6 of 9 findings, replies to and resolves them, leaves 1 answered-only and 2 blocked with reasons
+15. Step 14: `architecture-evaluate` Full mode updates 2 already-tracked files → committed and pushed
+16. Step 15: no `.design-sync/config.json` at the worktree root → skipped silently
+17. Step 16: `gh pr ready 512` → `progress.md` marked complete → report: "PR #512 marked ready for review: <url>. 9 findings published, 6 auto-fixed. Worktree left in place."
 
 ### Example 2: Fully autonomous run
 

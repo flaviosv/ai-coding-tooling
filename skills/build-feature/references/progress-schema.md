@@ -33,7 +33,8 @@ One line per completed step, appended as it finishes:
 - Step 1 (worktree/branch): done — <worktree_path>, <branch>
 - Step 2 (push): done
 - Step 3 (draft PR): done — PR #<N>
-- Step 4 (quick gate + grilling): done — gate: <triggered|skipped>; grilling: <N rounds, or "no questions">
+- Step 4 (quick gate, dispatched in background): done — gate: <triggered|skipped>
+- Step 5 (grilling, live in this conversation): done — <N rounds, or "no questions — frontier empty on round 1">
 - Step 6 (feature folder): done — .specs/features/<task_id>-<slug>/
 - Step 7a (specify): done — spec.md
 - Step 7b (design): done — design.md | skipped (Small/Medium scope)
