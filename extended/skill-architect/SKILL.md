@@ -7,7 +7,7 @@ description: >
   the existing workflow phases, and (2) the extended/ pattern for modifying globally installed
   skills without touching the source.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   parent_skill: skill-architect
   source: "ai-coding-tooling (extended/)"
 ---
@@ -212,3 +212,27 @@ Before delivering any generated file, verify:
 - [ ] No `---` between sections (only frontmatter close)
 - [ ] Frontmatter `description` not restated in the body
 - [ ] Step introductions lead with the action
+
+## Extension 4: Subagent Dispatch — Wait Protocol
+
+Inject the following steps into the parent skill's workflow at the phases indicated.
+
+### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure
+
+**2.5 — Subagent Dispatch Check**
+
+Ask: "Does this skill dispatch one or more subagents via the `Agent` tool, then need to know when they're done before continuing?" This applies equally to a single dispatched subagent and to several running concurrently — a lone dispatch carries the identical risk (manual polling, false-stall detection) as a fan-out.
+
+If yes: every step that dispatches and waits on one must load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md) rather than the skill inventing its own wording for "wait for it to return." Record which step(s) this applies to — that's what Phase 3 wires in.
+
+Out of scope: a subagent invoked via the `Skill` tool (calling another skill by name) rather than a direct `Agent` call — that skill's own dispatch, if it has any, already owns its own wait handling; nothing here overrides it.
+
+### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
+
+For each step Phase 2 flagged, its wait instruction is exactly: "Load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md)" plus only what's genuinely specific to that step — a longer or shorter stall ceiling than the protocol's 15-minute default, and whether results are collected all at once or reported as each one arrives. Never restate the protocol's own rules inline (no manual polling, a finished agent's transcript is indistinguishable from a stalled one, confirm via `TaskOutput` before calling `TaskStop`) — copies of that rule are exactly what drifted out of sync the last time it was written by hand into more than one skill.
+
+### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
+
+**Subagent wait check**
+
+For each subagent-dispatching step: does it reference the Agent Wait Protocol rather than restating wait mechanics in its own words? Wording like "wait for it to return" or "wait for all agents" with no reference to the protocol is exactly what produced a real busy-polling and false-stall-detection bug in a production skill — fix it before delivery, not after.
