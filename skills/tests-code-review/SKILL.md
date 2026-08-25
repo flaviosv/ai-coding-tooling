@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.5.2"
+  version: "2.6.0"
   triggers:
     - "review tests"
     - "test code review"
@@ -398,7 +398,11 @@ This agent receives `impl_diff` only — not the test diff. It does NOT judge th
 
 ## Step 7: Await + Fallback
 
-Wait for all dispatched agents to return. For each agent, resolve its outcome:
+Every dispatched agent runs in the background and delivers its own task notification the instant it finishes — that notification, not manual checking, is what "return" means here. Do nothing else once dispatched: no polling loop (`sleep`/`echo` in Bash, repeated `Monitor` or status-check calls) to watch for completion — each such call re-sends the accumulated conversation as cached input and buys nothing a notification doesn't already deliver for free. If N agents were dispatched, expect N notifications, in whatever order they actually finish; collect each result as its notification arrives.
+
+Never infer a stall from an idle transcript or a quiet task list — a **finished** agent's transcript stops growing too, indistinguishable from a stalled one by size or elapsed time alone. If a notification hasn't arrived after a generous ceiling (15 minutes for a single dimension agent), confirm the agent is actually still running with one non-blocking `TaskOutput(task_id, block: false)` call before treating it as stalled — never call `TaskStop` on an agent whose status wasn't just confirmed that way. A dimension whose agent genuinely completed must never be dropped from the report because the wait for it was mishandled.
+
+For each agent, resolve its outcome:
 
 | Outcome | Action |
 |---------|--------|

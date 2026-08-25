@@ -3,7 +3,7 @@ name: complete-review
 description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by build-feature) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
 metadata:
   author: Flavio Studart
-  version: "1.4.1"
+  version: "1.4.2"
 ---
 
 # Complete Review
@@ -186,7 +186,7 @@ Record the name this `Agent` call returns against PR `<N>` right away — that's
 
 ### Step 5: Report as each subagent completes
 
-Each subagent's completion arrives as a separate task notification — do not wait for all of them. As soon as one arrives, post a short per-PR update: the pending-review URL (or the failure reason), the finding count by severity, and the one-line most-important-finding highlight from the subagent's report.
+Each subagent's completion arrives as a separate task notification — do not wait for all of them. As soon as one arrives, post a short per-PR update: the pending-review URL (or the failure reason), the finding count by severity, and the one-line most-important-finding highlight from the subagent's report. If a notification arrives for a PR already reported in this run (a duplicate or stale re-delivery), skip it silently — do not post a second update for the same PR.
 
 Once every subagent for this run has reported, post one final summary table with all PRs reviewed, their finding counts, and top headline each — plus a one-line reminder that every review was posted as **pending**, not submitted, so nothing goes out until you submit it manually on GitHub.
 
