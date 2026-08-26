@@ -19,6 +19,7 @@ Read this when Step 0 needs to resume a run, or whenever a step is about to writ
 - gh_login: <resolved account login — never a token>
 - human_review: yes | no
 - human_review_exclude: <comma list, if any>
+- context_docs_copied_from: <main working tree path> (only when Step 1 copied an untracked/ignored `docs/codebase/` in; absent when the path is tracked or the project has none — Step 14's sync-out reads this to know whether to write back, and where)
 
 ## Checkpoints
 
@@ -30,10 +31,10 @@ Read this when Step 0 needs to resume a run, or whenever a step is about to writ
 
 One line per completed step, appended as it finishes:
 
-- Step 1 (worktree/branch): done — <worktree_path>, <branch>
+- Step 1 (worktree/branch): done — <worktree_path>, <branch>; context docs: tracked | copied from <path> | none in repo
 - Step 2 (push): done
 - Step 3 (draft PR): done — PR #<N>
-- Step 4 (quick gate, dispatched in background): done — gate: <triggered|skipped>
+- Step 4 (arch-eval gate, decision only, dispatched in background): done — <none|incremental|full (reported, not run)>
 - Step 5 (grilling, live in this conversation): done — <N rounds, or "no questions — frontier empty on round 1">
 - Step 6 (feature folder): done — .specs/features/<task_id>-<slug>/
 - Step 7a (specify): done — spec.md
@@ -42,9 +43,9 @@ One line per completed step, appended as it finishes:
 - Step 9 (commit spec artifacts): done — <commit sha>
 - Step 10 (execute): done — Verifier: PASS
 - Step 11 (push + PR description): done
-- Step 12 (complete-review): done — <N> findings published as pending review; checkpoint approved (user reviewed + submitted on GitHub) | review submitted by this skill (human_review=no or excluded)
-- Step 13 (fix-review): done — <N> fixed, <N> blocked
-- Step 14 (architecture-evaluate, Incremental): done — <N> files, committed | left uncommitted (all new)
+- Step 12 (complete-review, subagent): done — <N> findings published as pending review; checkpoint approved (user reviewed + submitted on GitHub) | review submitted by this skill (human_review=no or excluded)
+- Step 13 (fix-review, subagent): done — <N> fixed, <N> answered, <N> rejected, <N> blocked
+- Step 14 (architecture-evaluate, Incremental): done — <N> files, committed | left uncommitted (all new) | synced back to <path> | not synced back (source changed mid-run)
 - Step 15 (design-sync): done | skipped (no .design-sync/config.json)
 - Step 16 (mark ready): done
 ```
