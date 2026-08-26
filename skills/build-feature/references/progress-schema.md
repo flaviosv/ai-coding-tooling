@@ -44,7 +44,7 @@ One line per completed step, appended as it finishes:
 - Step 11 (push + PR description): done
 - Step 12 (complete-review): done — <N> findings published as pending review; checkpoint approved | n/a (human_review=no or excluded)
 - Step 13 (fix-review): done — <N> fixed, <N> blocked
-- Step 14 (architecture-evaluate): done — <N> files, committed | left uncommitted (all new)
+- Step 14 (architecture-evaluate, Incremental): done — <N> files, committed | left uncommitted (all new)
 - Step 15 (design-sync): done | skipped (no .design-sync/config.json)
 - Step 16 (mark ready): done
 ```

@@ -44,7 +44,7 @@ flowchart TD
     Wait3 --> S13
     S12 -- no --> S13[Step 13: fix-review<br/>same worktree, no new one]
 
-    S13 --> S14[Step 14: architecture-evaluate<br/>Full — Sonnet]
+    S13 --> S14[Step 14: architecture-evaluate<br/>Incremental — Sonnet]
     S14 --> S15{".design-sync/config.json<br/>exists?"}
     S15 -- yes --> S15a[Step 15: design-sync — Sonnet]
     S15 -- no --> S16

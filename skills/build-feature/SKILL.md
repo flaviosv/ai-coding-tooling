@@ -159,9 +159,9 @@ Invoke `complete-review` for this PR with no `human_review` parameter, ever — 
 
 Invoke `fix-review` for this PR — it operates inside the already-open worktree (this run's own checkout already matches the PR's branch), so it doesn't need to create one of its own. Never merges or closes the PR.
 
-## Step 14: architecture-evaluate (Full, Sonnet)
+## Step 14: architecture-evaluate (Incremental, Sonnet)
 
-Spawn a Sonnet subagent to run `architecture-evaluate` in Full mode against everything pushed to this branch this run. Classify touched `docs/codebase/` files as new vs. existing (`git status --porcelain -- docs/codebase/`): if every touched file is new, leave them uncommitted for manual review; otherwise commit as one Conventional Commits commit and push.
+Spawn a Sonnet subagent to run `architecture-evaluate` in Incremental mode against everything pushed to this branch this run — this is a code-changes-want-docs-reflected sync, not a brownfield re-scan. Classify touched `docs/codebase/` files as new vs. existing (`git status --porcelain -- docs/codebase/`): if every touched file is new, leave them uncommitted for manual review; otherwise commit as one Conventional Commits commit and push.
 
 ## Step 15: design-sync (Conditional, Sonnet)
 
@@ -197,7 +197,7 @@ User: `/build-feature base_branch=main task_id=PROJ-42 description="add rate lim
 12. Step 11: Execute's commits pushed; PR #512's description rewritten with problem/what-was-done/test-results
 13. Step 12: `complete-review` invoked (no `human_review` param) → posts 9 findings as one pending review on PR #512 immediately → summary shown to user, approved → continues to Step 13
 14. Step 13: `fix-review` fixes 6 of 9 findings, replies to and resolves them, leaves 1 answered-only and 2 blocked with reasons
-15. Step 14: `architecture-evaluate` Full mode updates 2 already-tracked files → committed and pushed
+15. Step 14: `architecture-evaluate` Incremental mode updates 2 already-tracked files → committed and pushed
 16. Step 15: no `.design-sync/config.json` at the worktree root → skipped silently
 17. Step 16: `gh pr ready 512` → `progress.md` marked complete → report: "PR #512 marked ready for review: <url>. 9 findings published, 6 auto-fixed. Worktree left in place."
 
