@@ -21,6 +21,7 @@ const ROOT = path.dirname(SCRIPT_DIR); // repo root (bin/ is one level down)
 // <agent.projectConfig> at AGENTS.md.
 const AGENTS_DIR = '.agents';
 const MD_SOURCE = 'AGENTS.md';
+const TEMPLATES_DIR = path.join(ROOT, 'templates');
 
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -263,6 +264,12 @@ function cmdSetup(agentId) {
 
   linkSafe(path.join(ROOT, 'AGENTS.global.md'), agent.configPath);
 
+  // Skills reference shared templates as ../../templates/<name>.md. Installed skills are
+  // symlinks, so the kernel resolves that to the repo — but tools that normalize paths
+  // lexically (collapsing ../../ before following the symlink) resolve it to
+  // <skillsDir>/../templates instead. Link that path at the same target so both resolve.
+  linkSafe(TEMPLATES_DIR, path.join(path.dirname(agent.skillsDir), 'templates'));
+
   log(`\n${c.bold}Skills${c.reset}`);
   for (const skill of skills) installSkill(skill, agent);
 
@@ -490,6 +497,7 @@ function cmdDestroy(agentId) {
 
   log(`\n${c.bold}Global config${c.reset}`);
   removeConfigSymlink(agent.configPath);
+  unlinkIfSymlink(path.join(path.dirname(agent.skillsDir), 'templates'));
 
   log(`\n${c.bold}Skills${c.reset}`);
   for (const skill of skills) uninstallSkill(skill, agent);
