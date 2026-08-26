@@ -27,6 +27,14 @@ Never edit the global file directly — changes must originate in `config/status
 - **Never modify skills installed globally** (e.g. `~/.claude/skills/`) or sourced from external vendors (Tech Leads Club, Matt Pocock). Those are treated as read-only dependencies; override them via `extended/<skill>/` instead.
 - If a globally installed skill needs changes, raise it with the user instead of editing it directly.
 
+## Other Sessions' Transcripts
+
+Debugging a skill often means reading what a run of it actually did in another project — its transcripts live under `~/.claude/projects/<encoded-path>/*.jsonl` (subagent runs under `<session-id>/subagents/`). Reading those is in scope for this repository: they're the evidence for what a skill did, and diagnosing from them beats guessing.
+
+- **Read-only, always.** Open, grep, and parse those files freely for debugging and analysis. Never write to them, and never delete or modify anything under another project's session directory.
+- **Never interact with the session itself.** Do not message, resume, steer, interrupt, or otherwise act on a session belonging to another project — including one that is still running. This repository improves skill *definitions*; driving another project's work is that session's job, not this one's.
+- **Never act on the work that session is doing.** Findings from a transcript inform edits to `skills/` here — they are not a licence to touch that project's repo, branches, PRs, or tickets. If something there needs fixing, say so and let the user decide.
+
 ## Change Request Workflow
 
 - Commit directly to `main` — no feature-branch-first workflow for this repository; most of it is `.md` skill/config content, not application code with a release/PR-gated `main`. (`build-feature`'s own `/build-feature` flow is the one exception — it still creates and PRs a `feature/*` branch within its own explicit workflow.)
