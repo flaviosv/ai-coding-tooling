@@ -112,6 +112,22 @@ function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
 
+// Skills reference shared templates as ../../templates/<name>.md. Installed skills are
+// symlinks, so the kernel resolves that to the repo — but tools that normalize paths
+// lexically (collapsing ../../ before following the symlink) resolve it to
+// <skillsDir>/../templates instead. Link that path at the same target so both resolve.
+// Any command that installs a skill must call this: a skill whose template links are
+// dead fails silently at run time, with the agent guessing instead of erroring.
+function templatesLinkPath(agent) {
+  return path.join(path.dirname(agent.skillsDir), 'templates');
+}
+
+function ensureTemplatesLink(agent) {
+  const dest = templatesLinkPath(agent);
+  if (lexists(dest)) return 'present';
+  return linkSafe(TEMPLATES_DIR, dest);
+}
+
 // Create a symlink, never clobbering anything that already exists.
 // Returns 'linked' | 'present' | 'dry'.
 function linkSafe(target, dest) {
@@ -264,11 +280,7 @@ function cmdSetup(agentId) {
 
   linkSafe(path.join(ROOT, 'AGENTS.global.md'), agent.configPath);
 
-  // Skills reference shared templates as ../../templates/<name>.md. Installed skills are
-  // symlinks, so the kernel resolves that to the repo — but tools that normalize paths
-  // lexically (collapsing ../../ before following the symlink) resolve it to
-  // <skillsDir>/../templates instead. Link that path at the same target so both resolve.
-  linkSafe(TEMPLATES_DIR, path.join(path.dirname(agent.skillsDir), 'templates'));
+  ensureTemplatesLink(agent);
 
   log(`\n${c.bold}Skills${c.reset}`);
   for (const skill of skills) installSkill(skill, agent);
@@ -339,6 +351,7 @@ function cmdAdd(agentId, skillName, source, flags = {}) {
   if (lexists(dest)) throw new UserError(`${dest} already exists. Remove it manually or run update.`);
 
   ensureDir(path.dirname(dest));
+  ensureTemplatesLink(agent);
   const installed = installSkill(skill, agent, { force: !!flags.local });
   if (!installed) throw new UserError(`Install of ${name} failed.`);
 
@@ -419,6 +432,8 @@ function cmdOverride(agentId, skillName) {
     return;
   }
 
+  ensureTemplatesLink(agent);
+
   // Scaffold extended/<name>/SKILL.md from the frontmatter template.
   const extDir = path.join(ROOT, 'extended', name);
   const extSkill = path.join(extDir, 'SKILL.md');
@@ -484,6 +499,14 @@ function cmdList(agentId) {
     const ext = s.extended ? ` ${c.cyan}[override]${c.reset}` : '';
     log(`  ${s.name.padEnd(pad)}  ${s.source.padEnd(16)} ${state}${ext}`);
   }
+
+  // Surface the shared-templates link: without it every ../../templates/<name>.md
+  // reference in an installed skill reads as a missing file, silently.
+  const tl = templatesLinkPath(agent);
+  const tlState = !lexists(tl)
+    ? `${c.yellow}missing — run \`fsvskills setup ${agent.id}\`${c.reset}`
+    : isSymlink(tl) ? `${c.green}symlink${c.reset}` : `${c.yellow}real dir (expected a symlink)${c.reset}`;
+  log(`\n${c.bold}Shared templates${c.reset}  ${tl}  ${tlState}`);
 }
 
 // Undo setup: remove the global config symlink, uninstall the skills setup
@@ -497,7 +520,7 @@ function cmdDestroy(agentId) {
 
   log(`\n${c.bold}Global config${c.reset}`);
   removeConfigSymlink(agent.configPath);
-  unlinkIfSymlink(path.join(path.dirname(agent.skillsDir), 'templates'));
+  unlinkIfSymlink(templatesLinkPath(agent));
 
   log(`\n${c.bold}Skills${c.reset}`);
   for (const skill of skills) uninstallSkill(skill, agent);

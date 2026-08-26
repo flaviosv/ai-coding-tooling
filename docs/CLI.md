@@ -95,7 +95,7 @@ fsvskills override claude-code tlc-spec-driven
 ### `list <agent>` · `destroy <agent>` · `statusline [--force]`
 
 ```bash
-fsvskills list claude-code            # source + install state per skill
+fsvskills list claude-code            # source + install state per skill, then the shared-templates link state
 fsvskills destroy claude-code         # tear down a setup
 fsvskills statusline --force          # (re)install the status line script
 ```
