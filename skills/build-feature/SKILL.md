@@ -3,7 +3,7 @@ name: build-feature
 description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — through isolated subagents for every step but grilling itself (run live, in this conversation), resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Build Feature
@@ -29,7 +29,7 @@ Optional:
 ### Composability — do not reimplement what other skills own
 
 - tlc-spec-driven owns Specify/Design/Tasks/Execute's own internal mechanics (auto-sizing, atomic commits, gate checks, the Verifier). Invoke it; don't duplicate its logic.
-- `complete-review` owns the review-and-publish mechanics — it always publishes findings as a pending GitHub review immediately (see Step 12); this skill never passes it `human_review` and never uses its Publish Mode. This skill's own `human_review` only decides whether *this* skill pauses, in its own Step 12 checkpoint, before proceeding to `fix-review`.
+- `complete-review` owns the review-and-publish mechanics — it always publishes findings as a pending GitHub review immediately (see Step 12); this skill never passes it `human_review` and never uses its Publish Mode. This skill's own `human_review` only decides whether *this* skill pauses, in its own Step 12 checkpoint, before proceeding to `fix-review`. When that checkpoint doesn't pause, this skill also submits the pending review itself, right there in Step 12 — `complete-review` never submits its own reviews, by design (see its Guardrails), and `fix-review` refuses to act on a review still sitting `PENDING` (its own Step 1 rule 3), so without a human around to click "submit" on GitHub, this skill has to do it.
 - `fix-review` owns fetching threads fresh from GitHub, classifying them, and fixing — invoke it, don't duplicate it.
 - `architecture-evaluate` owns Incremental/Full mode's own scan and doc-writing logic.
 - `not-your-babysitter`: the orchestrator (this conversation) adopts it as a standing mode for genuinely unplanned situations — a tool failure, a dead end, an ambiguity this skill never anticipated. It does not gate anything this skill explicitly defines: `human_review`'s named checkpoints are planned, not the kind of thing not-your-babysitter's stops are for. The two never compete for the same decision.
@@ -153,7 +153,22 @@ Then rewrite the PR description, sourced from existing artifacts, invent nothing
 
 Invoke `complete-review` for this PR with no `human_review` parameter, ever — it always publishes its findings as a pending GitHub review immediately, its own unchanged default behavior. Findings are never held back from GitHub waiting on this skill's own approval step.
 
-**Checkpoint — `complete-review`:** if `human_review=yes` and `complete-review` not in `human_review_exclude`, show the returned summary (PR URL, each skill's complexity banner, finding counts) to the user and end this turn, waiting for their next message before continuing to Step 13 — the findings are already posted to the PR as a pending review at this point, so the pause is the user's chance to look them over on GitHub (and add their own comments to the same pending review) before `fix-review` runs. Never invent an approval or continue speculatively. Otherwise (`human_review=no`, or `complete-review` excluded) continue immediately to Step 13.
+**Checkpoint — `complete-review`:** if `human_review=yes` and `complete-review` not in `human_review_exclude`, show the returned summary (PR URL, each skill's complexity banner, finding counts) to the user and end this turn, waiting for their next message before continuing to Step 13 — the findings are already posted to the PR as a pending review at this point, so the pause is the user's chance to look them over on GitHub, **submit the review** (required — `fix-review` refuses to act on a review still `PENDING`, its own Step 1 rule 3), and add their own comments to it before `fix-review` runs. Never invent an approval or continue speculatively.
+
+Otherwise (`human_review=no`, or `complete-review` excluded) there's no human around to submit it, so submit the pending review here, on `complete-review`'s behalf, before continuing to Step 13:
+
+1. Resolve the pending review's node ID under the run's own resolved gh login — same query as `complete-review`'s own Posting Mechanics step 1 (`reviews(first: 1, states: PENDING, author: $me)`), `$me` being the login this run already resolved via [gh Account Resolution](../../templates/gh-account-resolution.md).
+2. If none is found (`complete-review` hit a full failure and posted nothing — see its own Guardrails — or it was already submitted by an earlier, interrupted run of this same step), skip submission and go straight to Step 13; there's nothing left for it to act on either, and it will report that itself.
+3. Otherwise submit it as `COMMENT` — never `APPROVE` or `REQUEST_CHANGES`, this skill isn't rendering a review verdict, only making `complete-review`'s already-decided findings visible so `fix-review` can see them:
+   ```
+   gh api graphql -f query='
+     mutation($reviewId: ID!) {
+       submitPullRequestReview(input: { pullRequestReviewId: $reviewId, event: COMMENT }) {
+         pullRequestReview { id }
+       }
+     }' -f reviewId={review_id}
+   ```
+4. Continue to Step 13.
 
 ## Step 13: fix-review
 
@@ -195,7 +210,7 @@ User: `/build-feature base_branch=main task_id=PROJ-42 description="add rate lim
 10. Step 9: spec artifacts committed and pushed
 11. Step 10: Execute runs all tasks, Verifier passes
 12. Step 11: Execute's commits pushed; PR #512's description rewritten with problem/what-was-done/test-results
-13. Step 12: `complete-review` invoked (no `human_review` param) → posts 9 findings as one pending review on PR #512 immediately → summary shown to user, approved → continues to Step 13
+13. Step 12: `complete-review` invoked (no `human_review` param) → posts 9 findings as one pending review on PR #512 immediately → summary shown to user, who reviews and submits the pending review on GitHub, then approves in this conversation → continues to Step 13
 14. Step 13: `fix-review` fixes 6 of 9 findings, replies to and resolves them, leaves 1 answered-only and 2 blocked with reasons
 15. Step 14: `architecture-evaluate` Incremental mode updates 2 already-tracked files → committed and pushed
 16. Step 15: no `.design-sync/config.json` at the worktree root → skipped silently
@@ -205,7 +220,7 @@ User: `/build-feature base_branch=main task_id=PROJ-42 description="add rate lim
 
 User: `/build-feature base_branch=main task_id=PROJ-43 description="cache invalidation for job listings" human_review=no`
 
-Same steps, but 7a/7b/12 never pause — Specify and Design proceed immediately without showing anything to the user first, and Step 12's checkpoint doesn't pause either (`complete-review` still publishes its pending review immediately either way — that part never depended on `human_review`), so Step 13 (`fix-review`) starts right after.
+Same steps, but 7a/7b/12 never pause — Specify and Design proceed immediately without showing anything to the user first, and Step 12's checkpoint doesn't pause either (`complete-review` still publishes its pending review immediately either way — that part never depended on `human_review`). With no human around to submit it, Step 12 submits the pending review itself (`COMMENT` event, via `gh api graphql`) before Step 13 (`fix-review`) starts right after — otherwise `fix-review` would find only a `PENDING` review and refuse to run.
 
 ### Example 3: Resuming after an interruption
 

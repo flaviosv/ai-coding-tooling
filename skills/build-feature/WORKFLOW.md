@@ -40,9 +40,10 @@ flowchart TD
 
     S11 --> CR[complete-review<br/>always publishes pending review immediately]
     CR --> S12{human_review and<br/>complete-review<br/>not excluded?}
-    S12 -- yes --> Wait3[Pause: user reviews the<br/>pending review on GitHub]
+    S12 -- yes --> Wait3[Pause: user reviews +<br/>submits the pending review on GitHub]
     Wait3 --> S13
-    S12 -- no --> S13[Step 13: fix-review<br/>same worktree, no new one]
+    S12 -- no --> SubmitCR[Submit the pending review<br/>gh graphql, COMMENT event]
+    SubmitCR --> S13[Step 13: fix-review<br/>same worktree, no new one]
 
     S13 --> S14[Step 14: architecture-evaluate<br/>Incremental — Sonnet]
     S14 --> S15{".design-sync/config.json<br/>exists?"}
@@ -58,5 +59,6 @@ flowchart TD
 - **Grilling (Step 5) is not a subagent dispatch, deliberately.** An `Agent`-tool subagent runs once, in the background, to completion — it cannot pause mid-run for a real reply from the user, and grilling's whole mechanic is multi-round back-and-forth with the user. So Step 5 runs `grilling` directly, in this conversation, via the `Skill` tool. Step 4 (the quick arch-eval gate) is still a background subagent — dispatched at the start of Step 4, then collected only once Step 5's conversation concludes, right before Step 7a. Fire-and-collect-later, not concurrent-and-awaited-together as it was before this design's fix — the two steps don't need to finish at the same moment, only before Step 7a needs Step 4's result.
 - **The orchestrator never writes large file content into its own context.** Every subagent gets metadata and paths; it does its own reads. This is what keeps a 15+ step run from blowing the orchestrator's context window.
 - **`complete-review` always publishes immediately; `human_review` only gates the pause before `fix-review`.** Earlier versions had this skill pass `human_review: true` to `complete-review` so findings stayed off GitHub until approved in this conversation, then posted via a separate Publish Mode call. That round trip is gone — Step 12 now always lets `complete-review` post its pending review right away (its own unchanged default), and `human_review` decides only whether this skill pauses afterward, before Step 13 runs. The pending review is still unsubmitted (only the authenticated reviewer sees it), so this doesn't expose unapproved findings to anyone else.
+- **A pending review is invisible to `fix-review` until it's submitted — Step 12 has to submit it whenever nobody's around to.** `complete-review` deliberately never submits its own reviews (only posts `PENDING` ones), and `fix-review`'s Step 1 refuses to act on a PR whose only review is still `PENDING`. When the checkpoint pauses (`human_review=yes`, not excluded), the human is expected to submit it on GitHub themselves as part of looking it over before replying to continue. When it doesn't pause (`human_review=no`, or `complete-review` excluded), there's no human to do that, so Step 12 submits it itself via `submitPullRequestReview` (`event: COMMENT`, never `APPROVE`/`REQUEST_CHANGES` — this skill isn't rendering a verdict) before Step 13 starts. The "no existing pending review found" branch also quietly covers resuming after an interruption between submit and Step 13 — a second submit attempt would just find nothing `PENDING` left to submit.
 - **Step 11 also pushes now.** Step 10 (Execute) only commits locally — nothing pushed those commits to origin before `complete-review` (Step 12) reviewed the PR, so `complete-review` could review a stale remote branch. Step 11 now pushes first, before rewriting the PR description.
 - **Worktree cleanup is signal-driven, not automatic-on-completion.** A PR merged via the GitHub UI, with build-feature never re-invoked, would otherwise leave the worktree on disk forever — the sweep at Step 0 checks every tracked spec's worktree, not just the current one.
