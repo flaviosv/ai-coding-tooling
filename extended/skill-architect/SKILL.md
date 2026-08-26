@@ -7,7 +7,7 @@ description: >
   the existing workflow phases, and (2) the extended/ pattern for modifying globally installed
   skills without touching the source.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   parent_skill: skill-architect
   source: "ai-coding-tooling (extended/)"
 ---
@@ -136,7 +136,7 @@ edit the global file directly**. Instead, use the `extended/` pattern:
 1. Create `extended/<skill-name>/SKILL.md` in the project repository.
 2. Use `extends: <skill-name>` in the frontmatter — this signals the relationship to the parent.
 3. The extension file is loaded **alongside** the parent SKILL.md, not instead of it. Write it additively: only add or clarify, don't repeat what the parent already says.
-4. Run `make link-extended` to symlink the new directory into `~/.claude/skills/` (only needed the first time a new `extended/<skill-name>/` directory is created).
+4. Run `fsvskills override claude-code <skill-name>` to scaffold and link the overlay into `~/.claude/skills/<skill-name>/SKILL.extended.md` (only needed the first time a new `extended/<skill-name>/` directory is created). See [docs/CLI.md](../../docs/CLI.md) for the full command reference.
 5. Update `AGENTS.md` to annotate the parent skill entry with `— **Extended**: if \`extended/<skill-name>/SKILL.md\` exists, load it alongside the parent skill.`
 
 **Frontmatter template for an extension:**
@@ -172,6 +172,8 @@ Inject the following steps into the parent skill's workflow at the phases indica
 If the skill will include technology-specific reference files:
 - Follow the naming pattern in [Reference File Naming Convention](../../templates/reference-file-naming-convention.md).
 - Follow the versioning structure in [Version Stratification Guide](../../templates/version-stratification-guide.md).
+
+**Linking a shared template** — count the `../` from the linking file's own depth, not from the skill root. A `SKILL.md` sits at `<skill>/SKILL.md`, so it uses `../../templates/<name>.md`; a file under `<skill>/references/` is one level deeper and needs `../../../templates/<name>.md`. Both resolve because `fsvskills setup` symlinks `templates/` into the agent config directory alongside `skills/` — never copy a template into a skill folder to work around a broken link, since duplicating it is what template extraction exists to prevent. A link that reads as a missing file at runtime means the depth is wrong or `setup` has not been run on that machine.
 
 ### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
 

@@ -48,7 +48,9 @@ The agent id is the first positional arg for most commands and is currently **`c
 
 ### `setup <agent>`
 
-Bootstraps everything for the agent: symlinks `AGENTS.global.md` → the agent config, installs every registered skill, applies all `extended/` overrides, and creates the project-local links (`.claude → .agents`, `CLAUDE.md → AGENTS.md`). Idempotent and safe — never clobbers existing real files.
+Bootstraps everything for the agent: symlinks `AGENTS.global.md` → the agent config, symlinks `templates/` → the agent config dir, installs every registered skill, applies all `extended/` overrides, and creates the project-local links (`.claude → .agents`, `CLAUDE.md → AGENTS.md`). Idempotent and safe — never clobbers existing real files.
+
+The `templates/` link is what makes `[Name](../../templates/<name>.md)` references inside a `SKILL.md` resolve once the skill is installed. Installed skills are symlinks into this repo, so a path-resolving tool that normalizes `../../` *lexically* (before following the symlink) lands on `<skillsDir>/../templates` rather than the repo — without this link, every such reference reads as a missing file, silently, and the agent falls back to guessing or to a filesystem-wide search. Re-run `setup` after cloning onto a new machine, and don't remove the link by hand.
 
 ```bash
 fsvskills setup claude-code --dry-run     # preview a machine bootstrap
