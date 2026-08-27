@@ -1,14 +1,14 @@
 ---
 name: build-feature
-description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — through isolated subagents for every step but grilling itself (run live, in this conversation), resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
+description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling and design-sync (both run live, in this conversation), resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # Build Feature
 
-Takes a feature from nothing but a task ID and a description to a PR marked ready for review, with no human interaction required beyond what `human_review` asks for. An orchestrator that does almost none of the work itself — every step but one delegates to an isolated subagent and reports back a structured result, so this conversation's own context stays small enough to survive a run with a dozen-plus steps. The one exception is grilling (Step 5): it's a live, multi-round conversation with the user, which only this conversation — not an isolated subagent — can actually hold.
+Takes a feature from nothing but a task ID and a description to a PR marked ready for review, with no human interaction required beyond what `human_review` asks for. An orchestrator that does almost none of the work itself — every step but two delegates to an isolated subagent and reports back a structured result, so this conversation's own context stays small enough to survive a run with a dozen-plus steps. The exceptions are grilling (Step 5), a live multi-round conversation with the user that only this conversation can hold, and design-sync (Step 15), whose tool a dispatched subagent cannot reach at all.
 
 ## Parameters
 
@@ -65,7 +65,7 @@ When the repo tracks `docs/codebase/` in git, none of this runs and none of it i
 
 ### Waiting on dispatched subagents
 
-Every step below that spawns a subagent directly via the `Agent` tool — Steps 4, 7a, 7b, 8, 10, 12, 13, 14, 15 — waits for it the same way: load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md). This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Step 4 is the one exception in *timing*, not mechanism: it's dispatched at the start of Step 4 but not collected until just before Step 7a starts, once Step 5's grilling session has run its course — the protocol still governs how that eventual wait happens.
+Every step below that spawns a subagent directly via the `Agent` tool — Steps 4, 7a, 7b, 8, 10, 12, 13, 14, and Step 16's conflict-resolution dispatch — waits for it the same way: load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md). This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Step 4 is the one exception in *timing*, not mechanism: it's dispatched at the start of Step 4 but not collected until just before Step 7a starts, once Step 5's grilling session has run its course — the protocol still governs how that eventual wait happens.
 
 Steps 12 and 13 dispatch a subagent that then invokes `complete-review`/`fix-review` via the `Skill` tool **inside its own context** — never via the `Skill` tool in this conversation. Those two skills carry the heaviest mechanics in the pipeline (publishing dozens of review comments; fetching threads, dispatching fix clusters, cherry-picking, resolving conflicts, replying per thread), and invoking them here runs all of it in the orchestrator's context, at its largest, in the run's final steps. Measured across four real runs, that single mistake accounted for 39–60% of the orchestrator's entire token cost — in one case 83M tokens to move 80 comments onto a PR, more than the feature's own implementation step. `complete-review` invoked this way costs the orchestrator ~3M for the same work.
 
@@ -80,10 +80,13 @@ Apply [gh Account Resolution](../../templates/gh-account-resolution.md) once at 
 - Opened as a draft immediately after the first push (Step 4), with a minimal stub body (task ID and description only — `spec.md` doesn't exist yet at this point). Rewritten in full (Step 11) once tlc-spec-driven's Execute phase completes, sourced from `spec.md`/`tasks.md`/`commits.md`/`validation.md` — invent nothing new.
 - Never merged, by this skill, under any circumstance.
 - Marked ready (`gh pr ready <PR>`) only as the very last successful step (Step 16) — after every other step, including any `human_review` pause, has actually completed.
+- Never marked ready while GitHub reports it unmergeable. "Ready for review" is a claim about the PR's state, and a PR nobody can merge doesn't meet it — asserting readiness without checking is a false completion, which a real run produced: the PR was announced ready and delivered, and the user came back hours later asking for the merge conflicts to be fixed. Step 16 checks, and resolves, before it marks.
 
 ### design-sync
 
 Auto-detected only, no override parameter: presence of `.design-sync/config.json` at the worktree root runs Step 15; its absence skips it silently (not a failure, not something to report as missing).
+
+Step 15 runs **in this conversation**, via the `Skill` tool — the second and last carve-out from the delegation rule above, alongside grilling. It is not a preference: `DesignSync` is an interactively-authenticated claude.ai tool and does not propagate into dispatched subagents, and the bundled `design-sync` skill isn't in a subagent's skill listing either, so a dispatched Step 15 is structurally guaranteed to fail. It did, on a real run: the subagent searched `ToolSearch` four different ways, found nothing, and returned `blocked` — while the same tool sat in the orchestrator's own tool list one level up, and the step later completed fine when invoked here. This carve-out doesn't threaten the context budget the delegation rule protects: the flow is Bash plus a background driver, and the tool reads local paths itself, so no bulk file content lands in this conversation.
 
 ### Credentials
 
@@ -209,13 +212,23 @@ Spawn a Sonnet subagent to run `architecture-evaluate` in Incremental mode again
 
 Classify touched `docs/codebase/` files as new vs. existing (`git status --porcelain -- docs/codebase/`): if every touched file is new, leave them uncommitted for manual review; otherwise commit as one Conventional Commits commit and push. If the path is untracked or ignored, nothing here can commit it — run the context sync-out described under Architecture context in the worktree instead, immediately, so the update survives this worktree.
 
-## Step 15: design-sync (Conditional, Sonnet)
+## Step 15: design-sync (Conditional, this conversation)
 
-Only if `.design-sync/config.json` exists at the worktree root. Spawn a Sonnet subagent to run `design-sync`'s own list→finalize_plan→write flow. Commit and push whatever it changes, same classification logic as Step 14.
+Only if `.design-sync/config.json` exists at the worktree root. Run it **here**, not in a subagent (see the design-sync guardrail for why a dispatched one cannot work): confirm the tool is reachable (`ToolSearch` for `DesignSync`), then invoke `design-sync` via the `Skill` tool and follow its own list→finalize_plan→write flow. Commit and push whatever it changes, same classification logic as Step 14.
 
-## Step 16: Mark Ready
+If the tool isn't reachable even from here, record `blocked` in `progress.md`, say so in the final report, and continue to Step 16 — it doesn't block delivery. Never reconstruct the flow by hand from `.design-sync/NOTES.md` or the config: the pipeline scripts live inside the skill, and improvising them risks pushing malformed content to a live external design project.
 
-`gh pr ready <PR>`. Write `progress.md` status `complete`. This is the true end of a fresh delivery run — report the PR URL and a summary of what each step did, and stop.
+## Step 16: Confirm It Merges, Then Mark Ready
+
+First, ask GitHub whether the PR can actually merge: `gh pr view <PR> --json mergeable,mergeStateStatus`.
+
+- **`MERGEABLE`/`CLEAN`** → proceed.
+- **`UNKNOWN`** → GitHub computes mergeability asynchronously and often hasn't finished right after a push. Wait once — a single timed wait, per [Agent Wait Protocol](../../templates/agent-wait-protocol.md)'s clock rule, never a poll loop — and re-query. Still `UNKNOWN` → proceed, and say in the final report that the check was inconclusive rather than implying it passed.
+- **`CONFLICTING`** → dispatch a Sonnet subagent to resolve it: merge `origin/<target_branch>` into the feature branch, resolve every conflict, run the project's gate checks, commit the merge, push. It returns the conflicted file list and how each was resolved. Re-query afterwards, then proceed. Conflict resolution reads and edits files, so it belongs in a subagent, not here — this conversation only detects, dispatches, and re-checks. If a conflict is genuinely ambiguous — both sides implement the same behavior differently and either choice changes what ships — the subagent leaves it unresolved and says so: stop there, report exactly which files conflict and why, and leave the PR as a draft. Never guess at a merge resolution to reach a green state.
+
+Record the outcome in `progress.md` (`merge_check`), so a resumed run doesn't repeat it blindly.
+
+Then `gh pr ready <PR>`. Write `progress.md` status `complete`. This is the true end of a fresh delivery run — report the PR URL and a summary of what each step did, and stop. Note that mergeability was true at that moment, not forever: the target branch keeps moving, and a later conflict isn't a failure of this run.
 
 ## Resuming an In-Progress Run
 
@@ -245,7 +258,7 @@ User: `/build-feature base_branch=main task_id=PROJ-42 description="add rate lim
 14. Step 13: subagent invokes `fix-review`, which fixes 6 of 9 findings, replies to and resolves them, leaves 1 answered-only and 2 blocked with reasons → returns those counts and the pushed SHAs
 15. Step 14: `architecture-evaluate` Incremental mode updates 2 already-tracked files → committed and pushed
 16. Step 15: no `.design-sync/config.json` at the worktree root → skipped silently
-17. Step 16: `gh pr ready 512` → `progress.md` marked complete → report: "PR #512 marked ready for review: <url>. 9 findings published, 6 auto-fixed. Worktree left in place."
+17. Step 16: `gh pr view 512 --json mergeable,mergeStateStatus` → `MERGEABLE`/`CLEAN` → `gh pr ready 512` → `progress.md` marked complete → report: "PR #512 marked ready for review: <url>. 9 findings published, 6 auto-fixed. Mergeable against `main` as of now. Worktree left in place."
 
 ### Example 2: Fully autonomous run
 
