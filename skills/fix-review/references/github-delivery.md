@@ -27,13 +27,16 @@ Skip nodes where `isResolved: true`, and skip nodes whose comments all have `pul
 
 ## Batching the Writes (GitHub Mode Step 6)
 
-Both write operations below take a single thread id per call, but a GraphQL document can carry many aliased mutations — so **10 per request** is the unit here, not one. Never loop one request per thread when several are ready; a lone reply is simply a batch of one. Pace batches at least 1 second apart, GitHub's own documented remedy for bulk writes.
+Both write operations below take a single thread id per call, but a GraphQL document can carry many aliased mutations — so **10 per request** is the unit here, not one. Never loop one request per thread when several are ready; a lone reply is simply a batch of one.
+
+Build each batch as one JSON file holding `{"query": "<the aliased document>", "variables": {...}}` and send it with `gh api graphql --input <file>`. Ten aliases means twenty-odd variables, which is unreadable and fragile as inline `-f` pairs; the file form also sidesteps shell quoting entirely for reply bodies containing backticks, quotes, or newlines. (`-F query=@<file>` works too, for a document with no variables. `-f query=@<file>` does **not** — `-f` is literal-string only, so the `@path` is sent as GraphQL source and fails with `Expected one of SCHEMA, SCALAR, ...`.)
 
 These rules apply to every batch on this page:
 
 - Build the document with exactly as many aliases as the batch holds — 10, or fewer on the last one. Never pad it.
 - GraphQL resolves each alias independently, so a `200` carrying an `errors` entry for one alias still means the rest succeeded. Skip the failed one, keep the others, report it — never retry or discard a whole batch over one bad alias.
-- If the whole request fails (secondary rate-limit `403`, transport error), none of that batch landed: retry the identical batch once after 60 seconds, then skip it and report exactly which threads it covered. Never abort the run over one failed batch.
+- **A failed-looking request does not mean the batch didn't land.** A `502`, a truncated response (`unexpected end of JSON input`), or a timeout can all arrive after GitHub already committed every mutation in the document. Never retry one blind. Re-run the thread query from step 1 first, and rebuild the retry from only the threads that still lack a reply. A real run skipped this: two batches failed this way, both had actually landed, and retrying them produced 20 duplicate replies that then had to be deleted one REST call at a time — and those extra writes are what tripped the rate limiter below. One verification query is cheaper than any part of that.
+- **Expect GitHub's abuse detection on a long reply run.** Every reply creates a review object, and ~50 of them inside two minutes drew a `403`/`422` carrying `"code": "abuse"` on every subsequent write. That block is time-based, not payload-based — retrying immediately, shrinking the batch, and falling back to the REST reply endpoint all fail identically while it holds. Wait it out (3 minutes cleared it) as a single timed wait per [Agent Wait Protocol](../../../templates/agent-wait-protocol.md)'s clock rule, then retry only the threads confirmed to still have no reply. Pace reply batches ~5 seconds apart to make hitting it less likely in the first place; resolves are far lighter and 1 second between them is enough.
 - 10 is the standing default, matching `complete-review`'s own posting batch size. If the user names a different size, use theirs — don't silently revert or auto-tune down after a failure.
 
 ## Replying to Threads (GitHub Mode Step 6)
@@ -53,9 +56,13 @@ gh api graphql -f query='
 
 Each reply GitHub accepts becomes its own single-comment `COMMENTED` review — that is the platform's model for a thread reply, identical to what clicking **Reply** in the web UI produces, and batching doesn't change it. Never create or submit a review of your own to hold replies: this skill fixes findings, it doesn't post reviews.
 
+## Verifying the Replies (GitHub Mode Step 6, before resolving)
+
+Once every reply batch has been sent, re-run the step 1 thread query once and check that each thread you replied to carries **exactly one** reply from you. This single query is the only thing that catches both halves of the failure mode above — a reply that silently never landed, and a duplicate left by a retry — and it is the last moment either is cheap to fix. Post the missing ones, delete the duplicates (`gh api -X DELETE repos/<owner>/<repo>/pulls/comments/<comment id>`, one call each — there is no batch delete), and re-check. Only threads that pass this check go on to be resolved.
+
 ## Resolving Threads (GitHub Mode Step 6)
 
-Batch the same way, and only for threads whose reply landed above — a thread whose reply failed stays open.
+Batch the same way, and only for threads whose reply is confirmed present above — a thread whose reply failed stays open.
 
 ```
 gh api graphql -f query='
