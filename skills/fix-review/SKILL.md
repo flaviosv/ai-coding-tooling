@@ -3,7 +3,7 @@ name: fix-review
 description: Fixes GitHub PR review findings — from complete-review/code-review/tests-code-review or added manually — by fetching every open review thread fresh from GitHub (always the source of truth), reading each thread's full exchange to decide what it's actually asking for and whether it holds up against the current code, and committing fixes onto the PR's existing branch — never a new PR. A comment or suggested approach that doesn't hold up is rejected with reasoning instead of applied by rote, even when nobody pushed back on it. Every resolved thread gets a documentation reply describing what was actually changed before it's closed — never resolved silently. Also handles findings that exist only in the current conversation and were never posted to GitHub — fixes all of them on a branch you name (asks if none known) and leaves commits unpushed. A third mode batches this across every open PR where you, as reviewer, requested changes — one isolated Sonnet subagent per PR, each running in its own isolated git worktree (so concurrent PRs never fight over which branch is checked out) and fixing only your own comments, fanned out in parallel with results reported as each lands. Every fix is evaluated for test impact — coverage added, updated, or removed as the fix actually warrants, never left to drift incidentally — and validated with a passing directly-relevant test, no full spec-verification cycle. Anything unclear is reported back unfixed rather than guessed at. When explicitly asked, also syncs progress to a PR's linked Jira ticket (a starting comment plus an in-progress transition before fixing begins, a completion comment after) — opt-in only, never run by default. Use when the user says "fix review findings", "fix review comments", "triage PR feedback", "resolve review comments", "apply the review fixes", "fix the PRs I requested changes on", "batch-fix my change requests", or invokes /fix-review — if it's unclear which mode a request means, ask. Do NOT use to generate findings or post a review (use complete-review / code-review / tests-code-review) or for spec planning (use tlc-spec-driven).
 metadata:
   author: Flavio Studart
-  version: "1.12.0"
+  version: "1.13.0"
 ---
 
 # Fix Review
@@ -39,7 +39,7 @@ Fixes review findings — on GitHub, or in this conversation only — straight o
 ### Batch Mode
 
 - Batch Mode only **selects and delegates** — it never reads a thread or commits a fix itself in this conversation; every PR's actual fix work happens inside its own subagent, running the exact same GitHub Mode flow above (and inheriting every Scope guardrail above.
-- "Requested changes" means **your own most recently submitted review** on that PR has state `CHANGES_REQUESTED` — not the PR's aggregate `reviewDecision` (which reflects every reviewer, not just you), and not an older review of yours since superseded by a later approval or comment from you. Always take your latest submitted review, chronologically, to decide whether a PR currently qualifies.
+- "Requested changes" means **your own most recently submitted review** on that PR has state `CHANGES_REQUESTED` — not the PR's aggregate `reviewDecision` (which reflects every reviewer, not just you), and not an older review of yours since superseded by a later approval or comment from you. Always take your latest submitted review, chronologically, to decide whether a PR currently qualifies — excluding the single-comment reply-reviews GitHub creates for this skill's own thread replies (see [Reply-Review Filter](../../templates/reply-review-filter.md)). One GitHub Mode run leaves one per thread it answered; counting them would make every PR this skill has already touched drop out of every later batch, change requests still open.
 - Batch Mode acts only on review threads containing **at least one comment authored by your own identity** — never fix, reply to, or resolve a thread whose comments are entirely from other reviewers, even if unresolved and even if it's clearly a valid finding. Fixing someone else's feedback is out of scope for this mode; each subagent must apply this filter before classifying anything (see Batch Mode Step 4).
 - Never hardcode a PR number as permanently excluded. If the user names an exclusion for this run only (e.g. "batch-fix my change requests except #171"), drop it from the qualifying list for this invocation and say so — do not remember it for future runs.
 - Each qualifying PR's fix run happens in its own subagent, in its own isolated git worktree (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: true`, `isolation: 'worktree'`) — this is what lets every qualifying PR fix concurrently without fighting over which branch is checked out in a shared working directory. The subagent's first action inside its worktree is to check out that PR's branch (`gh pr checkout <N>`); this checkout is only safe because the worktree isolates it from the user's own checkout and from every other PR's subagent. A direct (non-batch) GitHub Mode run isolates the same way when it needs to — via a worktree it creates itself with plain `git worktree` commands instead of the `Agent` tool's `isolation` param, since it isn't running inside a subagent to begin with — but skips it entirely when the current working directory is already on the PR's branch, since git won't allow the same branch checked out twice (see Before Starting). Launch every subagent's `Agent` call in the same message/turn — never one at a time.
@@ -136,19 +136,9 @@ If the search returns zero PRs, report "You have no open PRs with a submitted re
 
 ### Step 3: Filter to PRs where your latest review requested changes
 
-For each candidate PR, fetch all reviews and keep only those authored by your login, ordered by submission time:
+For each candidate PR, fetch every review authored by your login and drop the reply artifacts before reading any verdict — the query, the discriminator, and why REST can't do this check are all in [Reply-Review Filter](../../templates/reply-review-filter.md).
 
-```
-mcp__github__pull_request_read
-  method: get_reviews
-  owner: <owner>
-  repo: <repo>
-  pullNumber: <N>
-```
-
-(or `gh api repos/<owner>/<repo>/pulls/<N>/reviews --jq '[.[] | select(.user.login=="<your-login>")] | sort_by(.submitted_at) | last | .state'`)
-
-A PR qualifies only if your **most recent** submitted review on it has state `CHANGES_REQUESTED` — a later `APPROVED` or `COMMENTED` review of yours means it no longer qualifies, even if an earlier one requested changes. Run this check for every candidate before moving on.
+A PR qualifies only if your **most recent non-reply** submitted review on it has state `CHANGES_REQUESTED` — a later `APPROVED` or `COMMENTED` review of yours means it no longer qualifies, even if an earlier one requested changes. A PR with no non-reply review of yours doesn't qualify at all. Run this check for every candidate before moving on.
 
 Present the qualifying list to the user (PR number + title) before fanning out, so the run is transparent. If nothing qualifies, report that and stop.
 

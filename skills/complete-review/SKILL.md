@@ -3,7 +3,7 @@ name: complete-review
 description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by build-feature) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
 metadata:
   author: Flavio Studart
-  version: "1.6.3"
+  version: "1.7.0"
 ---
 
 # Complete Review
@@ -32,7 +32,7 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 
 - Batch Mode only **selects and delegates** — it never reviews a diff itself in this conversation; every PR's actual review and posting happens inside its own subagent, each running the exact same Single PR Mode flow (and inheriting every guardrail above).
 - "Waiting on your review" means **requested as a reviewer** (`review-requested:<you>`), not the `assignee` field — on GitHub, PRs "assigned to you" for review purposes are the ones that list you as a review requester. Do not switch to querying `assignee:<you>` — that field tracks who owns fixing the PR, not who owes it a review, and returns the wrong set.
-- A PR qualifies for Batch Mode only if it has **zero reviews of any state** (`PENDING`, `COMMENTED`, `APPROVED`, `CHANGES_REQUESTED`) authored by your identity. If you already left any review — even an old pending draft never submitted — skip it; re-reviewing it is `fix-review`'s or a manual Single PR Mode run's job, not Batch Mode's.
+- A PR qualifies for Batch Mode only if it has **zero non-reply reviews of any state** (`PENDING`, `COMMENTED`, `APPROVED`, `CHANGES_REQUESTED`) authored by your identity. If you already left any real review — even an old pending draft never submitted — skip it; re-reviewing it is `fix-review`'s or a manual Single PR Mode run's job, not Batch Mode's. The single-comment reviews GitHub creates for each of your review-thread replies are not reviews for this purpose (see [Reply-Review Filter](../../templates/reply-review-filter.md)) — counting them would hide a PR you never reviewed from this mode permanently, on the strength of one reply.
 - Never hardcode a PR number as permanently excluded. If the user names an exclusion for this run only (e.g. "review pending PRs except #171", "skip PR 205"), drop those numbers from the qualifying list for this invocation and say so — do not remember it for future runs.
 - Each qualifying PR's review runs in its own subagent (`Agent` tool, `agentType: general-purpose`, `model: sonnet`, `run_in_background: true`) so all qualifying PRs review concurrently. Launch every subagent's `Agent` call in the same message/turn — never one at a time — so they actually run in parallel instead of queued sequentially.
 - The `Agent` tool has no reasoning-effort parameter — compensate by putting an explicit "work at high effort: be thorough, verify every finding against the actual diff before including it" instruction in every subagent's prompt.
@@ -194,19 +194,9 @@ If the search returns zero PRs, report "No open PRs are waiting on your review i
 
 ### Step 3: Filter to PRs you haven't reviewed yet
 
-For each candidate PR, check whether any review authored by your login already exists:
+For each candidate PR, fetch every review authored by your login and drop the reply artifacts before judging — the query, the discriminator, and why REST can't do this check are all in [Reply-Review Filter](../../templates/reply-review-filter.md).
 
-```
-mcp__github__pull_request_read
-  method: get_reviews
-  owner: <owner>
-  repo: <repo>
-  pullNumber: <N>
-```
-
-(or `gh api repos/<owner>/<repo>/pulls/<N>/reviews --jq '.[].user.login'`)
-
-A PR qualifies only if none of the returned reviews' `user.login` matches your identity, regardless of state (`PENDING`, `COMMENTED`, `APPROVED`, `CHANGES_REQUESTED` all count as "already reviewed"). Run this check for every candidate before moving on — it's what makes re-running Batch Mode safe (already-reviewed PRs never get reviewed twice).
+A PR qualifies only if **no non-reply review of yours exists**, regardless of state (`PENDING`, `COMMENTED`, `APPROVED`, `CHANGES_REQUESTED` all count as "already reviewed"). Run this check for every candidate before moving on — it's what makes re-running Batch Mode safe (already-reviewed PRs never get reviewed twice), and dropping the reply artifacts first is what keeps a PR you only ever *replied* on from being mistaken for one you reviewed.
 
 Present the qualifying list to the user (PR number + title) before fanning out, so the run is transparent. If nothing qualifies (every candidate already has your review), report that and stop.
 
