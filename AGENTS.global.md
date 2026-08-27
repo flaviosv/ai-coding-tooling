@@ -146,6 +146,8 @@ Wait for the user's answer before writing any code. If they say no or to skip, p
 
 When the session is working inside a git worktree, all edits must stay within that worktree. Never modify files in the original repository checkout (or in any sibling worktree) — even when a path there looks like the same file, and even for a quick fix. If a change genuinely belongs outside the worktree, report it and let me decide instead of editing across the boundary.
 
+The same isolation guard also constrains **how** commands are written, not just where they point. A worktree-isolated session refuses anything it can't statically prove stays inside the worktree — compound `&&` chains, command substitution (`$(...)`), heredocs or redirects mixed with `git`/`gh`, loops passed to `Monitor` — with either *"too complex to verify that it stays inside the worktree"* or *"runs a string through hash"*. This fires on commands that were never leaving the worktree at all, including pure scratchpad reads and writes, so it is a rule about command shape, not about targets. Keep each Bash call plain and single-purpose; when real logic is needed, write it to a script file and invoke that with one plain command. Don't retry the same compound form after a refusal — restructure on the first one.
+
 ## Verification Before Done
 
 - Never mark a task complete without proving it works
