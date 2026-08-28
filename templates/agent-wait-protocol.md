@@ -4,14 +4,6 @@ description: Shared protocol for waiting on background `Agent`-tool subagents �
 type: template
 ---
 
-## Why this exists
-
-An `Agent` tool call runs in the background and delivers its own task notification the instant it finishes — that notification is what "done" means, and it costs nothing to wait for. Left unspecified, orchestrators invent their own wait: a Bash `sleep`/`echo` loop, or repeated `Monitor`/status-check calls, polling for a completion that was already going to arrive on its own. Every one of those calls re-sends the full accumulated conversation as cached input — in one real run this was the single largest cost driver for the entire skill invocation, an order of magnitude more expensive than the actual review work.
-
-The second failure doesn't look like polling at all: emitting a **no-op tool call purely to end the turn** — `Bash true`, `echo waiting`, a `Monitor` heartbeat, whatever the description calls "yield turn". It feels free, because it does nothing and returns instantly. It costs exactly what a poll costs: the whole conversation, re-sent, per call. In one real `build-feature` run, 345 of these burned **77.6M input tokens** waiting — 327 of them inside a single `fix-review` invocation, roughly 30% of that invocation's entire cost, spent on `true`.
-
-The third, sharper failure: treating a quiet transcript as evidence of a stall. A **finished** agent's transcript stops growing too — that's indistinguishable from a stalled one by size or elapsed time alone. Acting on that false signal (stopping the agent, retrying, discarding its output) has thrown away already-completed, valid work — twice, on two independent passes, in a real run — and the recovery afterward cost more than either wasted pass.
-
 ## Protocol
 
 1. **After dispatching, do nothing else.** No polling loop (`sleep`/`echo` in Bash, repeated `Monitor` or status-check calls) to watch for completion. If N agents were dispatched, expect N notifications, in whatever order they actually finish — collect each result as its notification arrives, whether that means proceeding once every one has reported or acting on each one as it lands (the dispatching skill's own step defines which).
@@ -29,3 +21,15 @@ The third, sharper failure: treating a quiet transcript as evidence of a stall. 
 Sometimes the wait is for wall-clock time rather than a subagent — a rate-limit cooldown, a deliberate pace between API batches. Foreground `sleep` is blocked, and that block is exactly what tempts a session into a yield loop: one no-op call every two seconds until enough time has passed. That is the same mistake, in its most expensive form — a three-minute cooldown spent this way cost 183 calls in one real run.
 
 Spend **one** call on the whole interval instead: `Monitor` with a single plain sleeping command (`sleep 180 && echo done`, `timeout_ms` a little above the sleep). It returns immediately with a task id and notifies when the sleep ends — so end the turn right there and wait for that event exactly as for an agent. Keep the command plain: a worktree-isolated session refuses compound loops (`while`/`$(( ))`), a plain `sleep` it accepts.
+
+**This section is for a clock, never for an agent.** If what you are waiting on is a dispatched subagent, none of it applies: that agent's notification already arrives on its own, so a `Monitor` sleep adds a second thing to wait for and buys nothing. Reaching for it there is not a compliant substitute for §2 — it is §2's violation wearing a sanctioned mechanism. One real `fix-review` invocation made exactly that substitution: 23 `Monitor{sleep 600}` calls, each killed by a `TaskStop` the moment a real completion notification arrived — 44 turns whose only purpose was to wait. Alongside 169 `Bash: echo idle` calls in the same invocation, **46% of its turns produced nothing**, at roughly 187k of context re-sent per turn. A `Monitor` sleep is correct only when the thing being waited on is time itself.
+
+## Why this exists
+
+An `Agent` tool call runs in the background and delivers its own task notification the instant it finishes — that notification is what "done" means, and it costs nothing to wait for. Left unspecified, orchestrators invent their own wait: a Bash `sleep`/`echo` loop, or repeated `Monitor`/status-check calls, polling for a completion that was already going to arrive on its own. Every one of those calls re-sends the full accumulated conversation as cached input — in one real run this was the single largest cost driver for the entire skill invocation, an order of magnitude more expensive than the actual review work.
+
+The second failure doesn't look like polling at all: emitting a **no-op tool call purely to end the turn** — `Bash true`, `echo waiting`, a `Monitor` heartbeat, whatever the description calls "yield turn". It feels free, because it does nothing and returns instantly. It costs exactly what a poll costs: the whole conversation, re-sent, per call. In one real `build-feature` run, 345 of these burned **77.6M input tokens** waiting — 327 of them inside a single `fix-review` invocation, roughly 30% of that invocation's entire cost, spent on `true`.
+
+The third, sharper failure: treating a quiet transcript as evidence of a stall. A **finished** agent's transcript stops growing too — that's indistinguishable from a stalled one by size or elapsed time alone. Acting on that false signal (stopping the agent, retrying, discarding its output) has thrown away already-completed, valid work — twice, on two independent passes, in a real run — and the recovery afterward cost more than either wasted pass.
+
+The rules sit above this section because a run that skipped them cited having only skimmed for what it needed to *act*. The protocol is what you need to act.

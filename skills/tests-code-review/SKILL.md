@@ -400,7 +400,7 @@ This agent receives `impl_diff` only — not the test diff. It does NOT judge th
 
 ## Step 7: Await + Fallback
 
-Load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md) — wait for every dispatched dimension agent to report before proceeding to Step 8; the 15-minute default stall ceiling applies as-is (a dimension agent is single-purpose).
+**Read [Agent Wait Protocol](../../templates/agent-wait-protocol.md) in full before the first dispatch, not once the first wait has already started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. Wait for every dispatched dimension agent to report before proceeding to Step 8; the 15-minute default stall ceiling applies as-is (a dimension agent is single-purpose).
 
 For each agent, resolve its outcome:
 

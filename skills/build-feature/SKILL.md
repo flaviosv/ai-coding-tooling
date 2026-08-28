@@ -1,6 +1,6 @@
 ---
 name: build-feature
-description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling and design-sync (both run live, in this conversation), resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
+description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs, then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling, the one step that runs live in this conversation — and, when the project uses Claude Design, closes by handing design-sync back to the user as a required follow-up it cannot run itself, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
   version: "1.6.0"
@@ -8,7 +8,7 @@ metadata:
 
 # Build Feature
 
-Takes a feature from nothing but a task ID and a description to a PR marked ready for review, with no human interaction required beyond what `human_review` asks for. An orchestrator that does almost none of the work itself — every step but two delegates to an isolated subagent and reports back a structured result, so this conversation's own context stays small enough to survive a run with a dozen-plus steps. The exceptions are grilling (Step 5), a live multi-round conversation with the user that only this conversation can hold, and design-sync (Step 15), whose tool a dispatched subagent cannot reach at all.
+Takes a feature from nothing but a task ID and a description to a PR marked ready for review, with no human interaction required beyond what `human_review` asks for. An orchestrator that does almost none of the work itself — every step but one delegates to an isolated subagent and reports back a structured result, so this conversation's own context stays small enough to survive a run with a dozen-plus steps. The exception is grilling (Step 5), a live multi-round conversation with the user that only this conversation can hold.
 
 ## Parameters
 
@@ -71,7 +71,7 @@ The model a step runs on **never depends on `human_review`**. That parameter dec
 
 ### Waiting on dispatched subagents
 
-Every step below that spawns a subagent directly via the `Agent` tool — Steps 4, 7a, 7b, 8, 10, 12, 13, 14, and Step 16's conflict-resolution dispatch — waits for it the same way: load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md). This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Step 4 is the one exception in *timing*, not mechanism: it's dispatched at the start of Step 4 but not collected until just before Step 7a starts, once Step 5's grilling session has run its course — the protocol still governs how that eventual wait happens.
+Every step below that spawns a subagent directly via the `Agent` tool — Steps 4, 7a, 7b, 8, 10, 12, 13, 14, and Step 16's conflict-resolution dispatch — waits for it the same way: **read [Agent Wait Protocol](../../templates/agent-wait-protocol.md) in full before the first dispatch, not once the first wait has already started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Step 4 is the one exception in *timing*, not mechanism: it's dispatched at the start of Step 4 but not collected until just before Step 7a starts, once Step 5's grilling session has run its course — the protocol still governs how that eventual wait happens.
 
 Steps 12 and 13 dispatch a subagent that then invokes `complete-review`/`fix-review` via the `Skill` tool **inside its own context** — never via the `Skill` tool in this conversation. Those two skills carry the heaviest mechanics in the pipeline (publishing dozens of review comments; fetching threads, dispatching fix clusters, cherry-picking, resolving conflicts, replying per thread), and invoking them here runs all of it in the orchestrator's context, at its largest, in the run's final steps. Measured across four real runs, that single mistake accounted for 39–60% of the orchestrator's entire token cost — in one case 83M tokens to move 80 comments onto a PR, more than the feature's own implementation step. `complete-review` invoked this way costs the orchestrator ~3M for the same work.
 
@@ -90,9 +90,11 @@ Apply [gh Account Resolution](../../templates/gh-account-resolution.md) once at 
 
 ### design-sync
 
-Auto-detected only, no override parameter: presence of `.design-sync/config.json` at the worktree root runs Step 15; its absence skips it silently (not a failure, not something to report as missing).
+Auto-detected only, no override parameter: presence of `.design-sync/config.json` at the worktree root makes Step 15 emit its handoff; its absence skips it silently (not a failure, not something to report as missing).
 
-Step 15 runs **in this conversation**, via the `Skill` tool — the second and last carve-out from the delegation rule above, alongside grilling. It is not a preference: `DesignSync` is an interactively-authenticated claude.ai tool and does not propagate into dispatched subagents, and the bundled `design-sync` skill isn't in a subagent's skill listing either, so a dispatched Step 15 is structurally guaranteed to fail. It did, on a real run: the subagent searched `ToolSearch` four different ways, found nothing, and returned `blocked` — while the same tool sat in the orchestrator's own tool list one level up, and the step later completed fine when invoked here. This carve-out doesn't threaten the context budget the delegation rule protects: the flow is Bash plus a background driver, and the tool reads local paths itself, so no bulk file content lands in this conversation.
+**This skill never runs design-sync — it cannot.** The skill is marked `disable-model-invocation`, so the `Skill` tool refuses it no matter who asks; `DesignSync` is an interactively-authenticated claude.ai tool that doesn't propagate into dispatched subagents either. Both routes are closed, and both have been tried: two real runs made the inline `Skill` call and got back `Skill design-sync cannot be used with Skill tool due to disable-model-invocation`, and an earlier one burned a subagent searching `ToolSearch` four different ways for a tool it could never see. The only thing that starts design-sync is the user typing `/design-sync` as a literal command.
+
+So Step 15 hands it back, and **does not gate delivery**: design-sync pushes to an external design project and touches neither the PR's content nor its mergeability, so Step 16 marks the PR ready without waiting for it. Running it afterwards is required, not optional — Step 15's only job is to make sure the user leaves the run knowing that. Never reconstruct the flow by hand from `.design-sync/NOTES.md` or the config: the pipeline scripts live inside the skill, and improvising them risks pushing malformed content to a live external design project.
 
 ### Credentials
 
@@ -218,11 +220,16 @@ Spawn a Sonnet subagent to run `architecture-evaluate` in Incremental mode again
 
 Classify touched `docs/codebase/` files as new vs. existing (`git status --porcelain -- docs/codebase/`): if every touched file is new, leave them uncommitted for manual review; otherwise commit as one Conventional Commits commit and push. If the path is untracked or ignored, nothing here can commit it — run the context sync-out described under Architecture context in the worktree instead, immediately, so the update survives this worktree.
 
-## Step 15: design-sync (Conditional, this conversation)
+## Step 15: design-sync Handoff (Conditional, no work here)
 
-Only if `.design-sync/config.json` exists at the worktree root. Run it **here**, not in a subagent (see the design-sync guardrail for why a dispatched one cannot work): confirm the tool is reachable (`ToolSearch` for `DesignSync`), then invoke `design-sync` via the `Skill` tool and follow its own list→finalize_plan→write flow. Commit and push whatever it changes, same classification logic as Step 14.
+Only if `.design-sync/config.json` exists at the worktree root — otherwise skip silently and go to Step 16.
 
-If the tool isn't reachable even from here, record `blocked` in `progress.md`, say so in the final report, and continue to Step 16 — it doesn't block delivery. Never reconstruct the flow by hand from `.design-sync/NOTES.md` or the config: the pipeline scripts live inside the skill, and improvising them risks pushing malformed content to a live external design project.
+Nothing runs in this step, and nothing can (see the design-sync guardrail). Record `design_sync: pending-user-action` in `progress.md`, then carry the handoff into the final report as a **required follow-up, not a suggestion** — the user runs it themselves once this run has finished. Do not attempt the `Skill` tool, and do not spend a `ToolSearch` checking whether `DesignSync` is reachable: its reachability was never what blocked this.
+
+Put the handoff last in the final report, as its closing instruction, in two steps:
+
+1. **`/compact`** first. design-sync reads components, previews, and bundle listings, and by this point this conversation is carrying the entire build. On a real run it executed at ~250k average context and took 65% of the conversation's total turns; compacting immediately before it cut the same work to roughly half the tokens, because design-sync re-derives everything it needs from disk and loses nothing to the summary.
+2. **`/design-sync`** — typed literally, as the user's own next message.
 
 ## Step 16: Confirm It Merges, Then Mark Ready
 

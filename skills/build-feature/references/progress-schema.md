@@ -46,7 +46,7 @@ One line per completed step, appended as it finishes:
 - Step 12 (complete-review, subagent): done — <N> findings published as pending review; checkpoint approved (user reviewed + submitted on GitHub) | review submitted by this skill (human_review=no or excluded)
 - Step 13 (fix-review, subagent): done — <N> fixed, <N> answered, <N> rejected, <N> blocked
 - Step 14 (architecture-evaluate, Incremental): done — <N> files, committed | left uncommitted (all new) | synced back to <path> | not synced back (source changed mid-run)
-- Step 15 (design-sync, live in this conversation): done | skipped (no .design-sync/config.json) | blocked (DesignSync tool unreachable)
+- Step 15 (design-sync handoff, nothing run here): pending-user-action (handed off in the final report; the user runs /design-sync themselves) | skipped (no .design-sync/config.json)
 - Step 16 (merge check + mark ready): done — merge_check: clean | resolved (<N> files, <merge commit sha>) | inconclusive (mergeable UNKNOWN) | conflicting (unresolved: <files>) ; ready: done | not marked (conflicts unresolved)
 ```
 
