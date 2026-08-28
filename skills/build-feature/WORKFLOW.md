@@ -18,22 +18,22 @@ flowchart TD
     S1 --> SY[Step 1b: Sync docs/codebase into worktree<br/>only if untracked/ignored in the repo]
     SY --> S2[Step 2: Push branch]
     S2 --> S3[Step 3: Draft PR — stub body]
-    S3 --> S4[Step 4: Arch-eval gate — decision only<br/>Sonnet subagent, dispatched — not awaited]
+    S3 --> S4[Step 4: Arch-eval gate — decision only<br/>Haiku subagent, dispatched — not awaited]
     S4 -.background.-> S7aWait
     S3 --> S5[Step 5: Grilling<br/>live in this conversation, not a subagent]
     S5 --> S6[Step 6: Create feature folder<br/>+ grilling-session.md]
 
     S6 --> S7aWait[Collect Step 4's result<br/>Agent Wait Protocol]
-    S7aWait --> S7a[Step 7a: Specify — Opus]
+    S7aWait --> S7a[Step 7a: Specify — Sonnet]
     S7a --> CP1{human_review<br/>and spec not excluded?}
     CP1 -- yes --> Wait1[Pause: approve spec.md]
     CP1 -- no --> S7b
-    Wait1 --> S7b[Step 7b: Design — Opus<br/>reads spec.md fresh]
+    Wait1 --> S7b[Step 7b: Design — Sonnet<br/>reads spec.md fresh]
 
     S7b --> CP2{Design ran AND<br/>human_review AND<br/>design not excluded?}
     CP2 -- yes --> Wait2[Pause: approve design.md]
     CP2 -- no --> S8
-    Wait2 --> S8[Step 8: Tasks — Sonnet<br/>reads spec.md + design.md fresh]
+    Wait2 --> S8[Step 8: Tasks — Haiku<br/>reads spec.md + design.md fresh]
 
     S8 --> S9[Step 9: Commit + push spec artifacts]
     S9 --> S10[Step 10: Execute — Sonnet<br/>tlc-spec-driven owns gate checks + Verifier]
@@ -44,7 +44,7 @@ flowchart TD
     S12 -- yes --> Wait3[Pause: user reviews +<br/>submits the pending review on GitHub]
     Wait3 --> S13
     S12 -- no --> SubmitCR[Submit the pending review<br/>gh graphql, COMMENT event]
-    SubmitCR --> S13[Step 13: fix-review — Sonnet subagent<br/>same worktree, no new one]
+    SubmitCR --> S13[Step 13: fix-review — Haiku subagent<br/>same worktree, no new one]
 
     S13 --> S14[Step 14: architecture-evaluate<br/>Incremental always — Sonnet]
     S14 --> SYB[Sync docs/codebase back to main tree<br/>only if Step 1b copied it in]
@@ -57,7 +57,9 @@ flowchart TD
 
 ## Key architectural notes (not in SKILL.md, kept here for maintainers)
 
-- **Steps 7a/7b are two separate Opus subagent calls, not one.** A single subagent call returns once, at the end — it can't pause mid-conversation for a `human_review` checkpoint. Making `spec` and `design` independently gate-able requires two calls, the second reading `spec.md` fresh off disk rather than sharing conversation state with the first.
+- **The models in this diagram are a restatement, not the source of truth.** Every dispatch site's model lives in [Subagent Models](../../templates/subagent-models.md); `SKILL.md`'s step headings and this diagram both mirror that table. Retune there first, then update both mirrors — this diagram in particular is the one that silently drifts, since nothing at runtime reads it.
+
+- **Steps 7a/7b are two separate subagent calls, not one.** A single subagent call returns once, at the end — it can't pause mid-conversation for a `human_review` checkpoint. Making `spec` and `design` independently gate-able requires two calls, the second reading `spec.md` fresh off disk rather than sharing conversation state with the first.
 - **Grilling (Step 5) is not a subagent dispatch, deliberately.** An `Agent`-tool subagent runs once, in the background, to completion — it cannot pause mid-run for a real reply from the user, and grilling's whole mechanic is multi-round back-and-forth with the user. So Step 5 runs `grilling` directly, in this conversation, via the `Skill` tool. Step 4 (the quick arch-eval gate) is still a background subagent — dispatched at the start of Step 4, then collected only once Step 5's conversation concludes, right before Step 7a. Fire-and-collect-later, not concurrent-and-awaited-together as it was before this design's fix — the two steps don't need to finish at the same moment, only before Step 7a needs Step 4's result.
 - **The orchestrator never writes large file content into its own context.** Every subagent gets metadata and paths; it does its own reads. This is what keeps a 15+ step run from blowing the orchestrator's context window.
 - **Steps 12 and 13 dispatch subagents; they do not call `Skill` from the orchestrator.** They used to, on the reasoning that `complete-review`/`fix-review` own their own internal delegation. Forensics across four production runs killed that reasoning: invoked from the orchestrator, Step 13 cost 39–60% of the entire main session every time (16.6M / 30.3M / 40.8M / 42.7M cache-read), because `fix-review`'s GitHub Mode deliberately keeps classification, cherry-picking, and thread replies in the *calling* conversation — and "the calling conversation" was the orchestrator. Step 12 was the control that proved it: `complete-review` delegates internally, so the same-shaped work cost the orchestrator ~3M. The subagent still invokes the skill via the `Skill` tool — just inside its own context, where the bulk belongs. Note this does not change either skill's own internals: invoked directly by a user, `fix-review` still runs in that conversation, which is correct, because there the user wants to watch it.

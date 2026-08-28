@@ -13,7 +13,7 @@ description: >
   "create project docs", "update project docs", "update docs", "document my changes", "sync
   documentation", "document recent changes", "evaluate package", or "package architecture".
 metadata:
-  version: "4.0.0"
+  version: "4.1.0"
   triggers:
     # Full mode — bootstrap / full refresh of the nine context files
     - "evaluate architecture"
@@ -78,6 +78,7 @@ When ambiguous, default to **Full** mode. **If Incremental mode runs but the con
 
 These apply to every mode.
 
+- **This skill runs on Sonnet, in every mode**, per [Subagent Models](../../templates/subagent-models.md) — doc generation is a long, read-heavy, write-heavy job whose tier shouldn't depend on which model the user happened to be in when they asked for it. See Model Pinning below for how that's enforced when the session is on something else.
 - **Default document location is `docs/codebase/`.** Every context file this skill writes lives in `docs/codebase/`. Create the directory if it does not exist. (Package mode is the exception: it writes a `CLAUDE.md` inside the target package directory, not under `docs/codebase/`.)
 - **Reading existing context for input** — when this skill loads a context file to inform its own work (not to write it), read it from `docs/codebase/<file>`.
 - **The folder is the source of truth.** Treat the actual contents of `docs/codebase/` as authoritative. Sweep the real directory and preserve every `.md` present, including files added by hand beyond the canonical nine. Never regenerate or sync only the fixed list while ignoring what's on disk.
@@ -91,6 +92,21 @@ These apply to every mode.
 - **Respect per-file budgets** (see The Nine Context Files). Summarize aggressively — table rows over paragraphs, bullets over tables, omission over filler. Cap any single file at 500 lines.
 - **Delegate every `.md` write to the `docs-writer` skill** — regardless of mode. This keeps formatting, style, and link integrity consistent. No exceptions.
 - **Follow [Token Efficiency Rules](../../templates/token-efficiency-rules.md)** when generating any `.md` content.
+
+### Model Pinning
+
+Check the session's own model before doing any scanning work.
+
+- **Already on Sonnet** (including when a caller such as `build-feature`'s Step 14 already dispatched this skill into a Sonnet subagent) → run inline, exactly as documented below. Never dispatch a subagent from within an already-Sonnet run; that nests one isolation layer inside another for nothing.
+- **On any other model** → run the pre-flight below, then dispatch one `Agent` (`agentType: general-purpose`, `model: 'sonnet'` — the literal alias, never a versioned model ID) to carry out the selected mode in its own context, and report back what it wrote. The work is entirely file-out — nine context files on disk — so nothing is lost by moving it into a subagent.
+
+**Pre-flight, required before any such dispatch.** A dispatched subagent cannot wait for the user, and two points in this skill do exactly that: the misplaced-context-file migration confirmation (see Detecting & Migrating Misplaced Context Files) and the session-start-context pointer confirmation (see Additional Context Files & Registration). Resolve both *here*, in the conversation with the user, before dispatching:
+
+1. Run the misplaced-file scan yourself and, if it finds anything, ask the migration question and get an answer.
+2. Pass the resolved answers to the subagent as explicit instructions ("migrate these paths" / "leave them in place, read them as source material").
+3. If the subagent hits any *other* question it can't answer, it returns it unanswered rather than guessing — surface it to the user here and re-dispatch with the answer.
+
+Never dispatch with either question unresolved. A subagent that silently picks a migration is worse than a slower run.
 
 ### Holistic Updates (Full and Incremental modes)
 

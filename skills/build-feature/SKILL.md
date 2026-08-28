@@ -3,7 +3,7 @@ name: build-feature
 description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling and design-sync (both run live, in this conversation), resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Build Feature
@@ -62,6 +62,12 @@ Sync it explicitly, in both directions:
 - If neither the worktree nor the main working tree has `docs/codebase/` at all, the project genuinely has none. Step 4's gate decides what to do about that.
 
 When the repo tracks `docs/codebase/` in git, none of this runs and none of it is needed — that is the better arrangement wherever the user controls the repo, since it makes the docs versioned, reviewable, and carried by every worktree for free. Say so once in the final report when a run had to fall back to copying.
+
+### Subagent models
+
+Every `Agent` dispatch this skill makes takes its model from [Subagent Models](../../templates/subagent-models.md) — that table is the authority, and the model named in each step below restates it for readability, never overrides it. Set `model` explicitly on every dispatch (never let a subagent inherit this conversation's model), pass it as one of the four literal aliases, and note that the `Agent` tool has no effort parameter: where a step wants high effort, that lives in the subagent's prompt.
+
+The model a step runs on **never depends on `human_review`**. That parameter decides where this skill pauses, not how capable the work is.
 
 ### Waiting on dispatched subagents
 
@@ -124,7 +130,7 @@ Then run the context sync-in described under Architecture context in the worktre
 
 ## Step 4: Architecture-Evaluate Gate (Background, decision only)
 
-Dispatch a Sonnet subagent to **decide only**: read `architecture-evaluate`'s own "Keeping Docs Up to Date" trigger table plus the recent commit history on `base_branch`, and return `full`, `incremental`, or `none` with its reasoning. It does not invoke `architecture-evaluate`, write any file, or touch the worktree.
+Dispatch a Haiku subagent to **decide only**: read `architecture-evaluate`'s own "Keeping Docs Up to Date" trigger table plus the recent commit history on `base_branch`, and return `full`, `incremental`, or `none` with its reasoning. It does not invoke `architecture-evaluate`, write any file, or touch the worktree.
 
 Judge the trigger against what the worktree actually holds after Step 1's context sync — by this point an absent `docs/codebase/` means the project genuinely has none, not that a fresh worktree failed to carry them.
 
@@ -145,21 +151,21 @@ Each round after the first ends this turn, waiting for the user's next message b
 
 Derive `<slug>` (kebab-case, 2–4 words) from `description`. Create `.specs/features/<task_id>-<slug>/` and write `grilling-session.md` into it from Step 5's grilling notes — before Specify runs, so Specify's own folder-creation logic (if any) finds it already there rather than colliding with it.
 
-## Step 7a: Specify (Opus)
+## Step 7a: Specify (Sonnet)
 
-First, collect Step 4's quick-gate result (per the Agent Wait Protocol) if it hasn't already reported back — a multi-round grilling session almost always outlasts it, so this is typically an instant check, not a real wait. Then spawn an Opus subagent to run tlc-spec-driven's Specify phase against the pre-created feature folder path. Writes `spec.md`.
+First, collect Step 4's quick-gate result (per the Agent Wait Protocol) if it hasn't already reported back — a multi-round grilling session almost always outlasts it, so this is typically an instant check, not a real wait. Then spawn a Sonnet subagent to run tlc-spec-driven's Specify phase against the pre-created feature folder path. Writes `spec.md`.
 
 **Checkpoint — `spec`:** if `human_review=yes` and `spec` is not in `human_review_exclude`, show `spec.md` to the user and end this turn, waiting for their next message before continuing to 7b — never invent an approval or continue speculatively. Otherwise continue immediately. (Every other checkpoint in this skill — `design` in 7b, `complete-review` in Step 12 — pauses the same way.)
 
-## Step 7b: Design (Opus)
+## Step 7b: Design (Sonnet)
 
-Spawn a second, separate Opus subagent — reads `spec.md` fresh from disk (no shared conversation state with 7a's subagent; the file is the handoff). Runs tlc-spec-driven's Design phase. Respect its native auto-sizing: for a Small/Medium-scoped feature, Design may legitimately produce nothing — record that in `progress.md` rather than treating it as a failure.
+Spawn a second, separate Sonnet subagent — reads `spec.md` fresh from disk (no shared conversation state with 7a's subagent; the file is the handoff). Runs tlc-spec-driven's Design phase. Respect its native auto-sizing: for a Small/Medium-scoped feature, Design may legitimately produce nothing — record that in `progress.md` rather than treating it as a failure.
 
 **Checkpoint — `design`:** only meaningful if Design actually ran. If `human_review=yes`, `design` not excluded, and `design.md` was produced, show it and wait for approval before continuing. Otherwise continue immediately.
 
-## Step 8: Tasks (Sonnet)
+## Step 8: Tasks (Haiku)
 
-Spawn a Sonnet subagent — reads `spec.md` and `design.md` (if present) fresh from disk. Runs tlc-spec-driven's Tasks phase. Writes `tasks.md`, respecting the same auto-sizing as Design.
+Spawn a Haiku subagent — reads `spec.md` and `design.md` (if present) fresh from disk. Runs tlc-spec-driven's Tasks phase. Writes `tasks.md`, respecting the same auto-sizing as Design.
 
 ## Step 9: Commit and Push Spec Artifacts
 
@@ -200,9 +206,9 @@ Otherwise (`human_review=no`, or `complete-review` excluded) there's no human ar
    ```
 4. Continue to Step 13.
 
-## Step 13: fix-review (Sonnet)
+## Step 13: fix-review (Haiku)
 
-Spawn a Sonnet subagent to invoke `fix-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login, and nothing else; it fetches the threads fresh itself. It operates inside the already-open worktree (this run's own checkout already matches the PR's branch), so it doesn't need to create one of its own. Never merges or closes the PR.
+Spawn a Haiku subagent to invoke `fix-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login, and nothing else; it fetches the threads fresh itself. It operates inside the already-open worktree (this run's own checkout already matches the PR's branch), so it doesn't need to create one of its own. Never merges or closes the PR.
 
 It returns a structured result: threads fixed, answered-only, rejected (with reasons), and blocked, plus the commit SHAs it pushed. Everything else — fetching threads, the finding bodies, classification, its own fix-cluster subagents, cherry-picking, conflict resolution, post-merge repair, and per-thread replies — stays inside that subagent. This conversation does not fetch review threads, cherry-pick, edit source files, or post replies.
 

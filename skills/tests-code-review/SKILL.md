@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.6.1"
+  version: "2.6.2"
   triggers:
     - "review tests"
     - "test code review"
@@ -59,7 +59,9 @@ You are the villain. Find every gap, weakness, and lie in the test suite — not
 
 ### Subagent Model (hard requirement)
 
-Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex) — **must run on the most recent Sonnet model**, regardless of what model the current session is running on (even if the session is on Opus). When dispatching, explicitly set the model on each agent call; never omit it to let a dispatched agent inherit the session's model.
+Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex) — **must run on Sonnet**, per [Subagent Models](../../templates/subagent-models.md), regardless of what model the current session is running on (even if the session is on Opus). When dispatching, explicitly set the model on each agent call; never omit it to let a dispatched agent inherit the session's model, and pass it as the literal `sonnet` alias — a versioned model ID fails input validation and the subagent never starts.
+
+The `Agent` tool has no reasoning-effort parameter, so a dispatch cannot be made more or less thorough by tier — where that matters, it belongs in the subagent's prompt.
 
 ## Step 1: Mode Detection
 
