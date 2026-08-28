@@ -37,7 +37,7 @@ ai-coding-tooling/
 │   ├── tech-reference-add/
 │   ├── tests/
 │   └── tests-code-review/
-├── templates/               # Reusable authoring patterns for skill files (7 files)
+├── templates/               # Reusable authoring patterns for skill files (12 files)
 ├── AGENTS.global.md         # Global agent config (symlinked → ~/.claude/CLAUDE.md)
 ├── AGENTS.md                # Project-level agent instructions (symlinked → CLAUDE.md)
 ├── CLAUDE.md                # Project constraints for Claude Code
@@ -70,7 +70,7 @@ ai-coding-tooling/
 
 ### Templates (`templates/`)
 **Purpose:** Reusable `.md` patterns referenced by skill authoring and CLI scaffold logic.
-**Key files:** 7 files covering naming, loading constraints, formatting, frontmatter, and version stratification.
+**Key files:** 12 files covering naming, loading constraints, formatting, frontmatter, version stratification, and shared runtime protocols (agent waiting, subagent models, test execution scope).
 
 ## Where Things Live
 
