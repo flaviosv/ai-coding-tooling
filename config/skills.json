@@ -81,6 +81,12 @@
       "description": "Perform language and framework specific security best-practice reviews and suggest improvements. Use when the user explicitly requests security best practices guidance, a security review or report, or secure-by-default coding help. Supports Python, JavaScript/TypeScript, and Go. Do NOT use for general code review, debugging, threat modeling (use security-threat-model), or non-security tasks."
     },
     {
+      "name": "session-evaluate",
+      "source": "local",
+      "scope": "built",
+      "description": "Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents — then reports every finding with its context, metrics, affected aspects, and a proposed fix, asks for approval, and applies the approved fixes as guideline edits to the responsible skill or project context file. Metrics come from a deterministic script so the transcript itself never floods the context. Use when the user says \"evaluate session\", \"analyze this session\", \"session postmortem\", \"why did that session burn so many tokens\", \"why was that session slow\", \"optimize my agent workflow\", or invokes /session-evaluate. Do NOT use for reviewing application code (use code-review) or for authoring a new skill from scratch (use skill-architect)."
+    },
+    {
       "name": "skill-architect",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
