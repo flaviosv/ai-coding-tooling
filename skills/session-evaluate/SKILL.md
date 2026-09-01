@@ -4,7 +4,7 @@ description: Analyzes a completed agent session transcript for performance and w
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.5.0
+  version: 1.6.0
 ---
 
 # Session Evaluate
@@ -96,17 +96,23 @@ Keep every excerpt small and purposeful. If you find yourself pulling repeatedly
 
 ### Step 5: Complexity assessment
 
-Using the (possibly scoped) digest's `records` count and wall-clock span, and whether each catalog dimension shows any candidate signal at all, decide how Step 6 executes. This mirrors `code-review`'s own Step 5 — the same two axes, adapted to a transcript instead of a diff.
+Using the (possibly scoped) digest's `records` line — specifically the **total** (main + subagent records, already summed on that line) — and whether each catalog dimension shows any candidate signal at all, decide how Step 6 executes. This mirrors `code-review`'s own Step 5 — the same two axes, adapted to a transcript instead of a diff.
 
 **Size tier → execution mode:**
 
 | Tier | Condition (post-scoping) | Execution mode |
 | --- | --- | --- |
-| Small | <2,000 records | **Inline** — evaluate directly, 0 agents |
-| Medium | 2,000-8,000 records | **Single agent** — 1 subagent covers every active dimension |
-| Large | >8,000 records | **Parallel** — 1 subagent per active dimension, dispatched together |
+| Small | <1,500 total records | **Inline** — evaluate directly, 0 agents |
+| Medium | 1,500-5,000 total records | **Single agent** — 1 subagent covers every active dimension |
+| Large | >5,000 total records | **Parallel** — 1 subagent per active dimension, dispatched together |
 
-These cutoffs are a starting point, not a tuned constant — if a session's actual evidence-gathering cost (how much grepping and attribution Step 6 ends up needing) doesn't match its record count, say so and adjust rather than silently forcing the wrong tier.
+Use the **total** figure, not the bare main-thread `records` count — a heavily-delegated session (e.g. `build-feature`) can look small at the top level while its subagents did most of the actual work; the total is what the digest's own line already adds up.
+
+**Calibrated against two real sessions** (2026-09-01), not guessed from first principles:
+
+- **Large anchor:** a `build-feature` run (2,905 main records + 4,871 subagent records = 7,776 total; 601 assistant turns; 44 subagent transcripts; max concurrency 15; 5 skills invoked over 4h10m). Unambiguously Large — the Large cutoff sits ~2,800 total records of bandwidth below this anchor so sessions meaningfully smaller than this one extreme case still route correctly, rather than the boundary sitting exactly on the one sample available.
+- **Small anchor:** a long single-thread session with no subagent delegation at all (858 total records over 1h44m). Unambiguously Small/Inline despite its length — record volume, not wall-clock time, is what drives the tier.
+- **Medium is not yet confirmed by a real sample** — it's the gap between the two anchors, not derived from an observed medium session. If a session lands there, treat the tier assignment as a hypothesis and note in the report whether Single-agent execution actually matched the evidence-gathering cost Step 6 needed; adjust the boundary if it consistently doesn't.
 
 **Active dimensions** — a dimension is active only if the digest (or the Step 4 grep pass) shows at least one candidate; an idle dimension is never dispatched:
 
@@ -122,10 +128,10 @@ These cutoffs are a starting point, not a tuned constant — if a session's actu
 Print a one-line banner before Step 6 begins, the same way `code-review` does:
 
 ```
-📊 Session evaluate — Complexity: **<Tier>** (<N> records, <span>) · Active: <dimension letters> · <execution description>
+📊 Session evaluate — Complexity: **<Tier>** (<N> total records, <span>) · Active: <dimension letters> · <execution description>
 ```
 
-Example: `📊 Session evaluate — Complexity: **Large** (11,400 records, 2h14m) · Active: A, B, D, F · Parallel — 4 agents`
+Example: `📊 Session evaluate — Complexity: **Large** (11,400 total records, 2h14m) · Active: A, B, D, F · Parallel — 4 agents`
 
 If no dimension is active, say the session was clean (citing the digest numbers that show it — see Example 2) and stop; there is nothing for Step 6 to dispatch.
 
@@ -265,7 +271,7 @@ Per this repository's workflow, commit and push the applied changes to `main` wi
 
 1. Step 1: no skill named — Full Session Mode.
 2. Resolve `~/.claude/projects/-Users-me-Projects-foo/3921ef51-....jsonl`.
-3. Run the extractor; digest shows 4 reads of the same 13.2k-token file, a 50-turn single-call run, 340 records — Small tier, Inline.
+3. Run the extractor; digest shows 4 reads of the same 13.2k-token file, a 50-turn single-call run, 340 total records — Small tier, Inline.
 4. Classify: A2 (repeated identical work), B1 (missed parallelism).
 5. Attribute both to `skills/fix-review/SKILL.md` (source `local` — directly editable).
 6. Present 2 findings; user approves both.
@@ -296,12 +302,12 @@ Digest shows 9 permission denials for the same `gh` command shape. This is a set
 
 ### Example 5: Large session, Parallel tier
 
-**User:** "evaluate session 8f21 in acme-api, it felt slow"
+**User:** "evaluate that build-feature session, it felt slow"
 
 1. Step 1: no skill named — Full Session Mode.
-2. Digest: 11,400 records, 2h14m span — Large tier. Active dimensions: A (repeated calls), B (long single-call run), D (one confirmed D1 match), F (2 full-suite runs).
-3. Print the complexity banner, then dispatch 4 Sonnet subagents in one message, one per active dimension, each with the shared digest and its own catalog section.
-4. Wait per the Agent Wait Protocol; all 4 report back. Step 7 merges their findings into one list.
+2. Digest: 2,905 main + 4,871 subagent = 7,776 total records, 4h10m span — Large tier (this is the real calibration anchor from Step 5). Active dimensions: A (11 identical `cd .../SKILL.md` reads), C (one manual compaction dropping 312.8k tokens; max subagent concurrency 15), F (heuristic found none here, but would activate on a session that ran one).
+3. Print the complexity banner, then dispatch 2 Sonnet subagents in one message, one per active dimension, each with the shared digest and its own catalog section.
+4. Wait per the Agent Wait Protocol; both report back. Step 7 merges their findings into one list.
 5. Present the consolidated report exactly as Example 1's Step 6 would, grouped by skill and dimension.
 
 ## Troubleshooting

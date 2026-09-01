@@ -312,6 +312,7 @@ def subagents(session_path, calls, windows=None):
                     "billed": totals["input"] + totals["cache_creation"] + totals["cache_read"],
                     "output": totals["output"],
                     "turns": totals["assistant_turns"],
+                    "records": len(sub_records),
                 }
             )
     concurrency = 0
@@ -520,12 +521,15 @@ def render(session_path, records, top, skill_filter=None):
     billed_input = totals["input"] + totals["cache_creation"] + totals["cache_read"]
     cacheable = billed_input or 1
 
+    sub_records_total = sum(r["records"] for r in sub_runs)
+
     add("## Session")
     add(f"- id: {session_path.stem}")
     if scope_note:
         add(f"- {scope_note}")
     add(f"- cwd: {meta.get('cwd', '?')}   branch: {meta.get('gitBranch', '?')}   cli: {meta.get('version', '?')}")
-    add(f"- records: {len(records)}   wall-clock span: {duration(span * 1000)}")
+    add(f"- records: {len(records)}   + subagent records: {sub_records_total}   total: {len(records) + sub_records_total}")
+    add(f"- wall-clock span: {duration(span * 1000)}")
     add(f"- effort mix: {dict(effort)}")
 
     add("\n## Tokens")
