@@ -15,7 +15,7 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
@@ -281,8 +281,13 @@ def compactions(records):
     return events
 
 
-def subagents(session_path, calls):
-    """Subagent spend and whether they ran concurrently."""
+def subagents(session_path, calls, windows=None):
+    """Subagent spend and whether they ran concurrently.
+
+    `windows` (optional): restrict counted runs to those whose start timestamp falls inside one
+    of the given skill_windows() windows — used by --skill scoping so a subagent launched during
+    a different skill's invocation isn't attributed to the one being scoped to.
+    """
     launches = [c for c in calls if c["name"] in ("Agent", "Task")]
     sub_dir = session_path.parent / session_path.stem / "subagents"
     runs = []
@@ -294,11 +299,16 @@ def subagents(session_path, calls):
             stamps = sorted(s for s in stamps if s)
             if not stamps:
                 continue
+            start, end = stamps[0], stamps[-1]
+            if windows is not None:
+                in_scope = any(w["start"] <= start < w["start"] + timedelta(milliseconds=w["ms"]) for w in windows)
+                if not in_scope:
+                    continue
             runs.append(
                 {
                     "id": file.stem[:8],
-                    "start": stamps[0],
-                    "end": stamps[-1],
+                    "start": start,
+                    "end": end,
                     "billed": totals["input"] + totals["cache_creation"] + totals["cache_read"],
                     "output": totals["output"],
                     "turns": totals["assistant_turns"],
@@ -380,7 +390,13 @@ def skill_windows(records, calls, sub_runs, session_end):
     windows = []
     for i, event in enumerate(events):
         start = event["ts"]
-        end = events[i + 1]["ts"] if i + 1 < len(events) else (session_end or start)
+        if i + 1 < len(events):
+            end = events[i + 1]["ts"]
+        else:
+            # Last window: bump by 1ms so the boundary check (`ts < end`) used everywhere this
+            # window feeds into doesn't exclude the session's very last record, which lands
+            # exactly on `session_end` — not on another skill's start, so it belongs here.
+            end = (session_end + timedelta(milliseconds=1)) if session_end else start
         seen[event["name"]] += 1
         window_records = [r for r, ts in tagged if ts and not r.get("isSidechain") and start <= ts < end]
         totals, _, _ = token_totals(window_records)
@@ -454,11 +470,38 @@ def test_suite_runs(calls):
 # --------------------------------------------------------------------------- rendering
 
 
-def render(session_path, records, top):
+def render(session_path, records, top, skill_filter=None):
     out = []
     add = out.append
 
     meta = next((r for r in records if r.get("type") == "assistant"), {})
+
+    scope_note = None
+    window_filter = None
+    if skill_filter:
+        calls_all = collect_tool_calls(records)
+        stamps_all = sorted(s for s in (parse_ts(r.get("timestamp")) for r in records) if s)
+        _, sub_runs_all, _ = subagents(session_path, calls_all)
+        windows_all = skill_windows(records, calls_all, sub_runs_all, stamps_all[-1] if stamps_all else None)
+        wanted = {s.lower() for s in skill_filter}
+        matches = [w for w in windows_all if w["name"].lower() in wanted]
+        if not matches:
+            available = sorted({w["name"] for w in windows_all})
+            return (
+                f"No invocation of {', '.join(skill_filter)} found in this session.\n"
+                f"Skills invoked: {', '.join(available) if available else 'none detected'}"
+            )
+        tagged = [(r, parse_ts(r.get("timestamp"))) for r in records]
+        kept = []
+        for r, ts in tagged:
+            if ts is None:
+                continue
+            if any(w["start"] <= ts < w["start"] + timedelta(milliseconds=w["ms"]) for w in matches):
+                kept.append(r)
+        records = kept
+        window_filter = matches
+        scope_note = "scoped to: " + ", ".join(f"{w['name']} #{w['seq']}" for w in matches)
+
     stamps = sorted(s for s in (parse_ts(r.get("timestamp")) for r in records) if s)
     span = (stamps[-1] - stamps[0]).total_seconds() if len(stamps) > 1 else 0
 
@@ -467,7 +510,7 @@ def render(session_path, records, top):
     turns = turn_timeline(records, calls)
     batching = parallelism(records)
     compact_events = compactions(records)
-    launches, sub_runs, concurrency = subagents(session_path, calls)
+    launches, sub_runs, concurrency = subagents(session_path, calls, windows=window_filter)
     repeats = repetition(calls)
     ts_total, ts_singles = toolsearch_batching(calls)
     skills = skills_used(records, calls)
@@ -479,6 +522,8 @@ def render(session_path, records, top):
 
     add("## Session")
     add(f"- id: {session_path.stem}")
+    if scope_note:
+        add(f"- {scope_note}")
     add(f"- cwd: {meta.get('cwd', '?')}   branch: {meta.get('gitBranch', '?')}   cli: {meta.get('version', '?')}")
     add(f"- records: {len(records)}   wall-clock span: {duration(span * 1000)}")
     add(f"- effort mix: {dict(effort)}")
@@ -634,6 +679,11 @@ def main():
     parser.add_argument("--project", help="project cwd to scope --list to")
     parser.add_argument("--limit", type=int, default=15, help="rows for --list")
     parser.add_argument("--top", type=int, default=10, help="rows per ranked table")
+    parser.add_argument(
+        "--skill",
+        action="append",
+        help="scope the digest to one skill's invocation window(s) (repeatable for several skills)",
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -648,7 +698,7 @@ def main():
         print(f"Not a file: {path}", file=sys.stderr)
         return 1
 
-    print(render(path, load(path), args.top))
+    print(render(path, load(path), args.top, skill_filter=args.skill))
     return 0
 
 
