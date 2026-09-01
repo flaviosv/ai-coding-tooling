@@ -11,7 +11,9 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 - [A. Token consumption](#a-token-consumption)
 - [B. Runtime](#b-runtime)
 - [C. Workflow and orchestration](#c-workflow-and-orchestration)
-- [D. Non-findings](#d-non-findings)
+- [D. Mistakes and corrections](#d-mistakes-and-corrections)
+- [E. Automation candidates](#e-automation-candidates)
+- [F. Non-findings](#f-non-findings)
 
 ---
 
@@ -129,7 +131,41 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 
 ---
 
-## D. Non-findings
+## D. Mistakes and corrections
+
+Unlike A/B/C, this dimension has no digest table — the signal is textual, not numeric. Run the dedicated grep pass from Step 3 every session, not just when a finding needs it; skipping it means this whole dimension goes unchecked.
+
+### D1 — Self-corrected mistake
+
+**Signal:** A bounded grep pass over the transcript for correction language in assistant or user turns, e.g.:
+```
+grep -inoE '"text":"[^"]{0,400}\b(mistake|that.?s wrong|incorrect|should have (used|run|done)|my bad|let me (fix|correct|redo)|actually,? the (right|correct) way)\b[^"]{0,400}"' <session.jsonl>
+```
+Every match is a candidate, not a finding — read the surrounding turn to confirm it names a real wrong action and a specific right one. Discard incidental phrasing (documentation text, a hypothetical, a mistake that was the user's own rather than the agent's command/tool/assumption choice).
+
+**Implies:** The agent took a wrong action — wrong command, wrong tool, wrong file, wrong assumption — and either it or the user caught it mid-session. The correction that resolved it is exactly the guideline a future session is currently missing.
+
+**Fix shape:** State the correct approach as an explicit, specific guideline in the responsible skill, placed at the point where the wrong path was taken — name the wrong action and the right one plainly enough that the same wrong turn can't recur. Apply the same duplicate-check as any other fix (Step 7) — sharpen an existing line rather than adding a near-duplicate.
+
+**Affected aspects:** Correctness by default (Rank C in Step 5's priority table). If the wrong action also burned tokens or time to recover from (e.g. it triggered a large re-read or a redone phase), tag the token/runtime aspect too and let the higher rank apply.
+
+---
+
+## E. Automation candidates
+
+### E1 — Scriptable repetition
+
+**Signal:** `Tool spend` / call counts show one tool invoked many times in the session (5+ is a working default) with **varying** labels/targets but the same *shape* — same tool, same kind of input, same kind of transformation each time (N `Edit` calls each making the same one-line change in a different file, N `Bash` calls each fetching a different URL with the same flags, N `Read`+`Edit` pairs walking a fixed file list). Confirm with a bounded grep sample of those calls' inputs (Step 3) — if the sample shows no case-by-case judgment between calls (no branching on content, no different action taken per result), it's mechanical.
+
+**Implies:** Work with no per-call decision content is pure round-trip overhead — every one of the N calls paid full prompt/response framing (and a full model turn) for a transformation a short script performs in one call. This is a different waste than A2 (identical repeated work): here every call is legitimately doing *something different*, just following a fixed pattern.
+
+**Fix shape:** Not Markdown guidance — **always Informational**, per this skill's apply scope (a script is code, not a guideline). Report it in full: the loop's shape, its inputs, a one-line spec of the script that would replace it and where it would live (`skills/<name>/scripts/`), and how many round-trips it collapses into one. Building it is left to the user or a follow-up request — Step 7 never writes code, regardless of approval.
+
+**Affected aspects:** Tokens and Runtime (Rank A). Severity and Priority still follow the normal Step 5 table by magnitude (N and per-call size) — a large N deserves a high Priority number even though it can never move past Informational — but the at-a-glance `Status` column is set to `Informational` from the start, not `Pending`, since Step 7 cannot act on it.
+
+---
+
+## F. Non-findings
 
 Do not report these. Each one burns the user's attention for nothing:
 
@@ -139,3 +175,5 @@ Do not report these. Each one burns the user's attention for nothing:
 - Anything whose only fix is a code change to a tool, the harness, or the CLI — this skill's apply scope is `.md` guidance only.
 - Restating the digest. A metric is not a finding until it has a cause and a fix.
 - Speculation about intent that the transcript does not support. If the evidence is not in the digest or a targeted excerpt, do not assert it.
+- Ordinary edit-test-fix iteration (see D1). A test failing and getting fixed is normal development, not a mistake — only report a wrong *action* (wrong command, tool, file, assumption), not a wrong first draft of code under test.
+- A repeated tool call that involved real per-call judgment — a different action taken depending on what the previous result showed (see E1). That's normal iterative work, not a scriptable loop.

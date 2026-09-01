@@ -1,10 +1,10 @@
 ---
 name: session-evaluate
-description: Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents — then reports every finding with its context, metrics, affected aspects, and a proposed fix, asks for approval, and applies the approved fixes as guideline edits to the responsible skill or project context file. Metrics come from a deterministic script so the transcript itself never floods the context. Use when the user says "evaluate session", "analyze this session", "session postmortem", "why did that session burn so many tokens", "why was that session slow", "optimize my agent workflow", or invokes /session-evaluate. Do NOT use for reviewing application code (use code-review) or for authoring a new skill from scratch (use skill-architect).
+description: Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents, self-corrected mistakes (wrong commands/tools/assumptions caught mid-session), and mechanical repetition that could become a script in the affected skill — then reports every finding grouped by fix-target skill and dimension, ranked by a priority that weighs token/runtime gain over correctness fixes, asks for approval, and applies the approved fixes as guideline edits to the responsible skill or project context file (script-shaped findings are reported only, never auto-applied). Metrics come from a deterministic script so the transcript itself never floods the context. Use when the user says "evaluate session", "analyze this session", "session postmortem", "why did that session burn so many tokens", "why was that session slow", "optimize my agent workflow", or invokes /session-evaluate. Do NOT use for reviewing application code (use code-review) or for authoring a new skill from scratch (use skill-architect).
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.0.0
+  version: 1.2.0
 ---
 
 # Session Evaluate
@@ -69,16 +69,18 @@ grep -c 'some-pattern' <session.jsonl>
 
 Keep every excerpt small and purposeful. If you find yourself pulling repeatedly, the finding is probably not provable — drop it rather than padding it with speculation.
 
+**Always also run the D1 grep pass** (self-corrected mistakes — see `references/findings-catalog.md`), even when every other finding was complete from the digest. This dimension has no digest table, so this grep is its only discovery mechanism, not a confirmatory extra — skipping it leaves the whole dimension unchecked.
+
 ### Step 4: Classify against the catalog
 
-Read `references/findings-catalog.md` now. Match each digest signal to a finding class, apply its threshold, and discard anything in the catalog's **Non-findings** section.
+Read `references/findings-catalog.md` now. Match each digest signal — and each confirmed D1 grep match from Step 3 — to a finding class, apply its threshold, and discard anything in the catalog's **Non-findings** section.
 
 Two rules that kill most bad findings:
 
 - **A metric is not a finding.** "Cache hit ratio 78%" is an observation. It becomes a finding only once you can state the cause and a fix.
 - **Expensive is not wasteful.** Judge cost per unit of outcome. A session that spent heavily and delivered proportionately has no finding.
 
-### Step 5: Attribute each finding to a fix target
+### Step 5: Attribute each finding to a fix target, judge recurrence, and compute priority
 
 Work out what would have to change. Use the digest's `Skills invoked` line, the subagent launch descriptions, and the file paths in the heaviest calls to identify which skill governed the wasteful stretch.
 
@@ -93,33 +95,60 @@ Work out what would have to change. Use the digest's `Skills invoked` line, the 
 
 Check `config/skills.json` for a skill's `source` before proposing an edit to it. Editing an installed vendor or global skill directly is prohibited by this repository's rules.
 
+**Recurrence.** The target file is already open for attribution — while it's in front of you, judge whether the wasteful call sits on the skill's unconditional flow (**Structural** — it fires on every invocation, not just this session) or was triggered by this session's particular input, branch, or edge case (**Incidental** — may not recur). This costs no extra tool calls.
+
+**Priority.** Findings are ordered by expected future gain, not by their raw single-session magnitude — token reduction and runtime improvement outrank correctness fixes of the same size. Rank via **Affected aspects** and **Severity**:
+
+| Gain rank | Affected aspects |
+| --- | --- |
+| A (highest) | Tokens, Cost, Runtime |
+| B | Context integrity |
+| C (lowest) | Correctness |
+
+| Priority | Rule |
+| --- | --- |
+| P0 | Rank A + High severity |
+| P1 | Rank A + Medium, or Rank B + High |
+| P2 | Rank B + Medium, or Rank C + High |
+| P3 | Everything else (Info, no numeric gain, user-caused) |
+
+A **Structural** finding is bumped one tier toward P0 (P3→P2, P2→P1, P1→P0; P0 stays P0) — a repeat that will recur on every future invocation is worth more than the same single-session number from a one-off. Severity stays as the magnitude label inside each finding's block; Priority is the sort key everything else in Step 6 uses.
+
 ### Step 6: Present the findings and ask for approval
 
-Order findings by impact — the metric magnitude, not your interest in them. Use this exact two-part shape.
+Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E sections, rendered as "Token consumption" / "Runtime" / "Workflow and orchestration" / "Mistakes and corrections" / "Automation candidates" — sorted by Priority within each dimension. Use this exact shape.
 
 **At a glance:**
 
-| # | Severity | Aspects | Finding | Fix target |
-| --- | --- | --- | --- | --- |
-| 1 | High | Tokens, Cost | 3 whole-file reads of the same 13k-token SKILL.md | `skills/fix-review/SKILL.md` |
-| 2 | Medium | Runtime | 50 consecutive single-call turns during the edit phase | `skills/code-review/SKILL.md` |
-| 3 | Info | Context | 2 manual compactions, 394k tokens dropped | — (user-triggered) |
+| Skill | Dimension | # | Priority | Title | Metric | Recurrence | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `skills/fix-review/SKILL.md` | Token consumption | 1 | P0 | 3 whole-file reads of the same 13k-token SKILL.md | 39k tok/session | Structural | Pending |
+| `skills/code-review/SKILL.md` | Runtime | 2 | P1 | 50 consecutive single-call turns during the edit phase | ~6 min added latency | Incidental | Pending |
+| — (user-triggered) | Workflow and orchestration | 3 | P3 | 2 manual compactions, 394k tokens dropped | 394k tok dropped | Incidental | Pending |
 
-Then one block per finding:
+Then, grouped the same way (skill → dimension), one block per finding:
 
 ```
-### 1. [Title] — [Severity]
+## <skill or fix-target path>
+
+### <Dimension name>
+
+#### N. [Title] — [Priority]
 
 **Context:** What the session was doing when this happened, in one or two sentences.
 **Metrics:** The exact numbers from the digest that prove it.
 **Affected aspects:** Tokens / Runtime / Context integrity / Cost / Correctness.
+**Severity:** High / Medium / Info — the single-session magnitude (see below).
+**Recurrence:** Structural / Incidental, with the one-line reason.
 **Root cause:** Why it happened — the missing or wrong guideline.
 **Proposed solution:** The specific edit, naming the file and quoting the guideline text to add.
 ```
 
-Severity: **High** = repeated or large-magnitude waste with a clear fix. **Medium** = real but bounded. **Info** = observed, no `.md` fix, or user-caused.
+Severity: **High** = repeated or large-magnitude waste with a clear fix. **Medium** = real but bounded. **Info** = observed, no `.md` fix, or user-caused. Severity feeds Priority (Step 5) but does not replace it — sort and number findings by Priority, not Severity.
 
-Then stop and ask which findings to apply. Offer "all", "none", or a list of numbers. **Never apply anything before an explicit answer.** If the answer is ambiguous, ask again rather than guessing — an unwanted edit to a skill file is expensive to unwind.
+Set `Status` to `Informational` from the start for any finding whose only fix is code (E1's scripts, or any other class marked Informational in the catalog) — these never enter the approval offer below, regardless of their Priority. Every other finding starts `Pending`.
+
+Then stop and ask which of the `Pending` findings to apply. Offer "all", "none", or a list of numbers. **Never apply anything before an explicit answer.** If the answer is ambiguous, ask again rather than guessing — an unwanted edit to a skill file is expensive to unwind.
 
 ### Step 7: Apply the approved fixes
 
@@ -136,6 +165,8 @@ Bump the `metadata.version` of any skill whose `SKILL.md` you edit.
 ### Step 8: Verify and report
 
 State plainly what changed: files edited, guideline added to each, and which findings were skipped. If an approved finding turned out not to be applicable once you read the target file, say so and leave it unapplied — do not force a weak edit to close the loop.
+
+Reprint the Step 6 at-a-glance table with its `Status` column updated per row — `Applied`, `Skipped`, or left `Pending` for anything not approved — instead of only narrating the outcome in prose.
 
 Per this repository's workflow, commit and push the applied changes to `main` without waiting to be asked, using a Conventional Commits message.
 
