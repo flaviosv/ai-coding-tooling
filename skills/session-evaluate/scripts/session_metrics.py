@@ -352,6 +352,105 @@ def skills_used(records, calls):
     return used
 
 
+def skill_windows(records, calls, sub_runs, session_end):
+    """Wall-clock time and token spend attributed to each skill invocation.
+
+    A window runs from one Skill-tool call or slash-command invocation to the next one
+    (or session end). Tokens and tool calls are scoped to the main thread (isSidechain
+    records excluded) so they aren't double-counted against the Subagents section — any
+    subagent that started inside the window is reported alongside it instead.
+    """
+    events = []
+    for call in calls:
+        if call["name"] == "Skill" and call["ts"]:
+            events.append({"name": call["label"] or "?", "ts": call["ts"]})
+    for record in records:
+        if record.get("type") == "system" and record.get("subtype") == "local_command":
+            ts = parse_ts(record.get("timestamp"))
+            if not ts:
+                continue
+            for match in re.findall(r"<command-name>/?([a-z0-9-]+)</command-name>", json.dumps(record)):
+                events.append({"name": match, "ts": ts})
+    events.sort(key=lambda e: e["ts"])
+    if not events:
+        return []
+
+    tagged = [(record, parse_ts(record.get("timestamp"))) for record in records]
+    seen = Counter()
+    windows = []
+    for i, event in enumerate(events):
+        start = event["ts"]
+        end = events[i + 1]["ts"] if i + 1 < len(events) else (session_end or start)
+        seen[event["name"]] += 1
+        window_records = [r for r, ts in tagged if ts and not r.get("isSidechain") and start <= ts < end]
+        totals, _, _ = token_totals(window_records)
+        window_calls = [c for c in calls if c["ts"] and start <= c["ts"] < end]
+        sub_hits = [s for s in sub_runs if start <= s["start"] < end]
+        windows.append(
+            {
+                "name": event["name"],
+                "seq": seen[event["name"]],
+                "start": start,
+                "ms": (end - start).total_seconds() * 1000,
+                "input": totals["input"] + totals["cache_creation"] + totals["cache_read"],
+                "output": totals["output"],
+                "tool_calls": len(window_calls),
+                "sub_count": len(sub_hits),
+                "sub_billed": sum(s["billed"] for s in sub_hits),
+            }
+        )
+    return windows
+
+
+FULL_SUITE_PATTERNS = [
+    re.compile(r"^\s*(npm|yarn|pnpm)\s+(run\s+)?test(\s+--[\w-]+)*\s*$"),
+    re.compile(r"^\s*(python3?\s+-m\s+)?pytest(\s+-[a-zA-Z]+)*\s*$"),
+    re.compile(r"^\s*go\s+test\s+\./\.\.\.\s*$"),
+    re.compile(r"^\s*cargo\s+test\s*$"),
+    re.compile(r"^\s*(mvn|\./?mvnw)\s+(test|verify)\s*$"),
+    re.compile(r"^\s*(gradle|\./?gradlew)\s+test\s*$"),
+    re.compile(r"^\s*(bundle\s+exec\s+)?rspec\s*$"),
+    re.compile(r"^\s*make\s+test\s*$"),
+    re.compile(r"^\s*tox\s*$"),
+    re.compile(r"^\s*dotnet\s+test\s*$"),
+    re.compile(r"^\s*phpunit\s*$"),
+]
+
+
+def test_suite_runs(calls):
+    """Bash calls shaped like a full test-suite run — no path/filter narrowing them.
+
+    Heuristic, pattern-matched against common test-runner invocations. `call['label']`
+    truncates at 100 chars, so an unusually long command line may be missed or misjudged —
+    treat this as a candidate list to verify, not an exhaustive count.
+
+    Each hit also carries the distinct files touched (Edit/Write) since the previous full-suite
+    run (or session start, for the first) — the evidence a scope-mismatch finding needs: a full
+    run following a one- or two-file touch is the signal, not the raw run count.
+    """
+    hits = []
+    touched = set()
+    for call in calls:
+        if call["name"] in ("Edit", "Write") and call["label"]:
+            touched.add(call["label"])
+            continue
+        if call["name"] != "Bash":
+            continue
+        command = call["label"]
+        if any(pattern.match(command) for pattern in FULL_SUITE_PATTERNS):
+            hits.append(
+                {
+                    "ts": call["ts"],
+                    "command": command,
+                    "error": call["error"],
+                    "files_touched": len(touched),
+                }
+            )
+            touched = set()
+    hits.sort(key=lambda hit: (hit["ts"] is None, hit["ts"]))
+    return hits
+
+
 # --------------------------------------------------------------------------- rendering
 
 
@@ -372,6 +471,8 @@ def render(session_path, records, top):
     repeats = repetition(calls)
     ts_total, ts_singles = toolsearch_batching(calls)
     skills = skills_used(records, calls)
+    windows = skill_windows(records, calls, sub_runs, stamps[-1] if stamps else None)
+    suite_runs = test_suite_runs(calls)
 
     billed_input = totals["input"] + totals["cache_creation"] + totals["cache_read"]
     cacheable = billed_input or 1
@@ -416,6 +517,17 @@ def render(session_path, records, top):
             add(f"| {count} | {name} | `{label}` |")
     else:
         add("- none")
+
+    add("\n## Full test-suite runs (heuristic — verify before treating as exhaustive)")
+    if suite_runs:
+        add(f"- {len(suite_runs)} detected")
+        add("| # | time | command | failed | files touched since last run |")
+        add("| --- | --- | --- | --- | --- |")
+        for i, hit in enumerate(suite_runs, 1):
+            when = f"{hit['ts']:%H:%M:%S}" if hit["ts"] else "?"
+            add(f"| {i} | {when} | `{hit['command']}` | {'yes' if hit['error'] else 'no'} | {hit['files_touched']} |")
+    else:
+        add("- none detected")
 
     add("\n## Runtime")
     if turns:
@@ -462,6 +574,19 @@ def render(session_path, records, top):
 
     add("\n## Skills invoked")
     add("- " + (", ".join(f"{k} x{v}" for k, v in skills.most_common()) if skills else "none detected"))
+
+    add("\n## Time & tokens by skill invocation")
+    if windows:
+        add("| skill | # | wall time | input tok | output tok | tool calls | subagent (n, billed) |")
+        add("| --- | --- | --- | --- | --- | --- | --- |")
+        for window in windows:
+            sub = f"{window['sub_count']}, {human(window['sub_billed'])}" if window["sub_count"] else "-"
+            add(
+                f"| {window['name']} | {window['seq']} | {duration(window['ms'])} | "
+                f"{human(window['input'])} | {human(window['output'])} | {window['tool_calls']} | {sub} |"
+            )
+    else:
+        add("- no Skill invocations or slash-commands detected")
 
     errors = [c for c in calls if c["error"]]
     add(f"\n## Failed tool calls: {len(errors)}")

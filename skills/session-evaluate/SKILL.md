@@ -1,10 +1,10 @@
 ---
 name: session-evaluate
-description: Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents, self-corrected mistakes (wrong commands/tools/assumptions caught mid-session), and mechanical repetition that could become a script in the affected skill — then reports every finding grouped by fix-target skill and dimension, ranked by a priority that weighs token/runtime gain over correctness fixes, asks for approval, and applies the approved fixes as guideline edits to the responsible skill or project context file (script-shaped findings are reported only, never auto-applied). Metrics come from a deterministic script so the transcript itself never floods the context. Use when the user says "evaluate session", "analyze this session", "session postmortem", "why did that session burn so many tokens", "why was that session slow", "optimize my agent workflow", or invokes /session-evaluate. Do NOT use for reviewing application code (use code-review) or for authoring a new skill from scratch (use skill-architect).
+description: Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents, self-corrected mistakes (wrong commands/tools/assumptions caught mid-session), mechanical repetition that could become a script in the affected skill, and full test-suite runs disproportionate to the change's actual scope — then reports every finding grouped by fix-target skill and dimension, ranked by a priority that weighs token/runtime gain over correctness fixes, plus a verification section (time and tokens spent per skill invocation, and every full test-suite run detected with its timing and files touched), asks for approval, and applies the approved fixes as guideline edits to the responsible skill or project context file (script-shaped findings are reported only, never auto-applied). Metrics come from a deterministic script so the transcript itself never floods the context. Use when the user says "evaluate session", "analyze this session", "session postmortem", "why did that session burn so many tokens", "why was that session slow", "optimize my agent workflow", or invokes /session-evaluate. Do NOT use for reviewing application code (use code-review) or for authoring a new skill from scratch (use skill-architect).
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.2.0
+  version: 1.4.0
 ---
 
 # Session Evaluate
@@ -54,7 +54,7 @@ Prefer a **finished** session. The currently-running session's transcript is sti
 python3 <skill-dir>/scripts/session_metrics.py <path-to-session.jsonl> --top 10
 ```
 
-This is the only measurement pass. It emits a compact digest covering tokens and cache behaviour, per-tool spend, the heaviest individual calls, repeated identical calls, turn runtimes and the slowest turns, batching and parallelism, compaction events, subagent spend and concurrency, skills invoked, and failed tool calls.
+This is the only measurement pass. It emits a compact digest covering tokens and cache behaviour, per-tool spend, the heaviest individual calls, repeated identical calls, full test-suite runs detected, turn runtimes and the slowest turns, batching and parallelism, compaction events, subagent spend and concurrency, skills invoked, time and tokens per skill invocation, and failed tool calls.
 
 Read the digest. Do not re-run the script with different flags hoping for something new — raise `--top` only if a ranked table is visibly truncating a pattern you need.
 
@@ -116,7 +116,7 @@ A **Structural** finding is bumped one tier toward P0 (P3→P2, P2→P1, P1→P0
 
 ### Step 6: Present the findings and ask for approval
 
-Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E sections, rendered as "Token consumption" / "Runtime" / "Workflow and orchestration" / "Mistakes and corrections" / "Automation candidates" — sorted by Priority within each dimension. Use this exact shape.
+Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E/F sections, rendered as "Token consumption" / "Runtime" / "Workflow and orchestration" / "Mistakes and corrections" / "Automation candidates" / "Test-scope violations" — sorted by Priority within each dimension. Use this exact shape.
 
 **At a glance:**
 
@@ -125,6 +125,11 @@ Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E secti
 | `skills/fix-review/SKILL.md` | Token consumption | 1 | P0 | 3 whole-file reads of the same 13k-token SKILL.md | 39k tok/session | Structural | Pending |
 | `skills/code-review/SKILL.md` | Runtime | 2 | P1 | 50 consecutive single-call turns during the edit phase | ~6 min added latency | Incidental | Pending |
 | — (user-triggered) | Workflow and orchestration | 3 | P3 | 2 manual compactions, 394k tokens dropped | 394k tok dropped | Incidental | Pending |
+
+**Verification** (always included, straight from the digest — not gated by approval, not a finding):
+
+- **Time & tokens by skill invocation** — relay the digest's `Time & tokens by skill invocation` table as-is (skill, wall time, input/output tokens, tool calls, any subagent work started inside that window). If the user wants a per-step breakdown within a given invocation and the skill announces its own step names in its visible output (e.g. "Step 3: ..."), grep that invocation's window for the target skill's own step headings (read from its `SKILL.md`, already open from Step 5) and report the split — label it explicitly as **estimated, inferred from step mentions in the transcript**, since the digest has no ground truth for where one step ends and the next begins. If the skill never names its steps in visible text, say the per-step split isn't available for that invocation rather than guessing one.
+- **Full test-suite runs** — relay the digest's `Full test-suite runs` table in full (count, time, command, pass/fail, files touched since the last run), always, whether or not any row becomes an F1 finding. This is a heuristic pattern match, not exhaustive — say so. A row only becomes an F1 finding (see the catalog) when its `files touched` count is disproportionate to a full-suite run's cost; a full run on a genuinely cross-cutting change is not a finding (see Non-findings).
 
 Then, grouped the same way (skill → dimension), one block per finding:
 
@@ -206,3 +211,7 @@ Digest shows 9 permission denials for the same `gh` command shape. This is a set
 **Batching numbers look impossible** (every response single-call). The script groups tool calls by `requestId` because Claude Code writes one assistant record per content block. If a transcript predates that field, batching metrics are unreliable — say so and skip B1 rather than reporting a false finding.
 
 **Turn count far below tool-call count.** `turn_duration` records are not emitted for every turn. Runtime percentiles cover only recorded turns; treat them as a sample, and do not present `total` turn time as the session's wall clock.
+
+**A skill invocation's window looks too long or too short.** `Time & tokens by skill invocation` windows run from one `Skill`/slash-command call to the next (or session end) — a skill that launches a `run_in_background: true` subagent and keeps working shows the subagent's time inside its own window, but if that subagent is still running when the *next* skill is invoked, its remaining time lands in the next skill's window instead. Note this rather than treating either number as exact when a background subagent spans a boundary.
+
+**`Full test-suite runs` missed a command, or flagged one that wasn't full-suite.** The detector is a fixed pattern list matched against `call['label']`, which truncates Bash commands at 100 characters — an unusual test runner, a wrapped script, or a long command line past that cutoff won't match. Treat the table as a candidate list to sanity-check against the actual command, not an exhaustive or infallible count.

@@ -13,7 +13,8 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 - [C. Workflow and orchestration](#c-workflow-and-orchestration)
 - [D. Mistakes and corrections](#d-mistakes-and-corrections)
 - [E. Automation candidates](#e-automation-candidates)
-- [F. Non-findings](#f-non-findings)
+- [F. Test-scope violations](#f-test-scope-violations)
+- [G. Non-findings](#g-non-findings)
 
 ---
 
@@ -165,7 +166,21 @@ Every match is a candidate, not a finding — read the surrounding turn to confi
 
 ---
 
-## F. Non-findings
+## F. Test-scope violations
+
+### F1 — Full-suite run disproportionate to change scope
+
+**Signal:** The digest's `Full test-suite runs` table, specifically `files touched since last run` — a full-suite invocation where that count is small (1-2 files, especially docs/single-module touches) relative to the cost of running the whole suite. Cross-check the actual file paths against `Heaviest individual calls`/`Tool spend` to confirm they're narrow and unrelated to shared code, not just few in number.
+
+**Implies:** The governing skill (or the agent's own judgment at that point) defaulted to full-suite verification where a scoped test run would have proven the same thing just as well — the exact over-verification pattern the user's own Test Execution Scope convention exists to prevent. Every unwarranted full run pays the whole suite's runtime and token cost for a change that didn't need it.
+
+**Fix shape:** Add or sharpen a test-scoping guideline in the responsible skill's verification step, naming the specific full-suite command it ran and the scoped alternative it should have used instead (the targeted test file/pattern covering the files actually touched). If the skill already defers to a shared scope-decision convention (e.g. `~/.claude/templates/test-execution-scope.md`) and still ran the full suite, the fix is tightening the skill's own instruction to actually invoke that convention at the point of verification — not restating the convention itself.
+
+**Affected aspects:** Runtime and Tokens (Rank A) — the full run's own cost is the magnitude; severity scales with how disproportionate the run was (files touched vs. suite size/duration), not with the raw run count.
+
+---
+
+## G. Non-findings
 
 Do not report these. Each one burns the user's attention for nothing:
 
@@ -177,3 +192,4 @@ Do not report these. Each one burns the user's attention for nothing:
 - Speculation about intent that the transcript does not support. If the evidence is not in the digest or a targeted excerpt, do not assert it.
 - Ordinary edit-test-fix iteration (see D1). A test failing and getting fixed is normal development, not a mistake — only report a wrong *action* (wrong command, tool, file, assumption), not a wrong first draft of code under test.
 - A repeated tool call that involved real per-call judgment — a different action taken depending on what the previous result showed (see E1). That's normal iterative work, not a scriptable loop.
+- A full-suite run following a genuinely cross-cutting change — shared modules, several subsystems, a contract between components (see F1). The Test Execution Scope convention explicitly calls for widening in that case; a high `files touched` count next to the run is what should stop F1 from firing, not the presence of a full-suite command by itself.
