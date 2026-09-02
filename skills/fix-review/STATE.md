@@ -29,3 +29,10 @@
 - **Trade-off**: None identified.
 - **Date**: 2026-09-02
 - **Status**: active
+
+### AD-005
+- **Decision**: GitHub Mode step 5 requires every item to have **one determined remedy** before it's worked — an item whose fix is still an open design choice (several candidate approaches with no decision rule, a dependency swap, a shared-component change beyond the PR's diff) is marked **blocked** with the options named, not fixed in place. Added a soft per-item budget (~10-20 tool calls) as a signal the remedy wasn't actually determined, not a hard stop.
+- **Reason**: A real APLYR-20 run (found via `session-evaluate`, after AD-001 was already in place) showed a step-5 item dispatched with "determine the best approach: either X, Y, or Z" ran 355 turns / 30.9M tokens at 60 output-tokens/turn before converging — AD-001 removed the 9-way parallel amplification of this cost, but nothing stops a single occurrence of it inside whichever context runs step 5 now.
+- **Trade-off**: Some items that previously got auto-resolved via extended exploration now come back **blocked**, needing a human decision. Judged worth it: unbounded exploration on an underspecified remedy is exactly the failure mode AD-001 was already correcting for the cluster-fan-out case.
+- **Date**: 2026-09-02
+- **Status**: active
