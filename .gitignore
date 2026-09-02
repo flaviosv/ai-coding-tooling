@@ -1,5 +1,8 @@
 *
 
+# .session-evaluate/ (session-evaluate skill's local run memory) is intentionally
+# excluded by the catch-all above — left out of the allow-list on purpose, not an oversight.
+
 !.gitignore
 !.agents
 !.agents/**

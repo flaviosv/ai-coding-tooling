@@ -4,7 +4,7 @@ description: Analyzes a completed agent session transcript for performance and w
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.6.0
+  version: 1.7.0
 ---
 
 # Session Evaluate
@@ -28,6 +28,21 @@ Adopt this persona for the entire skill: *"I'm an engineer doing a performance p
 **Never read the raw `.jsonl` with the Read tool.** These files run to several megabytes. All measurement goes through the script; targeted evidence goes through bounded `grep`. Loading a transcript into context to analyze token waste defeats the entire skill.
 
 **Subagent Model (hard requirement).** Every subagent this skill dispatches — Step 6's single covering-agent or its per-dimension agents, in every tier — **must run on `sonnet`**, per [Subagent Models](../../templates/subagent-models.md), set explicitly on each `Agent` call and never inherited from the calling session. The `Agent` tool has no reasoning-effort parameter, so where a dimension needs more thoroughness than another, that's an instruction in the subagent's own prompt, never a model change.
+
+## Memory
+
+This skill keeps a lightweight, append-only memory of past runs at `.session-evaluate/` in this repo's root — git-ignored (see `.gitignore`), since these are local working notes, not tracked content. A completed run (one that reached Step 10) writes one file: `.session-evaluate/<YYYYMMDD-HHMM>_<session-name>.md`, where `<session-name>` is the evaluated session's custom title if it has one (sanitized to `[A-Za-z0-9_-]`), else the first 8 characters of its session id. Keep the format terse — a future instance of this skill reads it, not a person:
+
+```
+# <session-name> — <YYYY-MM-DD>
+
+Project: <path>   Session: <id>   Mode: <Full|Scoped(<skills>)>   Tier: <Small|Medium|Large>
+
+## Findings
+- [<dimension letter>][<priority>] <title> → <fix target> — <Applied|Skipped|Informational|Pending>: <one-line outcome or reason>
+```
+
+Step 8 reads this directory (if it exists) to surface repeat offenders when presenting findings; Step 11 writes to it once a run is fully resolved. Skip both silently if `.session-evaluate/` doesn't exist yet — create it on first write, don't pre-create it on read.
 
 ## Instructions
 
@@ -202,6 +217,8 @@ For Single-agent and Parallel modes: merge every returned finding into one list.
 
 ### Step 8: Present the findings and ask for approval
 
+**Check memory for related past findings first.** If `.session-evaluate/` exists, grep its files (`grep -li` for each finding's fix-target skill name and dimension letter — cheap, bounded, no need to read a whole file unless a name matches) for prior runs that touched the same skill/dimension. A match is worth surfacing inline in that finding's block as `**Seen before:** <file>, <date> — <one-line prior outcome>` — a fix that was applied before and the same waste shows up again is a stronger signal (recurring despite a fix = the guideline didn't stick, or a new code path hit the same root cause) than a first occurrence, and is worth saying so explicitly. No match is not worth mentioning — don't pad a finding with "no prior occurrences found."
+
 Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E/F sections, rendered as "Token consumption" / "Runtime" / "Workflow and orchestration" / "Mistakes and corrections" / "Automation candidates" / "Test-scope violations" — sorted by Priority within each dimension. Use this exact shape.
 
 **At a glance:**
@@ -262,6 +279,12 @@ State plainly what changed: files edited, guideline added to each, and which fin
 Reprint the Step 8 at-a-glance table with its `Status` column updated per row — `Applied`, `Skipped`, or left `Pending` for anything not approved — instead of only narrating the outcome in prose.
 
 Per this repository's workflow, commit and push the applied changes to `main` without waiting to be asked, using a Conventional Commits message.
+
+### Step 11: Record the run in memory
+
+Always run this step, whether the answer to Step 8 was "all", "none", or a partial list — the point is a durable record of what was found and decided, not just of what was applied. Write it after Step 10, once every decision and edit is final; never write a partial file mid-flow.
+
+`mkdir -p .session-evaluate` (repo root) if it doesn't already exist, then write `.session-evaluate/<YYYYMMDD-HHMM>_<session-name>.md` per the [Memory](#memory) format — one line per finding (Pending/Informational findings included, not just Applied ones), each carrying its dimension letter, priority, title, fix target, and final status with a one-line reason. Do not narrate the investigation or repeat the digest — this file is a lookup table for Step 8's future memory search, not a second report.
 
 ## Examples
 
