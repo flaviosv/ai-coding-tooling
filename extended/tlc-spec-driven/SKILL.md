@@ -12,7 +12,7 @@ description: >
   (`commits.md`) of every atomic commit hash traceable to that feature, and (6) records the
   model tier each phase is expected to run on.
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   parent_skill: tlc-spec-driven
   source: "ai-coding-tooling (extended/)"
 ---
@@ -102,7 +102,7 @@ Tasks sits a tier below the rest deliberately: by the time it runs, Specify and 
 
 **This skill never dispatches itself into a subagent to honor that.** All four phases are interactive by nature — Specify asks clarifying questions, Design surfaces trade-offs, Execute reports progress — and a dispatched `Agent` cannot pause for a reply. So the tiers are enforced by whoever *calls* the phase:
 
-- **Called by an orchestrator** (`build-feature`'s Steps 7a/7b/8/10 are the reference implementation) → the orchestrator dispatches each phase as its own subagent with the model pinned per the table. That is where the table binds.
+- **Called by an orchestrator** (`build-feature`'s Steps 6a/6b/7/9 are the reference implementation) → the orchestrator dispatches each phase as its own subagent with the model pinned per the table. That is where the table binds.
 - **Invoked directly by the user** → the phase runs in that conversation, on whatever model the session is using. Nothing here overrides the user's session model or asks them to switch; note the intended tier if it's obviously mismatched and let them decide.
 
 The model never varies with whether a human is reviewing the phase's output. Approval gates decide where a run pauses, not how capable the work is.

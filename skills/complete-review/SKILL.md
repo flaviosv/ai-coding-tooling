@@ -3,7 +3,7 @@ name: complete-review
 description: Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by build-feature) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says "complete review", "full review", "run a complete review", "review and post to PR", "review my pending PRs", "review all PRs assigned to me", "review pending PRs", "review the PRs I haven't reviewed yet", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many.
 metadata:
   author: Flavio Studart
-  version: "1.7.1"
+  version: "1.7.2"
 ---
 
 # Complete Review
@@ -27,7 +27,7 @@ Runs `code-review` and `tests-code-review` against a GitHub PR and publishes eve
 - If a subagent reports it could not complete (PR not found, auth failure, skill-invocation error): retry once with a fresh subagent (scoped to the failed skill only, on a partial failure — see above). If it fails a second time, stop and report the failure — do not fabricate a finding count or skip a skill.
 - Never print `gh auth token` output or any token/credential value. Reference `gh`'s own auth state by status only ("authenticated" / "not authenticated").
 - For environments with more than one `gh` account logged in, see [gh Account Resolution](../../templates/gh-account-resolution.md) for scoping every `gh` call to the correct account — not applied here by default; adopt it only if this skill starts running somewhere that actually hits the multi-account problem.
-- **`human_review` parameter (optional, caller-supplied, Single PR Mode only).** Absent (the default) → behavior is exactly as documented above: Step 2 posts immediately, nothing changes for a plain `/complete-review` invocation or any other caller that doesn't pass it. Passed as `true` by a caller that gates publication on its own approval step → Step 2 assembles findings but withholds the POST; note that `build-feature` is deliberately not one of those callers — its Step 12 never passes this parameter, because its own checkpoint assumes the findings are already on GitHub for the human to read. see Single PR Mode Step 2's Human Review branch and the [Publish Mode](#publish-mode) section below. This gate does not apply to Batch Mode — its whole premise is an unattended sweep across many PRs, so Batch Mode always publishes immediately regardless of this parameter.
+- **`human_review` parameter (optional, caller-supplied, Single PR Mode only).** Absent (the default) → behavior is exactly as documented above: Step 2 posts immediately, nothing changes for a plain `/complete-review` invocation or any other caller that doesn't pass it. Passed as `true` by a caller that gates publication on its own approval step → Step 2 assembles findings but withholds the POST; note that `build-feature` is deliberately not one of those callers — its Step 11 never passes this parameter, because its own checkpoint assumes the findings are already on GitHub for the human to read. see Single PR Mode Step 2's Human Review branch and the [Publish Mode](#publish-mode) section below. This gate does not apply to Batch Mode — its whole premise is an unattended sweep across many PRs, so Batch Mode always publishes immediately regardless of this parameter.
 
 ### Batch Mode
 
@@ -340,7 +340,7 @@ User: "review pending PRs" (run from a plain directory, no `.git`)
 
 A caller that gates publication on its own approval step invokes: "run complete-review for PR #512, human_review: true, findings_path: .specs/features/PROJ-9-widget/complete-review-findings.json"
 
-(`build-feature` is **not** such a caller — its Step 12 never passes `human_review` and never uses Publish Mode, by its own explicit rule. Passing it from there holds findings off GitHub that its checkpoint expects to already be posted, and stalls the run.)
+(`build-feature` is **not** such a caller — its Step 11 never passes `human_review` and never uses Publish Mode, by its own explicit rule. Passing it from there holds findings off GitHub that its checkpoint expects to already be posted, and stalls the run.)
 
 1. Step 1 (Mode Detection): PR number given, not a publish request → Single PR Mode
 2. Single PR Mode Step 1: resolved as #512

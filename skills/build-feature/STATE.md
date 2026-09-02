@@ -29,3 +29,10 @@
 - **Trade-off**: Adds a small code dependency (`scripts/progress.mjs`, plain Node, no external packages) to what was previously pure prose/hand-editing — a maintenance surface `fsvskills` doesn't track, per this project's usual skill-registry conventions.
 - **Date**: 2026-09-02
 - **Status**: active
+
+### AD-005
+- **Decision**: Adopt the shared [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md) at every dispatch site (Steps 3, 6a, 6b, 7, 9, 11, 12, and Step 15's conflict-resolution dispatch), replacing this skill's own inline return-shape prose with a pointer to the template, plus explicit completion-condition and delegation-depth requirements per site.
+- **Reason**: The same session-evaluate run that produced AD-001–AD-004 also found the `complete-review` dispatch (Step 11) ran 156 turns / 23.0M tokens with no completion condition, and four phase subagents couldn't be attributed to their own phase afterward because their prompts didn't self-identify — both symptoms of no shared dispatch shape. The user explicitly rejected a hard tool-call ceiling for this (they monitor long runs themselves), so the template's scale-estimate field is informational only, never a stop condition — this skill inherits that same non-blocking framing at every site.
+- **Trade-off**: None identified — this only adds structure to prompts that were already being written by hand.
+- **Date**: 2026-09-02
+- **Status**: active

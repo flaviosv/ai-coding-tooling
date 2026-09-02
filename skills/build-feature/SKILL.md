@@ -3,7 +3,7 @@ name: build-feature
 description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs, then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling, the one step that runs live in this conversation — and, when the project uses Claude Design, closes by handing design-sync back to the user as a required follow-up it cannot run itself, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.7.0"
+  version: "1.8.0"
 ---
 
 # Build Feature
@@ -36,7 +36,9 @@ Optional:
 
 ### State ownership
 
-This conversation (the orchestrator) is the **only** writer of `progress.md` — no subagent ever writes it. Every subagent this skill dispatches returns a structured result, not free prose: `status` (`ok` / `blocked` / `question`), the artifacts it produced (file paths, PR number, commit SHAs — whatever the step calls for), and a `question` or `blocker` field when it hit something requiring a decision it can't make itself. The orchestrator is the only thing that ever decides to pause, resume, or advance `progress.md`.
+This conversation (the orchestrator) is the **only** writer of `progress.md` — no subagent ever writes it. The orchestrator is the only thing that ever decides to pause, resume, or advance `progress.md`.
+
+Every dispatch this skill makes (Steps 3, 6a, 6b, 7, 9, 11, 12, and Step 15's conflict-resolution dispatch) follows [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md) in full — its own return-shape field (`status`: `ok`/`blocked`/`question`, the artifacts produced, a `question`/`blocker` field) is this skill's return-shape convention, so state it that way rather than restating it per step. Two things to get right at every one of those sites: the **completion condition** is a concrete artifact each step already produces (a file written, a PR number returned, `mergeable: true` confirmed) — never "when the subagent decides it's done" — and **delegation depth** defaults to no further dispatch, except where a step's own sub-skill already fans out independently by design (`fix-review`'s per-cluster subagents, `tlc-spec-driven` Execute's per-task subagents) — say so explicitly rather than leaving it to be discovered later. The observability prefix/scale-estimate field is informational only, per the template — never a reason for a dispatched step to stop short of its completion condition.
 
 Write and update `progress.md` with `scripts/progress.mjs` (`node scripts/progress.mjs <path> --init ...` once, per Step 1's `Run State` fields; `node scripts/progress.mjs <path> --step <id> --label <text> --detail <text> [--set field=value]...` at the end of every step from there) rather than hand-editing it with `Edit` — it bumps `last_completed_step`, writes that step's `Step Log` line, and applies any `Run State` field updates (e.g. `--set pr_number=512`) in one call, and re-running the same `--step` overwrites that step's own line instead of duplicating it. Reserve `Edit`/`Write` on this file for a shape the script doesn't cover.
 
