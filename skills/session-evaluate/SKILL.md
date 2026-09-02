@@ -4,7 +4,7 @@ description: Analyzes a completed agent session transcript for performance and w
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.8.0
+  version: 1.9.0
 ---
 
 # Session Evaluate
@@ -95,8 +95,10 @@ Read the digest. Do not re-run the script with different flags hoping for someth
 **Always run the D1 grep pass** (self-corrected mistakes — see `references/findings-catalog.md`) before assessing complexity, regardless of tier. This dimension has no digest table, so this grep is its only discovery mechanism — skipping it leaves the whole dimension unchecked, and Step 5 needs its result to know whether dimension D is active.
 
 ```bash
-grep -inoE '"text":"[^"]{0,400}\b(mistake|that.?s wrong|incorrect|should have (used|run|done)|my bad|let me (fix|correct|redo)|actually,? the (right|correct) way)\b[^"]{0,400}"' <session.jsonl>
+grep -inoE '"(text|prompt|description)":"[^"]{0,400}\b(mistake|that.?s wrong|incorrect|should have (used|run|done)|my bad|let me (fix|correct|redo)|actually,? the (right|correct) way|left (the |it |the branch |the codebase )?in an? broken|left .{0,40}broken state|leftover .{0,30}(marker|conflict)|prior .{0,40}(pass|run) left|still (failing|broken)|broken state)\b[^"]{0,400}"' <session.jsonl>
 ```
+
+Scan `prompt` and `description`, not just `text` — a subagent's dispatch prompt is where an orchestrator explains "a prior pass left this broken" when it launches a recovery agent, and that content is a `tool_use` block's `"prompt":"..."`/`"description":"..."` field, never `"text":"..."`. Confirmed on a real session: a skill's automated pass left its deliverable broken, requiring a follow-up recovery subagent — entirely invisible to a `text`-only grep, since the evidence lived in the recovery agent's own dispatch prompt. This applies to any skill whose output a later step re-checks, not a specific one.
 
 In Scoped Mode, `grep` has no timestamp filter — discard any match whose surrounding turn falls outside the scoped skill's invocation window(s) before treating it as a D1 candidate.
 

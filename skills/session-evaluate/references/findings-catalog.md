@@ -138,13 +138,13 @@ Unlike A/B/C, this dimension has no digest table — the signal is textual, not 
 
 ### D1 — Self-corrected mistake
 
-**Signal:** A bounded grep pass over the transcript for correction language in assistant or user turns, e.g.:
+**Signal:** A bounded grep pass over the transcript for correction language, scanning `text` (assistant/user turns), `prompt`, and `description` (an `Agent`/`Task` tool's own dispatch fields — where an orchestrator names a prior failure when launching a recovery subagent, and `text`-only scanning structurally cannot see it), e.g.:
 ```
-grep -inoE '"text":"[^"]{0,400}\b(mistake|that.?s wrong|incorrect|should have (used|run|done)|my bad|let me (fix|correct|redo)|actually,? the (right|correct) way)\b[^"]{0,400}"' <session.jsonl>
+grep -inoE '"(text|prompt|description)":"[^"]{0,400}\b(mistake|that.?s wrong|incorrect|should have (used|run|done)|my bad|let me (fix|correct|redo)|actually,? the (right|correct) way|left (the |it |the branch |the codebase )?in an? broken|left .{0,40}broken state|leftover .{0,30}(marker|conflict)|prior .{0,40}(pass|run) left|still (failing|broken)|broken state)\b[^"]{0,400}"' <session.jsonl>
 ```
-Every match is a candidate, not a finding — read the surrounding turn to confirm it names a real wrong action and a specific right one. Discard incidental phrasing (documentation text, a hypothetical, a mistake that was the user's own rather than the agent's command/tool/assumption choice).
+Every match is a candidate, not a finding — read the surrounding turn to confirm it names a real wrong action and a specific right one. Discard incidental phrasing (documentation text, a hypothetical, a mistake that was the user's own rather than the agent's command/tool/assumption choice). A `prompt`/`description` hit naming a prior skill's broken output is a *stronger* candidate than most `text` hits: it's not the agent second-guessing itself mid-thought, it's a downstream check (another skill, or a later validation step) catching a real defect the responsible skill's own process missed — usually worth a higher severity for exactly that reason.
 
-**Implies:** The agent took a wrong action — wrong command, wrong tool, wrong file, wrong assumption — and either it or the user caught it mid-session. The correction that resolved it is exactly the guideline a future session is currently missing.
+**Implies:** The agent (or a skill it ran) took a wrong action — wrong command, wrong tool, wrong file, wrong assumption, or a process step with no final-state validation — and either it, the user, or a later step in the same session caught it. The correction that resolved it is exactly the guideline a future session is currently missing.
 
 **Fix shape:** State the correct approach as an explicit, specific guideline in the responsible skill, placed at the point where the wrong path was taken — name the wrong action and the right one plainly enough that the same wrong turn can't recur. Apply the same duplicate-check as any other fix (Step 7) — sharpen an existing line rather than adding a near-duplicate.
 
