@@ -15,11 +15,11 @@ Read this when Step 0 needs to resume a run, or whenever a step is about to writ
 - branch: feature/<task_id>_<description>
 - base_branch: <value>
 - target_branch: <value>
-- pr_number: <N> (once Step 3 has run)
+- pr_number: <N> (once Step 8 has run)
 - gh_login: <resolved account login — never a token>
 - human_review: yes | no
 - human_review_exclude: <comma list, if any>
-- context_docs_copied_from: <main working tree path> (only when Step 1 copied an untracked/ignored `docs/codebase/` in; absent when the path is tracked or the project has none — Step 14's sync-out reads this to know whether to write back, and where)
+- context_docs_copied_from: <main working tree path> (only when Step 1 copied an untracked/ignored `docs/codebase/` in; absent when the path is tracked or the project has none — Step 13's sync-out reads this to know whether to write back, and where)
 
 ## Checkpoints
 
@@ -33,21 +33,20 @@ One line per completed step, appended as it finishes:
 
 - Step 1 (worktree/branch): done — <worktree_path>, <branch>; context docs: tracked | copied from <path> | none in repo
 - Step 2 (push): done
-- Step 3 (draft PR): done — PR #<N>
-- Step 4 (arch-eval gate, decision only, dispatched in background): done — <none|incremental|full (reported, not run)>
-- Step 5 (grilling, live in this conversation): done — <N rounds, or "no questions — frontier empty on round 1">
-- Step 6 (feature folder): done — .specs/features/<task_id>-<slug>/
-- Step 7a (specify): done — spec.md
-- Step 7b (design): done — design.md | skipped (Small/Medium scope)
-- Step 8 (tasks): done — tasks.md
-- Step 9 (commit spec artifacts): done — <commit sha>
-- Step 10 (execute): done — Verifier: PASS
-- Step 11 (push + PR description): done
-- Step 12 (complete-review, subagent): done — <N> findings published as pending review; checkpoint approved (user reviewed + submitted on GitHub) | review submitted by this skill (human_review=no or excluded)
-- Step 13 (fix-review, subagent): done — <N> fixed, <N> answered, <N> rejected, <N> blocked
-- Step 14 (architecture-evaluate, Incremental): done — <N> files, committed | left uncommitted (all new) | synced back to <path> | not synced back (source changed mid-run)
-- Step 15 (design-sync handoff, nothing run here): pending-user-action (handed off in the final report; the user runs /design-sync themselves) | skipped (no .design-sync/config.json)
-- Step 16 (merge check + mark ready): done — merge_check: clean | resolved (<N> files, <merge commit sha>) | inconclusive (mergeable UNKNOWN) | conflicting (unresolved: <files>) ; ready: done | not marked (conflicts unresolved)
+- Step 3 (arch-eval gate, decision only, dispatched in background): done — <none|incremental|full (reported, not run)>
+- Step 4 (grilling, live in this conversation): done — <N rounds, or "no questions — frontier empty on round 1">
+- Step 5 (feature folder): done — .specs/features/<task_id>-<slug>/
+- Step 6a (specify): done — spec.md
+- Step 6b (design): done — design.md | skipped (Small/Medium scope)
+- Step 7 (tasks): done — tasks.md
+- Step 8 (commit spec artifacts, open draft PR): done — <commit sha>, PR #<N>
+- Step 9 (execute): done — Verifier: PASS
+- Step 10 (push + PR description): done
+- Step 11 (complete-review, subagent): done — <N> findings published as pending review; checkpoint approved (user reviewed + submitted on GitHub) | review submitted by this skill (human_review=no or excluded)
+- Step 12 (fix-review, subagent): done — <N> fixed, <N> answered, <N> rejected, <N> blocked
+- Step 13 (architecture-evaluate, Incremental): done — <N> files, committed | left uncommitted (all new) | synced back to <path> | not synced back (source changed mid-run)
+- Step 14 (design-sync handoff, nothing run here): pending-user-action (handed off in the final report; the user runs /design-sync themselves) | skipped (no .design-sync/config.json)
+- Step 15 (merge check + mark ready): done — merge_check: clean | resolved (<N> files, <merge commit sha>) | inconclusive (mergeable UNKNOWN) | conflicting (unresolved: <files>) ; ready: done | not marked (conflicts unresolved)
 ```
 
 ## Resume Logic
@@ -57,3 +56,4 @@ One line per completed step, appended as it finishes:
 3. If the last logged step is a checkpoint pause (`Checkpoints` shows `pending` for `spec`/`design`/`complete_review`), resume by re-showing that exact artifact and waiting again — do not auto-approve because time has passed since the pause began.
 4. Pull `worktree_path`, `branch`, `pr_number`, and `gh_login` directly from `Run State` — never re-derive them from scratch on a resume; re-deriving risks landing on a different worktree or PR than the one this run already committed to.
 5. If `Run State` is missing a field a resumed step needs (a partially-written file from a crash mid-step), treat that step as not-yet-done regardless of what `last_completed_step` claims, and re-run it from its own start — a step is only "done" once its full result, not just a partial one, is logged.
+
