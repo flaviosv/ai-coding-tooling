@@ -4,7 +4,7 @@ description: Analyzes a completed agent session transcript for performance and w
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.10.0
+  version: 1.11.0
 ---
 
 # Session Evaluate
@@ -209,7 +209,7 @@ Fire one subagent per active dimension, **in a single message, never sequentiall
 
 **Read [Agent Wait Protocol](../../templates/agent-wait-protocol.md) in full before the first dispatch, not once the first wait has already started.** Wait for every dispatched dimension agent to report before moving to Step 7; the 15-minute default stall ceiling applies (each dimension agent is single-purpose).
 
-**Subagent return shape** (Medium and Large tiers): a list of findings, each carrying dimension, title, context, metrics, affected aspects, severity, recurrence, root cause, proposed solution, and the attributed fix-target skill/file — everything Step 7/8 need, pre-computed.
+**Subagent return shape** (Medium and Large tiers): a list of findings, each carrying dimension, title, context, metrics, affected aspects, severity, recurrence, root cause, proposed solution, and the attributed fix-target skill/file — everything Step 7/8 need, pre-computed. This already satisfies [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md)'s return-shape field; its other two apply too — completion condition is every candidate in the assigned dimension classified against the catalog (or, for a Medium-tier single agent, every active dimension), and delegation depth is none: no dimension agent may itself dispatch a further `Agent`, consistent with "None of them touch skill files or GitHub" above.
 
 ### Step 7: Consolidation
 

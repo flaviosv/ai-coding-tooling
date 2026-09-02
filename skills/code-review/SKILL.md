@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.8.2"
+  version: "2.9.0"
   triggers:
     - "check my code"
     - "code review"
@@ -318,6 +318,8 @@ After the complexity banner, the skill produces **no further output** until the 
 Execute the Review Plan from Step 5. The execution mode determines how active dimensions run; the active dimension set (from content type) determines which agents/dimensions are in scope.
 
 **Every agent dispatched below must be pinned to the most recent Sonnet model** (see [Subagent Model](#subagent-model-hard-requirement) in Guardrails) — set this explicitly on every dispatch, independent of the session's own model.
+
+Every dispatch follows [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md): completion condition is every checklist item in the agent's `## Before You Begin` block having been checked against the diff, findings written and tagged by dimension; return shape is exactly that — findings only, never the diff or codebase-doc content it read to produce them; delegation depth is none, a dimension agent never dispatches its own subagent.
 
 ### Execution Modes
 

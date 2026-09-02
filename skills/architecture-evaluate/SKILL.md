@@ -13,7 +13,7 @@ description: >
   "create project docs", "update project docs", "update docs", "document my changes", "sync
   documentation", "document recent changes", "evaluate package", or "package architecture".
 metadata:
-  version: "4.1.1"
+  version: "4.2.0"
   triggers:
     # Full mode — bootstrap / full refresh of the nine context files
     - "evaluate architecture"
@@ -98,7 +98,7 @@ These apply to every mode.
 Check the session's own model before doing any scanning work.
 
 - **Already on Sonnet** (including when a caller such as `build-feature`'s Step 13 already dispatched this skill into a Sonnet subagent) → run inline, exactly as documented below. Never dispatch a subagent from within an already-Sonnet run; that nests one isolation layer inside another for nothing.
-- **On any other model** → run the pre-flight below, then dispatch one `Agent` (`agentType: general-purpose`, `model: 'sonnet'` — the literal alias, never a versioned model ID) to carry out the selected mode in its own context, and report back what it wrote. The work is entirely file-out — nine context files on disk — so nothing is lost by moving it into a subagent.
+- **On any other model** → run the pre-flight below, then dispatch one `Agent` (`agentType: general-purpose`, `model: 'sonnet'` — the literal alias, never a versioned model ID) to carry out the selected mode in its own context, and report back what it wrote. The work is entirely file-out — nine context files on disk — so nothing is lost by moving it into a subagent. Follow [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md): completion condition is every context file the selected mode writes existing on disk (nine for Full, the changed subset for Incremental, the one scoped `CLAUDE.md` for Package); return shape is the file paths written plus a short summary, never their content inlined back; delegation depth is none.
 
 **Pre-flight, required before any such dispatch.** A dispatched subagent cannot wait for the user, and two points in this skill do exactly that: the misplaced-context-file migration confirmation (see Detecting & Migrating Misplaced Context Files) and the session-start-context pointer confirmation (see Additional Context Files & Registration). Resolve both *here*, in the conversation with the user, before dispatching:
 

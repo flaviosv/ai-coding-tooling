@@ -43,3 +43,10 @@
 - **Trade-off**: Higher per-agent cost and latency for Medium/Large-tier runs, accepted for classification quality. The orchestrating conversation itself stays unpinned, as before.
 - **Date**: 2026-09-01
 - **Status**: active
+
+### AD-007
+- **Decision**: Point Step 6's existing subagent return-shape documentation at the new shared [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md) template, and add the two fields it didn't already state explicitly — completion condition (every candidate in the assigned dimension classified against the catalog) and delegation depth (none).
+- **Reason**: This skill's own dogfooding of the run it was auditing (a `build-feature` session) is what surfaced the dispatch-contract gap in the first place; retrofitting this skill's already-close-to-compliant shape is part of the same repo-wide pass applied to every other skill in `skills/` that dispatches subagents.
+- **Trade-off**: None identified — the existing return shape already matched the template closely, so this is a pointer plus two short additions, not a restructure.
+- **Date**: 2026-09-02
+- **Status**: active
