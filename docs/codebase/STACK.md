@@ -1,6 +1,6 @@
 # Tech Stack
 
-**Analyzed:** 2026-06-26
+**Analyzed:** 2026-09-01
 
 ## Core
 
@@ -11,7 +11,7 @@
 
 ## Key Libraries
 
-The only implementation file (`bin/skills.mjs`) uses Node built-ins exclusively — no third-party packages.
+The only implementation file (`bin/skills.mjs`, 779 lines) uses Node built-ins exclusively — no third-party packages.
 
 | Library | Version | Purpose | Modern Usage |
 | ------- | ------- | ------- | ------------ |

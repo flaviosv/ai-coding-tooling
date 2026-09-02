@@ -46,5 +46,6 @@ Throw `UserError` for expected user mistakes; let unexpected errors propagate na
 - `extended/<skill>/SKILL.md` uses the frontmatter from `templates/extension-frontmatter.md` (`name`, `extends`, `description`, `metadata.version`, `metadata.parent_skill`, `metadata.source`).
 - Tech-specific reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.
 - `skills/<name>/reference.md` (no technology prefix, at the skill root) is a workflow/orchestration reference — distinct from tech-specific checklists under `references/<tech>-<skill>.md`.
+- Every skill in `skills/` or `extended/` keeps a `STATE.md` — an append-only per-skill decision log (`## Decisions` section, sequential `AD-NNN` entries with Decision/Reason/Trade-off/Date/Status fields; a superseded entry gets `status: superseded by AD-NNN` rather than being deleted). Full format and write triggers are in `docs/SKILL-STATE.md`. Check a skill's `STATE.md` before modifying it, and append an entry after a change driven by a real decision — not for trivial/cosmetic edits.
 - `docs/AGENT-SKILLS.md` is auto-generated below its marker; hand-written content above the marker is preserved on every regeneration.
 - Markdown tables and enumerated bullet lists are kept sorted alphabetically by the primary column.

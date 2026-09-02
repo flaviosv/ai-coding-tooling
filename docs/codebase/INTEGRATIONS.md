@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analyzed:** 2026-06-26
+**Analyzed:** 2026-09-01
 
 External integrations are limited to skill-package registries reached through `npx`. No application-level service integrations exist.
 
