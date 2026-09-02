@@ -18,6 +18,10 @@ This is **not an implementation-heavy codebase**. The vast majority of the proje
 - **Never modify skills installed globally** (e.g. `~/.claude/skills/`) or sourced from external vendors (Tech Leads Club, Matt Pocock). Those are treated as read-only dependencies; override them via `extended/<skill>/` instead.
 - If a globally installed skill needs changes, raise it with the user instead of editing it directly.
 
+## Skill Decision Log
+
+Every skill in `skills/` or `extended/` keeps its own `STATE.md` — a per-skill decision log, appended whenever that skill changes for a real reason. See [docs/SKILL-STATE.md](docs/SKILL-STATE.md) for the format and write triggers.
+
 ## Other Sessions' Transcripts
 
 Debugging a skill often means reading what a run of it actually did in another project — its transcripts live under `~/.claude/projects/<encoded-path>/*.jsonl` (subagent runs under `<session-id>/subagents/`). Reading those is in scope for this repository: they're the evidence for what a skill did, and diagnosing from them beats guessing.
