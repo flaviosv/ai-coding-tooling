@@ -287,10 +287,14 @@ def subagents(session_path, calls, windows=None):
     `windows` (optional): restrict counted runs to those whose start timestamp falls inside one
     of the given skill_windows() windows — used by --skill scoping so a subagent launched during
     a different skill's invocation isn't attributed to the one being scoped to.
+
+    Also returns every subagent's own tool calls (flattened, one list) — needed so callers like
+    test_suite_runs() can see work that happened inside a subagent, not just the main thread.
     """
     launches = [c for c in calls if c["name"] in ("Agent", "Task")]
     sub_dir = session_path.parent / session_path.stem / "subagents"
     runs = []
+    sub_calls_all = []
     if sub_dir.is_dir():
         for file in sorted(sub_dir.glob("*.jsonl")):
             sub_records = load(file)
@@ -304,6 +308,8 @@ def subagents(session_path, calls, windows=None):
                 in_scope = any(w["start"] <= start < w["start"] + timedelta(milliseconds=w["ms"]) for w in windows)
                 if not in_scope:
                     continue
+            named_skill, confident = subagent_named_skill(sub_records)
+            sub_calls_all.extend(collect_tool_calls(sub_records))
             runs.append(
                 {
                     "id": file.stem[:8],
@@ -313,6 +319,8 @@ def subagents(session_path, calls, windows=None):
                     "output": totals["output"],
                     "turns": totals["assistant_turns"],
                     "records": len(sub_records),
+                    "named_skill": named_skill,
+                    "named_skill_confident": confident,
                 }
             )
     concurrency = 0
@@ -323,7 +331,7 @@ def subagents(session_path, calls, windows=None):
         for _, delta in edges:
             live += delta
             concurrency = max(concurrency, live)
-    return launches, runs, concurrency
+    return launches, runs, concurrency, sub_calls_all
 
 
 def repetition(calls):
@@ -350,6 +358,64 @@ def toolsearch_batching(calls):
     return total, singles
 
 
+# Letters only, no digits — a real skill/phase name is never ticket- or ID-shaped
+# ("aplyr-19-appointments-calendar"), so digits are excluded to keep task/branch names in a
+# dispatch prompt from leaking into the fallback below as a fake "skill".
+KEBAB_RE = re.compile(r"\b[a-z][a-z]*(?:-[a-z]+){1,4}\b")
+
+
+def subagent_named_skill(sub_records):
+    """Best-effort real governing skill/phase for one subagent transcript.
+
+    A window in skill_windows() attributes every subagent that *starts* inside its wall-clock
+    range to that window's own skill name — which silently breaks the moment an orchestrator
+    (e.g. build-feature) invokes a nested Skill call and then keeps dispatching further work as
+    Agent-tool subagents without ever making another top-level Skill call: nothing closes the
+    window, so hours of unrelated downstream work (other skills' whole phases) land under the
+    name of whatever was last invoked. This looks inside the subagent's own transcript instead:
+    prefer a Skill-tool call it made itself (an orchestrator-dispatched subagent's first action
+    is almost always `Skill(<name>)` — reliable), falling back to a kebab-case token in its
+    first user message (the dispatch prompt usually names the skill/phase in plain text even
+    with no Skill tool call).
+    """
+    sub_calls = collect_tool_calls(sub_records)
+    used = skills_used(sub_records, sub_calls)
+    if used:
+        return used.most_common(1)[0][0], True
+    for record in sub_records:
+        if record.get("type") != "user":
+            continue
+        message = record.get("message")
+        text = block_text(message.get("content")) if isinstance(message, dict) else ""
+        tokens = KEBAB_RE.findall(text.lower())
+        return (tokens[0], False) if tokens else (None, False)
+    return None, False
+
+
+def named_skill_rollup(sub_runs):
+    """Session-wide subagent spend grouped by each run's real governing skill/phase.
+
+    Independent of skill_windows()'s wall-clock buckets — this is what actually answers "how
+    much did tlc-spec-driven / complete-review / fix-review cost", including when they ran
+    nested inside another skill's mis-closed window.
+    """
+    rollup = defaultdict(lambda: {"n": 0, "billed": 0, "output": 0, "turns": 0, "confident": 0})
+    unattributed = {"n": 0, "billed": 0}
+    for run in sub_runs:
+        name = run.get("named_skill")
+        if not name:
+            unattributed["n"] += 1
+            unattributed["billed"] += run["billed"]
+            continue
+        entry = rollup[name]
+        entry["n"] += 1
+        entry["billed"] += run["billed"]
+        entry["output"] += run["output"]
+        entry["turns"] += run["turns"]
+        entry["confident"] += 1 if run.get("named_skill_confident") else 0
+    return rollup, unattributed
+
+
 def skills_used(records, calls):
     used = Counter()
     for call in calls:
@@ -370,6 +436,14 @@ def skill_windows(records, calls, sub_runs, session_end):
     (or session end). Tokens and tool calls are scoped to the main thread (isSidechain
     records excluded) so they aren't double-counted against the Subagents section — any
     subagent that started inside the window is reported alongside it instead.
+
+    Caveat this can't fix by construction: an orchestrator (e.g. build-feature) that invokes a
+    nested Skill and then keeps dispatching further Agent-tool work without ever calling Skill
+    again never closes its own window — everything after lands under the nested skill's name
+    until the *next* top-level Skill call, or session end. Each window's `foreign_skills` flags
+    this: the set of other real skill/phase names (from named_skill_rollup()) found among the
+    subagents that started inside it. A non-empty set means this window's own total is not
+    trustworthy in isolation — see "Subagent spend by named skill/phase" for the real breakdown.
     """
     events = []
     for call in calls:
@@ -403,6 +477,9 @@ def skill_windows(records, calls, sub_runs, session_end):
         totals, _, _ = token_totals(window_records)
         window_calls = [c for c in calls if c["ts"] and start <= c["ts"] < end]
         sub_hits = [s for s in sub_runs if start <= s["start"] < end]
+        foreign_skills = sorted({
+            s["named_skill"] for s in sub_hits if s.get("named_skill") and s["named_skill"] != event["name"]
+        })
         windows.append(
             {
                 "name": event["name"],
@@ -414,13 +491,14 @@ def skill_windows(records, calls, sub_runs, session_end):
                 "tool_calls": len(window_calls),
                 "sub_count": len(sub_hits),
                 "sub_billed": sum(s["billed"] for s in sub_hits),
+                "foreign_skills": foreign_skills,
             }
         )
     return windows
 
 
 FULL_SUITE_PATTERNS = [
-    re.compile(r"^\s*(npm|yarn|pnpm)\s+(run\s+)?test(\s+--[\w-]+)*\s*$"),
+    re.compile(r"^\s*(npm|yarn|pnpm)\s+(run\s+)?test(\s+--)?(\s+--[\w-]+)*\s*$"),
     re.compile(r"^\s*(python3?\s+-m\s+)?pytest(\s+-[a-zA-Z]+)*\s*$"),
     re.compile(r"^\s*go\s+test\s+\./\.\.\.\s*$"),
     re.compile(r"^\s*cargo\s+test\s*$"),
@@ -433,13 +511,31 @@ FULL_SUITE_PATTERNS = [
     re.compile(r"^\s*phpunit\s*$"),
 ]
 
+# Matches the first pipe/redirect/chain in a command so a full-suite pattern (which anchors to
+# end-of-string) can be tested against just the invocation itself — real usage almost always
+# pipes test output (`| tail -40`, `2>&1`), so anchoring to the whole raw string missed nearly
+# every real full-suite run.
+_TRAILING_REDIRECT_RE = re.compile(r"\s*(?:\|\||\||&&|;|2>&1|2>/dev/null|>>?)\s*")
+
+
+def _core_command(command):
+    match = _TRAILING_REDIRECT_RE.search(command)
+    return command[: match.start()] if match else command
+
 
 def test_suite_runs(calls):
     """Bash calls shaped like a full test-suite run — no path/filter narrowing them.
 
-    Heuristic, pattern-matched against common test-runner invocations. `call['label']`
-    truncates at 100 chars, so an unusually long command line may be missed or misjudged —
-    treat this as a candidate list to verify, not an exhaustive count.
+    `calls` must include subagent tool calls, not just the main thread — the actual test/build
+    work in an orchestrated session (tlc-spec-driven's Execute phase, fix-review's validation,
+    etc.) almost always runs inside a subagent, invisible to this detector otherwise. Callers
+    should pass calls merged from collect_tool_calls() on the main records plus every subagent's
+    own records (subagents()' 4th return value), sorted by timestamp.
+
+    Heuristic, pattern-matched (after stripping trailing pipes/redirects — see _core_command())
+    against common test-runner invocations. `call['label']` truncates at 100 chars, so an
+    unusually long command line may still be missed or misjudged — treat this as a candidate
+    list to verify, not an exhaustive count.
 
     Each hit also carries the distinct files touched (Edit/Write) since the previous full-suite
     run (or session start, for the first) — the evidence a scope-mismatch finding needs: a full
@@ -453,12 +549,12 @@ def test_suite_runs(calls):
             continue
         if call["name"] != "Bash":
             continue
-        command = call["label"]
+        command = _core_command(call["label"])
         if any(pattern.match(command) for pattern in FULL_SUITE_PATTERNS):
             hits.append(
                 {
                     "ts": call["ts"],
-                    "command": command,
+                    "command": call["label"],
                     "error": call["error"],
                     "files_touched": len(touched),
                 }
@@ -482,7 +578,7 @@ def render(session_path, records, top, skill_filter=None):
     if skill_filter:
         calls_all = collect_tool_calls(records)
         stamps_all = sorted(s for s in (parse_ts(r.get("timestamp")) for r in records) if s)
-        _, sub_runs_all, _ = subagents(session_path, calls_all)
+        _, sub_runs_all, _, _ = subagents(session_path, calls_all)
         windows_all = skill_windows(records, calls_all, sub_runs_all, stamps_all[-1] if stamps_all else None)
         wanted = {s.lower() for s in skill_filter}
         matches = [w for w in windows_all if w["name"].lower() in wanted]
@@ -511,12 +607,14 @@ def render(session_path, records, top, skill_filter=None):
     turns = turn_timeline(records, calls)
     batching = parallelism(records)
     compact_events = compactions(records)
-    launches, sub_runs, concurrency = subagents(session_path, calls, windows=window_filter)
+    launches, sub_runs, concurrency, sub_calls = subagents(session_path, calls, windows=window_filter)
     repeats = repetition(calls)
     ts_total, ts_singles = toolsearch_batching(calls)
     skills = skills_used(records, calls)
     windows = skill_windows(records, calls, sub_runs, stamps[-1] if stamps else None)
-    suite_runs = test_suite_runs(calls)
+    named_rollup, named_unattributed = named_skill_rollup(sub_runs)
+    test_calls = sorted(calls + sub_calls, key=lambda c: (c["ts"] is None, c["ts"]))
+    suite_runs = test_suite_runs(test_calls)
 
     billed_input = totals["input"] + totals["cache_creation"] + totals["cache_read"]
     cacheable = billed_input or 1
@@ -621,6 +719,19 @@ def render(session_path, records, top, skill_filter=None):
     for call in launches[:top]:
         add(f"- launch: `{call['label']}`")
 
+    add("\n## Subagent spend by named skill/phase")
+    add("- resolved from each subagent's own transcript (a Skill call it made itself, or a name in its dispatch prompt), independent of wall-clock windows below — this is the trustworthy per-skill total when a window's own name is unreliable (see `foreign_skills` note under Time & tokens)")
+    if named_rollup or named_unattributed["n"]:
+        add("| skill/phase | runs | billed input | output | turns | confidence |")
+        add("| --- | --- | --- | --- | --- | --- |")
+        for name, entry in sorted(named_rollup.items(), key=lambda kv: -kv[1]["billed"]):
+            conf = f"{entry['confident']}/{entry['n']} direct" if entry["n"] else "-"
+            add(f"| {name} | {entry['n']} | {human(entry['billed'])} | {human(entry['output'])} | {entry['turns']} | {conf} |")
+        if named_unattributed["n"]:
+            add(f"| *unattributed* | {named_unattributed['n']} | {human(named_unattributed['billed'])} | - | - | - |")
+    else:
+        add("- no subagents, or none carried a resolvable skill/phase name")
+
     add("\n## Skills invoked")
     add("- " + (", ".join(f"{k} x{v}" for k, v in skills.most_common()) if skills else "none detected"))
 
@@ -628,12 +739,22 @@ def render(session_path, records, top, skill_filter=None):
     if windows:
         add("| skill | # | wall time | input tok | output tok | tool calls | subagent (n, billed) |")
         add("| --- | --- | --- | --- | --- | --- | --- |")
+        any_mixed = False
         for window in windows:
             sub = f"{window['sub_count']}, {human(window['sub_billed'])}" if window["sub_count"] else "-"
+            name = window["name"]
+            if window["foreign_skills"]:
+                any_mixed = True
+                name += " ⚠"
             add(
-                f"| {window['name']} | {window['seq']} | {duration(window['ms'])} | "
+                f"| {name} | {window['seq']} | {duration(window['ms'])} | "
                 f"{human(window['input'])} | {human(window['output'])} | {window['tool_calls']} | {sub} |"
             )
+        if any_mixed:
+            add("")
+            for window in windows:
+                if window["foreign_skills"]:
+                    add(f"- ⚠ **{window['name']}** #{window['seq']}: also contains subagent work for {', '.join(window['foreign_skills'])} — this window's own totals are unreliable (see Troubleshooting). Use 'Subagent spend by named skill/phase' above for those skills' real cost.")
     else:
         add("- no Skill invocations or slash-commands detected")
 
