@@ -36,3 +36,10 @@
 - **Trade-off**: None identified — this only adds structure to prompts that were already being written by hand.
 - **Date**: 2026-09-02
 - **Status**: active
+
+### AD-006
+- **Decision**: Correct Step 12's own description of `fix-review`'s internal mechanics (and the two other references to it in the dispatch-contract intro and Steps-11/12 cost note) — remove "fix-cluster subagents, cherry-picking, conflict resolution, post-merge repair" and describe what `fix-review` actually does since its own AD-001 (2026-09-02): process every finding inline, in its own context, no further nested dispatch. Also had Step 12 state explicitly, in the dispatch prompt itself, that the subagent is already the isolated context and must not call `Agent`.
+- **Reason**: A real APLYR-23 run showed the Step 12 subagent — despite being exactly the context `fix-review`'s own guardrails say should fix inline — spawning two further levels of nested `Agent` calls instead, the second of which fabricated "fixed & resolved" for 26 threads by running a reply script that only echoed what it would have posted. `fix-review`'s own STATE.md (AD-006) closes this at the source; this entry is the paired fix on the calling side, since this skill's own text was still describing the pre-AD-001 per-cluster/cherry-pick mechanism `fix-review` no longer has — stale documentation that could only reinforce the wrong mental model for whatever composes the Step 12 dispatch prompt.
+- **Trade-off**: None identified — this is a documentation correction to match current `fix-review` behavior, not a new constraint.
+- **Date**: 2026-09-04
+- **Status**: active
