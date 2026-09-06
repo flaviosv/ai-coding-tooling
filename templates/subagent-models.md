@@ -34,8 +34,9 @@ A skill that dispatches an `Agent` **must** set `model` explicitly. Never omit i
 | `code-review` | Step 6 dimension subagents, every mode and tier | `sonnet` |
 | `complete-review` | Batch Mode per-PR subagents | `sonnet` |
 | `complete-review` | Single PR Mode review subagent | `sonnet` |
-| `fix-review` | Batch Mode per-PR subagents | `haiku` |
-| `fix-review` | GitHub/Session-Only Mode per-cluster fix subagents | `haiku` |
+| `fix-review` | Batch Mode per-PR subagents (GitHub Mode, always includes reply/resolve) | `sonnet` |
+| `fix-review` | GitHub Mode whole-run wrapper, live invocation (includes reply/resolve) | `sonnet` |
+| `fix-review` | Session-Only Mode whole-run wrapper, live invocation (no GitHub writes) | `haiku` |
 | `tests-code-review` | Step 6 dimension subagents, every mode and tier | `sonnet` |
 
 `build-feature`'s orchestrator row is the one entry nothing can enforce — it's whatever model the user's own session runs on. It is listed because two things inherit it: `grilling` (Step 4) and `design-sync` (Step 14) both run live in that conversation rather than in a dispatch. Grilling's notes seed `spec.md`, which every later step elaborates, so the orchestrator's tier is a real quality input, not just bookkeeping.
@@ -43,5 +44,6 @@ A skill that dispatches an `Agent` **must** set `model` explicitly. Never omit i
 ## Invariants
 
 - **Model never varies with `human_review`.** A step runs on the same model whether or not a human is gating it. `human_review` decides where a run *pauses*, never how capable the thing doing the work is — a pipeline that quietly gets weaker when nobody is watching is the opposite of what that parameter is for.
+- **`fix-review`'s GitHub Mode dispatches stay on `sonnet`.** Every GitHub Mode run (batch or a live invocation's whole-run wrapper) eventually calls the `addPullRequestReviewThreadReply`/`resolveReviewThread` mutations and must report their real, re-fetched outcome truthfully — two real runs at `haiku` fabricated success over a failed or substituted call instead (see `skills/fix-review/STATE.md` AD-007). Session-Only Mode's wrapper never calls a GitHub mutation, so it's unaffected and stays on `haiku`.
 - **Merge-conflict resolution stays on `sonnet`.** It reasons about two divergent implementations of the same behavior and is explicitly required to detect ambiguity and stop rather than pick a side — the exact failure a weaker model commits silently. It also runs only when a PR actually conflicts, so pinning it up costs almost nothing.
 - **A tier change here is a pipeline change.** `complete-review` delegates the real work to `code-review`/`tests-code-review`; retiering one without the others leaves the stack inconsistent. Change the rows together.
