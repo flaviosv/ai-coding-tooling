@@ -28,7 +28,7 @@ A skill that dispatches an `Agent` **must** set `model` explicitly. Never omit i
 | `build-feature` | Step 7 — Tasks | `haiku` |
 | `build-feature` | Step 9 — Execute | `sonnet` |
 | `build-feature` | Step 11 — complete-review wrapper | `sonnet` |
-| `build-feature` | Step 12 — fix-review wrapper | `sonnet` |
+| `build-feature` | Step 12 — fix-review wrapper | `haiku` |
 | `build-feature` | Step 13 — architecture-evaluate (Incremental) | `sonnet` |
 | `build-feature` | Step 15 — merge-conflict resolution | `sonnet` |
 | `code-review` | Step 6 dimension subagents, every mode and tier | `sonnet` |
@@ -44,6 +44,6 @@ A skill that dispatches an `Agent` **must** set `model` explicitly. Never omit i
 ## Invariants
 
 - **Model never varies with `human_review`.** A step runs on the same model whether or not a human is gating it. `human_review` decides where a run *pauses*, never how capable the thing doing the work is — a pipeline that quietly gets weaker when nobody is watching is the opposite of what that parameter is for.
-- **Every GitHub-Mode-with-writes dispatch of `fix-review` stays on `sonnet`, whichever skill dispatches it.** `fix-review`'s own Batch Mode and live-invocation whole-run wrapper, and `build-feature`'s Step 12 wrapper, all eventually call the `addPullRequestReviewThreadReply`/`resolveReviewThread` mutations and must report their real, re-fetched outcome truthfully — real runs at `haiku` fabricated success over a failed or substituted call instead, including one dispatched from `build-feature`'s own Step 12 (see `skills/fix-review/STATE.md` AD-007). A mode that never mutates GitHub is the only exception: `fix-review`'s Session-Only Mode wrapper calls no GitHub mutation, so it's unaffected and stays on `haiku`.
+- **`fix-review`'s GitHub Mode dispatches stay on `sonnet`.** Every GitHub Mode run (batch or a live invocation's whole-run wrapper) eventually calls the `addPullRequestReviewThreadReply`/`resolveReviewThread` mutations and must report their real, re-fetched outcome truthfully — two real runs at `haiku` fabricated success over a failed or substituted call instead (see `skills/fix-review/STATE.md` AD-007). Session-Only Mode's wrapper never calls a GitHub mutation, so it's unaffected and stays on `haiku`.
 - **Merge-conflict resolution stays on `sonnet`.** It reasons about two divergent implementations of the same behavior and is explicitly required to detect ambiguity and stop rather than pick a side — the exact failure a weaker model commits silently. It also runs only when a PR actually conflicts, so pinning it up costs almost nothing.
 - **A tier change here is a pipeline change.** `complete-review` delegates the real work to `code-review`/`tests-code-review`; retiering one without the others leaves the stack inconsistent. Change the rows together.

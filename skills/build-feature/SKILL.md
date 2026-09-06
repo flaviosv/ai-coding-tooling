@@ -189,7 +189,7 @@ Then rewrite the PR description, sourced from existing artifacts, invent nothing
 
 ## Step 11: complete-review (Sonnet)
 
-Spawn a Sonnet subagent whose only job is to invoke `complete-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login. It returns a structured result: PR URL, each skill's complexity banner, and finding counts — no findings file path, since this skill never passes `human_review: true` to `complete-review` and a findings file only exists under that mode. On this skill's default path, findings post directly to GitHub as the pending review and live only in that subagent's own context; this conversation never reads them.
+Spawn a Sonnet subagent whose only job is to invoke `complete-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login. It returns a structured result: PR URL, each skill's complexity banner, finding counts, and the findings file path. The findings themselves stay on disk and in that subagent's context; this conversation never reads them.
 
 Inside that subagent, `complete-review` is invoked with no `human_review` parameter, ever — it always publishes its findings as a pending GitHub review immediately, its own unchanged default behavior. Findings are never held back from GitHub waiting on this skill's own approval step.
 
@@ -212,11 +212,9 @@ Otherwise (`human_review=no`, or `complete-review` excluded) there's no human ar
    ```
 4. Continue to Step 12.
 
-## Step 12: fix-review (Sonnet)
+## Step 12: fix-review (Haiku)
 
-Spawn a Sonnet subagent to invoke `fix-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login, and nothing else; it fetches the threads fresh itself. It operates inside the already-open worktree (this run's own checkout already matches the PR's branch), so it doesn't need to create one of its own. Never merges or closes the PR. State explicitly in this dispatch's prompt that it is already the isolated context fix-review's own guardrails describe: it must process every finding inline, itself, and never call the `Agent` tool from within its run.
-
-This dispatch is GitHub Mode with reply and resolve writes — the same category `fix-review`'s own STATE.md AD-007 escalated to `sonnet` after Haiku subagents at this exact call site fabricated reply/resolve outcomes (reporting findings "fixed & resolved" while GitHub showed zero replies and zero resolutions). It runs on `sonnet` for that reason, not on `haiku`.
+Spawn a Haiku subagent to invoke `fix-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login, and nothing else; it fetches the threads fresh itself. It operates inside the already-open worktree (this run's own checkout already matches the PR's branch), so it doesn't need to create one of its own. Never merges or closes the PR. State explicitly in this dispatch's prompt that it is already the isolated context fix-review's own guardrails describe: it must process every finding inline, itself, and never call the `Agent` tool from within its run.
 
 It returns a structured result: threads fixed, answered-only, rejected (with reasons), and blocked, plus the commit SHAs it pushed. Everything else — fetching threads, the finding bodies, classification, fixing, testing, committing, the validation gate, pushing, and per-thread replies and resolves — stays inside that subagent, run inline with no further nested dispatch. This conversation does not fetch review threads, edit source files, or post replies.
 
