@@ -158,10 +158,25 @@ def collect_tool_calls(records):
 
 
 def token_totals(records):
+    """Token and turn totals, deduplicated per real API call.
+
+    Claude Code writes one assistant record per *content block*, and every block of one
+    API response repeats that response's identical `usage` object — so a turn emitting
+    thinking + text + 10 parallel tool_use blocks appears as 12 records all reporting the
+    same numbers. Summing per record therefore inflates every token total and the turn
+    count alike, by a factor that varies with how parallel each turn happened to be
+    (measured 1.98x-2.64x across four real subagent transcripts, so it does not even
+    cancel out when comparing two runs).
+
+    Group by `requestId` — the same key this script already uses for batching metrics —
+    and count each real API call once. Records with no requestId (synthetic or
+    pre-dating the field) fall back to being counted individually.
+    """
     totals = Counter()
     peak = {"context": 0, "ts": None}
     effort = Counter()
     turns = 0
+    seen_requests = set()
     for record in records:
         if record.get("type") != "assistant":
             continue
@@ -171,6 +186,23 @@ def token_totals(records):
         usage = message.get("usage")
         if not isinstance(usage, dict):
             continue
+
+        # Peak context is computed before the dedup guard: duplicated records carry
+        # identical usage, so the maximum is unaffected either way, but a record that
+        # is skipped below should still not be able to lower it.
+        fresh_p = usage.get("input_tokens") or 0
+        created_p = usage.get("cache_creation_input_tokens") or 0
+        cached_p = usage.get("cache_read_input_tokens") or 0
+        context = fresh_p + created_p + cached_p
+        if context > peak["context"]:
+            peak = {"context": context, "ts": record.get("timestamp")}
+
+        request_id = record.get("requestId")
+        if request_id is not None:
+            if request_id in seen_requests:
+                continue
+            seen_requests.add(request_id)
+
         turns += 1
         effort[record.get("effort") or "?"] += 1
         fresh = usage.get("input_tokens") or 0
@@ -180,9 +212,6 @@ def token_totals(records):
         totals["cache_creation"] += created
         totals["cache_read"] += cached
         totals["output"] += usage.get("output_tokens") or 0
-        context = fresh + created + cached
-        if context > peak["context"]:
-            peak = {"context": context, "ts": record.get("timestamp")}
     totals["assistant_turns"] = turns
     return totals, peak, effort
 

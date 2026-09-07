@@ -100,6 +100,8 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 
 **Signal:** `Subagents` table — a single subagent with very high billed input (tens of millions) or a high turn count (over ~150).
 
+> **Threshold recalibration pending.** Both numbers here were set while `token_totals` counted one assistant *record* per turn rather than one API call, inflating billed input and turn counts by a measured 1.98x–2.64x. That was fixed (AD-006), so the same raw threshold is now effectively ~2.2x stricter than when it was chosen — a subagent that used to trip "150 turns" now reports ~68. Treat both as provisional and re-derive them from a few post-fix runs before trusting a borderline call; a clear runaway still looks obvious either way.
+
 **Implies:** The subagent was launched without a bounded objective and kept working. It also means its cost is invisible in the caller's own token line, so this is easy to miss without the digest.
 
 **Fix shape:** A guideline tightening the launch prompt: a concrete completion condition, an explicit step budget, and a defined return shape. Vague delegation ("investigate X") is the usual root cause.
