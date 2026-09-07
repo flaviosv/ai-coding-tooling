@@ -2,6 +2,13 @@
 
 ## Decisions
 
+> **Note on token figures.** Absolute token counts in the entries below were produced by
+> `session-evaluate`'s `session_metrics.py` before the counting fix recorded in that skill's
+> STATE.md AD-006, and are inflated by roughly 2x (measured 1.98x-2.64x, varying with per-turn
+> parallelism). Counts, rates and shares — findings fixed, duplication rate, invalid rate, turn
+> counts, share of spend — are unaffected, and no decision below rests on an absolute total.
+> Read the token magnitudes as approximate and about half of what is written.
+
 ### AD-001
 - **Decision**: Per-run memory is written to `.session-evaluate/<YYYYMMDD-HHMM>_<session-name>.md` in the repo root, git-ignored, one file per run — not appended to a single shared log, and not folded into this repo's own `.specs/STATE.md`.
 - **Reason**: A run's findings are local working notes for a future run of this skill to grep, not project history; one file per run keeps each self-contained and avoids growing a single file forever.

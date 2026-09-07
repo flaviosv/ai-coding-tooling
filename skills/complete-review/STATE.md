@@ -2,6 +2,13 @@
 
 ## Decisions
 
+> **Note on token figures.** Absolute token counts in the entries below were produced by
+> `session-evaluate`'s `session_metrics.py` before the counting fix recorded in that skill's
+> STATE.md AD-006, and are inflated by roughly 2x (measured 1.98x-2.64x, varying with per-turn
+> parallelism). Counts, rates and shares — findings fixed, duplication rate, invalid rate, turn
+> counts, share of spend — are unaffected, and no decision below rests on an absolute total.
+> Read the token magnitudes as approximate and about half of what is written.
+
 ### AD-001
 - **Decision**: Adopt the shared [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md) for Single PR Mode's review subagent and Batch Mode's per-PR subagents — explicit completion condition (PR's pending review posted, or findings returned when `human_review` withholds it), bounded return shape (already documented, now pointed at rather than restated), delegation depth (may invoke `code-review`/`tests-code-review` via `Skill`, no nesting beyond their own Step 6).
 - **Reason**: A `session-evaluate` run against a real APLYR-19 build-feature session measured this skill's Single PR Mode dispatch at 156 turns / 23.0M tokens — the longest-running agent in the whole session — with no completion condition in its prompt beyond "review PR #N." Part of a repo-wide retrofit applied to every skill in `skills/` that dispatches subagents.

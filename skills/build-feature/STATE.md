@@ -2,6 +2,13 @@
 
 ## Decisions
 
+> **Note on token figures.** Absolute token counts in the entries below were produced by
+> `session-evaluate`'s `session_metrics.py` before the counting fix recorded in that skill's
+> STATE.md AD-006, and are inflated by roughly 2x (measured 1.98x-2.64x, varying with per-turn
+> parallelism). Counts, rates and shares — findings fixed, duplication rate, invalid rate, turn
+> counts, share of spend — are unaffected, and no decision below rests on an absolute total.
+> Read the token magnitudes as approximate and about half of what is written.
+
 ### AD-001
 - **Decision**: Open the draft PR at Step 8 (right after spec/design/tasks artifacts are committed and pushed) instead of Step 3 (right after the branch is pushed, empty).
 - **Reason**: `gh pr create` unconditionally rejects a branch with zero commits ahead of `base_branch` — the old Step 3 failed on every single run (`GraphQL: No commits between <base> and <head>`), confirmed via `session-evaluate` against a real APLYR-19 run. Waiting for the branch's first real commit fixes this at the root instead of seeding an empty placeholder commit just to satisfy GitHub earlier.

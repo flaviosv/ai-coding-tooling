@@ -2,6 +2,13 @@
 
 ## Decisions
 
+> **Note on token figures.** Absolute token counts in the entries below were produced by
+> `session-evaluate`'s `session_metrics.py` before the counting fix recorded in that skill's
+> STATE.md AD-006, and are inflated by roughly 2x (measured 1.98x-2.64x, varying with per-turn
+> parallelism). Counts, rates and shares — findings fixed, duplication rate, invalid rate, turn
+> counts, share of spend — are unaffected, and no decision below rests on an absolute total.
+> Read the token magnitudes as approximate and about half of what is written.
+
 ### AD-001
 - **Decision**: Remove GitHub Mode's per-cluster subagent dispatch and worktree-fetch-cherry-pick-back mechanism. Process every surviving cluster's items sequentially, inline, in whatever context is already running GitHub Mode — the outer dispatch that invoked this skill (`build-feature`'s own subagent, or a Batch Mode per-PR subagent), or, only for a live direct invocation with no outer dispatch already isolating it, one whole-run Haiku subagent (never one per cluster).
 - **Reason**: A real APLYR-19 run (found via `session-evaluate`) proved this mechanism doubly broken: (1) a cherry-pick conflict got committed to the branch as a literal unresolved `<<<<<<<` marker, requiring a whole separate recovery subagent (~10.6M tokens, 8.7min stall) because nothing validated the merged composite state before replying/resolving/pushing; (2) the top-level agent, consumed by hand-resolving those conflicts (itself a violation of the "never implement a fix directly" guardrail this mechanism was supposed to enforce), never reached the reply/resolve step at all — it pushed 28 commits and reported "40 threads fixed, 0 blocked" while 0 of 41 GitHub review threads were ever actually replied to or resolved. Since `build-feature` and Batch Mode already dispatch this skill as one isolated subagent per invocation, the per-cluster isolation was a second, redundant layer recreating protection that already existed one level up — and that redundant layer is what produced both failures.

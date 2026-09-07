@@ -2,6 +2,13 @@
 
 ## Decisions
 
+> **Note on token figures.** Absolute token counts in the entries below were produced by
+> `session-evaluate`'s `session_metrics.py` before the counting fix recorded in that skill's
+> STATE.md AD-006, and are inflated by roughly 2x (measured 1.98x-2.64x, varying with per-turn
+> parallelism). Counts, rates and shares — findings fixed, duplication rate, invalid rate, turn
+> counts, share of spend — are unaffected, and no decision below rests on an absolute total.
+> Read the token magnitudes as approximate and about half of what is written.
+
 ### AD-001
 - **Decision**: Adopt the shared [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md) at Step 6's Medium/Large-tier dispatches — explicit completion condition (every checklist item in `## Before You Begin` checked, findings written), a return shape restricted to findings only, and delegation depth: none.
 - **Reason**: Part of a repo-wide retrofit, following a `session-evaluate` audit that found `complete-review`'s own dispatch (which delegates to this skill) running with no completion condition at all. Applied here preventively, in the same pass, since this skill has the identical dispatch shape (dimension agents returning findings).
