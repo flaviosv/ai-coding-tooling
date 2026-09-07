@@ -703,6 +703,25 @@ def render(session_path, records, top, skill_filter=None):
     add(f"- cache hit ratio: {totals['cache_read'] / cacheable:.1%}   cache-write share: {totals['cache_creation'] / cacheable:.1%}")
     add(f"- peak context: {human(peak['context'])} at {peak['ts']}")
 
+    # Self-check. Token and turn totals are deduplicated per requestId because Claude Code
+    # writes one assistant record per content block, all repeating the same usage object.
+    # Surfacing the ratio makes a regression in that dedup visible in the report itself
+    # rather than in a downstream investigation — an earlier version of this script summed
+    # per record and overstated every total by 1.98x-2.64x for months without anyone noticing.
+    assistant_records = sum(
+        1
+        for r in records
+        if r.get("type") == "assistant" and isinstance((r.get("message") or {}).get("usage"), dict)
+    )
+    if totals["assistant_turns"]:
+        ratio = assistant_records / totals["assistant_turns"]
+        add(
+            f"- dedup check: {assistant_records} assistant records / "
+            f"{totals['assistant_turns']} API calls = {ratio:.2f} records per call "
+            f"(totals above count each call once; a ratio near 1.00 in a session with "
+            f"parallel tool use would mean the dedup is not firing)"
+        )
+
     add("\n## Tool spend (est. tokens returned into context)")
     by_tool = defaultdict(lambda: {"n": 0, "result": 0, "err": 0})
     for call in calls:
@@ -741,7 +760,12 @@ def render(session_path, records, top, skill_filter=None):
             when = f"{hit['ts']:%H:%M:%S}" if hit["ts"] else "?"
             add(f"| {i} | {when} | `{hit['command']}` | {'yes' if hit['error'] else 'no'} | {hit['files_touched']} |")
     else:
-        add("- none detected")
+        add(
+            "- no matches — this means the patterns did not fire, NOT that no full-suite run "
+            "happened. Confirm against the Tool spend / heaviest calls before reporting "
+            "absence: real runs have escaped these patterns before (a trailing `-v`, a flag "
+            "carrying a value)."
+        )
 
     add("\n## Runtime")
     if turns:

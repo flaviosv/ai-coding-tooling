@@ -4,7 +4,7 @@ description: Analyzes a completed agent session transcript for performance and w
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.11.1
+  version: 1.12.0
 ---
 
 # Session Evaluate
@@ -176,6 +176,20 @@ Execute Step 5's plan. Every mode applies the same **Classification & Priority P
 
 Check `config/skills.json` for a skill's `source` before proposing an edit to it. Editing an installed vendor or global skill directly is prohibited by this repository's rules.
 
+*Check whether the guidance already exists — mandatory, before writing any finding whose fix is "add a rule".* The attributed file is open in front of you. Grep it for the rule you were about to propose. If it is **already there**, you have not found a documentation gap — you have found a rule that exists and did not bind, which is a different diagnosis with different fixes, and writing it up as "add this guideline" makes the file longer without making the behaviour any likelier. Say so explicitly in the finding, and choose a fix from this list instead:
+
+| The rule exists but didn't bind because… | Fix shape |
+| --- | --- |
+| It is advisory where it needed to be mechanical (a parenthetical "(see X)" rather than a precondition) | Restate it as a precondition at the point of use — the first call it governs, not the section header |
+| The step is judgment the model has to remember under context pressure | Move it into a script or a tool call that cannot be skipped, and have the report quote that tool's output |
+| It is keyed to specific wording a run can route around | Re-key the check to a structural fact (did the verifying call actually run?) rather than a phrase |
+| The model tier could not follow it reliably | Escalate the tier at that dispatch site, and say plainly that this is a mitigation, not a proof |
+| The file states it twice in different words, or an example contradicts it | Consolidate, or fix the contradicting example — a rule with a counterexample beside it is not a rule |
+
+Count how many times the same failure class already appears in that skill's `STATE.md`. **Three or more prior decisions on one failure class is itself the finding** — report it as such, priority P0, and propose a structural fix rather than a seventh guideline. A real audit found six prior decisions on one skill's fabrication failures, each adding prose, with the failure recurring after every one; the fix that finally held was moving the step into a script.
+
+*Verify any claim about how a skill is designed against that skill's own file.* Behaviour observed across a handful of runs is evidence about those runs, not about the design. If you intend to write "skill X does not do Y", open X's `SKILL.md` and confirm it. A real audit reported that `code-review` "does not tier its fan-out" on the strength of seeing five agents in every sampled session — it does tier, but two of its four tiers share an execution mode and every sampled PR happened to land in those two. The claim shaped a recommendation that turned out to be for work already done.
+
 *Judge recurrence.* The target file is already open for attribution — while it's in front of you, judge whether the wasteful call sits on the skill's unconditional flow (**Structural** — it fires on every invocation, not just this session) or was triggered by this session's particular input, branch, or edge case (**Incidental** — may not recur). This costs no extra tool calls.
 
 *Compute priority.* Findings are ordered by expected future gain, not by their raw single-session magnitude — token reduction and runtime improvement outrank correctness fixes of the same size. Rank via **Affected aspects** and **Severity**:
@@ -217,6 +231,14 @@ Inline mode has nothing to consolidate — go directly to Step 8 with what Step 
 
 For Single-agent and Parallel modes: merge every returned finding into one list. If a dimension's subagent failed or timed out (see the Wait Protocol), mark that dimension `⚠️ not executed — <reason>` in the report rather than silently omitting it — a dimension that never ran is not the same as a dimension with nothing to report. Do not retry a failed dimension automatically; note it and continue with what the others returned.
 
+**Collapse duplicates before Step 8, and say how many.** Independent analysts over overlapping evidence reliably report the same defect in different words — that is the expected case, not an edge case. Keep the instance with the best evidence, fold any extra detail from the others into it, and note the collapsed count in the report. Nothing is dropped for being minor; only for being another finding restated.
+
+**Evaluating several sessions at once** (one invocation per session, or a batch across a set of them) makes this the dominant problem rather than a tidying step, and it is not what the merge above covers — that merges *dimensions within one session*. Across sessions, the same structural defect appears once per session by construction, so a raw union multiplies every finding by the number of sessions and buries the handful that are genuinely distinct. Before presenting anything:
+
+- Group by *defect*, not by session. One row per defect, carrying the session count — "confirmed in 3 of 4 sessions" is far stronger evidence than the same finding written out three times, and it is what makes Structural vs Incidental decidable rather than guessed.
+- Recurrence across independent sessions **is** the Structural test. A defect seen in every session is structural however incidental it looked in any one of them.
+- Report the count of distinct defects, not the raw finding total. A real multi-session audit produced 42 findings that collapsed to roughly 20 distinct defects, of which about 11 were rules the target skill already contained — the raw number was the first thing the user pushed back on, and correctly.
+
 ### Step 8: Present the findings and ask for approval
 
 **Check memory for related past findings first.** If `.session-evaluate/` exists, grep its files (`grep -li` for each finding's fix-target skill name and dimension letter — cheap, bounded, no need to read a whole file unless a name matches) for prior runs that touched the same skill/dimension. A match is worth surfacing inline in that finding's block as `**Seen before:** <file>, <date> — <one-line prior outcome>` — a fix that was applied before and the same waste shows up again is a stronger signal (recurring despite a fix = the guideline didn't stick, or a new code path hit the same root cause) than a first occurrence, and is worth saying so explicitly. No match is not worth mentioning — don't pad a finding with "no prior occurrences found."
@@ -250,6 +272,7 @@ Then, grouped the same way (skill → dimension), one block per finding:
 **Context:** What the session was doing when this happened, in one or two sentences.
 **Metrics:** The exact numbers from the digest that prove it.
 **Affected aspects:** Tokens / Runtime / Context integrity / Cost / Correctness.
+**Costs:** state the token saving and the wall-clock saving **separately**, and write `~0` where that is the honest answer. They routinely differ, and a reader optimising for the wrong one wastes the effort: parallel work costs tokens but almost no wall time, a polling loop costs both, a slow shell command costs only time. A real audit reported a parallel fan-out as "where the remaining cost lives" — true of 39–63% of tokens, and wrong about time, since that fan-out ran inside a serial step that was 100% of the critical path. Say which of the two a fix actually buys.
 **Severity:** High / Medium / Info — the single-session magnitude (see below).
 **Recurrence:** Structural / Incidental, with the one-line reason.
 **Root cause:** Why it happened — the missing or wrong guideline.
