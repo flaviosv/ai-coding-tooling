@@ -212,9 +212,9 @@ Otherwise (`human_review=no`, or `complete-review` excluded) there's no human ar
    ```
 4. Continue to Step 12.
 
-## Step 12: fix-review (Haiku)
+## Step 12: fix-review (Sonnet)
 
-Spawn a Haiku subagent to invoke `fix-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login, and nothing else; it fetches the threads fresh itself. It operates inside the already-open worktree (this run's own checkout already matches the PR's branch), so it doesn't need to create one of its own. Never merges or closes the PR. State explicitly in this dispatch's prompt that it is already the isolated context fix-review's own guardrails describe: it must process every finding inline, itself, and never call the `Agent` tool from within its run.
+Spawn a Sonnet subagent to invoke `fix-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login, and nothing else; it fetches the threads fresh itself. It operates inside the already-open worktree (this run's own checkout already matches the PR's branch), so it doesn't need to create one of its own. Never merges or closes the PR. State explicitly in this dispatch's prompt that it is already the isolated context fix-review's own guardrails describe: it must process every finding inline, itself, and never call the `Agent` tool from within its run.
 
 It returns a structured result: threads fixed, answered-only, rejected (with reasons), and blocked, plus the commit SHAs it pushed. Everything else — fetching threads, the finding bodies, classification, fixing, testing, committing, the validation gate, pushing, and per-thread replies and resolves — stays inside that subagent, run inline with no further nested dispatch. This conversation does not fetch review threads, edit source files, or post replies.
 

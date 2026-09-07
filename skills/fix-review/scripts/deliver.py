@@ -21,14 +21,24 @@ Input JSON:
       "threads": {
         "PRRT_kwDOxxx": {"body": "reply text", "resolve": true},
         "PRRT_kwDOyyy": {"body": "reply text", "resolve": false}
+      },
+      "skipped": {
+        "PRRT_kwDOzzz": "routed to @alice — awaiting her answer",
+        "PRRT_kwDOwww": "unclear which of two approaches was meant"
       }
     }
+
+`threads` and `skipped` together must account for every in-scope thread on the PR
+(published, not already resolved). Any in-scope thread in neither list is reported
+as `unaccounted` and exits non-zero — this is the coverage check, and it is the
+reason a run cannot quietly drop threads from its own report.
 
 Output JSON goes to stdout; human-readable progress goes to stderr.
 
 Exit codes:
-    0  every intended reply and resolve confirmed present on GitHub
-    1  partial — at least one intended outcome unconfirmed (details in output)
+    0  every in-scope thread accounted for, every intended reply and resolve
+       confirmed present on GitHub
+    1  partial — an intended outcome is unconfirmed, or a thread went unaccounted
     2  fatal — bad input, or GitHub unreachable
 """
 
@@ -58,7 +68,7 @@ query($owner: String!, $repo: String!, $pr: Int!, $after: String) {
           id
           isResolved
           comments(first: %d) {
-            nodes { id author { login } }
+            nodes { id author { login } pullRequestReview { state } }
           }
         }
       }
@@ -133,7 +143,12 @@ def resolve_login():
 
 
 def fetch_threads(owner, repo, pr):
-    """Return {thread_id: {"resolved": bool, "comments": [(id, author), ...]}}."""
+    """Return {thread_id: {"resolved", "pending", "comments": [(id, author), ...]}}.
+
+    `pending` marks a thread whose every comment belongs to an unsubmitted review —
+    not this skill's to act on, and excluded from the coverage reconciliation so it
+    cannot show up as an unaccounted thread.
+    """
     threads = {}
     cursor = None
     truncated = False
@@ -149,8 +164,13 @@ def fetch_threads(owner, repo, pr):
         node = payload["data"]["repository"]["pullRequest"]["reviewThreads"]
         for thread in node["nodes"]:
             comments = thread.get("comments", {}).get("nodes", []) or []
+            states = [
+                ((c.get("pullRequestReview") or {}).get("state") or "")
+                for c in comments
+            ]
             threads[thread["id"]] = {
                 "resolved": bool(thread.get("isResolved")),
+                "pending": bool(states) and all(s == "PENDING" for s in states),
                 "comments": [
                     (c["id"], ((c.get("author") or {}).get("login") or ""))
                     for c in comments
@@ -165,6 +185,15 @@ def fetch_threads(owner, repo, pr):
         cursor = page["endCursor"]
 
     return threads, truncated
+
+
+def in_scope_threads(threads):
+    """Thread ids this skill is responsible for: published and not already resolved."""
+    return {
+        tid
+        for tid, entry in threads.items()
+        if not entry["resolved"] and not entry["pending"]
+    }
 
 
 def chunks(items, size):
@@ -260,12 +289,22 @@ def deliver(config, batch_size, dry_run):
     repo = config["repo"]
     pr = int(config["pr"])
     wanted = config["threads"]
+    skipped = config.get("skipped") or {}
 
     login = resolve_login()
     log(f"authenticated as {login}")
 
     baseline, truncated = fetch_threads(owner, repo, pr)
-    log(f"baseline: {len(baseline)} threads fetched")
+    scope = in_scope_threads(baseline)
+    log(f"baseline: {len(baseline)} threads fetched, {len(scope)} in scope")
+
+    # Coverage reconciliation: every in-scope thread must be either replied to or
+    # explicitly skipped with a reason. A thread in neither set is one this run
+    # dropped without saying so — the failure that let 32 of 43 threads vanish from
+    # a real run's report.
+    unaccounted = sorted(scope - set(wanted) - set(skipped))
+    if unaccounted:
+        log(f"UNACCOUNTED: {len(unaccounted)} in-scope threads in neither list")
 
     unknown = [tid for tid in wanted if tid not in baseline]
     targets = [(tid, spec) for tid, spec in wanted.items() if tid in baseline]
@@ -283,13 +322,16 @@ def deliver(config, batch_size, dry_run):
     if dry_run:
         return {
             "dry_run": True,
+            "in_scope": len(scope),
             "would_reply": [tid for tid, _ in to_reply],
             "would_resolve": [
                 tid for tid, spec in targets if spec.get("resolve")
             ],
             "already_replied": already_replied,
+            "skipped_with_reason": skipped,
+            "unaccounted": unaccounted,
             "unknown_threads": unknown,
-        }, 0
+        }, (1 if (unaccounted or unknown) else 0)
 
     errors = []
     abuse_waits = 0
@@ -354,10 +396,13 @@ def deliver(config, batch_size, dry_run):
         "pr": pr,
         "repo": f"{owner}/{repo}",
         "identity": login,
+        "in_scope": len(scope),
         "attempted": len(wanted),
         "replied_confirmed": len(replied_confirmed),
         "resolved_confirmed": len(resolved_confirmed),
         "intended_resolve": len(intended_resolve),
+        "skipped_with_reason": skipped,
+        "unaccounted": unaccounted,
         "reply_missing": reply_missing,
         "resolve_not_confirmed": resolve_not_confirmed,
         "duplicates_found": duplicates,
@@ -372,6 +417,7 @@ def deliver(config, batch_size, dry_run):
         and not resolve_not_confirmed
         and not duplicates
         and not unknown
+        and not unaccounted
     )
     return result, (0 if clean else 1)
 
@@ -405,6 +451,32 @@ def main():
         if not isinstance(spec, dict) or "body" not in spec:
             print(
                 json.dumps({"fatal": f"thread {tid} needs a 'body'"}), flush=True
+            )
+            return 2
+    skipped = config.get("skipped")
+    if skipped is not None:
+        if not isinstance(skipped, dict):
+            print(
+                json.dumps({"fatal": "'skipped' must be an object of id -> reason"}),
+                flush=True,
+            )
+            return 2
+        for tid, reason in skipped.items():
+            if not isinstance(reason, str) or not reason.strip():
+                print(
+                    json.dumps(
+                        {"fatal": f"skipped thread {tid} needs a non-empty reason"}
+                    ),
+                    flush=True,
+                )
+                return 2
+        overlap = sorted(set(skipped) & set(config["threads"]))
+        if overlap:
+            print(
+                json.dumps(
+                    {"fatal": f"threads listed as both replied and skipped: {overlap}"}
+                ),
+                flush=True,
             )
             return 2
 

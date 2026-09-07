@@ -28,14 +28,14 @@ A skill that dispatches an `Agent` **must** set `model` explicitly. Never omit i
 | `build-feature` | Step 7 — Tasks | `haiku` |
 | `build-feature` | Step 9 — Execute | `sonnet` |
 | `build-feature` | Step 11 — complete-review wrapper | `sonnet` |
-| `build-feature` | Step 12 — fix-review wrapper | `haiku` |
+| `build-feature` | Step 12 — fix-review wrapper | `sonnet` |
 | `build-feature` | Step 13 — architecture-evaluate (Incremental) | `sonnet` |
 | `build-feature` | Step 15 — merge-conflict resolution | `sonnet` |
 | `code-review` | Step 6 dimension subagents, every mode and tier | `sonnet` |
 | `complete-review` | Batch Mode per-PR subagents | `sonnet` |
 | `complete-review` | Single PR Mode review subagent | `sonnet` |
-| `fix-review` | Batch Mode per-PR subagents | `haiku` |
-| `fix-review` | GitHub/Session-Only Mode per-cluster fix subagents | `haiku` |
+| `fix-review` | Batch Mode per-PR subagents | `sonnet` |
+| `fix-review` | whole-run wrapper for a live direct invocation (GitHub/Session-Only Mode) | `sonnet` |
 | `tests-code-review` | Step 6 dimension subagents, every mode and tier | `sonnet` |
 
 `build-feature`'s orchestrator row is the one entry nothing can enforce — it's whatever model the user's own session runs on. It is listed because two things inherit it: `grilling` (Step 4) and `design-sync` (Step 14) both run live in that conversation rather than in a dispatch. Grilling's notes seed `spec.md`, which every later step elaborates, so the orchestrator's tier is a real quality input, not just bookkeeping.
