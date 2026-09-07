@@ -8,7 +8,7 @@ description: >
   or "check tests PR #42". Do NOT use for writing new tests — use the tests skill for that.
   Do NOT use for reviewing implementation code — use the code-review skill.
 metadata:
-  version: "2.7.0"
+  version: "2.8.0"
   triggers:
     - "review tests"
     - "test code review"
@@ -304,6 +304,8 @@ Execute per the size tier determined in Step 5.
 **Every agent dispatched below must be pinned to the most recent Sonnet model** (see [Subagent Model](#subagent-model-hard-requirement) in Guardrails) — set this explicitly on every dispatch, independent of the session's own model.
 
 Every dispatch follows [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md): completion condition is every checklist item in the agent's `## Before You Begin` block having been checked against the diff, findings written and tagged by dimension; return shape is exactly that — findings only, never the diff or codebase-doc content it read to produce them; delegation depth is none, a dimension agent never dispatches its own subagent.
+
+**Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line` — the exact text of the line the finding points at, one line, trimmed, no ellipsis or paraphrase. The agent has the file open at the moment it writes the finding, so this costs nothing there; captured any later it costs a re-read. And `File:Line` is always the line in the file at the PR head, never an offset into a diff or patch artifact the agent was handed — resolve it back to the source line before returning (the hunk header `@@ -a,b +c,d @@` gives the base). Consumers downstream anchor GitHub comments on these values and confirm them with a `grep` of the anchor text; without it they re-read whole files instead, which measured 13–35% of the merge step's cost across four real runs. See [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract.
 
 ### Execution modes
 
