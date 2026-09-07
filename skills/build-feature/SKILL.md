@@ -3,7 +3,7 @@ name: build-feature
 description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs, then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling, the one step that runs live in this conversation — and, when the project uses Claude Design, closes by handing design-sync back to the user as a required follow-up it cannot run itself, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.8.1"
+  version: "1.8.2"
 ---
 
 # Build Feature

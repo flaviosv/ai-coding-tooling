@@ -9,7 +9,7 @@ description: >
   "check my code", "review my changes", "review this PR", or "review PR #123". Do NOT use for
   reviewing test files — use the tests-code-review skill for that.
 metadata:
-  version: "2.9.0"
+  version: "2.10.0"
   triggers:
     - "check my code"
     - "code review"

@@ -497,18 +497,28 @@ def skill_windows(records, calls, sub_runs, session_end):
     return windows
 
 
+# A flag, optionally carrying a value. The value may be quoted (`-m "not integration"`) or
+# bare, but a bare value may not contain "/" — that keeps a real path argument from being
+# swallowed as if it were a flag's value, which is what separates a full-suite run from a
+# scoped one. `pytest tests/unit/` therefore still does NOT match: `tests/unit/` is neither
+# a flag nor an acceptable flag value.
+_FLAG = r"-{1,2}[\w-]+(?:[= ](?:\"[^\"]*\"|'[^']*'|[^\s/-][^\s/]*))?"
+# Runner prefixes that wrap a test command without changing its scope.
+_RUNNER = r"(?:(?:uv|poetry|pipenv|pdm|hatch)\s+run\s+)?"
+
 FULL_SUITE_PATTERNS = [
-    re.compile(r"^\s*(npm|yarn|pnpm)\s+(run\s+)?test(\s+--)?(\s+--[\w-]+)*\s*$"),
-    re.compile(r"^\s*(python3?\s+-m\s+)?pytest(\s+-[a-zA-Z]+)*\s*$"),
-    re.compile(r"^\s*go\s+test\s+\./\.\.\.\s*$"),
-    re.compile(r"^\s*cargo\s+test\s*$"),
-    re.compile(r"^\s*(mvn|\./?mvnw)\s+(test|verify)\s*$"),
-    re.compile(r"^\s*(gradle|\./?gradlew)\s+test\s*$"),
-    re.compile(r"^\s*(bundle\s+exec\s+)?rspec\s*$"),
-    re.compile(r"^\s*make\s+test\s*$"),
-    re.compile(r"^\s*tox\s*$"),
-    re.compile(r"^\s*dotnet\s+test\s*$"),
-    re.compile(r"^\s*phpunit\s*$"),
+    re.compile(rf"^\s*{_RUNNER}(npm|yarn|pnpm)\s+(run\s+)?test(\s+--)?(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*{_RUNNER}(python3?\s+-m\s+)?pytest(\s+{_FLAG})*\s*$"),
+    # Anything starting `go test ./...` is a full-suite run whatever flags follow it.
+    re.compile(r"^\s*go\s+test\s+\./\.\.\.(\s|$)"),
+    re.compile(rf"^\s*cargo\s+test(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*(mvn|\./?mvnw)\s+(test|verify)(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*(gradle|\./?gradlew)\s+test(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*{_RUNNER}(bundle\s+exec\s+)?rspec(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*make\s+test(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*tox(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*dotnet\s+test(\s+{_FLAG})*\s*$"),
+    re.compile(rf"^\s*{_RUNNER}phpunit(\s+{_FLAG})*\s*$"),
 ]
 
 # Matches the first pipe/redirect/chain in a command so a full-suite pattern (which anchors to
@@ -584,6 +594,34 @@ def render(session_path, records, top, skill_filter=None):
         matches = [w for w in windows_all if w["name"].lower() in wanted]
         if not matches:
             available = sorted({w["name"] for w in windows_all})
+            # A skill invoked via the Skill tool *inside* a dispatched subagent has no
+            # top-level window, so window matching alone reports it as absent even when it
+            # ran and dominated the session. Check the subagent rollup before saying that.
+            rollup, _unattributed = named_skill_rollup(sub_runs_all)
+            in_subagents = [
+                (name, entry) for name, entry in rollup.items() if name.lower() in wanted
+            ]
+            if in_subagents:
+                lines = [
+                    f"No *top-level* invocation of {', '.join(skill_filter)} found — but it ran "
+                    f"inside dispatched subagents, which have no window of their own:",
+                    "",
+                ]
+                for name, entry in sorted(in_subagents, key=lambda kv: -kv[1]["billed"]):
+                    lines.append(
+                        f"  {name}: {entry['n']} run(s), {human(entry['billed'])} billed input, "
+                        f"{entry['turns']} turns "
+                        f"(confidence {entry['confident']}/{entry['n']} direct)"
+                    )
+                lines += [
+                    "",
+                    "Scope to those subagent transcripts directly instead of this session file — "
+                    "they are under <session-dir>/subagents/. The per-skill totals above come from "
+                    "each subagent's own transcript and are trustworthy; this session's windows are not.",
+                    f"Skills with a top-level window here: "
+                    f"{', '.join(available) if available else 'none detected'}",
+                ]
+                return "\n".join(lines)
             return (
                 f"No invocation of {', '.join(skill_filter)} found in this session.\n"
                 f"Skills invoked: {', '.join(available) if available else 'none detected'}"

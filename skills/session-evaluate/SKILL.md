@@ -4,7 +4,7 @@ description: Analyzes a completed agent session transcript for performance and w
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.11.0
+  version: 1.11.1
 ---
 
 # Session Evaluate
