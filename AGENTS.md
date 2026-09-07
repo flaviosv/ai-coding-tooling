@@ -7,8 +7,9 @@ See [`docs/codebase/PROJECT.md`](docs/codebase/PROJECT.md) for the project conce
 This is **not an implementation-heavy codebase**. The vast majority of the project consists of `.md` files: skill definitions (`SKILL.md`), reference documents, configuration (`config/*.json`), and documentation. Treat it accordingly:
 
 - Do not apply typical software engineering heuristics (refactoring for abstraction, test coverage, DRY patterns) to `.md` files — clarity and correctness of content is what matters.
-- The **only implementation code** lives in `bin/` (`bin/skills.mjs`). Only modify it when the scope of actions it performs actually changes — not for style, cleanup, or speculative improvements.
-- When in doubt about a change, ask: "Is this a content edit to a `.md` file, or a behavioral change to `bin/`?" Each requires a very different standard of care.
+- Repo tooling lives in `bin/` (`bin/skills.mjs`). Only modify it when the scope of actions it performs actually changes — not for style, cleanup, or speculative improvements.
+- **A skill may ship its own scripts** under `skills/<name>/scripts/` (e.g. `session-evaluate/scripts/session_metrics.py`). Reach for one when a step is genuinely mechanical — a fixed transformation, or an API delivery sequence with no per-call judgment — and especially when a prose rule governing that step has demonstrably failed to hold across real runs. A script is the right fix there precisely because it removes the step from model judgment instead of warning about it again. Keep judgment in the `.md`; keep determinism in the script.
+- When in doubt about a change, ask: "Is this a content edit to a `.md` file, or a behavioral change to code?" Each requires a very different standard of care.
 
 # Constraints
 

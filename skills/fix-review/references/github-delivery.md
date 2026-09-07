@@ -1,4 +1,8 @@
-GitHub operations `fix-review` needs for GitHub Mode — fetching review threads, replying, and resolving. Load this file at GitHub Mode steps 1 and 6.
+GitHub operations `fix-review` needs for GitHub Mode — fetching review threads, replying, and resolving.
+
+**Read the fetch section below before GitHub Mode step 1's first `gh` call** — not after a query has already failed. Real runs that skipped it improvised the query from memory and got it wrong three different ways (`review` instead of `pullRequestReview`; `-f` instead of `-F` for the `Int!` PR number, which fails with *"Could not coerce value to Int"*; and a heredoc form the worktree-isolation guard refuses outright), then abandoned GraphQL altogether.
+
+**Division of labour:** step 1's fetch is yours to run. The *writes* — replying and resolving — are not: they are implemented by `scripts/deliver.py`, which GitHub Mode step 8 invokes. The reply/resolve/batching sections below document what that script does and why, so the mechanism is readable without reading Python; the script itself is the authoritative behaviour. Do not hand-roll these mutations, and never fall back to REST `/pulls/:n/comments` or `gh pr comment`: those return and act on *comment* ids, not the `PRRT_…` *thread* ids that resolving requires, so a run that switches to them can reply but can never resolve.
 
 REST does not expose threaded review conversations — everything here uses GraphQL.
 
@@ -25,7 +29,7 @@ gh api graphql -f query='
 
 Skip nodes where `isResolved: true`, and skip nodes whose comments all have `pullRequestReview.state: PENDING` — that thread belongs to a review the user hasn't submitted yet, not one they've published for triage. Each surviving node's `id` (a `PRRT_...` thread id) is what replying and resolving below need. Each node's `comments` array is the full exchange on that thread, in order — read all of it, not just the first or last entry, to determine what the thread is actually asking for.
 
-## Batching the Writes (GitHub Mode Step 6)
+## Batching the Writes (implemented by `scripts/deliver.py`)
 
 Both write operations below take a single thread id per call, but a GraphQL document can carry many aliased mutations — so **10 per request** is the unit here, not one. Never loop one request per thread when several are ready; a lone reply is simply a batch of one.
 
@@ -39,7 +43,7 @@ These rules apply to every batch on this page:
 - **Expect GitHub's abuse detection on a long reply run.** Every reply creates a review object, and ~50 of them inside two minutes drew a `403`/`422` carrying `"code": "abuse"` on every subsequent write. That block is time-based, not payload-based — retrying immediately, shrinking the batch, and falling back to the REST reply endpoint all fail identically while it holds. Wait it out (3 minutes cleared it) as a single timed wait per [Agent Wait Protocol](../../../templates/agent-wait-protocol.md)'s clock rule, then retry only the threads confirmed to still have no reply. Pace reply batches ~5 seconds apart to make hitting it less likely in the first place; resolves are far lighter and 1 second between them is enough.
 - 10 is the standing default, matching `complete-review`'s own posting batch size. If the user names a different size, use theirs — don't silently revert or auto-tune down after a failure.
 
-## Replying to Threads (GitHub Mode Step 6)
+## Replying to Threads (implemented by `scripts/deliver.py`)
 
 ```
 gh api graphql -f query='
@@ -56,11 +60,11 @@ gh api graphql -f query='
 
 Each reply GitHub accepts becomes its own single-comment `COMMENTED` review — that is the platform's model for a thread reply, identical to what clicking **Reply** in the web UI produces, and batching doesn't change it. Never create or submit a review of your own to hold replies: this skill fixes findings, it doesn't post reviews.
 
-## Verifying the Replies (GitHub Mode Step 6, before resolving)
+## Verifying the Replies (implemented by `scripts/deliver.py`, before resolving)
 
 Once every reply batch has been sent, re-run the step 1 thread query once and check that each thread you replied to carries **exactly one** reply from you. This single query is the only thing that catches both halves of the failure mode above — a reply that silently never landed, and a duplicate left by a retry — and it is the last moment either is cheap to fix. Post the missing ones, delete the duplicates (`gh api -X DELETE repos/<owner>/<repo>/pulls/comments/<comment id>`, one call each — there is no batch delete), and re-check. Only threads that pass this check go on to be resolved.
 
-## Resolving Threads (GitHub Mode Step 6)
+## Resolving Threads (implemented by `scripts/deliver.py`)
 
 Batch the same way, and only for threads whose reply is confirmed present above — a thread whose reply failed stays open.
 
