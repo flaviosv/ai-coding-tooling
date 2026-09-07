@@ -335,7 +335,11 @@ Dispatch **one** delegated subagent that covers ALL active dimensions in a singl
 
 Fire all active dimension agents in a **single parallel message. Never sequentially.** Each receives its own `## Before You Begin` block (targeted to its dimension) plus the full codebase-doc set.
 
-**Merge rule:** when BOTH `architecture-reviewer` and `code-quality-reviewer` are in the active dimension set, they dispatch together as a single `design-quality-reviewer` agent — union of both checklists, findings returned tagged by original dimension. This happens only for content type `general` (the only content type where both are active per Axis 2's table — `architecture-reviewer` never appears in the active set for `docs-only`/`config-infra-only`/`frontend-assets-only`). Whenever only `code-quality-reviewer` is active, it dispatches alone exactly as before the merge. This reduces the general-content, all-dimensions-active case from 5 agents to 4.
+**Merge rule 1 — design quality:** when BOTH `architecture-reviewer` and `code-quality-reviewer` are in the active dimension set, they dispatch together as a single `design-quality-reviewer` agent — union of both checklists, findings returned tagged by original dimension. This happens only for content type `general` (the only content type where both are active per Axis 2's table — `architecture-reviewer` never appears in the active set for `docs-only`/`config-infra-only`/`frontend-assets-only`). Whenever only `code-quality-reviewer` is active, it dispatches alone exactly as before the merge.
+
+**Merge rule 2 — intent & regression:** when BOTH `regression-reviewer` and `requirements-tracer` are in the active dimension set, they dispatch together as a single `intent-regression-reviewer` agent — union of both checklists, findings returned tagged by original dimension. They ask the same underlying question from two directions (does this change still do what was intended, and does it break what already worked), and measurement across four real PRs found them to be the two lowest-yield dimensions by a wide margin: 8 runs, 31.9M billed input — 28% of all fan-out spend — for 12 findings, of which 7 were fixed, 4 of those 7 duplicated another dimension's finding, and 3 were factually wrong. Every Critical or High either produced was independently found by 2–4 other dimensions in the same run. Whenever only one of the two is active — `requirements-tracer` is conditional and absent when no spec/JIRA was found in Step 2 — the other dispatches alone exactly as before.
+
+Together these reduce the general-content, all-dimensions-active case from 6 agents to 4.
 
 #### Complex — Parallel + Completeness Handling
 
@@ -399,11 +403,12 @@ The orchestrator **does not inline** any checklist or codebase-doc content — t
 | `design-quality-reviewer` (architecture + code-quality merged — see Merge Rule in Step 6) | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
 | `code-quality-reviewer` (standalone — dispatched alone when architecture isn't in the active set, see Merge Rule) | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
 | `performance-reviewer` | `performance-checklist.md`, `<stack>-*-performance-review.md` |
-| `regression-reviewer` | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
+| `intent-regression-reviewer` (regression + requirements merged — see Merge Rule 2 in Step 6) | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md`, plus the requirements/spec file |
+| `regression-reviewer` (standalone — dispatched alone when `requirements-tracer` isn't in the active set, see Merge Rule 2) | `review-checklist.md`, `clean-code-checklist.md`, `best-practices-code-review.md`, `observability-code-review.md`, `<stack>-*-code-review.md` |
 | `security-reviewer` | None — relies on `security-best-practices` skill + built-in security knowledge |
-| `requirements-tracer` | None — uses requirements/spec file only; no codebase docs |
+| `requirements-tracer` (standalone — only when `regression-reviewer` isn't in the active set) | None — uses requirements/spec file only; no codebase docs |
 
-Codebase docs: all reviewing agents except `requirements-tracer` self-load the full set: `STACK`, `ARCHITECTURE`, `CONVENTIONS`, `STRUCTURE`, `INTEGRATIONS`, `CONCERNS`. `TESTING.md` is excluded (belongs to `tests-code-review`). All loads filtered to files present in the availability map.
+Codebase docs: all reviewing agents except a standalone `requirements-tracer` self-load the full set: `STACK`, `ARCHITECTURE`, `CONVENTIONS`, `STRUCTURE`, `INTEGRATIONS`, `CONCERNS`. `TESTING.md` is excluded (belongs to `tests-code-review`). All loads filtered to files present in the availability map. The merged `intent-regression-reviewer` loads them, since its regression half needs them.
 
 ### Agent Roster
 
@@ -412,9 +417,10 @@ Codebase docs: all reviewing agents except `requirements-tracer` self-load the f
 | `design-quality-reviewer` | Merged agent: layer violations, coupling, pattern misuse (**architecture** tag) + naming, complexity, SOLID, DRY, KISS, clean code, inline/API docs, obsolete comments (**code-quality** tag). Findings returned tagged by original dimension — the at-a-glance table and zoned report keep separate Architecture / Code Quality & Docs rows, unchanged by the merge. | `architecture` and/or `conventions` (each tag degrades independently per its own missing doc) |
 | `code-quality-reviewer` | Naming, complexity, SOLID, DRY, KISS, clean code; inline docs, API docs, obsolete/misleading comments. Dispatched standalone (not merged) whenever `architecture-reviewer` isn't in the active dimension set. | `conventions` |
 | `performance-reviewer` | N+1, allocations, blocking calls, missing indexes | — |
-| `regression-reviewer` | Unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions | — |
+| `intent-regression-reviewer` | Merged agent: unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions (**regression** tag) + does the change satisfy the stated spec/task (**requirements** tag). Findings returned tagged by original dimension — the at-a-glance table and zoned report keep separate Regression & Hallucination / Requirements rows, unchanged by the merge. | — (the requirements tag is simply absent when no spec was found, which is also when this agent isn't merged at all) |
+| `regression-reviewer` | Unrelated deletions, phantom imports, AI hallucination artifacts, weakened assertions. Dispatched standalone (not merged) whenever `requirements-tracer` isn't in the active dimension set. | — |
 | `security-reviewer` | Auth, injection, secrets, data exposure | — |
-| `requirements-tracer` | Does the change satisfy the stated spec/task | **Skip entirely** if `requirements` absent — omit from at-a-glance table |
+| `requirements-tracer` | Does the change satisfy the stated spec/task. Merged into `intent-regression-reviewer` whenever `regression-reviewer` is also active. | **Skip entirely** if `requirements` absent — omit from at-a-glance table |
 
 ### Reviewer Stance (injected into every agent)
 
@@ -429,7 +435,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 ### Performance Audit mode exception
 
-In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents, including `code-quality-reviewer`, scope to changed files only. `requirements-tracer` is skipped. Complexity assessment (Step 5) is skipped — Performance Audit always uses parallel dispatch. **The design-quality-reviewer merge does NOT apply here** — architecture and code-quality intentionally use different scopes in this mode (full codebase vs. changed files), so they dispatch as separate agents exactly as before, unlike the tier-based dispatch path where both always share the same diff.
+In Performance Audit mode: `architecture-reviewer` and `performance-reviewer` scan the full codebase. All other agents, including `code-quality-reviewer`, scope to changed files only. `requirements-tracer` is skipped — which also means Merge Rule 2 never fires here and `regression-reviewer` always dispatches standalone in this mode. Complexity assessment (Step 5) is skipped — Performance Audit always uses parallel dispatch. **The design-quality-reviewer merge does NOT apply here** — architecture and code-quality intentionally use different scopes in this mode (full codebase vs. changed files), so they dispatch as separate agents exactly as before, unlike the tier-based dispatch path where both always share the same diff.
 
 ### Agent: regression-reviewer
 
@@ -457,6 +463,8 @@ For each agent, resolve its outcome:
 | Failed or timed out | Mark dimension as `⚠️ not executed — <reason>` |
 | Degraded (missing required context) | Mark dimension as `⚠️ degraded — <missing item>` |
 | `requirements-tracer` skipped (no spec/JIRA) | Omit row from at-a-glance table entirely |
+
+**Merged agent (`intent-regression-reviewer`) failure or timeout:** mark BOTH the Regression & Hallucination and Requirements at-a-glance rows as `⚠️ not executed — <reason>` — one agent's failure means both tagged dimensions went unreviewed, same as for the merge below.
 
 **Merged agent (`design-quality-reviewer`) failure or timeout:** mark BOTH the Architecture and Code Quality & Docs at-a-glance rows as `⚠️ not executed — <reason>` — one agent's failure means both tagged dimensions went unreviewed. Same rule for degraded: if the merged agent runs degraded, both rows show `⚠️ degraded — <missing item>` (the specific missing item may differ per tag, e.g. `architecture` absent but `conventions` present degrades only the Architecture-tagged findings — note this distinction in the row's summary text when it applies).
 
@@ -526,8 +534,8 @@ Agent dimensions map directly to zones. Zone letter assignment:
 | Architecture | A | `design-quality-reviewer` (merged with Code Quality when both active — see Step 6 Merge Rule) |
 | Code Quality & Docs | Q | `design-quality-reviewer` (merged, general content) or standalone `code-quality-reviewer` (narrowed content types) |
 | Performance | P | `performance-reviewer` |
-| Regression & Hallucination | H | `regression-reviewer` |
-| Requirements | R | `requirements-tracer` |
+| Regression & Hallucination | H | `intent-regression-reviewer` (merged with Requirements when both active — see Step 6 Merge Rule 2) or standalone `regression-reviewer` |
+| Requirements | R | `intent-regression-reviewer` (merged) or standalone `requirements-tracer` |
 | Security | S | `security-reviewer` |
 
 Finding IDs: `<ZoneLetter><N>` (e.g. `A1`, `Q3`, `S2`). All findings start as `Open`.
