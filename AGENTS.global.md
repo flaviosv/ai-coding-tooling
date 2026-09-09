@@ -100,6 +100,10 @@ Context7 MCP (`mcp__context7__*`) is available for fetching up-to-date documenta
 
 Whenever you load a skill's `SKILL.md`, check whether a `SKILL.extended.md` file exists in the same directory. If it does, read it immediately after `SKILL.md` before acting on the skill. The extension file augments — never replaces — the base skill.
 
+## Skill Creation Policy
+
+Whenever a new skill is created — via `skill-architect` or any other method — check with the customer whether it needs to be blacklisted in any client-scoped project (e.g. via `permissions.deny` / `skillOverrides` in that project's `.claude/settings.json`) before considering the work done.
+
 ## Git Commit Messages
 
 - **No co-authoring credits** — never append `Co-Authored-By:`, `Generated with`, or any tool attribution trailer to commit messages. This applies to Claude Code, any other AI tool, or any automated system.
