@@ -40,6 +40,7 @@ The agent id is the first positional arg for most commands and is currently **`c
 | `delete <agent> <skill>` | Uninstall + deregister a skill (keeps `extended/<skill>/`) |
 | `destroy <agent>` | Undo `setup` — remove config, uninstall skills, drop links |
 | `help` | Show usage |
+| `hooks <agent>` | Sync `config/hooks.json` into the agent's `settings.json` (run automatically by `setup`) |
 | `list <agent>` | Show each skill's source and install state |
 | `override <agent> <skill>` | Scaffold `extended/<skill>/` and apply the overlay |
 | `setup <agent>` | Bootstrap: global config + all skills + overrides + project-local links |
@@ -48,7 +49,7 @@ The agent id is the first positional arg for most commands and is currently **`c
 
 ### `setup <agent>`
 
-Bootstraps everything for the agent: symlinks `AGENTS.global.md` → the agent config, symlinks `templates/` → the agent config dir, installs every registered skill, applies all `extended/` overrides, and creates the project-local links (`.claude → .agents`, `CLAUDE.md → AGENTS.md`). Idempotent and safe — never clobbers existing real files.
+Bootstraps everything for the agent: symlinks `AGENTS.global.md` → the agent config, symlinks `templates/` → the agent config dir, installs every registered skill, applies all `extended/` overrides, creates the project-local links (`.claude → .agents`, `CLAUDE.md → AGENTS.md`), and syncs `config/hooks.json` into the agent's `settings.json` (see `hooks <agent>` below). Idempotent and safe — never clobbers existing real files.
 
 The `templates/` link is what makes `[Name](../../templates/<name>.md)` references inside a `SKILL.md` resolve once the skill is installed. Installed skills are symlinks into this repo, so a path-resolving tool that normalizes `../../` *lexically* (before following the symlink) lands on `<skillsDir>/../templates` rather than the repo — without this link, every such reference reads as a missing file, silently, and the agent falls back to guessing or to a filesystem-wide search. Re-run `setup` after cloning onto a new machine, and don't remove the link by hand.
 
@@ -92,6 +93,15 @@ Scaffolds `extended/<skill>/` (if absent) and applies the overlay symlinks (`SKI
 fsvskills override claude-code tlc-spec-driven
 ```
 
+### `hooks <agent>`
+
+Merges `config/hooks.json` (the source of truth for what's installed — same role as `config/skills.json`) into the agent's `settings.json` `hooks` object. Additive only: existing entries for an event (e.g. other tools' hooks) are never touched or removed, and it's idempotent — matches on the hook script's absolute path already present for an event, so re-running is a no-op. Run automatically by `setup`; use standalone to re-sync without a full `setup` re-run.
+
+```bash
+fsvskills hooks claude-code --dry-run
+fsvskills hooks claude-code
+```
+
 ### `list <agent>` · `destroy <agent>` · `statusline [--force]`
 
 ```bash
@@ -112,6 +122,7 @@ fsvskills statusline --force          # (re)install the status line script
 ## Notes & safety
 
 - Editing the status line: change `config/statusline-command.sh` first, then `fsvskills statusline --force` (never edit the global copy directly).
+- Editing hooks: change `config/hooks.json` (and/or the script it points to) first, then `fsvskills hooks claude-code` — never hand-edit `hooks` in the global `settings.json` directly.
 - Mutating commands support `--dry-run` — use it to preview before applying.
 - `add` / `delete` / `override` regenerate `docs/AGENT-SKILLS.md` from `skills.json` (content above its marker is preserved).
 - Only `local` skills (`skills/`, `.agents/skills/`) may be edited in this repo; vendor skills are read-only — customize via `extended/`.

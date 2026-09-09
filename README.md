@@ -43,7 +43,7 @@ fsvskills setup claude-code
 
 One command bootstraps everything:
 
-- **Global:** symlinks `AGENTS.global.md` to the agent's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, and installs any `personal/` skills.
+- **Global:** symlinks `AGENTS.global.md` to the agent's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into the agent's `settings.json` (`hooks/` — see `docs/CLI.md`).
 - **Project-local:** creates `.claude → .agents` and `CLAUDE.md → AGENTS.md` so this repo's project-local skills (`.agents/skills/`) and instructions are visible to Claude Code in the project.
 
 It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed, drop the project-local links), run `fsvskills destroy claude-code`.

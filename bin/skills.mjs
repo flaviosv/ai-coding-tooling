@@ -305,6 +305,9 @@ function cmdSetup(agentId) {
     if (agent.projectConfig) linkSafe(MD_SOURCE, path.join(ROOT, agent.projectConfig));
   }
 
+  log(`\n${c.bold}Hooks${c.reset}`);
+  cmdHooks(agent.id);
+
   log(`\n${c.green}Setup complete for ${agent.id}.${c.reset}`);
 }
 
@@ -629,6 +632,51 @@ function cmdStatusline(force) {
   ok(`installed status line -> ${dest}`);
 }
 
+// Merges config/hooks.json's entries into the agent's settings.json `hooks`
+// object. Additive only: existing event arrays (ai-memory, sonar-secrets,
+// etc.) are never touched, and re-running is a no-op once a script's
+// absolute path is already present for an event.
+function cmdHooks(agentId) {
+  if (!agentId) throw new UserError('Missing agent. Usage example: fsvskills hooks claude-code');
+  const agents = loadJson('config/agents.json');
+  if (!agents[agentId]) {
+    throw new UserError(`Unknown agent "${agentId}". Known: ${Object.keys(agents).join(', ')}.`);
+  }
+  const settingsPath = expandHome(agents[agentId].settingsPath || '~/.claude/settings.json');
+  const manifest = loadJson('config/hooks.json');
+  const entries = manifest[agentId] || [];
+  if (entries.length === 0) { skip(`no hooks registered for ${agentId}`); return; }
+
+  let settings = {};
+  if (lexists(settingsPath)) {
+    try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); }
+    catch (e) { throw new UserError(`Could not read ${settingsPath}: ${e.message}`); }
+  }
+  settings.hooks = settings.hooks || {};
+
+  let changed = false;
+  for (const entry of entries) {
+    const scriptAbsPath = path.join(ROOT, entry.script);
+    for (const [event, cfg] of Object.entries(entry.events)) {
+      settings.hooks[event] = settings.hooks[event] || [];
+      const installed = settings.hooks[event].some((g) =>
+        g.hooks && g.hooks.some((h) => h.command === scriptAbsPath));
+      if (installed) { skip(`${entry.id} already installed for ${event}`); continue; }
+      settings.hooks[event].push({
+        matcher: cfg.matcher ?? '',
+        hooks: [{ type: 'command', command: scriptAbsPath, timeout: cfg.timeout ?? 10 }],
+      });
+      ok(`registered ${entry.id} on ${event}`);
+      changed = true;
+    }
+  }
+
+  if (!changed) { skip('hooks already up to date'); return; }
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} update ${settingsPath}`); return; }
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+  ok(`installed hooks -> ${settingsPath}`);
+}
+
 // ---------------------------------------------------------------------------
 // Doc generation (internal; run by add/override)
 // ---------------------------------------------------------------------------
@@ -713,6 +761,7 @@ ${c.bold}Commands:${c.reset}
   override <agent> <skill>      Scaffold extended/<skill>/ and apply the overlay
   list <agent>                  Show each skill's source and install state
   statusline [--force]          Install the Claude Code status line script
+  hooks <agent>                 Sync config/hooks.json into the agent's settings.json (run by setup)
   help                          Show this message
 
 ${c.bold}Sources:${c.reset} local · tech-leads-club · matt-pocock
@@ -766,6 +815,7 @@ function main() {
     }
     case 'list': cmdList(rest[0]); break;
     case 'statusline': cmdStatusline(flags.force); break;
+    case 'hooks': cmdHooks(rest[0]); break;
     default:
       throw new UserError(`Unknown command "${command}". Run \`fsvskills help\`.`);
   }
