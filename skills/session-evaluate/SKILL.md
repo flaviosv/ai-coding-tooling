@@ -9,7 +9,7 @@ metadata:
 
 # Session Evaluate
 
-Turns a recorded agent session into a ranked list of performance and workflow defects, each with the evidence that proves it and a concrete guideline fix — then, once approved, applies those fixes. Evaluates the whole session by default, or one or more named skills within it on request.
+Reach for this right after a session that felt slow, expensive, or off — before touching the skill you suspect, let the transcript's own numbers say what actually went wrong.
 
 ## Role
 
@@ -174,7 +174,7 @@ Execute Step 5's plan. Every mode applies the same **Classification & Priority P
 | No governing skill; general agent behaviour | `AGENTS.md` / `CLAUDE.md`, or the relevant `docs/codebase/` file |
 | Nothing fixable in Markdown | Mark **Informational** — reported, never applied |
 
-Check `config/skills.json` for a skill's `source` before proposing an edit to it. Editing an installed vendor or global skill directly is prohibited by this repository's rules.
+Before proposing an edit to a skill, check `config/skills.json` for its `source` and follow root [CLAUDE.md § Skill Modification Rules](../../CLAUDE.md#skill-modification-rules).
 
 *Check whether the guidance already exists — mandatory, before writing any finding whose fix is "add a rule".* The attributed file is open in front of you. Grep it for the rule you were about to propose. If it is **already there**, you have not found a documentation gap — you have found a rule that exists and did not bind, which is a different diagnosis with different fixes, and writing it up as "add this guideline" makes the file longer without making the behaviour any likelier. Say so explicitly in the finding, and choose a fix from this list instead:
 
@@ -305,7 +305,7 @@ State plainly what changed: files edited, guideline added to each, and which fin
 
 Reprint the Step 8 at-a-glance table with its `Status` column updated per row — `Applied`, `Skipped`, or left `Pending` for anything not approved — instead of only narrating the outcome in prose.
 
-Per this repository's workflow, commit and push the applied changes to `main` without waiting to be asked, using a Conventional Commits message.
+Commit and push the applied changes per root [CLAUDE.md § Change Request Workflow](../../CLAUDE.md#change-request-workflow).
 
 ### Step 11: Record the run in memory
 
