@@ -8,7 +8,7 @@ metadata:
 
 # Fix Review
 
-Fixes review findings — on GitHub, or in this conversation only — straight on the existing branch. Never posts new findings, never creates a new PR. Batch Mode fans this out across every PR where you requested changes as a reviewer.
+Three modes — GitHub, Session-Only, Batch — routed by Step 1 below.
 
 ## Guardrails
 
@@ -22,7 +22,7 @@ Fixes review findings — on GitHub, or in this conversation only — straight o
 - If you're not confident how to fix an item after reading it in full (the thread, in GitHub Mode; the finding, in Session-Only Mode), do NOT guess — report it back unfixed, with the reason, instead of applying a fix you're unsure of.
 - Never fix a finding just because it exists — a comment on GitHub, or a finding stated in this conversation, is a claim to evaluate against the actual current code, not a mandate to act on unread. This applies to every dispatched item, not only the ones with a suggested direction to weigh: an **auto-fix** item (no reply on it) still needs its underlying claim confirmed against the real diff — silence from other reviewers isn't evidence it's correct, only that nobody happened to object. This confirmation happens once, at fix time, by whichever context is already reading that item's target file to make the edit (GitHub Mode step 5) — never as a separate pass beforehand, that's reading the same code twice for no benefit. If an item doesn't actually hold up (stale, based on a misread of the diff, already addressed, or simply wrong), the subagent reports it back **rejected** instead of editing anything, with its reasoning — same standard as an unsound suggested approach. This is what keeps fix coverage — including the test additions/updates/removals below — grounded in findings that are actually real, instead of propagating every claim at face value.
 - **Confirming a finding against the current code answers "is this true?", not "is this wanted?"** A finding can describe the code perfectly and still be asking you to undo a deliberate decision. Before applying any item that would change a default, a threshold, a configuration value, or a documented behaviour, check it against the requirement that put that behaviour there — the active feature's spec under `.specs/features/<feature>/` when one is active, this project's `CLAUDE.md`/`AGENTS.md`, and the PR's own title/body. An item that contradicts a stated requirement is **rejected**, citing that requirement on the thread; the reviewer may well be right that the requirement is costly, but changing a requirement is the user's call and never this skill's. A real run read a "`LOG_LEVEL` defaults to debug is a performance problem" finding, confirmed it against the code (which did default to debug), switched the default to `info`, and rewrote the tests asserting the spec'd value — reversing a requirement stated in that project's own `CLAUDE.md`, which its caller then had to revert across four files.
-- Do NOT add explanatory code comments when fixing a finding, unless the code is genuinely non-obvious (complex algorithm, subtle invariant, external constraint) — the fix should read as self-explanatory, same standard as any other change.
+- Comments: same restraint as any other change — no explanatory comments on a fix unless the code is genuinely non-obvious (per this project's global Coding Style policy).
 - Fix items directly, in order, inside whichever context is already running this skill's actual fixing work — never delegate item-by-item work to a subagent per file cluster. File clusters (every auto-fix/apply-as-directed item whose fix would touch a given file, grouped together) still organize the work — read a file once, apply every item that touches it in one pass, in encounter order — but they are no longer an isolation or parallel-dispatch boundary. Process every surviving cluster's items sequentially, one item at a time (read the target file(s) → judge whether the finding/direction still holds against what's actually there → fix it, its test, and a Conventional-Commits commit, or reject with reasoning → next item), directly in the current checkout. There is nothing to merge afterward, because every item commits to the same checkout throughout this run — this replaces GitHub Mode's former per-cluster-worktree-and-cherry-pick mechanism entirely, and with it the race a shared checkout under concurrent commits used to create.
 - Whichever context is already running this skill's GitHub Mode does that fixing work itself, inline, with no further nested `Agent` dispatch. **The test for this is mechanical, never a judgment call about who dispatched you or why: if you are executing this skill as a subagent at all — you were started via the `Agent` tool, for any reason, by `build-feature`, by Batch Mode, or by anything else — you are already the isolated context, and you must not call `Agent` yourself at any point in this skill's run, full stop.** Do not try to reason about whether some other context "already isolated" you — the fact that you are a subagent is that isolation, and it is the only fact that matters. The one exception is a root context that is **not itself a subagent** — a user's own live top-level conversation invoking this skill directly, not through `build-feature` or Batch Mode. There, and only there, wrap the entire fixing pass (GitHub Mode step 5) in **one** Sonnet subagent for the whole run, to keep the live conversation's own context clean — one subagent, not one per cluster — and that one subagent then follows the rule above and dispatches no further, because it is now a subagent itself. Follow [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md) for that dispatch's shape: a completion condition tied to every surviving item having a fixed/rejected/blocked outcome, and a return shape carrying exactly that, plus commit SHAs — no further delegation from inside it.
 - Before any reply, resolve, or push: run the validation gate (GitHub Mode step 6) confirming the actual composite state left behind once every item has landed together — not just that each item's own fix held individually at the moment it was made.
@@ -48,7 +48,7 @@ Fixes review findings — on GitHub, or in this conversation only — straight o
 - Batch Mode acts only on review threads containing **at least one comment authored by your own identity** — never fix, reply to, or resolve a thread whose comments are entirely from other reviewers, even if unresolved and even if it's clearly a valid finding. Fixing someone else's feedback is out of scope for this mode; each subagent must apply this filter before classifying anything (see Batch Mode Step 4).
 - Never hardcode a PR number as permanently excluded. If the user names an exclusion for this run only (e.g. "batch-fix my change requests except #171"), drop it from the qualifying list for this invocation and say so — do not remember it for future runs.
 - Each qualifying PR's fix run happens in its own subagent, in its own isolated git worktree (`Agent` tool, `agentType: general-purpose`, `model: 'sonnet'` — the literal alias, never a versioned model ID, see Guardrails — `run_in_background: true`, `isolation: 'worktree'`) — this is what lets every qualifying PR fix concurrently without fighting over which branch is checked out in a shared working directory. The subagent's first action inside its worktree is to check out that PR's branch (`gh pr checkout <N>`); this checkout is only safe because the worktree isolates it from the user's own checkout and from every other PR's subagent. A direct (non-batch) GitHub Mode run isolates the same way when it needs to — via a worktree it creates itself with plain `git worktree` commands instead of the `Agent` tool's `isolation` param, since it isn't running inside a subagent to begin with — but skips it entirely when the current working directory is already on the PR's branch, since git won't allow the same branch checked out twice (see Before Starting). Launch every subagent's `Agent` call in the same message/turn — never one at a time.
-- **Read [Agent Wait Protocol](../../templates/agent-wait-protocol.md) in full before the first dispatch, not once the first wait has already started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. This mode's own difference from the protocol's default is that each PR reports independently rather than waiting for all: report each PR's result to the user **as soon as its completion notification arrives**, do not batch and wait for all subagents before saying anything. After the last one finishes, add one final summary table across every PR fixed this run.
+- Read [Agent Wait Protocol](../../templates/agent-wait-protocol.md) in full before the first dispatch — see Batch Mode Step 5 below for this mode's reporting difference from the protocol's default.
 - If a subagent's run fails outright (PR not found, nothing pushed), report that PR's failure plainly in both the per-PR update and the final table — never imply a fix landed when it didn't.
 - As soon as a PR's completion notification arrives — success or failure, right after reporting it — remove that PR's own worktree (`git worktree remove <path>`; the path was recorded when the subagent was launched). A Batch Mode worktree exists only for this one fix run and has nothing to resume later — leaving it on disk after its result is reported is a leak, not a feature.
 
@@ -63,12 +63,7 @@ Fixes review findings — on GitHub, or in this conversation only — straight o
 
 ### Jira Ticket Sync
 
-- Opt-in only, never default — only run this for a PR when the user's invocation explicitly asked for Jira sync. Fixing findings on a PR with no such request must never touch Jira, since not every repo or PR has a linked ticket and not every user wants this.
-- Resolve the Atlassian `cloudId` via `mcp__atlassian__getAccessibleAtlassianResources` once per run — never once per PR.
-- If no ticket key can be resolved from a PR's title/body, skip that PR's Jira sync silently and note it in the final report — never block or fail the fix-review run over it.
-- Never guess or hardcode a Jira transition id — resolve the correct one by name via `mcp__atlassian__getTransitionsForJiraIssue` first. If no transition matching an active-work status is available from the ticket's current status, skip the transition and note it in the report rather than guessing.
-- Exactly one starting comment and one completion comment per PR's ticket — never one per finding, and never more than this pair regardless of how many findings that PR has.
-- In Batch Mode, each PR's Jira sync runs independently inside that PR's own subagent, against that PR's own ticket only — never batched or reconciled across PRs.
+Opt-in only, never default — see the full "Jira Ticket Sync" section below for when and how this runs.
 
 ## Step 1: Mode Detection
 
@@ -314,11 +309,9 @@ User: "batch-fix my change requests" (no PR where your latest review requested c
 
 ### Example 6: GitHub Mode, a thread is routed to a specific person
 
-`fix-review` is running GitHub Mode on PR #142. One unresolved thread reads: "@bob, you touched this last — can you confirm the timeout value is still right here?" with no reply yet.
+PR #142's one unresolved thread reads: "@bob, you touched this last — can you confirm the timeout value is still right here?" with no reply yet.
 
-1. Reading the thread in full: the current comment explicitly addresses Bob by GitHub handle, not a general finding → classified **routed to a person**.
-2. It's recorded for the report (thread id, `path:line`, addressed to `@bob`) but excluded from the fix pass entirely — no fix, no reply, no resolve.
-3. Report notes: "1 thread left untouched — addressed to @bob, still pending their answer."
+Classified **routed to a person** (addressed to `@bob` by handle) → left completely untouched. Report notes: "1 thread left untouched — addressed to @bob, still pending their answer."
 
 ### Example 7: GitHub Mode, ad-hoc invocation — worktree created and cleaned up
 
@@ -332,11 +325,11 @@ User: `/fix-review PR #201` — the working directory is currently on `main`, no
 
 ### Example 8: GitHub Mode, ignoring conversation-only findings
 
-Earlier in this same conversation, `code-review` ran locally against PR #305's branch and surfaced 3 findings, but nothing was ever posted to GitHub. Separately, someone else already left a submitted GitHub review on PR #305 with 2 comments of their own. The user then says "fix the review comments on PR #305."
+Earlier in this conversation, `code-review` ran locally against PR #305 and surfaced 3 findings never posted to GitHub. Separately, someone else already left a submitted GitHub review on PR #305 with 2 comments. The user says "fix the review comments on PR #305."
 
-1. Step 1: PR #305 known; a submitted review with comments already exists on GitHub → **GitHub Mode** (per Step 1 rule 3), regardless of the 3 findings sitting in this conversation.
-2. GitHub Mode Step 1 fetches threads fresh from GitHub: only the 2 threads from the submitted review. The earlier conversation's 3 `code-review` findings are not folded in, referenced, or fixed — they were never posted to GitHub, so they're out of scope for this run.
-3. Report covers only the 2 GitHub threads. If the user wants the other 3 findings fixed too, they'd need to be posted to GitHub first (e.g. via `complete-review`/`code-review`) or handled as a separate Session-Only Mode run on a branch with no submitted review yet.
+1. Step 1: a submitted review already exists on GitHub → **GitHub Mode**, regardless of the 3 conversation-only findings.
+2. GitHub Mode Step 1 fetches only the 2 threads from the submitted review — the 3 conversation-only findings stay out of scope.
+3. Report covers only the 2 GitHub threads.
 
 ### Example 9: GitHub Mode, invoked with Jira sync requested
 
