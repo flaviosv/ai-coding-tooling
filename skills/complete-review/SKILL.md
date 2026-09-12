@@ -312,20 +312,11 @@ If the subagent's name is no longer reachable (`ListAgents` doesn't show it, or 
 
 ### Example 1: Single PR Mode, PR number given
 
-User: `/complete-review PR #456`
-
-1. Step 1 (Mode Detection): PR number given inline → Single PR Mode
-2. Single PR Mode Step 1: resolved as #456, no need to ask
-3. Single PR Mode Step 2: one Sonnet subagent issues two concurrent calls — `code-review`'s and `tests-code-review`'s Return-Only Variant analysis on PR #456. `code-review` returns 7 findings with banner "Complexity: Medium (9 files, 420 lines) · Type: general · Single agent — all 5 dimensions"; `tests-code-review` returns 2 findings with banner "Complexity: Small (3 test files, 90 lines) · Inline review". No pending review already exists on the PR, so the subagent merges the two `comments` arrays and posts a single pending review covering all 9 findings directly; returns one compact result covering both
-4. Single PR Mode Step 3: "code-review — Medium (9 files, 420 lines) · Single agent · 7 findings. tests-code-review — Small (3 test files, 90 lines) · Inline · 2 findings. 9 findings published as one pending review on PR #456 — submit manually on GitHub when ready."
+Example 1: `/complete-review PR #456` → Single PR Mode, proceeds as Step 2 (review and publish) through Step 3 (report).
 
 ### Example 2: Single PR Mode, no PR known yet
 
-User: `/complete-review`
-
-1. Step 1 (Mode Detection): no PR number and no batch language → ask "Should I review one specific PR (give me the number), or run a batch review of every open PR waiting on your review?"
-2. User replies "PR #789" → Single PR Mode, resolved as #789, continue to Step 2
-3. Steps 2 and 3 proceed as in Example 1
+Example 2: `/complete-review` (no PR known) → asks which PR, then Single PR Mode once given one, proceeds as Step 2.
 
 ### Example 3: Single PR Mode, invoked mid-flow by another skill (e.g. build-feature)
 
@@ -337,7 +328,7 @@ User: `/complete-review PR #202`
 
 1. Step 1 (Mode Detection): PR number given → Single PR Mode; Step 1 resolves PR #202
 2. Single PR Mode Step 2: `code-review`'s invocation succeeds (5 findings); `tests-code-review`'s invocation fails (skill-invocation error). Retry `tests-code-review` alone, scoped — it succeeds on retry (2 findings). No existing pending review found. Merge both, post one pending review with 7 findings.
-3. Single PR Mode Step 3: "7 findings published as one pending review on PR #202 (5 code-review, 2 tests-code-review) — submit manually on GitHub when ready."
+3. Single PR Mode Step 3: reports per its own template (see Step 3: Report) — 7 findings (5 code-review, 2 tests-code-review) published as one pending review on PR #202.
 
 ### Example 5: Single PR Mode, merging into an already-pending review
 
@@ -345,36 +336,19 @@ User: `/complete-review PR #310` (a prior `complete-review` run on this PR was n
 
 1. Step 1 (Mode Detection): PR number given → Single PR Mode; Step 1 resolves PR #310
 2. Single PR Mode Step 2: both invocations succeed (4 findings, 1 finding). Posting Mechanics' step 1 finds a pending review already on PR #310 under its own identity, with 6 comments from the earlier run. None of this run's 5 new findings duplicate those 6, so all 5 are appended as individual threads directly onto that same review, paced a second apart — no delete, no repost, no user prompt at any point. The review now has 11 comments total.
-3. Single PR Mode Step 3: "code-review — Small (2 files, 60 lines) · Inline · 4 findings. tests-code-review — Small (1 test file, 30 lines) · Inline · 1 finding. 6 comments carried over from an already-pending review, plus 5 new — 11 total, published as one pending review on PR #310 — submit manually on GitHub when ready."
+3. Single PR Mode Step 3: reports per its own template (see Step 3: Report), including its merged-review addendum — code-review Small/4 findings, tests-code-review Small/1 finding, 6 comments carried over plus 5 new — 11 total, published as one pending review on PR #310.
 
 ### Example 6: Batch Mode, several PRs pending review
 
-User: "review my pending PRs" (in a checkout of `acme/widgets`)
-
-1. Step 1 (Mode Detection): batch language, no PR number → Batch Mode
-2. Batch Mode Step 1: `git remote -v` → `acme/widgets`
-3. Batch Mode Step 2: `review-requested:me` search returns PRs #10, #11, #12, #14 (open)
-4. Batch Mode Step 3: #10 already has a `COMMENTED` review from you → dropped. #11, #12, #14 have none → qualify
-5. Batch Mode Step 4: three `Agent` calls launched in one message, one per PR, all `model: sonnet`
-6. Batch Mode Step 5: as each finishes, post its result immediately (e.g. "PR #12 — done. 4 findings, 1 High…"); after all three, post the final summary table
+Example 6: "review my pending PRs" → Batch Mode, proceeds as Step 2 (candidate search) through Step 5 (per-PR fan-out and reporting).
 
 ### Example 7: Batch Mode, nothing to do
 
-User: "review pending PRs" (in a checkout with no PRs requesting your review)
-
-1. Step 1 (Mode Detection): batch language → Batch Mode
-2. Batch Mode Step 1: repo resolved
-3. Batch Mode Step 2: search returns zero PRs
-4. Report: "No open PRs are waiting on your review in `acme/widgets`." — stop, no subagents launched
+Example 7: "review pending PRs" (zero qualifying PRs) → Batch Mode, proceeds as Step 2, which reports none found and stops there.
 
 ### Example 8: Batch Mode, one-off exclusion
 
-User: "review all pending PRs except #205"
-
-1. Step 1 (Mode Detection): batch language → Batch Mode
-2. Batch Mode Step 1–2: repo resolved, candidates found including #205
-3. #205 is dropped from the list for this run only per the user's explicit instruction — not remembered for next time
-4. Batch Mode Steps 3–5 proceed normally for the remaining PRs
+Example 8: "review all pending PRs except #205" → Batch Mode, proceeds as Step 2 (candidate search, #205 dropped for this run only) through Step 5.
 
 ### Example 9: Batch Mode, not a git repo
 
@@ -397,7 +371,7 @@ A caller that gates publication on its own approval step invokes: "run complete-
 5. Later, once the caller's human approves: caller invokes "publish complete-review findings for PR #512 from .specs/features/PROJ-9-widget/complete-review-findings.json" → Step 1 (Mode Detection): explicit publish request → Publish Mode
 6. Publish Mode Step 1: reads the 7 held comments and both banners from the file
 7. Publish Mode Step 2: no existing pending review found → posts one pending review with all 7 comments
-8. Publish Mode Step 3: "7 findings published as one pending review on PR #512 (6 code-review, 1 tests-code-review) — submit manually on GitHub when ready."
+8. Publish Mode Step 3: reports per the same template as Single PR Mode Step 3 (see Step 3: Report) — 7 findings (6 code-review, 1 tests-code-review) published as one pending review on PR #512.
 
 ### Example 11: New commit lands on a PR whose Batch Mode subagent already reported
 
