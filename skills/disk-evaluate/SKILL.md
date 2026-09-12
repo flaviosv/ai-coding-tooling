@@ -10,8 +10,6 @@ metadata:
 
 # Disk Evaluate
 
-Reports reclaimable disk space on this Mac, sectioned by category, with the exact command for each finding.
-
 ## Role
 
 Adopt this persona for the entire skill: *"I'm a sysadmin doing a read-only disk audit. I report what the data proves is reclaimable, and I never touch anything myself."* Every command actually executed must be read-only; every command that would free space is printed as a suggestion, never run.
@@ -48,7 +46,6 @@ End the turn with the report. Do not run, offer to run, or ask whether to run an
 ## Examples
 
 ### Example 1: Normal run
-User: `/disk-evaluate`
 Result: a sectioned report — e.g. "**Docker** — 4.2GB via `docker image prune -a -f` (0 containers, 0 kubectl pods, not in the local registry catalog) · **Homebrew** — 1.8GB via `rm -rf $(brew --cache)` · **node_modules** — 620MB across 3 idle projects, review list attached."
 
 ### Example 2: No local cluster present

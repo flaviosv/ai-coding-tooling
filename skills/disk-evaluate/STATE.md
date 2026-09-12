@@ -29,3 +29,10 @@
 - **Trade-off**: none — pure removal of now-redundant content, everything substantive from that section (report sectioning, cross-reference rules, flag-non-cache-items) is already covered by `SKILL.md`'s Instructions.
 - **Date**: 2026-09-09
 - **Status**: active
+
+### AD-005
+- **Decision**: Deleted the opening body line under `# Disk Evaluate` ("Reports reclaimable disk space on this Mac, sectioned by category, with the exact command for each finding.") and the bare `User: /disk-evaluate` line in Example 1.
+- **Reason**: 2026-09-12 harness-eval run (`docs/HARNESS-EVALUATION.md` rows #13-#14) flagged the opening line as duplicating the frontmatter `description` field with no added nuance, and the bare example line as adding nothing beyond the skill's own name — Example 1's `Result:` line already demonstrates usage.
+- **Trade-off**: none — pure removal of redundant content; Example 1 still reads correctly as a heading followed directly by its `Result:` line.
+- **Date**: 2026-09-12
+- **Status**: active
