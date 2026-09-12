@@ -1,9 +1,0 @@
-{
-  "claude-code": {
-    "configPath": "~/.claude/CLAUDE.md",
-    "skillsDir": "~/.claude/skills",
-    "npxId": "claude-code",
-    "statuslinePath": "~/.claude/statusline-command.sh",
-    "settingsPath": "~/.claude/settings.json"
-  }
-}

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// fs-harness — skill manager for AI coding agents. config/skills.json is the
+// fs-harness — skill manager for Claude Code. config/skills.json is the
 // authoritative source map (sources: local, tech-leads-club, matt-pocock).
 // Vendor calls go through execFileSync with an argument array, never a shell
 // string, so skill names cannot inject commands.
@@ -21,6 +21,13 @@ const ROOT = path.dirname(SCRIPT_DIR); // repo root (bin/ is one level down)
 // this repo's own .claude/skills/ — tracked directly in the repo, no linking.
 const PROJECT_LOCAL_DIR = '.claude';
 const TEMPLATES_DIR = path.join(ROOT, 'templates');
+
+// Claude Code's global paths (hardcoded — this tool manages Claude Code only).
+const CONFIG_PATH = expandHome('~/.claude/CLAUDE.md');
+const SKILLS_DIR = expandHome('~/.claude/skills');
+const STATUSLINE_PATH = expandHome('~/.claude/statusline-command.sh');
+const SETTINGS_PATH = expandHome('~/.claude/settings.json');
+const NPX_AGENT_ID = 'claude-code';
 
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -60,10 +67,10 @@ function isDir(p) {
 }
 
 // Returns the correct install path for a skill: project-local (.claude/skills/) for
-// local-only scope, global skillsDir otherwise.
-function skillDest(skill, agent) {
+// local-only scope, global SKILLS_DIR otherwise.
+function skillDest(skill) {
   if (skill.scope === 'local-only') return path.join(ROOT, PROJECT_LOCAL_DIR, 'skills', skill.name);
-  return path.join(agent.skillsDir, skill.name);
+  return path.join(SKILLS_DIR, skill.name);
 }
 
 function loadJson(rel) {
@@ -80,21 +87,6 @@ function validateSkillName(name) {
     throw new UserError(`Invalid skill name "${name}" (allowed: lowercase letters, digits, hyphens).`);
   }
   return name;
-}
-
-function resolveAgent(agents, id) {
-  if (!id) throw new UserError('Missing agent. Usage example: fs-harness setup claude-code');
-  const a = agents[id];
-  if (!a) {
-    throw new UserError(`Unknown agent "${id}". Known: ${Object.keys(agents).join(', ')}.`);
-  }
-  return {
-    id,
-    configPath: expandHome(a.configPath),
-    skillsDir: expandHome(a.skillsDir),
-    statuslinePath: a.statuslinePath ? expandHome(a.statuslinePath) : null,
-    npxId: a.npxId,
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -115,12 +107,12 @@ function ensureDir(p) {
 // <skillsDir>/../templates instead. Link that path at the same target so both resolve.
 // Any command that installs a skill must call this: a skill whose template links are
 // dead fails silently at run time, with the agent guessing instead of erroring.
-function templatesLinkPath(agent) {
-  return path.join(path.dirname(agent.skillsDir), 'templates');
+function templatesLinkPath() {
+  return path.join(path.dirname(SKILLS_DIR), 'templates');
 }
 
-function ensureTemplatesLink(agent) {
-  const dest = templatesLinkPath(agent);
+function ensureTemplatesLink() {
+  const dest = templatesLinkPath();
   if (lexists(dest)) return 'present';
   return linkSafe(TEMPLATES_DIR, dest);
 }
@@ -173,13 +165,14 @@ function runNpx(args, label, { cwd } = {}) {
 // Overrides (extended/) overlay
 // ---------------------------------------------------------------------------
 
-// Apply the extended/<skill>/ overlay into <skillsDir>/<skill>/.
-// skill may be a full skill object or a plain {name, scope} for the path resolver.
-function applyOverlay(skill, agent) {
+// Apply the extended/<skill>/ overlay into SKILLS_DIR/<skill>/ (or the project-local
+// dest for local-only skills). skill may be a full skill object or a plain
+// {name, scope} for the path resolver.
+function applyOverlay(skill) {
   const name = skill.name;
   const extDir = path.join(ROOT, 'extended', name);
   if (!isDir(extDir)) return; // nothing to overlay
-  const targetDir = skillDest(skill, agent);
+  const targetDir = skillDest(skill);
   if (!isDir(targetDir)) { warn(`override for ${name}: parent skill not installed yet — skipping overlay`); return; }
 
   const extSkill = path.join(extDir, 'SKILL.md');
@@ -201,7 +194,7 @@ function applyOverlay(skill, agent) {
 // Vendor install / update (hardcoded, arg arrays)
 // ---------------------------------------------------------------------------
 
-function installSkill(skill, agent, { force = false } = {}) {
+function installSkill(skill, { force = false } = {}) {
   const name = validateSkillName(skill.name);
   const installScope = skill.installScope || 'global';
 
@@ -212,7 +205,7 @@ function installSkill(skill, agent, { force = false } = {}) {
     return true;
   }
 
-  const dest = skillDest(skill, agent);
+  const dest = skillDest(skill);
   if (lexists(dest)) { skip(`${name} already installed`); return true; }
 
   switch (skill.source) {
@@ -224,13 +217,13 @@ function installSkill(skill, agent, { force = false } = {}) {
     }
     case 'tech-leads-club': {
       if (installScope === 'local') ensureDir(path.dirname(dest));
-      const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', agent.npxId];
+      const args = ['@tech-leads-club/agent-skills', 'install', '--skill', name, '--agent', NPX_AGENT_ID];
       if (installScope !== 'local') args.push('--global');
       return runNpx(args, `installed ${name} (Tech Leads Club)`);
     }
     case 'matt-pocock': {
       if (installScope === 'local') ensureDir(path.dirname(dest));
-      const args = ['skills@latest', 'add', 'mattpocock/skills', '--agent', agent.npxId, '--skill', name, '--yes'];
+      const args = ['skills@latest', 'add', 'mattpocock/skills', '--agent', NPX_AGENT_ID, '--skill', name, '--yes'];
       if (installScope !== 'local') args.push('--global');
       return runNpx(args, `installed ${name} (Matt Pocock)`);
     }
@@ -240,7 +233,7 @@ function installSkill(skill, agent, { force = false } = {}) {
   }
 }
 
-function updateSkill(skill, agent) {
+function updateSkill(skill) {
   const name = validateSkillName(skill.name);
   const installScope = skill.installScope || 'global';
   switch (skill.source) {
@@ -267,23 +260,21 @@ function updateSkill(skill, agent) {
 // Commands
 // ---------------------------------------------------------------------------
 
-function cmdSetup(agentId) {
-  const agents = loadJson('config/agents.json');
-  const agent = resolveAgent(agents, agentId);
+function cmdSetup() {
   const { skills } = loadJson('config/skills.json');
 
-  log(`${c.bold}Setting up ${agent.id}${c.reset}`);
-  ensureDir(agent.skillsDir);
+  log(`${c.bold}Setting up Claude Code${c.reset}`);
+  ensureDir(SKILLS_DIR);
 
-  linkSafe(path.join(ROOT, 'CLAUDE.global.md'), agent.configPath);
+  linkSafe(path.join(ROOT, 'CLAUDE.global.md'), CONFIG_PATH);
 
-  ensureTemplatesLink(agent);
+  ensureTemplatesLink();
 
   log(`\n${c.bold}Skills${c.reset}`);
-  for (const skill of skills) installSkill(skill, agent);
+  for (const skill of skills) installSkill(skill);
 
   log(`\n${c.bold}Overrides${c.reset}`);
-  for (const skill of skills) if (skill.extended) applyOverlay(skill, agent);
+  for (const skill of skills) if (skill.extended) applyOverlay(skill);
 
   const personalDir = path.join(ROOT, 'personal');
   if (isDir(personalDir)) {
@@ -291,14 +282,14 @@ function cmdSetup(agentId) {
     for (const name of fs.readdirSync(personalDir)) {
       const sd = path.join(personalDir, name);
       if (!isDir(sd) || !lexists(path.join(sd, 'SKILL.md'))) continue;
-      linkSafe(sd, path.join(agent.skillsDir, name));
+      linkSafe(sd, path.join(SKILLS_DIR, name));
     }
   }
 
   log(`\n${c.bold}Hooks${c.reset}`);
-  cmdHooks(agent.id);
+  cmdHooks();
 
-  log(`\n${c.green}Setup complete for ${agent.id}.${c.reset}`);
+  log(`\n${c.green}Setup complete.${c.reset}`);
 }
 
 // Read the `description:` field from a skill's installed SKILL.md frontmatter so
@@ -326,9 +317,7 @@ function readSkillDescription(dest) {
   return val.replace(/\s+/g, ' ').replace(/^["']|["']$/g, '').trim();
 }
 
-function cmdAdd(agentId, skillName, source, flags = {}) {
-  const agents = loadJson('config/agents.json');
-  const agent = resolveAgent(agents, agentId);
+function cmdAdd(skillName, source, flags = {}) {
   const registry = loadJson('config/skills.json');
   const name = validateSkillName(skillName);
 
@@ -340,20 +329,20 @@ function cmdAdd(agentId, skillName, source, flags = {}) {
     if (flags.local) skill.installScope = 'local';
   }
 
-  const dest = skillDest(skill, agent);
+  const dest = skillDest(skill);
   if (lexists(dest)) throw new UserError(`${dest} already exists. Remove it manually or run update.`);
 
   ensureDir(path.dirname(dest));
-  ensureTemplatesLink(agent);
-  const installed = installSkill(skill, agent, { force: !!flags.local });
+  ensureTemplatesLink();
+  const installed = installSkill(skill, { force: !!flags.local });
   if (!installed) throw new UserError(`Install of ${name} failed.`);
 
-  applyOverlay(skill, agent);
+  applyOverlay(skill);
 
   // Capture the skill's description from its SKILL.md frontmatter so the registry
   // doc shows a real summary. `skill` is the same object stored in the registry
   // (found or newly built), so assigning here persists on write.
-  const desc = readSkillDescription(skillDest(skill, agent));
+  const desc = readSkillDescription(skillDest(skill));
   const known = registry.skills.find((s) => s.name === name);
   const descChanged = desc && skill.description !== desc;
   if (descChanged) skill.description = desc;
@@ -369,9 +358,7 @@ function cmdAdd(agentId, skillName, source, flags = {}) {
   log(`\n${c.green}Added ${name}.${c.reset}`);
 }
 
-function cmdUpdate(agentId, names, all) {
-  const agents = loadJson('config/agents.json');
-  const agent = resolveAgent(agents, agentId);
+function cmdUpdate(names, all) {
   const registry = loadJson('config/skills.json');
   const { skills } = registry;
 
@@ -396,13 +383,13 @@ function cmdUpdate(agentId, names, all) {
   }
 
   if (!scope.length) { warn('No vendor skills to update.'); return; }
-  log(`${c.bold}Updating ${scope.length} vendor skill(s) for ${agent.id}${c.reset}`);
+  log(`${c.bold}Updating ${scope.length} vendor skill(s)${c.reset}`);
   let descChanged = false;
   for (const skill of scope) {
-    updateSkill(skill, agent);
-    if (skill.extended) applyOverlay(skill, agent);
+    updateSkill(skill);
+    if (skill.extended) applyOverlay(skill);
     // Backfill/refresh the description from the reinstalled SKILL.md frontmatter.
-    const desc = readSkillDescription(skillDest(skill, agent));
+    const desc = readSkillDescription(skillDest(skill));
     if (desc && skill.description !== desc) { skill.description = desc; descChanged = true; }
   }
   if (descChanged && !DRY) {
@@ -413,9 +400,7 @@ function cmdUpdate(agentId, names, all) {
   log(`\n${c.green}Update complete.${c.reset}`);
 }
 
-function cmdOverride(agentId, skillName) {
-  const agents = loadJson('config/agents.json');
-  const agent = resolveAgent(agents, agentId);
+function cmdOverride(skillName) {
   const registry = loadJson('config/skills.json');
   const name = validateSkillName(skillName);
 
@@ -425,7 +410,7 @@ function cmdOverride(agentId, skillName) {
     return;
   }
 
-  ensureTemplatesLink(agent);
+  ensureTemplatesLink();
 
   // Scaffold extended/<name>/SKILL.md from the frontmatter template.
   const extDir = path.join(ROOT, 'extended', name);
@@ -450,7 +435,7 @@ function cmdOverride(agentId, skillName) {
     warn(`${name} is not in skills.json — add it (or run \`add\`) so the override is tracked.`);
   }
 
-  applyOverlay(skill || { name, scope: 'tech-leads-club' }, agent);
+  applyOverlay(skill || { name, scope: 'tech-leads-club' });
   if (!DRY && skill) generateDocs();
   log(`\n${c.green}Override scaffolded for ${name}. Fill in extended/${name}/SKILL.md.${c.reset}`);
 }
@@ -475,15 +460,13 @@ metadata:
 `;
 }
 
-function cmdList(agentId) {
-  const agents = loadJson('config/agents.json');
-  const agent = resolveAgent(agents, agentId);
+function cmdList() {
   const { skills } = loadJson('config/skills.json');
 
-  log(`${c.bold}Skills for ${agent.id}${c.reset} (skillsDir: ${agent.skillsDir})\n`);
+  log(`${c.bold}Skills${c.reset} (skillsDir: ${SKILLS_DIR})\n`);
   const pad = Math.max(...skills.map((s) => s.name.length));
   for (const s of skills) {
-    const dest = skillDest(s, agent);
+    const dest = skillDest(s);
     let state;
     if (s.installScope === 'none') state = `${c.dim}n/a${c.reset}`;
     else if (!lexists(dest)) state = `${c.yellow}missing${c.reset}`;
@@ -495,28 +478,26 @@ function cmdList(agentId) {
 
   // Surface the shared-templates link: without it every ../../templates/<name>.md
   // reference in an installed skill reads as a missing file, silently.
-  const tl = templatesLinkPath(agent);
+  const tl = templatesLinkPath();
   const tlState = !lexists(tl)
-    ? `${c.yellow}missing — run \`fs-harness setup ${agent.id}\`${c.reset}`
+    ? `${c.yellow}missing — run \`fs-harness setup\`${c.reset}`
     : isSymlink(tl) ? `${c.green}symlink${c.reset}` : `${c.yellow}real dir (expected a symlink)${c.reset}`;
   log(`\n${c.bold}Shared templates${c.reset}  ${tl}  ${tlState}`);
 }
 
 // Undo setup: remove the global config symlink, uninstall the skills setup
 // installed globally, drop personal links.
-function cmdDestroy(agentId) {
-  const agents = loadJson('config/agents.json');
-  const agent = resolveAgent(agents, agentId);
+function cmdDestroy() {
   const { skills } = loadJson('config/skills.json');
 
-  log(`${c.bold}Tearing down ${agent.id}${c.reset} (undoes setup)`);
+  log(`${c.bold}Tearing down Claude Code setup${c.reset} (undoes setup)`);
 
   log(`\n${c.bold}Global config${c.reset}`);
-  removeConfigSymlink(agent.configPath);
-  unlinkIfSymlink(templatesLinkPath(agent));
+  removeConfigSymlink(CONFIG_PATH);
+  unlinkIfSymlink(templatesLinkPath());
 
   log(`\n${c.bold}Skills${c.reset}`);
-  for (const skill of skills) uninstallSkill(skill, agent);
+  for (const skill of skills) uninstallSkill(skill);
 
   const personalDir = path.join(ROOT, 'personal');
   if (isDir(personalDir)) {
@@ -524,7 +505,7 @@ function cmdDestroy(agentId) {
     for (const name of fs.readdirSync(personalDir)) {
       const sd = path.join(personalDir, name);
       if (!isDir(sd) || !lexists(path.join(sd, 'SKILL.md'))) continue;
-      unlinkIfSymlink(path.join(agent.skillsDir, name));
+      unlinkIfSymlink(path.join(SKILLS_DIR, name));
     }
   }
 
@@ -545,7 +526,7 @@ function removeConfigSymlink(configPath) {
 
 // Uninstall a skill: unlink symlinks, rm -rf vendor dirs.
 // Skips installScope=none and project-local skills unless force=true.
-function uninstallSkill(skill, agent, { force = false } = {}) {
+function uninstallSkill(skill, { force = false } = {}) {
   const name = validateSkillName(skill.name);
   const installScope = skill.installScope || 'global';
   if (installScope === 'none' || (!force && installScope === 'local')) {
@@ -554,7 +535,7 @@ function uninstallSkill(skill, agent, { force = false } = {}) {
     skip(`${name} (${reason})`);
     return;
   }
-  const dest = skillDest(skill, agent);
+  const dest = skillDest(skill);
   if (!lexists(dest)) { skip(`${name} not installed`); return; }
   if (isSymlink(dest)) {
     if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm ${dest}`); return; }
@@ -570,9 +551,7 @@ function uninstallSkill(skill, agent, { force = false } = {}) {
 // Remove a single skill: uninstall (symlink for local, rm -rf for vendor dirs),
 // deregister from skills.json, and regenerate the doc. Keeps extended/<name>/ and,
 // for local skills, the skills/<name>/ source.
-function cmdDelete(agentId, skillName) {
-  const agents = loadJson('config/agents.json');
-  const agent = resolveAgent(agents, agentId);
+function cmdDelete(skillName) {
   const registry = loadJson('config/skills.json');
   const name = validateSkillName(skillName);
 
@@ -582,7 +561,7 @@ function cmdDelete(agentId, skillName) {
   log(`${c.bold}Deleting ${name}${c.reset} (${skill.source})`);
 
   // Filesystem uninstall: symlink unlink (local) / vendor rm -rf; extended/ left intact.
-  uninstallSkill(skill, agent, { force: true });
+  uninstallSkill(skill, { force: true });
   if (skill.extended && isDir(path.join(ROOT, 'extended', name))) {
     log(`${c.dim}kept extended/${name}/ (override overlay preserved)${c.reset}`);
   }
@@ -600,8 +579,7 @@ function cmdDelete(agentId, skillName) {
 }
 
 function cmdStatusline(force) {
-  const agents = loadJson('config/agents.json');
-  const dest = expandHome((agents['claude-code'] && agents['claude-code'].statuslinePath) || '~/.claude/statusline-command.sh');
+  const dest = STATUSLINE_PATH;
   const src = path.join(ROOT, 'config', 'statusline-command.sh');
   if (!lexists(src)) throw new UserError(`Status line source not found: ${src}`);
 
@@ -616,25 +594,18 @@ function cmdStatusline(force) {
   ok(`installed status line -> ${dest}`);
 }
 
-// Merges config/hooks.json's entries into the agent's settings.json `hooks`
-// object. Additive only: existing event arrays (ai-memory, sonar-secrets,
-// etc.) are never touched, and re-running is a no-op once a script's
-// absolute path is already present for an event.
-function cmdHooks(agentId) {
-  if (!agentId) throw new UserError('Missing agent. Usage example: fs-harness hooks claude-code');
-  const agents = loadJson('config/agents.json');
-  if (!agents[agentId]) {
-    throw new UserError(`Unknown agent "${agentId}". Known: ${Object.keys(agents).join(', ')}.`);
-  }
-  const settingsPath = expandHome(agents[agentId].settingsPath || '~/.claude/settings.json');
-  const manifest = loadJson('config/hooks.json');
-  const entries = manifest[agentId] || [];
-  if (entries.length === 0) { skip(`no hooks registered for ${agentId}`); return; }
+// Merges config/hooks.json's entries into settings.json's `hooks` object.
+// Additive only: existing event arrays (ai-memory, sonar-secrets, etc.) are
+// never touched, and re-running is a no-op once a script's absolute path is
+// already present for an event.
+function cmdHooks() {
+  const entries = loadJson('config/hooks.json');
+  if (entries.length === 0) { skip('no hooks registered'); return; }
 
   let settings = {};
-  if (lexists(settingsPath)) {
-    try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); }
-    catch (e) { throw new UserError(`Could not read ${settingsPath}: ${e.message}`); }
+  if (lexists(SETTINGS_PATH)) {
+    try { settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')); }
+    catch (e) { throw new UserError(`Could not read ${SETTINGS_PATH}: ${e.message}`); }
   }
   settings.hooks = settings.hooks || {};
 
@@ -656,9 +627,9 @@ function cmdHooks(agentId) {
   }
 
   if (!changed) { skip('hooks already up to date'); return; }
-  if (DRY) { log(`${c.dim}[dry-run]${c.reset} update ${settingsPath}`); return; }
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-  ok(`installed hooks -> ${settingsPath}`);
+  if (DRY) { log(`${c.dim}[dry-run]${c.reset} update ${SETTINGS_PATH}`); return; }
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + '\n');
+  ok(`installed hooks -> ${SETTINGS_PATH}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -699,7 +670,7 @@ function generateDocs() {
     const inScope = skills.filter((s) => s.scope === section.key).sort((a, b) => a.name.localeCompare(b.name));
     if (!inScope.length) {
       if (section.key === 'matt-pocock') {
-        lines.push(`### ${section.title}`, '', '_No Matt Pocock skills installed yet. Add one with:_ `fs-harness add claude-code <skill> --source matt-pocock`', '');
+        lines.push(`### ${section.title}`, '', '_No Matt Pocock skills installed yet. Add one with:_ `fs-harness add <skill> --source matt-pocock`', '');
       }
       continue;
     }
@@ -731,22 +702,22 @@ function generateDocs() {
 // CLI
 // ---------------------------------------------------------------------------
 
-const HELP = `${c.bold}fs-harness${c.reset} — skill manager for AI coding agents
+const HELP = `${c.bold}fs-harness${c.reset} — skill manager for Claude Code
 
 ${c.bold}Usage:${c.reset} fs-harness <command> [args] [--dry-run]
 
 ${c.bold}Commands:${c.reset}
-  setup <agent>                 Bootstrap: global config + skills + overrides
-  destroy <agent>               Undo setup (remove config, uninstall skills)
-  add <agent> <skill> [--source <s>] [--local]   Install one skill (registers it if new; --local installs to .claude/skills/)
-  delete <agent> <skill>        Remove one skill (uninstall + deregister; keeps extended/)
-  update <agent> <skills|--all> Update vendor skills (Tech Leads Club / Matt Pocock).
-                                Pass a comma- or space-separated list, or --all for every vendor skill.
-  override <agent> <skill>      Scaffold extended/<skill>/ and apply the overlay
-  list <agent>                  Show each skill's source and install state
-  statusline [--force]          Install the Claude Code status line script
-  hooks <agent>                 Sync config/hooks.json into the agent's settings.json (run by setup)
-  help                          Show this message
+  setup                          Bootstrap: global config + skills + overrides
+  destroy                        Undo setup (remove config, uninstall skills)
+  add <skill> [--source <s>] [--local]   Install one skill (registers it if new; --local installs to .claude/skills/)
+  delete <skill>                 Remove one skill (uninstall + deregister; keeps extended/)
+  update <skills|--all>          Update vendor skills (Tech Leads Club / Matt Pocock).
+                                  Pass a comma- or space-separated list, or --all for every vendor skill.
+  override <skill>               Scaffold extended/<skill>/ and apply the overlay
+  list                           Show each skill's source and install state
+  statusline [--force]           Install the Claude Code status line script
+  hooks                          Sync config/hooks.json into settings.json (run by setup)
+  help                           Show this message
 
 ${c.bold}Sources:${c.reset} local · tech-leads-club · matt-pocock
 ${c.bold}Flags:${c.reset}   --dry-run (print actions, change nothing) · --all (update only) · --force (statusline only) · --local (add only)`;
@@ -779,27 +750,27 @@ function main() {
   if (DRY) log(`${c.dim}(dry-run: no changes will be made)${c.reset}\n`);
 
   switch (command) {
-    case 'setup': cmdSetup(rest[0]); break;
-    case 'destroy': cmdDestroy(rest[0]); break;
+    case 'setup': cmdSetup(); break;
+    case 'destroy': cmdDestroy(); break;
     case 'add': {
-      if (!rest[1]) throw new UserError('Usage: fs-harness add <agent> <skill> [--source <s>] [--local]');
-      cmdAdd(rest[0], rest[1], flags.source, flags);
+      if (!rest[0]) throw new UserError('Usage: fs-harness add <skill> [--source <s>] [--local]');
+      cmdAdd(rest[0], flags.source, flags);
       break;
     }
     case 'delete': {
-      if (!rest[1]) throw new UserError('Usage: fs-harness delete <agent> <skill>');
-      cmdDelete(rest[0], rest[1]);
+      if (!rest[0]) throw new UserError('Usage: fs-harness delete <skill>');
+      cmdDelete(rest[0]);
       break;
     }
-    case 'update': cmdUpdate(rest[0], rest.slice(1), flags.all); break;
+    case 'update': cmdUpdate(rest, flags.all); break;
     case 'override': {
-      if (!rest[1]) throw new UserError('Usage: fs-harness override <agent> <skill>');
-      cmdOverride(rest[0], rest[1]);
+      if (!rest[0]) throw new UserError('Usage: fs-harness override <skill>');
+      cmdOverride(rest[0]);
       break;
     }
-    case 'list': cmdList(rest[0]); break;
+    case 'list': cmdList(); break;
     case 'statusline': cmdStatusline(flags.force); break;
-    case 'hooks': cmdHooks(rest[0]); break;
+    case 'hooks': cmdHooks(); break;
     default:
       throw new UserError(`Unknown command "${command}". Run \`fs-harness help\`.`);
   }

@@ -1,12 +1,10 @@
-{
-  "claude-code": [
-    {
-      "id": "require-direnv-credential",
-      "script": "hooks/require-direnv-credential.sh",
-      "events": {
-        "SessionStart": { "matcher": "", "timeout": 10 },
-        "UserPromptSubmit": { "matcher": "*", "timeout": 10 }
-      }
+[
+  {
+    "id": "require-direnv-credential",
+    "script": "hooks/require-direnv-credential.sh",
+    "events": {
+      "SessionStart": { "matcher": "", "timeout": 10 },
+      "UserPromptSubmit": { "matcher": "*", "timeout": 10 }
     }
-  ]
-}
+  }
+]
