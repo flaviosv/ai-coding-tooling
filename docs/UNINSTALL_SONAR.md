@@ -228,7 +228,7 @@ sonar integrate claude --global --non-interactive
 Then re-apply the Docker wrapper fix (needed because `sonar run mcp` cannot resolve `shared.sonarqube.test` from inside Docker):
 
 ```bash
-cp config/sonar-mcp-wrapper.sh ~/.local/bin/sonar-mcp-wrapper.sh
+cp bin/sonar-mcp-wrapper.sh ~/.local/bin/sonar-mcp-wrapper.sh
 chmod +x ~/.local/bin/sonar-mcp-wrapper.sh
 ```
 
