@@ -8,18 +8,18 @@
 | CLI flags | kebab-case | `--dry-run`, `--all`, `--force`, `--local` |
 | Constants | UPPER_SNAKE_CASE | `SCRIPT_DIR`, `ROOT`, `SKILL_NAME_RE`, `DOC_MARKER` |
 | Files (JS) | kebab-case | `fs-harness.mjs` |
-| Files (config) | kebab-case | `agents.json`, `skills.json` |
+| Files (config) | kebab-case | `skills.json`, `hooks.json` |
 | Functions | camelCase | `cmdSetup`, `installSkill`, `readSkillDescription` |
 | Skills (dirs) | kebab-case | `code-review`, `tech-debt-report`, `architecture-evaluate` |
-| Variables | camelCase | `agentId`, `skillsDir`, `dryRun` |
+| Variables | camelCase | `dryRun`, `installScope`, `descChanged` |
 
 ## Code Organization
 
 **Function declarations over arrow functions** for all named top-level functions:
 
 ```js
-function cmdSetup(agentId) { ... }      // preferred
-const cmdSetup = (agentId) => { ... }   // not used
+function cmdSetup() { ... }      // preferred
+const cmdSetup = () => { ... }   // not used
 ```
 
 **Import ordering:** Node built-ins first, grouped, no blank lines between them:

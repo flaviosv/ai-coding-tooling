@@ -25,7 +25,7 @@ Repository (single source of truth)
 | Agent config | Global + project-level agent instructions | `CLAUDE.global.md`, `CLAUDE.md` |
 | CLI | Parse commands, orchestrate all operations | `bin/fs-harness.mjs` |
 | Overrides | Additive extensions to vendor skills | `extended/<skill>/SKILL.md`, `extended/<skill>/references/` |
-| Registry | Authoritative skill + agent configuration | `config/skills.json`, `config/agents.json` |
+| Registry | Authoritative skill + hook configuration | `config/skills.json`, `config/hooks.json` |
 | Skills (local) | Skill definitions owned by this repo | `skills/`, `.claude/skills/` |
 | Skills (vendor) | Third-party skills, read-only | `~/.claude/skills/<name>/` (installed via npx) |
 | Templates | Reusable authoring patterns for skills | `templates/` |
@@ -45,7 +45,7 @@ Repository (single source of truth)
 
 ## State Management
 
-Stateless. All persistent state lives in `config/skills.json` and `config/agents.json`. No sessions, no cache, no database.
+Stateless. All persistent state lives in `config/skills.json` (skill registry) and `config/hooks.json` (hook manifest). `config/agents.json` no longer exists — Claude Code's own paths (`~/.claude/CLAUDE.md`, `~/.claude/skills`, etc.) are hardcoded constants in `bin/fs-harness.mjs`, since this tool manages Claude Code exclusively. No sessions, no cache, no database.
 
 ## Error Handling Strategy
 
@@ -59,7 +59,7 @@ No structured logging, no tracing, no metrics. Output is ANSI-colored terminal t
 
 ## Notable Patterns
 
-- **Registry-driven CLI:** every command reads `skills.json` + `agents.json` as the sole source of truth — no filesystem scanning to determine install state.
+- **Registry-driven CLI:** every command reads `skills.json` (and `hooks.json` for the `hooks` command) as the sole source of truth for registry data — no filesystem scanning to determine install state. Claude Code's own paths are compile-time constants, not registry-driven.
 - **Command-pattern CLI:** each sub-command maps to a named function (`cmdSetup`, `cmdAdd`, `cmdDelete`, etc.); no class-based dispatch.
 - **Dry-run support:** a global `DRY` flag is checked before every filesystem operation; any command can be safely previewed.
 - **Safe symlink operations:** `linkSafe` never clobbers existing files; `relinkOverlay` only re-links if the target is already a symlink.

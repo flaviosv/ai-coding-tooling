@@ -17,9 +17,9 @@ ai-coding-tooling/
 │   └── features/            # 8 past feature specs for this repo's own skills (spec/design/tasks/validation)
 ├── assets/                  # static assets referenced by skills/docs
 ├── bin/
-│   └── fs-harness.mjs           # fs-harness CLI — all install/update/override/link logic (779 lines)
+│   └── fs-harness.mjs           # fs-harness CLI — all install/update/override/link logic (784 lines)
 ├── config/
-│   ├── agents.json          # Per-agent config (paths, npxId, native skills)
+│   ├── hooks.json           # Hook manifest (flat array, merged into settings.json by `hooks`)
 │   ├── skills.json          # Skill registry (20 skills: source, scope, description)
 │   └── statusline-command.sh
 ├── docs/
@@ -61,11 +61,11 @@ ai-coding-tooling/
 
 ### CLI (`bin/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, statusline.
-**Key files:** `fs-harness.mjs` (single file, 813 lines, zero runtime dependencies).
+**Key files:** `fs-harness.mjs` (single file, 784 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven.
 
 ### Registry (`config/`)
-**Purpose:** Authoritative source of truth for agent and skill configuration.
-**Key files:** `skills.json` (20 skills: 10 local, 8 tech-leads-club, 2 matt-pocock), `agents.json` (1 agent: claude-code), `statusline-command.sh`.
+**Purpose:** Authoritative source of truth for skill and hook configuration.
+**Key files:** `skills.json` (20 skills: 10 local, 8 tech-leads-club, 2 matt-pocock), `hooks.json` (flat array of hook entries), `statusline-command.sh`.
 
 ### Local Skills (`skills/`)
 **Purpose:** Skills owned and maintained by this repo; installed globally via `fs-harness setup`.
@@ -87,10 +87,10 @@ ai-coding-tooling/
 
 | Need | Location |
 | ---- | -------- |
-| Add a new local skill | `skills/<name>/SKILL.md` → `fs-harness add claude-code <name> --source local` |
+| Add a new local skill | `skills/<name>/SKILL.md` → `fs-harness add <name> --source local` |
 | Add a tech-specific reference | `skills/<name>/references/<tech>-<name>.md` |
 | Add a skill workflow reference | `skills/<name>/reference.md` |
 | Codebase context docs | `docs/codebase/` (this set) |
 | Feature specs / tlc memory | `.specs/features/`, `.specs/STATE.md` (owned by tlc-spec-driven) |
-| Override a vendor skill | `extended/<name>/SKILL.md` → `fs-harness override claude-code <name>` |
+| Override a vendor skill | `extended/<name>/SKILL.md` → `fs-harness override <name>` |
 | Project vision | `docs/codebase/PROJECT.md` |

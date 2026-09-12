@@ -6,10 +6,10 @@
 
 **No tests for the only implementation file:**
 
-- Issue: `bin/fs-harness.mjs` has grown to 813 lines since the last scan, still entirely untested — zero test files in the repo.
+- Issue: `bin/fs-harness.mjs` is now 784 lines, still entirely untested — zero test files in the repo.
 - Files: `bin/fs-harness.mjs`
 - Why: project began as `.md`-only tooling; the CLI grew without a test harness.
-- Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`.
+- Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`. Sharpened by a recent event: a full refactor dropping multi-agent parameterization across every CLI command (removing `config/agents.json`, hardcoding Claude Code's paths as constants) was merged with test coverage explicitly considered and then explicitly declined, verified only by `node --check` plus manual `--dry-run`/temp-`$HOME` smoke testing — a nontrivial, repo-wide signature change landed with zero regression coverage.
 - Fix approach: add Node's built-in `node:test` runner with integration tests over temp directories (create a scratch dir, run commands, assert symlink state). No extra dependencies needed.
 
 **Orphaned skill-shaped file outside the skill registry:**
@@ -18,7 +18,7 @@
 - Files: `karpathy.skill.md`
 - Why: unclear — likely added ad hoc, never wired into the registry, or intentionally left as reference-only content.
 - Impact: dead weight if unintentional; confusing to a future maintainer who assumes anything with `SKILL.md`-style frontmatter is live.
-- Fix approach: either move it to `skills/karpathy-guidelines/SKILL.md` and register it via `fs-harness add claude-code karpathy-guidelines --source local`, or, if intentionally reference-only, state that explicitly in the file itself.
+- Fix approach: either move it to `skills/karpathy-guidelines/SKILL.md` and register it via `fs-harness add karpathy-guidelines --source local`, or, if intentionally reference-only, state that explicitly in the file itself.
 
 **Project-local skills mechanism unused:**
 

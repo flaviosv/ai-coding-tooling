@@ -11,7 +11,7 @@
 
 ## Key Libraries
 
-The only implementation file (`bin/fs-harness.mjs`, 779 lines) uses Node built-ins exclusively — no third-party packages.
+The only implementation file (`bin/fs-harness.mjs`, 784 lines) uses Node built-ins exclusively — no third-party packages.
 
 | Library | Version | Purpose | Modern Usage |
 | ------- | ------- | ------- | ------------ |
@@ -25,15 +25,15 @@ The only implementation file (`bin/fs-harness.mjs`, 779 lines) uses Node built-i
 
 | Task | Command |
 | ---- | ------- |
-| Bootstrap agent setup | `fs-harness setup claude-code` |
-| Install one skill | `fs-harness add claude-code <skill> [--source <s>] [--local]` |
+| Bootstrap setup | `fs-harness setup` |
+| Install one skill | `fs-harness add <skill> [--source <s>] [--local]` |
 | Install status line | `fs-harness statusline [--force]` |
-| List skills + state | `fs-harness list claude-code` |
+| List skills + state | `fs-harness list` |
 | Preview without changes | append `--dry-run` to any command |
-| Remove one skill | `fs-harness delete claude-code <skill>` |
-| Scaffold / apply override | `fs-harness override claude-code <skill>` |
-| Undo setup | `fs-harness destroy claude-code` |
-| Update vendor skills | `fs-harness update claude-code [skills|--all]` |
+| Remove one skill | `fs-harness delete <skill>` |
+| Scaffold / apply override | `fs-harness override <skill>` |
+| Undo setup | `fs-harness destroy` |
+| Update vendor skills | `fs-harness update [skills|--all]` |
 
 ## Local Development Setup
 
@@ -43,7 +43,7 @@ Clone the repo; run `npm link` to expose `fs-harness` globally. No build step, n
 
 ## Environment Configuration
 
-No environment variables. All paths are resolved from the repo root (`import.meta.url`) and `config/agents.json`.
+No environment variables. All paths are resolved from the repo root (`import.meta.url`) plus hardcoded constants for Claude Code's global locations (`~/.claude/CLAUDE.md`, `~/.claude/skills`, `~/.claude/statusline-command.sh`, `~/.claude/settings.json`, via `os.homedir()`) — `config/agents.json` no longer exists; this tool manages Claude Code only.
 
 ## Development Tools
 

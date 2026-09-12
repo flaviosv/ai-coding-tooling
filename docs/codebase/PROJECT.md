@@ -10,7 +10,7 @@
 
 - One set of agent instructions usable across all projects and machines, kept in sync automatically.
 - Reusable skills installable from a single location without duplication.
-- Bootstrapping a new machine or project reduced to one command (`fs-harness setup claude-code`).
+- Bootstrapping a new machine or project reduced to one command (`fs-harness setup`).
 - Vendor skills (Tech Leads Club, Matt Pocock) overridable without forking, via the `extended/` overlay system.
 
 ## Target Users
@@ -27,7 +27,7 @@ Developers (primarily the maintainer) running Claude Code across several machine
 - Vendor skill integration (Tech Leads Club, Matt Pocock) via `npx`.
 - `extended/` overlay system for customizing vendor skills without forking.
 - `fs-harness` CLI: `setup`, `destroy`, `add`, `delete`, `update`, `override`, `list`, `statusline`.
-- `config/skills.json` + `config/agents.json` as the authoritative registry.
+- `config/skills.json` as the authoritative skill registry (`config/hooks.json` for hook definitions).
 
 **Out of scope:**
 
