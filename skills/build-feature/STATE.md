@@ -50,3 +50,10 @@
 - **Trade-off**: None identified — this is a documentation correction to match current `fix-review` behavior, not a new constraint.
 - **Date**: 2026-09-04
 - **Status**: active
+
+### AD-007
+- **Decision**: Replace the State ownership section's inline `node scripts/progress.mjs <path> --init ...` full CLI usage block with a short pointer to the script's own usage header, keeping only the behavioral rule (use the script, never hand-edit `progress.md`).
+- **Reason**: The 2026-09-12 `harness-eval` run (`docs/HARNESS-EVALUATION.md`, Skills section, row #4) flagged the inline block as a verbatim duplicate of `scripts/progress.mjs`'s own header docstring (Track B, dual REDUNDANT-CODE, cost ≤1, claim C016) — cheaply rediscoverable by reading the script, and a drift risk if the two copies diverge.
+- **Trade-off**: None identified — this only removes a duplicated text block; the behavioral rule and the script's own usage documentation are unchanged.
+- **Date**: 2026-09-12
+- **Status**: active
