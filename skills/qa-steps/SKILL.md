@@ -121,13 +121,13 @@ Actions: Fetch PROJ-88 via Jira MCP → no PR given, so skip Step 3 and any diff
 
 User says: "Give me the step-by-step QA process for this."
 
-Actions: No ticket key/URL in the argument or recent conversation → ask for the ticket key or URL before doing anything else. Do not proceed on a guess.
+Actions: No ticket key/URL in the argument or recent conversation → apply Step 1's rule (ask, never guess).
 
 ## Troubleshooting
 
 ### Jira MCP not connected or ticket not found
 
-Stop immediately and tell the user. Do not write a plan from the ticket key alone — a plan built on a guessed description is actively misleading.
+See Step 2's stop/no-fabricate rule.
 
 ### `gh` not installed, not authenticated, or PR not found
 
@@ -139,4 +139,4 @@ Ask the user to clarify scope rather than inventing acceptance criteria. If the 
 
 ### Posting to Jira fails
 
-Tell the user clearly that it was not posted, with the error reason, so they can post it manually if needed. The plan is already shown in chat from Step 6, regardless of posting outcome.
+See Step 7's posting-failure handling.
