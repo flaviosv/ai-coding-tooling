@@ -35,18 +35,18 @@ This exposes `fs-harness` from any directory on this machine. (Or skip it and ru
 >
 > **Using nvm?** `npm link` installs the symlink under the **active** Node's global prefix, and `fs-harness` runs on whatever `node` is active in the current directory (its shebang is `#!/usr/bin/env node`). Run `npm link` on the Node version you intend to use, and confirm with `node --version` before a real `setup`. If you add a `.nvmrc` that pins an old version, the CLI will execute on it.
 
-### 3. Set up the agent
+### 3. Run setup
 
 ```bash
-fs-harness setup claude-code
+fs-harness setup
 ```
 
 One command bootstraps everything:
 
-- **Global:** symlinks `CLAUDE.global.md` to the agent's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into the agent's `settings.json` (`hooks/` — see `docs/CLI.md`).
+- **Global:** symlinks `CLAUDE.global.md` to Claude Code's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into `settings.json` (`hooks/` — see `docs/CLI.md`).
 - **Project-local:** this repo's own instructions (`CLAUDE.md`) and project-local skills (`.claude/skills/`) are tracked directly in the repo — no setup step needed to see them.
 
-It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fs-harness destroy claude-code`.
+It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fs-harness destroy`.
 
 ### 4. Install the status line script
 
@@ -80,11 +80,11 @@ To customize without losing changes on the next `--force` run, edit `~/.claude/s
 
 | Command | Action |
 |---|---|
-| `fs-harness add claude-code <skill> --source <local\|tech-leads-club\|matt-pocock>` | Install one skill and register it in `config/skills.json` |
-| `fs-harness delete claude-code <skill>` | Remove one skill: uninstall + deregister from `config/skills.json`; keeps `skills/<skill>` source and `extended/<skill>/` |
-| `fs-harness list claude-code` | Show each skill's source and install state |
-| `fs-harness override claude-code <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
-| `fs-harness update claude-code [skills...]` | Update Tech Leads Club / Matt Pocock skills |
+| `fs-harness add <skill> --source <local\|tech-leads-club\|matt-pocock>` | Install one skill and register it in `config/skills.json` |
+| `fs-harness delete <skill>` | Remove one skill: uninstall + deregister from `config/skills.json`; keeps `skills/<skill>` source and `extended/<skill>/` |
+| `fs-harness list` | Show each skill's source and install state |
+| `fs-harness override <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
+| `fs-harness update [skills...]` | Update Tech Leads Club / Matt Pocock skills |
 
 `docs/AGENT-SKILLS.md` is regenerated automatically when `add`, `delete`, or `override` change the registry.
 
@@ -164,5 +164,5 @@ Installed on demand via the `npx skills` CLI. Treated as read-only — override 
 No Matt Pocock skills are adopted yet — the vendor is wired up and ready. Install one with:
 
 ```bash
-fs-harness add claude-code <skill> --source matt-pocock
+fs-harness add <skill> --source matt-pocock
 ```

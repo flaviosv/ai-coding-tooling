@@ -38,17 +38,17 @@ Debugging a skill often means reading what a run of it actually did in another p
 
 # Skills
 
-Skills are managed by the **`fs-harness`** script (`bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`agents.json`, `skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fs-harness add`/`delete`/`override` change the registry.
+Skills are managed by the **`fs-harness`** script (`bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fs-harness add`/`delete`/`override` change the registry.
 
 - **Running `fs-harness` yourself:** the full command reference is [docs/CLI.md](docs/CLI.md) — every command, flag, and workflow. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first). The quick reminders below are a summary; `docs/CLI.md` is authoritative.
 - See [docs/AGENT-SKILLS.md](docs/AGENT-SKILLS.md) for the generated skills registry and project-specific skill overrides.
-- Add a skill: `fs-harness add claude-code <skill> --source <local|tech-leads-club|matt-pocock>`.
-- Delete a skill: `fs-harness delete claude-code <skill>` (uninstalls + deregisters; keeps `extended/<skill>/`).
-- Override a vendor skill: `fs-harness override claude-code <skill>` (scaffolds `extended/<skill>/`).
+- Add a skill: `fs-harness add <skill> --source <local|tech-leads-club|matt-pocock>`.
+- Delete a skill: `fs-harness delete <skill>` (uninstalls + deregisters; keeps `extended/<skill>/`).
+- Override a vendor skill: `fs-harness override <skill>` (scaffolds `extended/<skill>/`).
 
 ## Known Limitation: `fs-harness update` for Matt Pocock Skills
 
-`fs-harness update claude-code --all` (or targeting a `matt-pocock` skill by name) reports `updated <name> (Matt Pocock)` even when nothing actually changed. The underlying `skills` npx CLI only tracks installs for `update` via a `skills-lock.json` file, but **global-scope installs are never written to that lock file** — so `skills update <name> -g` can never find them, and silently no-ops ("No installed skills found matching") while still exiting 0.
+`fs-harness update --all` (or targeting a `matt-pocock` skill by name) reports `updated <name> (Matt Pocock)` even when nothing actually changed. The underlying `skills` npx CLI only tracks installs for `update` via a `skills-lock.json` file, but **global-scope installs are never written to that lock file** — so `skills update <name> -g` can never find them, and silently no-ops ("No installed skills found matching") while still exiting 0.
 
 - **Workaround:** force a fresh fetch directly, bypassing `fs-harness`'s own "already installed → skip" check: `npx skills add mattpocock/skills --skill <name> --agent claude-code --global --yes`.
 - **Symptom to watch for:** if a Matt Pocock skill needs an update, don't trust `fs-harness update`'s success message alone for that source — verify content changed, or just run the workaround directly.

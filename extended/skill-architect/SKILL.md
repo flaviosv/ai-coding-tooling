@@ -136,7 +136,7 @@ edit the global file directly**. Instead, use the `extended/` pattern:
 1. Create `extended/<skill-name>/SKILL.md` in the project repository.
 2. Use `extends: <skill-name>` in the frontmatter — this signals the relationship to the parent.
 3. The extension file is loaded **alongside** the parent SKILL.md, not instead of it. Write it additively: only add or clarify, don't repeat what the parent already says.
-4. Run `fs-harness override claude-code <skill-name>` to scaffold and link the overlay into `~/.claude/skills/<skill-name>/SKILL.extended.md` (only needed the first time a new `extended/<skill-name>/` directory is created). See [docs/CLI.md](../../docs/CLI.md) for the full command reference.
+4. Run `fs-harness override <skill-name>` to scaffold and link the overlay into `~/.claude/skills/<skill-name>/SKILL.extended.md` (only needed the first time a new `extended/<skill-name>/` directory is created). See [docs/CLI.md](../../docs/CLI.md) for the full command reference.
 5. Update `AGENTS.md` to annotate the parent skill entry with `— **Extended**: if \`extended/<skill-name>/SKILL.md\` exists, load it alongside the parent skill.`
 
 **Frontmatter template for an extension:**
