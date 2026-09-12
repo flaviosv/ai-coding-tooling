@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 // ---------------------------------------------------------------------------
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.dirname(SCRIPT_DIR); // repo root (bin/ is one level down)
+const ROOT = path.dirname(path.dirname(SCRIPT_DIR)); // repo root (scripts/bin/ is two levels down)
 
 // Project-local skill installs (scope: local-only, or `add --local`) land under
 // this repo's own .claude/skills/ — tracked directly in the repo, no linking.
@@ -580,7 +580,7 @@ function cmdDelete(skillName) {
 
 function cmdStatusline(force) {
   const dest = STATUSLINE_PATH;
-  const src = path.join(ROOT, 'bin', 'statusline-command.sh');
+  const src = path.join(ROOT, 'scripts', 'bin', 'misc', 'statusline.sh');
   if (!lexists(src)) throw new UserError(`Status line source not found: ${src}`);
 
   if (lexists(dest) && !force) {

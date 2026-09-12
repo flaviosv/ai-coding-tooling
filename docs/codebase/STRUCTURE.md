@@ -16,10 +16,6 @@ ai-coding-tooling/
 │   │   └── review-token-usage.py
 │   └── features/            # 8 past feature specs for this repo's own skills (spec/design/tasks/validation)
 ├── assets/                  # static assets referenced by skills/docs
-├── bin/
-│   ├── fs-harness.mjs           # fs-harness CLI — all install/update/override/link logic (784 lines)
-│   ├── sonar-mcp-wrapper.sh     # Docker DNS fix for k3d-hosted SonarQube MCP server
-│   └── statusline-command.sh
 ├── config/
 │   ├── hooks.json           # Hook manifest (flat array, merged into settings.json by `hooks`)
 │   └── skills.json          # Skill registry (20 skills: source, scope, description)
@@ -38,6 +34,15 @@ ai-coding-tooling/
 │       └── references/
 │           ├── coding-principles.md
 │           └── coding-guidelines/
+├── scripts/
+│   ├── bin/
+│   │   ├── fs-harness.mjs       # fs-harness CLI — all install/update/override/link logic (784 lines)
+│   │   └── misc/
+│   │       └── statusline.sh    # deployment source for the `statusline` command
+│   ├── hooks/
+│   │   └── require-direnv-credential.sh
+│   └── skills/
+│       └── sonar-mcp-wrapper.sh # Docker DNS fix for k3d-hosted SonarQube MCP server
 ├── skills/                  # Project-owned skills (installed globally via fs-harness setup)
 │   ├── architecture-evaluate/   # codebase-doc owner (Full / Incremental / Package modes)
 │   ├── build-feature/
@@ -60,9 +65,9 @@ ai-coding-tooling/
 
 ## Module Organization
 
-### CLI (`bin/`)
-**Purpose:** All executable logic — install, update, override, link, delete, list, statusline.
-**Key files:** `fs-harness.mjs` (single file, 784 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `statusline-command.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/UNINSTALL_SONAR.md`.
+### CLI (`scripts/`)
+**Purpose:** All executable logic — install, update, override, link, delete, list, statusline — plus the standalone hook and MCP-wrapper scripts it wires up.
+**Key files:** `scripts/bin/fs-harness.mjs` (single file, 784 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/UNINSTALL_SONAR.md`.
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for skill and hook configuration.

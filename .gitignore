@@ -16,14 +16,12 @@
 !CLAUDE.md
 !assets
 !assets/**
-!bin
-!bin/**
 !docs
 !docs/**
 !config
 !config/**
-!hooks
-!hooks/**
+!scripts
+!scripts/**
 !extended
 !extended/**
 !skills

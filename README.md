@@ -4,7 +4,7 @@ Shared agent configuration and skills for Claude Code.
 
 ## Installation
 
-Everything is managed by the **`fs-harness`** command (`bin/fs-harness.mjs`) — a single-file Node CLI with no dependencies. It replaces the former `agent-setup`/`skill-manager` skills and the `Makefile`.
+Everything is managed by the **`fs-harness`** command (`scripts/bin/fs-harness.mjs`) — a single-file Node CLI with no dependencies. It replaces the former `agent-setup`/`skill-manager` skills and the `Makefile`.
 
 > The command is **repo-local for now** — it requires this cloned repository. Making it available on any computer (publishing to npm) is a deferred follow-up (see scope in [docs/codebase/PROJECT.md](docs/codebase/PROJECT.md)).
 
@@ -28,7 +28,7 @@ cd ai-coding-tooling
 npm link
 ```
 
-This exposes `fs-harness` from any directory on this machine. (Or skip it and run `node bin/fs-harness.mjs …` from the repo.)
+This exposes `fs-harness` from any directory on this machine. (Or skip it and run `node scripts/bin/fs-harness.mjs …` from the repo.)
 
 > **`fs-harness: command not found` right after `npm link`?**
 > Your shell cached the old "not found" result. Run `rehash` (zsh) / `hash -r` (bash) in the current shell, or open a new terminal, then `which fs-harness` should resolve.
@@ -43,7 +43,7 @@ fs-harness setup
 
 One command bootstraps everything:
 
-- **Global:** symlinks `CLAUDE.global.md` to Claude Code's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into `settings.json` (`hooks/` — see `docs/CLI.md`).
+- **Global:** symlinks `CLAUDE.global.md` to Claude Code's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into `settings.json` (`scripts/hooks/` — see `docs/CLI.md`).
 - **Project-local:** this repo's own instructions (`CLAUDE.md`) and project-local skills (`.claude/skills/`) are tracked directly in the repo — no setup step needed to see them.
 
 It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fs-harness destroy`.
@@ -55,7 +55,7 @@ fs-harness statusline          # skip if file already exists
 fs-harness statusline --force  # overwrite with the version from this repo
 ```
 
-Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `bin/statusline-command.sh`). It shows the active model, effort level, directory, git branch, context-window usage, and the 5-hour rate-limit usage:
+Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `scripts/bin/misc/statusline.sh`). It shows the active model, effort level, directory, git branch, context-window usage, and the 5-hour rate-limit usage:
 
 ```
 [Opus 4.8 (1M context) (high) - 📁 ai-coding-tooling (main)] ctx:6% 5h:3%
@@ -103,7 +103,7 @@ These skills live in `.claude/skills/`, tracked directly in the repo — Claude 
 | **kb-from-folder** | Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
 | **kb-from-raindrop** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
 
-> Skill installation/update is handled by the `fs-harness` command (`bin/fs-harness.mjs`), not by a skill. See [Managing skills](#managing-skills).
+> Skill installation/update is handled by the `fs-harness` command (`scripts/bin/fs-harness.mjs`), not by a skill. See [Managing skills](#managing-skills).
 
 ### Source: This Project (`ai-coding-tooling`)
 

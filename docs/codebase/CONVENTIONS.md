@@ -32,7 +32,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 ```
 
-**File structure within `bin/fs-harness.mjs`:** constants → utility/logging helpers → filesystem helpers → command functions → doc generation → CLI entry point.
+**File structure within `scripts/bin/fs-harness.mjs`:** constants → utility/logging helpers → filesystem helpers → command functions → doc generation → CLI entry point.
 
 ## Error Handling
 
@@ -41,7 +41,7 @@ Throw `UserError` for expected user mistakes; let unexpected errors propagate na
 ## Documentation Pattern
 
 - `.md` files are the primary deliverable — clarity and correctness matter over code heuristics.
-- `bin/fs-harness.mjs` uses sparse inline comments at section boundaries only; no multi-line docstrings.
+- `scripts/bin/fs-harness.mjs` uses sparse inline comments at section boundaries only; no multi-line docstrings.
 - `SKILL.md` files use YAML frontmatter (`name`, `description`, `metadata.version`, `metadata.triggers`).
 - `extended/<skill>/SKILL.md` uses the frontmatter from `templates/extension-frontmatter.md` (`name`, `extends`, `description`, `metadata.version`, `metadata.parent_skill`, `metadata.source`).
 - Tech-specific reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.

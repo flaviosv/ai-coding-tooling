@@ -11,7 +11,7 @@
 
 ## Key Libraries
 
-The only implementation file (`bin/fs-harness.mjs`, 784 lines) uses Node built-ins exclusively — no third-party packages.
+The only implementation file (`scripts/bin/fs-harness.mjs`, 784 lines) uses Node built-ins exclusively — no third-party packages.
 
 | Library | Version | Purpose | Modern Usage |
 | ------- | ------- | ------- | ------------ |
@@ -37,7 +37,7 @@ The only implementation file (`bin/fs-harness.mjs`, 784 lines) uses Node built-i
 
 ## Local Development Setup
 
-Clone the repo; run `npm link` to expose `fs-harness` globally. No build step, no external services, no seed data. Alternative without `npm link`: `node bin/fs-harness.mjs <command>` from the repo root.
+Clone the repo; run `npm link` to expose `fs-harness` globally. No build step, no external services, no seed data. Alternative without `npm link`: `node scripts/bin/fs-harness.mjs <command>` from the repo root.
 
 > **nvm note:** `npm link` installs under the active Node's global prefix. Run `npm link` on the Node version you intend to use; confirm with `node --version` before `setup`.
 
@@ -47,4 +47,4 @@ No environment variables. All paths are resolved from the repo root (`import.met
 
 ## Development Tools
 
-No linter/formatter/test runner configured. Syntax is checked ad hoc with `node --check bin/fs-harness.mjs`; behavior is verified with `--dry-run`.
+No linter/formatter/test runner configured. Syntax is checked ad hoc with `node --check scripts/bin/fs-harness.mjs`; behavior is verified with `--dry-run`.

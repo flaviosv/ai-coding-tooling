@@ -7,7 +7,7 @@ See [`docs/codebase/PROJECT.md`](docs/codebase/PROJECT.md) for the project conce
 This is **not an implementation-heavy codebase**. The vast majority of the project consists of `.md` files: skill definitions (`SKILL.md`), reference documents, configuration (`config/*.json`), and documentation. Treat it accordingly:
 
 - Do not apply typical software engineering heuristics (refactoring for abstraction, test coverage, DRY patterns) to `.md` files — clarity and correctness of content is what matters.
-- Repo tooling lives in `bin/` (`bin/fs-harness.mjs`). Only modify it when the scope of actions it performs actually changes — not for style, cleanup, or speculative improvements.
+- Repo tooling lives in `scripts/` (`scripts/bin/fs-harness.mjs`). Only modify it when the scope of actions it performs actually changes — not for style, cleanup, or speculative improvements.
 - **A skill may ship its own scripts** under `skills/<name>/scripts/` (e.g. `session-evaluate/scripts/session_metrics.py`). Reach for one when a step is genuinely mechanical — a fixed transformation, or an API delivery sequence with no per-call judgment — and especially when a prose rule governing that step has demonstrably failed to hold across real runs. A script is the right fix there precisely because it removes the step from model judgment instead of warning about it again. Keep judgment in the `.md`; keep determinism in the script.
 - When in doubt about a change, ask: "Is this a content edit to a `.md` file, or a behavioral change to code?" Each requires a very different standard of care.
 
@@ -38,7 +38,7 @@ Debugging a skill often means reading what a run of it actually did in another p
 
 # Skills
 
-Skills are managed by the **`fs-harness`** script (`bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fs-harness add`/`delete`/`override` change the registry.
+Skills are managed by the **`fs-harness`** script (`scripts/bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fs-harness add`/`delete`/`override` change the registry.
 
 - **Running `fs-harness` yourself:** the full command reference is [docs/CLI.md](docs/CLI.md) — every command, flag, and workflow. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first). The quick reminders below are a summary; `docs/CLI.md` is authoritative.
 - See [docs/AGENT-SKILLS.md](docs/AGENT-SKILLS.md) for the generated skills registry and project-specific skill overrides.

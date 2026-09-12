@@ -1,6 +1,6 @@
 # fs-harness — CLI Reference
 
-`fs-harness` (`bin/fs-harness.mjs`) is the skill manager for this repo. It links Claude Code's config, installs/updates/removes skills, applies vendor overrides, and keeps `config/skills.json` + `docs/AGENT-SKILLS.md` in sync. Single-file Node CLI, zero runtime dependencies.
+`fs-harness` (`scripts/bin/fs-harness.mjs`) is the skill manager for this repo. It links Claude Code's config, installs/updates/removes skills, applies vendor overrides, and keeps `config/skills.json` + `docs/AGENT-SKILLS.md` in sync. Single-file Node CLI, zero runtime dependencies.
 
 > **For agents:** this file is the executable reference. When a task needs to install, remove, override, update, or list skills (or bootstrap the setup), read this file, then run the matching command yourself. **Always preview with `--dry-run` first** for any mutating command, show the planned actions, and prefer the smallest command that does the job. `config/skills.json` is the source of truth — do not hand-edit install state; let the CLI manage it.
 
@@ -8,7 +8,7 @@
 
 ```bash
 fs-harness <command> [args] [--dry-run]        # after `npm link`
-node bin/fs-harness.mjs <command> [args]          # without npm link, from repo root
+node scripts/bin/fs-harness.mjs <command> [args]          # without npm link, from repo root
 fs-harness help                                # show usage
 ```
 
@@ -118,7 +118,7 @@ fs-harness statusline --force          # (re)install the status line script
 
 ## Notes & safety
 
-- Editing the status line: change `bin/statusline-command.sh` first, then `fs-harness statusline --force` (never edit the global copy directly).
+- Editing the status line: change `scripts/bin/misc/statusline.sh` first, then `fs-harness statusline --force` (never edit the global copy directly).
 - Editing hooks: change `config/hooks.json` (and/or the script it points to) first, then `fs-harness hooks` — never hand-edit `hooks` in the global `settings.json` directly.
 - Mutating commands support `--dry-run` — use it to preview before applying.
 - `add` / `delete` / `override` regenerate `docs/AGENT-SKILLS.md` from `skills.json` (content above its marker is preserved).

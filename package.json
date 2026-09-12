@@ -4,10 +4,10 @@
   "description": "Skill manager for AI coding agents — installs, updates, and overrides skills from local, Tech Leads Club, and Matt Pocock sources.",
   "type": "module",
   "bin": {
-    "fs-harness": "bin/fs-harness.mjs"
+    "fs-harness": "scripts/bin/fs-harness.mjs"
   },
   "files": [
-    "bin",
+    "scripts",
     "config",
     "skills",
     "extended",

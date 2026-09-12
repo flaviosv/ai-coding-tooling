@@ -8,13 +8,13 @@ None. No test framework is installed or configured, and no test files exist in t
 
 ## Test Organization
 
-The only implementation code (`bin/fs-harness.mjs`, 784 lines) is untested. `.md` skill and reference files are reviewed manually; there is no automated validation.
+The only implementation code (`scripts/bin/fs-harness.mjs`, 784 lines) is untested. `.md` skill and reference files are reviewed manually; there is no automated validation.
 
 ## Test Coverage Matrix
 
 | Code Layer | Required Test Type | Location Pattern | Run Command |
 | ---------- | ------------------ | ---------------- | ----------- |
-| `bin/fs-harness.mjs` CLI commands | unit / integration | — (none exist) | — |
+| `scripts/bin/fs-harness.mjs` CLI commands | unit / integration | — (none exist) | — |
 | `config/` JSON registry | schema validation | — (none exist) | — |
 | `skills/`, `extended/` `.md` content | none — reviewed manually | n/a | n/a |
 
@@ -22,9 +22,9 @@ The only implementation code (`bin/fs-harness.mjs`, 784 lines) is untested. `.md
 
 | Gate Level | When to Use | Command |
 | ---------- | ----------- | ------- |
-| Syntax check | Before merging `bin/fs-harness.mjs` changes | `node --check bin/fs-harness.mjs` |
+| Syntax check | Before merging `scripts/bin/fs-harness.mjs` changes | `node --check scripts/bin/fs-harness.mjs` |
 | Manual smoke test | After any CLI change | `fs-harness list` + a `--dry-run` of the affected command |
 
 ## Notes
 
-No test runner, no coverage tooling, no CI gate. Changes to `bin/fs-harness.mjs` are validated manually by running CLI commands with `--dry-run`. See `CONCERNS.md` for the risk assessment and a suggested fix approach.
+No test runner, no coverage tooling, no CI gate. Changes to `scripts/bin/fs-harness.mjs` are validated manually by running CLI commands with `--dry-run`. See `CONCERNS.md` for the risk assessment and a suggested fix approach.

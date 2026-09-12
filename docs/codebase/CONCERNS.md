@@ -6,8 +6,8 @@
 
 **No tests for the only implementation file:**
 
-- Issue: `bin/fs-harness.mjs` is now 784 lines, still entirely untested — zero test files in the repo.
-- Files: `bin/fs-harness.mjs`
+- Issue: `scripts/bin/fs-harness.mjs` is now 784 lines, still entirely untested — zero test files in the repo.
+- Files: `scripts/bin/fs-harness.mjs`
 - Why: project began as `.md`-only tooling; the CLI grew without a test harness.
 - Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`.
 - Fix approach: add Node's built-in `node:test` runner with integration tests over temp directories (create a scratch dir, run commands, assert symlink state). No extra dependencies needed.
@@ -56,8 +56,8 @@
 
 **No CI/CD pipeline:**
 
-- Problem: no `.github/` or any CI config — no automated gate on `bin/fs-harness.mjs` changes.
-- Current workaround: manual `node --check bin/fs-harness.mjs` + `--dry-run` smoke tests.
+- Problem: no `.github/` or any CI config — no automated gate on `scripts/bin/fs-harness.mjs` changes.
+- Current workaround: manual `node --check scripts/bin/fs-harness.mjs` + `--dry-run` smoke tests.
 - Blocks: catching broken CLI commands before they reach `main`.
 - Rough effort: small — a GitHub Actions workflow running `node --check` plus a basic `fs-harness list` smoke test.
 

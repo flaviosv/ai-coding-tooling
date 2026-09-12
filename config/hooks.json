@@ -1,7 +1,7 @@
 [
   {
     "id": "require-direnv-credential",
-    "script": "hooks/require-direnv-credential.sh",
+    "script": "scripts/hooks/require-direnv-credential.sh",
     "events": {
       "SessionStart": { "matcher": "", "timeout": 10 },
       "UserPromptSubmit": { "matcher": "*", "timeout": 10 }

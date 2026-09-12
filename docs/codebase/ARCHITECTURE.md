@@ -2,7 +2,7 @@
 
 ## Overview / Pattern
 
-`ai-coding-tooling` is a **distribution system**, not a runtime application — no server, no build step, no scheduled work. A single repository holds all agent instructions and skills; `fs-harness` links global content (`~/.claude/...`) into the locations Claude Code expects via symlinks, while project-local content (`CLAUDE.md`, `.claude/skills/`) is tracked directly in the repo and needs no linking. The only executable logic is `bin/fs-harness.mjs`.
+`ai-coding-tooling` is a **distribution system**, not a runtime application — no server, no build step, no scheduled work. A single repository holds all agent instructions and skills; `fs-harness` links global content (`~/.claude/...`) into the locations Claude Code expects via symlinks, while project-local content (`CLAUDE.md`, `.claude/skills/`) is tracked directly in the repo and needs no linking. The only executable logic is `scripts/bin/fs-harness.mjs`.
 
 ## High-Level Structure
 
@@ -23,7 +23,7 @@ Repository (single source of truth)
 | Layer | Responsibility | Key Files or Dirs |
 | ----- | -------------- | ----------------- |
 | Agent config | Global + project-level agent instructions | `CLAUDE.global.md`, `CLAUDE.md` |
-| CLI | Parse commands, orchestrate all operations | `bin/fs-harness.mjs` |
+| CLI | Parse commands, orchestrate all operations | `scripts/bin/fs-harness.mjs` |
 | Overrides | Additive extensions to vendor skills | `extended/<skill>/SKILL.md`, `extended/<skill>/references/` |
 | Registry | Authoritative skill + hook configuration | `config/skills.json`, `config/hooks.json` |
 | Skills (local) | Skill definitions owned by this repo | `skills/`, `.claude/skills/` |
@@ -32,7 +32,7 @@ Repository (single source of truth)
 
 ## Dependency Rules
 
-- `bin/fs-harness.mjs` reads `config/` and `extended/`; it never reads skill content beyond YAML frontmatter (description extraction).
+- `scripts/bin/fs-harness.mjs` reads `config/` and `extended/`; it never reads skill content beyond YAML frontmatter (description extraction).
 - `skills/` and `.claude/skills/` contain agent-facing `.md` content only — no imports, no JavaScript.
 - `templates/` files are referenced by skills and the CLI scaffold logic; never auto-loaded by agents.
 - `extended/<skill>/` files must augment, never replace, the parent skill.
@@ -45,7 +45,7 @@ Repository (single source of truth)
 
 ## State Management
 
-Stateless. All persistent state lives in `config/skills.json` (skill registry) and `config/hooks.json` (hook manifest). Claude Code's own paths (`~/.claude/CLAUDE.md`, `~/.claude/skills`, etc.) are hardcoded constants in `bin/fs-harness.mjs`. No sessions, no cache, no database.
+Stateless. All persistent state lives in `config/skills.json` (skill registry) and `config/hooks.json` (hook manifest). Claude Code's own paths (`~/.claude/CLAUDE.md`, `~/.claude/skills`, etc.) are hardcoded constants in `scripts/bin/fs-harness.mjs`. No sessions, no cache, no database.
 
 ## Error Handling Strategy
 
