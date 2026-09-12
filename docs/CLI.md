@@ -18,7 +18,7 @@ The agent id is the first positional arg for most commands and is currently **`c
 
 - **Agent** — a target tool (`claude-code`); carries its config path, global `skillsDir`, and `npxId`.
 - **Source** — where a skill comes from: `local` (this repo's `skills/`) or `tech-leads-club` / `matt-pocock` (vendor, via `npx`).
-- **Scope / install location** — global (`~/.claude/skills/`) by default; **project-local** (`.agents/skills/`) for `local-only` skills or when `--local` is passed to `add`.
+- **Scope / install location** — global (`~/.claude/skills/`) by default; **project-local** (`.claude/skills/`) for `local-only` skills or when `--local` is passed to `add`.
 - **Registry** — `config/skills.json` (skills) + `config/agents.json` (agents). `docs/AGENT-SKILLS.md` is regenerated from the registry on `add` / `delete` / `override`.
 - **Overlay** — `extended/<skill>/` augments a vendor skill without forking; installed as `SKILL.extended.md` + `references.extended/` beside the vendor skill.
 
@@ -29,7 +29,7 @@ The agent id is the first positional arg for most commands and is currently **`c
 | `--all` | `update` | Update every vendor skill |
 | `--dry-run` | all | Print the actions, change nothing |
 | `--force` | `statusline` | Overwrite the existing status line script |
-| `--local` | `add` | Install into `.agents/skills/` (project-local) instead of the global skills dir |
+| `--local` | `add` | Install into `.claude/skills/` (project-local) instead of the global skills dir |
 | `--source <s>` | `add` | Set the source when registering a new skill: `local` · `tech-leads-club` · `matt-pocock` |
 
 ## Commands
@@ -38,18 +38,18 @@ The agent id is the first positional arg for most commands and is currently **`c
 | ------- | ------- |
 | `add <agent> <skill> [--source <s>] [--local]` | Install one skill; registers it in `skills.json` if new |
 | `delete <agent> <skill>` | Uninstall + deregister a skill (keeps `extended/<skill>/`) |
-| `destroy <agent>` | Undo `setup` — remove config, uninstall skills, drop links |
+| `destroy <agent>` | Undo `setup` — remove config, uninstall skills |
 | `help` | Show usage |
 | `hooks <agent>` | Sync `config/hooks.json` into the agent's `settings.json` (run automatically by `setup`) |
 | `list <agent>` | Show each skill's source and install state |
 | `override <agent> <skill>` | Scaffold `extended/<skill>/` and apply the overlay |
-| `setup <agent>` | Bootstrap: global config + all skills + overrides + project-local links |
+| `setup <agent>` | Bootstrap: global config + all skills + overrides |
 | `statusline [--force]` | Install the Claude Code status line script |
 | `update <agent> <skills|--all>` | Update vendor skills (Tech Leads Club / Matt Pocock) |
 
 ### `setup <agent>`
 
-Bootstraps everything for the agent: symlinks `AGENTS.global.md` → the agent config, symlinks `templates/` → the agent config dir, installs every registered skill, applies all `extended/` overrides, creates the project-local links (`.claude → .agents`, `CLAUDE.md → AGENTS.md`), and syncs `config/hooks.json` into the agent's `settings.json` (see `hooks <agent>` below). Idempotent and safe — never clobbers existing real files.
+Bootstraps everything for the agent: symlinks `AGENTS.global.md` → the agent config, symlinks `templates/` → the agent config dir, installs every registered skill, applies all `extended/` overrides, and syncs `config/hooks.json` into the agent's `settings.json` (see `hooks <agent>` below). Idempotent and safe — never clobbers existing real files. (Project-local content — `CLAUDE.md`, `.claude/skills/` — is tracked directly in the repo; `setup` doesn't need to create it.)
 
 The `templates/` link is what makes `[Name](../../templates/<name>.md)` references inside a `SKILL.md` resolve once the skill is installed. Installed skills are symlinks into this repo, so a path-resolving tool that normalizes `../../` *lexically* (before following the symlink) lands on `<skillsDir>/../templates` rather than the repo — without this link, every such reference reads as a missing file, silently, and the agent falls back to guessing or to a filesystem-wide search. Re-run `setup` after cloning onto a new machine, and don't remove the link by hand.
 
@@ -60,11 +60,11 @@ fsvskills setup claude-code
 
 ### `add <agent> <skill> [--source <s>] [--local]`
 
-Installs one skill and registers it if it is new to `skills.json`. For `local` skills it symlinks `skills/<skill>` (or `.agents/skills/<skill>` with `--local`); for vendor skills it runs the matching `npx` installer.
+Installs one skill and registers it if it is new to `skills.json`. For `local` skills it symlinks `skills/<skill>` (or `.claude/skills/<skill>` with `--local`); for vendor skills it runs the matching `npx` installer.
 
 ```bash
 fsvskills add claude-code architecture-evaluate --source local       # global install
-fsvskills add claude-code my-skill --source local --local            # project-local (.agents/skills/)
+fsvskills add claude-code my-skill --source local --local            # project-local (.claude/skills/)
 fsvskills add claude-code jira-assistant --source tech-leads-club
 ```
 
@@ -78,7 +78,7 @@ fsvskills delete claude-code some-skill
 
 ### `update <agent> <skills|--all>`
 
-Runs each vendor's `update` subcommand for the named skills (comma- or space-separated) or all vendor skills with `--all`. Local skills have nothing to update. Tech Leads Club updates run from the home directory (the vendor `update` has no `--global` flag and auto-detects agents from cwd) so global skills are never duplicated into this repo's `.agents/`.
+Runs each vendor's `update` subcommand for the named skills (comma- or space-separated) or all vendor skills with `--all`. Local skills have nothing to update. Tech Leads Club updates run from the home directory (the vendor `update` has no `--global` flag and auto-detects agents from cwd) so global skills are never duplicated into this repo's `.claude/`.
 
 ```bash
 fsvskills update claude-code tlc-spec-driven
@@ -125,4 +125,4 @@ fsvskills statusline --force          # (re)install the status line script
 - Editing hooks: change `config/hooks.json` (and/or the script it points to) first, then `fsvskills hooks claude-code` — never hand-edit `hooks` in the global `settings.json` directly.
 - Mutating commands support `--dry-run` — use it to preview before applying.
 - `add` / `delete` / `override` regenerate `docs/AGENT-SKILLS.md` from `skills.json` (content above its marker is preserved).
-- Only `local` skills (`skills/`, `.agents/skills/`) may be edited in this repo; vendor skills are read-only — customize via `extended/`.
+- Only `local` skills (`skills/`, `.claude/skills/`) may be edited in this repo; vendor skills are read-only — customize via `extended/`.

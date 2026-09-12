@@ -6,7 +6,8 @@
 
 ```
 ai-coding-tooling/
-├── .agents/skills/          # Project-local skills (exposed via .claude → .agents symlink) — currently empty
+├── .claude/                 # Project-local, tracked directly (no longer a symlink)
+│   └── .skill-lock.json     # Tracked skill-install metadata — skills/ mechanism supported, not yet materialized
 ├── .specs/                  # tlc-spec-driven (v3) artifacts
 │   ├── STATE.md             # tlc memory: Decisions (AD-NNN) + Handoff (created on first decision)
 │   ├── LESSONS.md           # self-improving lessons layer (human-readable)
@@ -49,8 +50,7 @@ ai-coding-tooling/
 │   └── tests-code-review/
 ├── templates/               # Reusable authoring patterns for skill files (12 files)
 ├── AGENTS.global.md         # Global agent config (symlinked → ~/.claude/CLAUDE.md)
-├── AGENTS.md                # Project-level agent instructions (symlinked → CLAUDE.md)
-├── CLAUDE.md                # Project constraints for Claude Code
+├── CLAUDE.md                # Project constraints for Claude Code — tracked directly (no longer a symlink)
 ├── karpathy.skill.md        # SKILL.md-shaped file at repo root — NOT under skills/, not registered in config/skills.json (see CONCERNS.md)
 ├── LICENSE.md
 ├── package.json             # name: fsvskills, type: module, bin: fsvskills, no deps
@@ -61,7 +61,7 @@ ai-coding-tooling/
 
 ### CLI (`bin/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, statusline.
-**Key files:** `skills.mjs` (single file, 750 lines, zero runtime dependencies).
+**Key files:** `skills.mjs` (single file, 813 lines, zero runtime dependencies).
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for agent and skill configuration.
@@ -71,9 +71,9 @@ ai-coding-tooling/
 **Purpose:** Skills owned and maintained by this repo; installed globally via `fsvskills setup`.
 **Key files:** one `SKILL.md` per skill; some have `references/` subdirs with tech-specific files.
 
-### Project-Local Skills (`.agents/skills/`)
-**Purpose:** Skills exposed only to Claude Code within this project (via `.claude → .agents` symlink).
-**Key files:** currently none — the directory holds only `.skill-lock.json` and `scheduled_tasks.lock`, no skill content. The mechanism is intact and supported but unused at present.
+### Project-Local Skills (`.claude/skills/`)
+**Purpose:** Skills exposed only to Claude Code within this project. `.claude/` is tracked directly in the repo (no longer a symlink to `.agents/`) — no setup step needed to see it.
+**Key files:** currently none — `.claude/` holds only `.skill-lock.json` (tracked skill-install metadata), no `skills/` subdirectory yet. The mechanism is intact and supported but unused at present.
 
 ### Overrides (`extended/`)
 **Purpose:** Additive overlays for vendor skills — augment without forking the vendor source.

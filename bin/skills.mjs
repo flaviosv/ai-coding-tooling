@@ -17,10 +17,9 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(SCRIPT_DIR); // repo root (bin/ is one level down)
 
-// Project-local link sources: setup points <agent.projectDir> at .agents and
-// <agent.projectConfig> at AGENTS.md.
-const AGENTS_DIR = '.agents';
-const MD_SOURCE = 'AGENTS.md';
+// Project-local skill installs (scope: local-only, or `add --local`) land under
+// this repo's own .claude/skills/ — tracked directly in the repo, no linking.
+const PROJECT_LOCAL_DIR = '.claude';
 const TEMPLATES_DIR = path.join(ROOT, 'templates');
 
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -60,10 +59,10 @@ function isDir(p) {
   try { return fs.statSync(p).isDirectory(); } catch { return false; }
 }
 
-// Returns the correct install path for a skill: project-local (.agents/skills/) for
+// Returns the correct install path for a skill: project-local (.claude/skills/) for
 // local-only scope, global skillsDir otherwise.
 function skillDest(skill, agent) {
-  if (skill.scope === 'local-only') return path.join(ROOT, AGENTS_DIR, 'skills', skill.name);
+  if (skill.scope === 'local-only') return path.join(ROOT, PROJECT_LOCAL_DIR, 'skills', skill.name);
   return path.join(agent.skillsDir, skill.name);
 }
 
@@ -95,8 +94,6 @@ function resolveAgent(agents, id) {
     skillsDir: expandHome(a.skillsDir),
     statuslinePath: a.statuslinePath ? expandHome(a.statuslinePath) : null,
     npxId: a.npxId,
-    projectDir: a.projectDir || null,
-    projectConfig: a.projectConfig || null,
   };
 }
 
@@ -250,7 +247,7 @@ function updateSkill(skill, agent) {
     case 'tech-leads-club': {
       // The vendor `update` subcommand has no scope flag; it auto-detects agent
       // configs from cwd. For global skills, run outside the repo so it never
-      // materializes a project-local copy from this repo's .agents/ config.
+      // materializes a project-local copy from this repo's .claude/ config.
       const args = ['@tech-leads-club/agent-skills', 'update', '--skill', name];
       const cwd = installScope === 'local' ? undefined : os.homedir();
       return runNpx(args, `updated ${name} (Tech Leads Club)`, { cwd });
@@ -296,13 +293,6 @@ function cmdSetup(agentId) {
       if (!isDir(sd) || !lexists(path.join(sd, 'SKILL.md'))) continue;
       linkSafe(sd, path.join(agent.skillsDir, name));
     }
-  }
-
-  // Project-local links expose .agents skills + AGENTS.md to the agent in this repo.
-  if (agent.projectDir || agent.projectConfig) {
-    log(`\n${c.bold}Project-local links${c.reset}`);
-    if (agent.projectDir) linkSafe(AGENTS_DIR, path.join(ROOT, agent.projectDir));
-    if (agent.projectConfig) linkSafe(MD_SOURCE, path.join(ROOT, agent.projectConfig));
   }
 
   log(`\n${c.bold}Hooks${c.reset}`);
@@ -513,7 +503,7 @@ function cmdList(agentId) {
 }
 
 // Undo setup: remove the global config symlink, uninstall the skills setup
-// installed globally, drop personal + project-local links.
+// installed globally, drop personal links.
 function cmdDestroy(agentId) {
   const agents = loadJson('config/agents.json');
   const agent = resolveAgent(agents, agentId);
@@ -536,12 +526,6 @@ function cmdDestroy(agentId) {
       if (!isDir(sd) || !lexists(path.join(sd, 'SKILL.md'))) continue;
       unlinkIfSymlink(path.join(agent.skillsDir, name));
     }
-  }
-
-  if (agent.projectDir || agent.projectConfig) {
-    log(`\n${c.bold}Project-local links${c.reset}`);
-    if (agent.projectDir) unlinkIfSymlink(path.join(ROOT, agent.projectDir));
-    if (agent.projectConfig) unlinkIfSymlink(path.join(ROOT, agent.projectConfig));
   }
 
   log(`\n${c.green}Teardown complete. Only setup-managed skills and symlinks were removed.${c.reset}`);
@@ -690,7 +674,7 @@ const SCOPE_SECTIONS = [
 
 function skillPath(s) {
   if (s.scope === 'built') return ` (\`skills/${s.name}/SKILL.md\`)`;
-  if (s.scope === 'local-only') return ` (\`.agents/skills/${s.name}/SKILL.md\`)`;
+  if (s.scope === 'local-only') return ` (\`.claude/skills/${s.name}/SKILL.md\`)`;
   return '';
 }
 
@@ -752,9 +736,9 @@ const HELP = `${c.bold}fsvskills${c.reset} — skill manager for AI coding agent
 ${c.bold}Usage:${c.reset} fsvskills <command> [args] [--dry-run]
 
 ${c.bold}Commands:${c.reset}
-  setup <agent>                 Bootstrap: global config + skills + overrides + project-local links
-  destroy <agent>               Undo setup (remove config, uninstall skills, drop links)
-  add <agent> <skill> [--source <s>] [--local]   Install one skill (registers it if new; --local installs to .agents/skills/)
+  setup <agent>                 Bootstrap: global config + skills + overrides
+  destroy <agent>               Undo setup (remove config, uninstall skills)
+  add <agent> <skill> [--source <s>] [--local]   Install one skill (registers it if new; --local installs to .claude/skills/)
   delete <agent> <skill>        Remove one skill (uninstall + deregister; keeps extended/)
   update <agent> <skills|--all> Update vendor skills (Tech Leads Club / Matt Pocock).
                                 Pass a comma- or space-separated list, or --all for every vendor skill.

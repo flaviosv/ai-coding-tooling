@@ -4,8 +4,6 @@
     "skillsDir": "~/.claude/skills",
     "npxId": "claude-code",
     "statuslinePath": "~/.claude/statusline-command.sh",
-    "settingsPath": "~/.claude/settings.json",
-    "projectDir": ".claude",
-    "projectConfig": "CLAUDE.md"
+    "settingsPath": "~/.claude/settings.json"
   }
 }

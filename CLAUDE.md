@@ -15,7 +15,7 @@ This is **not an implementation-heavy codebase**. The vast majority of the proje
 
 ## Skill Modification Rules
 
-- **Only modify skills whose source is `local`** — i.e., files under `skills/` or `.agents/skills/` in this repository.
+- **Only modify skills whose source is `local`** — i.e., files under `skills/` or `.claude/skills/` in this repository.
 - **Never modify skills installed globally** (e.g. `~/.claude/skills/`) or sourced from external vendors (Tech Leads Club, Matt Pocock). Those are treated as read-only dependencies; override them via `extended/<skill>/` instead.
 - If a globally installed skill needs changes, raise it with the user instead of editing it directly.
 

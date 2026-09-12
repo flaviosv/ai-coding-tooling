@@ -44,9 +44,9 @@ fsvskills setup claude-code
 One command bootstraps everything:
 
 - **Global:** symlinks `AGENTS.global.md` to the agent's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into the agent's `settings.json` (`hooks/` — see `docs/CLI.md`).
-- **Project-local:** creates `.claude → .agents` and `CLAUDE.md → AGENTS.md` so this repo's project-local skills (`.agents/skills/`) and instructions are visible to Claude Code in the project.
+- **Project-local:** this repo's own instructions (`CLAUDE.md`) and project-local skills (`.claude/skills/`) are tracked directly in the repo — no setup step needed to see them.
 
-It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed, drop the project-local links), run `fsvskills destroy claude-code`.
+It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fsvskills destroy claude-code`.
 
 ### 4. Install the status line script
 
@@ -94,9 +94,9 @@ Add `--dry-run` to any command to print the actions without changing anything.
 
 Skills are reusable agent instructions that extend AI coding tools with specialized workflows. They are grouped below by source.
 
-### Project-Local Skills (`.agents/skills/`)
+### Project-Local Skills (`.claude/skills/`)
 
-These skills live in `.agents/skills/`. `fsvskills setup` creates a `.claude → .agents` symlink so Claude Code loads them at project scope in this repo (Claude Code reads `.claude/skills/`, not `.agents/skills/` directly). No global installation required.
+These skills live in `.claude/skills/`, tracked directly in the repo — Claude Code loads them at project scope with no setup step and no global installation required.
 
 | Skill | Description |
 |---|---|

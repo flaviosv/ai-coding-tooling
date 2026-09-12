@@ -6,7 +6,7 @@
 
 **No tests for the only implementation file:**
 
-- Issue: `bin/skills.mjs` has grown from 750 to 779 lines since the last scan, still entirely untested — zero test files in the repo.
+- Issue: `bin/skills.mjs` has grown to 813 lines since the last scan, still entirely untested — zero test files in the repo.
 - Files: `bin/skills.mjs`
 - Why: project began as `.md`-only tooling; the CLI grew without a test harness.
 - Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`.
@@ -22,15 +22,15 @@
 
 **Project-local skills mechanism unused:**
 
-- Issue: `.agents/skills/` (surfaced via the `.claude → .agents` symlink) previously held two skills (`kb-from-folder`, `kb-from-raindrop`); it now holds only `.skill-lock.json` and `scheduled_tasks.lock`, no skill content.
-- Files: `.agents/skills/`
+- Issue: `.claude/skills/` previously held two skills (`kb-from-folder`, `kb-from-raindrop`); `.claude/` (now tracked directly in the repo, no longer a symlink target) holds only `.skill-lock.json`, no skill content.
+- Files: `.claude/`
 - Impact: none currently — the mechanism is architecturally intact and ready to use — but worth confirming whether this is intentional deprecation or a pending re-add, since an unexplained empty directory invites confusion.
 - Fix approach: none required; a one-line note in `PROJECT.md` (already added) is enough until the intent is clarified.
 
 **Per-skill `STATE.md` convention has no tooling support:**
 
-- Issue: the new per-skill decision-log convention (`docs/SKILL-STATE.md`; `AGENTS.md` "Skill Decision Log" section) requires an agent to read a skill's `STATE.md` before modifying it and append an `AD-NNN` entry after each real decision — entirely manual; `fsvskills` does not create, update, validate, or check for `STATE.md` files.
-- Files: `docs/SKILL-STATE.md`, `AGENTS.md` (Skill Decision Log section)
+- Issue: the new per-skill decision-log convention (`docs/SKILL-STATE.md`; `CLAUDE.md` "Skill Decision Log" section) requires an agent to read a skill's `STATE.md` before modifying it and append an `AD-NNN` entry after each real decision — entirely manual; `fsvskills` does not create, update, validate, or check for `STATE.md` files.
+- Files: `docs/SKILL-STATE.md`, `CLAUDE.md` (Skill Decision Log section)
 - Why: added as a lightweight, tooling-free convention — deliberate, avoids CLI complexity for a documentation practice.
 - Impact: two-sided. **Compliance risk** — nothing enforces the read-before-modify/append-after-decision steps, so it can silently lapse across skills or sessions (already happened once: `skills/session-evaluate/STATE.md` had to be backfilled after an agent session missed the convention entirely, since it landed mid-session after that session's context was already loaded). **Token-consumption risk** — as more skills adopt `STATE.md`, the cumulative cost of reading a skill's `STATE.md` before every edit adds a small but recurring per-edit overhead across the project; currently only `session-evaluate` has one, so the effect is negligible today but worth watching as adoption grows.
 - Fix approach: not urgent at current scale (one skill has a `STATE.md`). If adoption grows, consider a lightweight `fsvskills` check (e.g., `fsvskills list` flags a skill with recent content changes but no matching `STATE.md` entry) rather than relying purely on agent discipline.

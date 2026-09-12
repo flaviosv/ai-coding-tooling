@@ -4,8 +4,16 @@
 # excluded by the catch-all above — left out of the allow-list on purpose, not an oversight.
 
 !.gitignore
-!.agents
-!.agents/**
+# .claude/ holds Claude Code's own project-scoped runtime state (settings.local.json,
+# session/scheduler lock files, etc.) alongside this repo's tracked skill-install
+# metadata — allow only the known tracked content, not the whole directory, so new
+# runtime droppings stay ignored by default instead of needing a rule each time one appears.
+!.claude
+.claude/*
+!.claude/.skill-lock.json
+!.claude/skills
+!.claude/skills/**
+!CLAUDE.md
 !assets
 !assets/**
 !bin
@@ -25,7 +33,6 @@
 !templates
 !templates/**
 !AGENTS.global.md
-!AGENTS.md
 !README.md
 !LICENSE.md
 !package.json
