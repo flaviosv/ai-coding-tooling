@@ -1,33 +1,31 @@
 # fs-harness — CLI Reference
 
-`fs-harness` (`scripts/bin/fs-harness.mjs`) is the skill manager for this repo. It links Claude Code's config, installs/updates/removes skills, applies vendor overrides, and keeps `config/skills.json` + `docs/AGENT-SKILLS.md` in sync. Single-file Node CLI, zero runtime dependencies.
+`fs-harness` (`scripts/bin/fs-harness.mjs`) is the skill manager for this repo: installs, updates,
+removes, and overrides skills, and keeps `config/skills.json` in sync. Single-file Node CLI, zero
+runtime dependencies.
 
-> **For agents:** this file is the executable reference. When a task needs to install, remove, override, update, or list skills (or bootstrap the setup), read this file, then run the matching command yourself. **Always preview with `--dry-run` first** for any mutating command, show the planned actions, and prefer the smallest command that does the job. `config/skills.json` is the source of truth — do not hand-edit install state; let the CLI manage it.
-
-## Invocation
+## Usage
 
 ```bash
-fs-harness <command> [args] [--dry-run]        # after `npm link`
-node scripts/bin/fs-harness.mjs <command> [args]          # without npm link, from repo root
-fs-harness help                                # show usage
+fs-harness <command> [args] [--dry-run]              # after `npm link`
+node scripts/bin/fs-harness.mjs <command> [args]      # without npm link, from repo root
+fs-harness help                                       # print this same command list from the CLI itself
 ```
+
+`fs-harness help` is the CLI's own source of truth for syntax — there is no per-command
+`--help` (e.g. `fs-harness add --help` errors out), only the one global listing. Always preview a
+mutating command with `--dry-run` first.
 
 ## Concepts
 
-- **Source** — where a skill comes from: `local` (this repo's `skills/`) or `tech-leads-club` / `matt-pocock` (vendor, via `npx`).
-- **Scope / install location** — global (`~/.claude/skills/`) by default; **project-local** (`.claude/skills/`) for `local-only` skills or when `--local` is passed to `add`.
-- **Registry** — `config/skills.json`. `docs/AGENT-SKILLS.md` is regenerated from the registry on `add` / `delete` / `override`.
-- **Overlay** — `extended/<skill>/` augments a vendor skill without forking; installed as `SKILL.extended.md` + `references.extended/` beside the vendor skill.
-
-## Global flags
-
-| Flag | Applies to | Effect |
-| ---- | ---------- | ------ |
-| `--all` | `update` | Update every vendor skill |
-| `--dry-run` | all | Print the actions, change nothing |
-| `--force` | `statusline` | Overwrite the existing status line script |
-| `--local` | `add` | Install into `.claude/skills/` (project-local) instead of the global skills dir |
-| `--source <s>` | `add` | Set the source when registering a new skill: `local` · `tech-leads-club` · `matt-pocock` |
+- **Source** — where a skill comes from: `local` (this repo's `skills/`) or `tech-leads-club` /
+  `matt-pocock` (vendor, via `npx`).
+- **Scope** — global (`~/.claude/skills/`) by default; project-local (`.claude/skills/`) for
+  `local-only` skills or `add --local`.
+- **Registry** — `config/skills.json`, the source of truth for install state. Don't hand-edit it;
+  `docs/AGENT-SKILLS.md` is regenerated from it on `add` / `delete` / `override`.
+- **Overlay** — `extended/<skill>/` augments a vendor skill without forking it (installed as
+  `SKILL.extended.md` + `references.extended/` beside the vendor skill).
 
 ## Commands
 
@@ -42,84 +40,27 @@ fs-harness help                                # show usage
 | `override <skill>` | Scaffold `extended/<skill>/` and apply the overlay |
 | `setup` | Bootstrap: global config + all skills + overrides |
 | `statusline [--force]` | Install the Claude Code status line script |
-| `update <skills|--all>` | Update vendor skills (Tech Leads Club / Matt Pocock) |
+| `update <skills\|--all>` | Update vendor skills (Tech Leads Club / Matt Pocock) |
 
-### `setup`
+## Flags
 
-Bootstraps everything: symlinks `CLAUDE.global.md` → the global config, symlinks `templates/` → the config dir, installs every registered skill, applies all `extended/` overrides, and syncs `config/hooks.json` into `settings.json` (see `hooks` below). Idempotent and safe — never clobbers existing real files. (Project-local content — `CLAUDE.md`, `.claude/skills/` — is tracked directly in the repo; `setup` doesn't need to create it.)
+| Flag | Applies to | Effect |
+| ---- | ---------- | ------ |
+| `--all` | `update` | Update every vendor skill |
+| `--dry-run` | all | Print the actions, change nothing |
+| `--force` | `statusline` | Overwrite the existing status line script |
+| `--local` | `add` | Install into `.claude/skills/` instead of the global skills dir |
+| `--source <s>` | `add` | Set the source for a new skill: `local` · `tech-leads-club` · `matt-pocock` |
 
-The `templates/` link is what makes `[Name](../../templates/<name>.md)` references inside a `SKILL.md` resolve once the skill is installed. Installed skills are symlinks into this repo, so a path-resolving tool that normalizes `../../` *lexically* (before following the symlink) lands on `<skillsDir>/../templates` rather than the repo — without this link, every such reference reads as a missing file, silently, and the agent falls back to guessing or to a filesystem-wide search. Re-run `setup` after cloning onto a new machine, and don't remove the link by hand.
+## Notes & gotchas
 
-```bash
-fs-harness setup --dry-run     # preview a machine bootstrap
-fs-harness setup
-```
-
-### `add <skill> [--source <s>] [--local]`
-
-Installs one skill and registers it if it is new to `skills.json`. For `local` skills it symlinks `skills/<skill>` (or `.claude/skills/<skill>` with `--local`); for vendor skills it runs the matching `npx` installer.
-
-```bash
-fs-harness add architecture-evaluate --source local       # global install
-fs-harness add my-skill --source local --local            # project-local (.claude/skills/)
-fs-harness add jira-assistant --source tech-leads-club
-```
-
-### `delete <skill>`
-
-Uninstalls the skill and removes it from the registry. **Keeps** any `extended/<skill>/` overlay so a later reinstall re-applies it.
-
-```bash
-fs-harness delete some-skill
-```
-
-### `update <skills|--all>`
-
-Runs each vendor's `update` subcommand for the named skills (comma- or space-separated) or all vendor skills with `--all`. Local skills have nothing to update. Tech Leads Club updates run from the home directory (the vendor `update` has no `--global` flag and auto-detects agents from cwd) so global skills are never duplicated into this repo's `.claude/`.
-
-```bash
-fs-harness update tlc-spec-driven
-fs-harness update --all
-```
-
-### `override <skill>`
-
-Scaffolds `extended/<skill>/` (if absent) and applies the overlay symlinks (`SKILL.extended.md`, `references.extended/`) against the installed vendor skill. **Re-run this after updating a vendor skill** to re-attach the overlay to the new version.
-
-```bash
-fs-harness override tlc-spec-driven
-```
-
-### `hooks`
-
-Merges `config/hooks.json` (the source of truth for what's installed — same role as `config/skills.json`) into `settings.json`'s `hooks` object. Additive only: existing entries for an event (e.g. other tools' hooks) are never touched or removed, and it's idempotent — matches on the hook script's absolute path already present for an event, so re-running is a no-op. Run automatically by `setup`; use standalone to re-sync without a full `setup` re-run.
-
-```bash
-fs-harness hooks --dry-run
-fs-harness hooks
-```
-
-### `list` · `destroy` · `statusline [--force]`
-
-```bash
-fs-harness list            # source + install state per skill, then the shared-templates link state
-fs-harness destroy         # tear down a setup
-fs-harness statusline --force          # (re)install the status line script
-```
-
-## Common workflows
-
-- **Bootstrap a new machine:** `fs-harness setup` (preview with `--dry-run` first).
-- **Add a repo-owned skill:** create `skills/<name>/SKILL.md`, then `fs-harness add <name> --source local`.
-- **Adopt a vendor skill:** `fs-harness add <name> --source tech-leads-club`.
-- **Customize a vendor skill:** `fs-harness override <name>`, edit `extended/<name>/`.
-- **Upgrade a vendor skill + keep your overlay:** `fs-harness update <name>` → `fs-harness override <name>`.
-- **Remove a skill but keep your overlay:** `fs-harness delete <name>`.
-
-## Notes & safety
-
-- Editing the status line: change `scripts/bin/misc/statusline.sh` first, then `fs-harness statusline --force` (never edit the global copy directly).
-- Editing hooks: change `config/hooks.json` (and/or the script it points to) first, then `fs-harness hooks` — never hand-edit `hooks` in the global `settings.json` directly.
-- Mutating commands support `--dry-run` — use it to preview before applying.
-- `add` / `delete` / `override` regenerate `docs/AGENT-SKILLS.md` from `skills.json` (content above its marker is preserved).
-- Only `local` skills (`skills/`, `.claude/skills/`) may be edited in this repo; vendor skills are read-only — customize via `extended/`.
+- `setup` links `templates/` next to the global skills dir so a `SKILL.md`'s
+  `../../templates/<name>.md` references resolve after installation — without it those
+  references silently read as missing files. Don't remove that link by hand.
+- Only `local` skills (`skills/`, `.claude/skills/`) may be edited in this repo; vendor skills
+  are read-only — customize via `override` instead.
+- Re-run `override <skill>` after `update <skill>` to re-attach the overlay to the new version.
+- Editing hooks: change `config/hooks.json` first, then run `fs-harness hooks` — never hand-edit
+  `hooks` in the global `settings.json` directly.
+- Editing the status line: change `scripts/bin/misc/statusline.sh` first, then
+  `fs-harness statusline --force` — never edit the global copy directly.

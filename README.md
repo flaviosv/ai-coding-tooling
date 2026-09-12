@@ -86,9 +86,7 @@ To customize without losing changes on the next `--force` run, edit `~/.claude/s
 | `fs-harness override <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
 | `fs-harness update [skills...]` | Update Tech Leads Club / Matt Pocock skills |
 
-`docs/AGENT-SKILLS.md` is regenerated automatically when `add`, `delete`, or `override` change the registry.
-
-Add `--dry-run` to any command to print the actions without changing anything.
+Add `--dry-run` to any command to print the actions without changing anything. See [docs/CLI.md](docs/CLI.md) for the full command reference.
 
 ## Skills
 

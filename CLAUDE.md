@@ -40,7 +40,7 @@ Debugging a skill often means reading what a run of it actually did in another p
 
 Skills are managed by the **`fs-harness`** script (`scripts/bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fs-harness add`/`delete`/`override` change the registry.
 
-- **Running `fs-harness` yourself:** the full command reference is [docs/CLI.md](docs/CLI.md) — every command, flag, and workflow. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first). The quick reminders below are a summary; `docs/CLI.md` is authoritative.
+- **Running `fs-harness` yourself:** the command reference is [docs/CLI.md](docs/CLI.md) — commands, flags, and gotchas. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first; there is no per-command `--help`, only `fs-harness help`). The quick reminders below are a summary; `docs/CLI.md` is authoritative.
 - See [docs/AGENT-SKILLS.md](docs/AGENT-SKILLS.md) for the generated skills registry and project-specific skill overrides.
 - Add a skill: `fs-harness add <skill> --source <local|tech-leads-club|matt-pocock>`.
 - Delete a skill: `fs-harness delete <skill>` (uninstalls + deregisters; keeps `extended/<skill>/`).
