@@ -18,9 +18,8 @@ ai-coding-tooling/
 ├── assets/                  # static assets referenced by skills/docs
 ├── config/
 │   ├── hooks.json           # Hook manifest (flat array, merged into settings.json by `hooks`)
-│   └── skills.json          # Skill registry (20 skills: source, scope, description)
+│   └── skills.json          # Skill registry (20 skills: name, source, scope)
 ├── docs/
-│   ├── AGENT-SKILLS.md      # Auto-generated skills registry (fs-harness regenerates on add/delete/override)
 │   ├── CLI.md                # fs-harness command reference
 │   ├── SKILL-STATE.md        # Per-skill STATE.md decision-log format spec
 │   ├── UNINSTALL_SONAR.md    # Historical removal guide for a since-uninstalled SonarQube integration
@@ -36,7 +35,7 @@ ai-coding-tooling/
 │           └── coding-guidelines/
 ├── scripts/
 │   ├── bin/
-│   │   ├── fs-harness.mjs       # fs-harness CLI — all install/update/override/link logic (784 lines)
+│   │   ├── fs-harness.mjs       # fs-harness CLI — all install/update/override/link logic (674 lines)
 │   │   └── misc/
 │   │       └── statusline.sh    # deployment source for the `statusline` command
 │   ├── hooks/
@@ -67,7 +66,7 @@ ai-coding-tooling/
 
 ### CLI (`scripts/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, statusline — plus the standalone hook and MCP-wrapper scripts it wires up.
-**Key files:** `scripts/bin/fs-harness.mjs` (single file, 784 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/UNINSTALL_SONAR.md`.
+**Key files:** `scripts/bin/fs-harness.mjs` (single file, 674 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/UNINSTALL_SONAR.md`.
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for skill and hook configuration.

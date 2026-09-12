@@ -6,7 +6,7 @@
 
 **No tests for the only implementation file:**
 
-- Issue: `scripts/bin/fs-harness.mjs` is now 784 lines, still entirely untested — zero test files in the repo.
+- Issue: `scripts/bin/fs-harness.mjs` is now 674 lines, still entirely untested — zero test files in the repo.
 - Files: `scripts/bin/fs-harness.mjs`
 - Why: project began as `.md`-only tooling; the CLI grew without a test harness.
 - Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`.
@@ -65,4 +65,3 @@
 
 - **No `package-lock.json`:** reproducibility relies on `npm link` from the working tree; no lockfile governs `npx` calls to vendor skills, so version drift is possible.
 - **Synchronous `npx` calls:** `execFileSync` blocks for each vendor skill install; no parallel install path (acceptable at the current scale of 10 vendor skills).
-- **Full doc regeneration:** `generateDocs` always rewrites `docs/AGENT-SKILLS.md` in full; no incremental update (acceptable at the current scale of 20 skills).

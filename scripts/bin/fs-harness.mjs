@@ -292,31 +292,6 @@ function cmdSetup() {
   log(`\n${c.green}Setup complete.${c.reset}`);
 }
 
-// Read the `description:` field from a skill's installed SKILL.md frontmatter so
-// the generated registry doc (docs/AGENT-SKILLS.md) shows a real summary instead
-// of "undefined". Handles single-line values and folded/literal block scalars.
-function readSkillDescription(dest) {
-  let text;
-  try { text = fs.readFileSync(path.join(dest, 'SKILL.md'), 'utf8'); } catch { return ''; }
-  const fm = text.match(/^---\n([\s\S]*?)\n---/);
-  if (!fm) return '';
-  const lines = fm[1].split('\n');
-  const i = lines.findIndex((l) => /^description\s*:/.test(l));
-  if (i === -1) return '';
-  let val = lines[i].replace(/^description\s*:/, '').trim();
-  // Block scalar (`description: >` / `|`): gather the indented continuation lines.
-  if (['>', '|', '>-', '|-', ''].includes(val)) {
-    const block = [];
-    for (let j = i + 1; j < lines.length; j++) {
-      if (/^\s+\S/.test(lines[j])) block.push(lines[j].trim());
-      else if (lines[j].trim() === '') block.push('');
-      else break;
-    }
-    val = block.join(' ');
-  }
-  return val.replace(/\s+/g, ' ').replace(/^["']|["']$/g, '').trim();
-}
-
 function cmdAdd(skillName, source, flags = {}) {
   const registry = loadJson('config/skills.json');
   const name = validateSkillName(skillName);
@@ -339,21 +314,13 @@ function cmdAdd(skillName, source, flags = {}) {
 
   applyOverlay(skill);
 
-  // Capture the skill's description from its SKILL.md frontmatter so the registry
-  // doc shows a real summary. `skill` is the same object stored in the registry
-  // (found or newly built), so assigning here persists on write.
-  const desc = readSkillDescription(skillDest(skill));
+  // Register a newly-added skill in the registry.
   const known = registry.skills.find((s) => s.name === name);
-  const descChanged = desc && skill.description !== desc;
-  if (descChanged) skill.description = desc;
-
-  // Register a newly-added skill and/or persist a refreshed description, then refresh the doc.
-  if (!known || descChanged) {
-    if (!known) registry.skills.push(skill);
+  if (!known) {
+    registry.skills.push(skill);
     registry.skills.sort((a, b) => a.name.localeCompare(b.name));
     if (!DRY) fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
-    ok(known ? `refreshed ${name} description in skills.json` : `registered ${name} (${skill.source}) in skills.json`);
-    if (!DRY) generateDocs();
+    ok(`registered ${name} (${skill.source}) in skills.json`);
   }
   log(`\n${c.green}Added ${name}.${c.reset}`);
 }
@@ -384,18 +351,9 @@ function cmdUpdate(names, all) {
 
   if (!scope.length) { warn('No vendor skills to update.'); return; }
   log(`${c.bold}Updating ${scope.length} vendor skill(s)${c.reset}`);
-  let descChanged = false;
   for (const skill of scope) {
     updateSkill(skill);
     if (skill.extended) applyOverlay(skill);
-    // Backfill/refresh the description from the reinstalled SKILL.md frontmatter.
-    const desc = readSkillDescription(skillDest(skill));
-    if (desc && skill.description !== desc) { skill.description = desc; descChanged = true; }
-  }
-  if (descChanged && !DRY) {
-    fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
-    generateDocs();
-    ok('refreshed skill descriptions in skills.json');
   }
   log(`\n${c.green}Update complete.${c.reset}`);
 }
@@ -436,7 +394,6 @@ function cmdOverride(skillName) {
   }
 
   applyOverlay(skill || { name, scope: 'tech-leads-club' });
-  if (!DRY && skill) generateDocs();
   log(`\n${c.green}Override scaffolded for ${name}. Fill in extended/${name}/SKILL.md.${c.reset}`);
 }
 
@@ -566,14 +523,13 @@ function cmdDelete(skillName) {
     log(`${c.dim}kept extended/${name}/ (override overlay preserved)${c.reset}`);
   }
 
-  // Deregister + regenerate the auto-doc.
+  // Deregister.
   registry.skills = registry.skills.filter((s) => s.name !== name);
   if (DRY) {
-    log(`${c.dim}[dry-run]${c.reset} remove ${name} from config/skills.json + regenerate ${DOC_PATH}`);
+    log(`${c.dim}[dry-run]${c.reset} remove ${name} from config/skills.json`);
   } else {
     fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
     ok(`removed ${name} from skills.json`);
-    generateDocs();
   }
   log(`\n${c.green}Deleted ${name}.${c.reset}`);
 }
@@ -630,72 +586,6 @@ function cmdHooks() {
   if (DRY) { log(`${c.dim}[dry-run]${c.reset} update ${SETTINGS_PATH}`); return; }
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + '\n');
   ok(`installed hooks -> ${SETTINGS_PATH}`);
-}
-
-// ---------------------------------------------------------------------------
-// Doc generation (internal; run by add/override)
-// ---------------------------------------------------------------------------
-
-const SCOPE_SECTIONS = [
-  { key: 'built', title: 'Built in this project' },
-  { key: 'local-only', title: 'Local-only (project)' },
-  { key: 'tech-leads-club', title: 'Tech Leads Club' },
-  { key: 'matt-pocock', title: 'Matt Pocock' },
-];
-
-function skillPath(s) {
-  if (s.scope === 'built') return ` (\`skills/${s.name}/SKILL.md\`)`;
-  if (s.scope === 'local-only') return ` (\`.claude/skills/${s.name}/SKILL.md\`)`;
-  return '';
-}
-
-const DOC_PATH = 'docs/AGENT-SKILLS.md';
-const DOC_MARKER = '<!-- fs-harness:generated — do not edit below this line; regenerated from config/skills.json -->';
-
-function generateDocs() {
-  const { skills } = loadJson('config/skills.json');
-
-  // Preserve the hand-written preamble above the marker; regenerate everything below it.
-  const docPath = path.join(ROOT, DOC_PATH);
-  let preamble = '# Agent Skills';
-  if (lexists(docPath)) {
-    const existing = fs.readFileSync(docPath, 'utf8');
-    const cut = existing.indexOf(DOC_MARKER);
-    const at = cut !== -1 ? cut : existing.indexOf('## Global Skills Registry');
-    if (at !== -1) preamble = existing.slice(0, at).trimEnd();
-  }
-
-  const lines = [preamble, '', DOC_MARKER, '', '## Global Skills Registry', ''];
-  for (const section of SCOPE_SECTIONS) {
-    const inScope = skills.filter((s) => s.scope === section.key).sort((a, b) => a.name.localeCompare(b.name));
-    if (!inScope.length) {
-      if (section.key === 'matt-pocock') {
-        lines.push(`### ${section.title}`, '', '_No Matt Pocock skills installed yet. Add one with:_ `fs-harness add <skill> --source matt-pocock`', '');
-      }
-      continue;
-    }
-    lines.push(`### ${section.title}`, '');
-    for (const s of inScope) {
-      lines.push(`- **${s.name}**${skillPath(s)}: ${s.description}`);
-    }
-    lines.push('');
-  }
-
-  const overridden = skills.filter((s) => s.extended).sort((a, b) => a.name.localeCompare(b.name));
-  if (overridden.length) {
-    lines.push('## Overridden (extended)', '');
-    lines.push('These skills carry a project-specific overlay in `extended/<name>/` (applied as `SKILL.extended.md` and optional `references/`):', '');
-    for (const s of overridden) {
-      lines.push(`- **${s.name}** — overlays the ${SCOPE_SECTIONS.find((x) => x.key === s.scope)?.title || s.source} skill.`);
-    }
-    lines.push('');
-  }
-
-  const out = lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
-  if (DRY) { log(`${c.dim}[dry-run]${c.reset} write ${DOC_PATH} (${overridden.length} overrides, ${skills.length} skills)`); return; }
-  ensureDir(path.dirname(docPath));
-  fs.writeFileSync(docPath, out);
-  ok(`generated ${DOC_PATH} (${skills.length} skills)`);
 }
 
 // ---------------------------------------------------------------------------

@@ -38,13 +38,13 @@ Debugging a skill often means reading what a run of it actually did in another p
 
 # Skills
 
-Skills are managed by the **`fs-harness`** script (`scripts/bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`skills.json`); `docs/AGENT-SKILLS.md` is regenerated from `skills.json` automatically whenever `fs-harness add`/`delete`/`override` change the registry.
+Skills are managed by the **`fs-harness`** script (`scripts/bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`skills.json`).
 
 - **Running `fs-harness` yourself:** the command reference is [docs/CLI.md](docs/CLI.md) — commands, flags, and gotchas. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first; there is no per-command `--help`, only `fs-harness help`). The quick reminders below are a summary; `docs/CLI.md` is authoritative.
-- See [docs/AGENT-SKILLS.md](docs/AGENT-SKILLS.md) for the generated skills registry and project-specific skill overrides.
 - Add a skill: `fs-harness add <skill> --source <local|tech-leads-club|matt-pocock>`.
 - Delete a skill: `fs-harness delete <skill>` (uninstalls + deregisters; keeps `extended/<skill>/`).
 - Override a vendor skill: `fs-harness override <skill>` (scaffolds `extended/<skill>/`).
+- **`architecture-evaluate`**: when it runs an **incremental documentation sync** ("update docs" / "document my changes") in this project, as part of its standard root-file review, update `README.md` with whatever is relevant: new skills added, new tech references, structural changes to the `skills/` or `extended/` directories, or changes to the global agent setup. Keep the README accurate as a first-stop reference for anyone using or contributing to this project.
 
 ## Known Limitation: `fs-harness update` for Matt Pocock Skills
 

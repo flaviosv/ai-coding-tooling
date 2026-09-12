@@ -3,132 +3,111 @@
     {
       "name": "architecture-evaluate",
       "source": "local",
-      "scope": "built",
-      "description": "Creates, updates, and incrementally syncs the project context documentation that agents load at session start. Three modes. Full mode deep-scans the codebase (brownfield mapping) and writes nine context files to docs/codebase/ — PROJECT.md (overview, vision, goals), STACK.md, STRUCTURE.md, ARCHITECTURE.md, CONVENTIONS.md, INTEGRATIONS.md, TESTING.md, CONCERNS.md, and PIPELINE.md. Incremental mode inspects the git workspace and syncs only what changed — inline API docs in source files, root context files (README.md, CLAUDE.md, AGENTS.md), and the context files in docs/codebase/ — and detects new packages. Package mode generates a scoped CLAUDE.md for an individual package/module. Use when the user says \"evaluate architecture\", \"map codebase\", \"analyze existing code\", \"document current architecture\", \"update architecture docs\", \"refresh project context\", \"onboard project\", \"create project docs\", \"update project docs\", \"update docs\", \"document my changes\", \"sync documentation\", \"document recent changes\", \"evaluate package\", or \"package architecture\"."
+      "scope": "built"
     },
     {
       "name": "build-feature",
       "source": "local",
-      "scope": "built",
-      "description": "Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs and Claude Design (when integrated), then marks the PR ready — all through isolated subagents, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says \"build feature\", \"start a new feature end to end\", \"deliver this feature autonomously\", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly)."
+      "scope": "built"
     },
     {
       "name": "code-review",
       "source": "local",
-      "scope": "built",
-      "description": "Comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local changes, a GitHub PR, or a range of commits (multi-commit mode); also runs standalone performance audits."
+      "scope": "built"
     },
     {
       "name": "complete-review",
       "source": "local",
-      "scope": "built",
-      "description": "Runs code-review and tests-code-review together against a GitHub PR and publishes every finding as one pending PR review — either for a single named PR (Single PR Mode), or in batch across every open PR waiting on your review that you haven't reviewed yet (Batch Mode). Single PR Mode resolves the PR number from what's already been established in this conversation (e.g. one just opened by build-feature) or asks for it if none is known. Batch Mode detects owner/repo from the current git remote, finds every open PR where you're a requested reviewer with zero reviews from you yet, and fans out one isolated Sonnet subagent per PR at high effort, reporting each PR's result as its subagent finishes plus a final summary table. Every PR's actual review work is delegated to an isolated subagent so large diffs and findings never enter the caller's context, then merged into exactly one pending gh review per PR — never submits, approves, or requests changes. Use when the user says \"complete review\", \"full review\", \"run a complete review\", \"review and post to PR\", \"review my pending PRs\", \"review all PRs assigned to me\", \"review pending PRs\", \"review the PRs I haven't reviewed yet\", or invokes /complete-review — if it's unclear which mode a request means, ask. Do NOT use to review only implementation code (use code-review alone) or only tests (use tests-code-review alone) — this skill exists specifically to run both together and publish combined results in one review, whether for one PR or many."
+      "scope": "built"
     },
     {
       "name": "disk-evaluate",
       "source": "local",
-      "scope": "built",
-      "description": "Evaluates disk usage on this Mac — Docker/local Kubernetes, Homebrew, dev/language caches, system caches, node_modules, and large individual files — by running read-only diagnostic commands and cross-referencing live state, then reports reclaimable space per category with the exact command to free it. Never runs any command that deletes, prunes, moves, or otherwise modifies anything; only invoked explicitly via /disk-evaluate, not model-invocable or auto-triggered by phrases like \"check my disk\" or \"clean up disk space\". Do NOT use for actually freeing space, running cleanup commands, or reviewing code/tests — it only reports suggestions for the user to run themselves."
+      "scope": "built"
     },
     {
       "name": "docs-writer",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "extended": true,
-      "description": "Write, review, and edit documentation files with consistent structure, tone, and technical accuracy. Use when creating docs, reviewing markdown files, writing READMEs, updating `/docs` directories, or when user says \"write documentation\", \"review this doc\", \"improve this README\", \"create a guide\", or \"edit markdown\". Do NOT use for code comments, inline JSDoc, or API reference generation."
+      "extended": true
     },
     {
       "name": "fix-review",
       "source": "local",
-      "scope": "built",
-      "description": "Fixes GitHub PR review findings — from complete-review/code-review/tests-code-review or added manually — by fetching every open review thread fresh from GitHub (always the source of truth), reading each thread's full exchange to decide what it's actually asking for and whether it holds up against the current code, and committing fixes onto the PR's existing branch — never a new PR. A comment or suggested approach that doesn't hold up is rejected with reasoning instead of applied by rote, even when nobody pushed back on it. Every resolved thread gets a documentation reply describing what was actually changed before it's closed — never resolved silently. Also handles findings that exist only in the current conversation and were never posted to GitHub — fixes all of them on a branch you name (asks if none known) and leaves commits unpushed. A third mode batches this across every open PR where you, as reviewer, requested changes — one isolated Sonnet subagent per PR, each running in its own isolated git worktree (so concurrent PRs never fight over which branch is checked out) and fixing only your own comments, fanned out in parallel with results reported as each lands. Every fix is evaluated for test impact — coverage added, updated, or removed as the fix actually warrants, never left to drift incidentally — and validated with a passing directly-relevant test, no full spec-verification cycle. Anything unclear is reported back unfixed rather than guessed at. When explicitly asked, also syncs progress to a PR's linked Jira ticket (a starting comment plus an in-progress transition before fixing begins, a completion comment after) — opt-in only, never run by default. Use when the user says \"fix review findings\", \"fix review comments\", \"triage PR feedback\", \"resolve review comments\", \"apply the review fixes\", \"fix the PRs I requested changes on\", \"batch-fix my change requests\", or invokes /fix-review — if it's unclear which mode a request means, ask. Do NOT use to generate findings or post a review (use complete-review / code-review / tests-code-review) or for spec planning (use tlc-spec-driven)."
+      "scope": "built"
     },
     {
       "name": "grill-me",
       "source": "matt-pocock",
-      "scope": "matt-pocock",
-      "description": "A relentless interview to sharpen a plan or design."
+      "scope": "matt-pocock"
     },
     {
       "name": "grilling",
       "source": "matt-pocock",
-      "scope": "matt-pocock",
-      "description": "Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases."
+      "scope": "matt-pocock"
     },
     {
       "name": "jira-assistant",
       "source": "tech-leads-club",
-      "scope": "tech-leads-club",
-      "description": "Manage Jira issues via Atlassian MCP — search, create, update, transition status, and handle sprint tasks. Auto-detects workspace configuration. Use when user says \"create a Jira ticket\", \"update my sprint\", \"check Jira status\", \"transition this issue\", \"search Jira\", or \"move ticket to done\". Do NOT use for Confluence pages (use confluence-assistant)."
+      "scope": "tech-leads-club"
     },
     {
       "name": "mermaid-studio",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "description": "Expert Mermaid diagram creation, validation, and rendering with dual-engine output (SVG/PNG/ASCII). Supports all 20+ diagram types including C4 architecture, AWS architecture-beta with service icons, flowcharts, sequence, ERD, state, class, mindmap, timeline, git graph, sankey, and more. Features code-to-diagram analysis, batch rendering, 15+ themes, and syntax validation. Use when users ask to create diagrams, visualize architecture, render mermaid files, generate ASCII diagrams, document system flows, model databases, draw AWS infrastructure, analyze code structure, or anything involving \"mermaid\", \"diagram\", \"flowchart\", \"architecture diagram\", \"sequence diagram\", \"ERD\", \"C4\", \"ASCII diagram\". Do NOT use for non-Mermaid image generation, data plotting with chart libraries, or general documentation writing.",
       "extended": true
     },
     {
       "name": "not-your-babysitter",
       "source": "local",
-      "scope": "built",
-      "description": "Autonomous senior-operator mode for AI agents that resolve tasks end to end without babysitting and never create new problems. The agent verifies every claim against real evidence (web search dated to the current month and year, the codebase, and available tools, MCPs, and CLIs); it never guesses, never fakes confidence, and never claims something is done without proof. It stays silent and keeps working, interrupting the user only on three stops, namely a destructive or irreversible action, a dead-end with no evidence after exhausting sources, or genuine ambiguity that changes the outcome. Output is short, literal, and human. Use when the user says \"not-your-babysitter\", \"nanny mode\", \"work autonomously\", \"stop babysitting\", or \"no hand-holding\", or wants an agent that solves problems on its own, especially hands-on engineering and operational tasks. Do not use when the user explicitly wants a tutorial, a verbose walkthrough, or open-ended brainstorming."
+      "scope": "built"
     },
     {
       "name": "qa-steps",
       "source": "local",
-      "scope": "built",
-      "description": "Generates a detailed, step-by-step Manual QA test plan for a Jira ticket, optionally enriched with a linked GitHub PR's diff and description. Fetches the ticket's description, comments, and attachments via Jira MCP, and the PR's diff via gh CLI when provided, then produces a structured plan (Setup, numbered Steps, optional technical spot-checks, Notes), shows it inline in chat, and — only after the user confirms — posts it as a comment on the Jira ticket — never on the PR. Use when the user says \"give me the QA steps for\", \"what's the QA test plan for\", \"manual QA process for this ticket/PR\", \"how do I test this\", or invokes /qa-steps. Do NOT use for writing automated tests or general code review (use code-review)."
+      "scope": "built"
     },
     {
       "name": "security-best-practices",
       "source": "tech-leads-club",
-      "scope": "tech-leads-club",
-      "description": "Perform language and framework specific security best-practice reviews and suggest improvements. Use when the user explicitly requests security best practices guidance, a security review or report, or secure-by-default coding help. Supports Python, JavaScript/TypeScript, and Go. Do NOT use for general code review, debugging, threat modeling (use security-threat-model), or non-security tasks."
+      "scope": "tech-leads-club"
     },
     {
       "name": "session-evaluate",
       "source": "local",
-      "scope": "built",
-      "description": "Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents, self-corrected mistakes (wrong commands/tools/assumptions caught mid-session), mechanical repetition that could become a script in the affected skill, and full test-suite runs disproportionate to the change's actual scope — either across the whole session by default or scoped to one or more named skills within it on request — then reports every finding grouped by fix-target skill and dimension, ranked by a priority that weighs token/runtime gain over correctness fixes, plus a verification section (time and tokens spent per skill invocation, and every full test-suite run detected with its timing and files touched), asks for approval, and applies the approved fixes as guideline edits to the responsible skill or project context file (script-shaped findings are reported only, never auto-applied). Metrics come from a deterministic script so the transcript itself never floods the context; a large session's classification work fans out to one Sonnet subagent per finding dimension, mirroring how code-review parallelizes across review dimensions. Use when the user says \"evaluate session\", \"analyze this session\", \"session postmortem\", \"why did that session burn so many tokens\", \"why was that session slow\", \"optimize my agent workflow\", \"evaluate how <skill> did in that session\", or invokes /session-evaluate. Do NOT use for reviewing application code (use code-review) or for authoring a new skill from scratch (use skill-architect)."
+      "scope": "built"
     },
     {
       "name": "skill-architect",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "extended": true,
-      "description": "Expert guide for designing and building high-quality skills from scratch through structured conversation. Use when someone wants to create a new skill, build a skill, design a skill, or asks for help making Agents do something consistently. Also use when someone says \"turn this into a skill\", \"I want to automate this workflow\", \"how do I teach my Agent to do X\", or mentions creating SKILL.md files. Covers standalone skills and MCP-enhanced workflows. Do NOT use for creating subagents (use subagent-creator) or technical design documents (use create-technical-design-doc)."
+      "extended": true
     },
     {
       "name": "subagent-creator",
       "source": "tech-leads-club",
-      "scope": "tech-leads-club",
-      "description": "Guide for creating AI subagents with isolated context for complex multi-step workflows. Use when users want to create a subagent, specialized agent, verifier, debugger, or orchestrator that requires isolated context and deep specialization. Works with any agent that supports subagent delegation. Triggers on \"create subagent\", \"new agent\", \"specialized assistant\", \"create verifier\". Do NOT use for Cursor-specific subagents (use cursor-subagent-creator instead)."
+      "scope": "tech-leads-club"
     },
     {
       "name": "tech-reference-add",
       "source": "local",
-      "scope": "built",
-      "description": "Adds technology-specific reference files across all skills and extends qualifying global skills. Use when adding a new framework or language to a project's stack."
+      "scope": "built"
     },
     {
       "name": "technical-design-doc-creator",
       "source": "tech-leads-club",
-      "scope": "tech-leads-club",
-      "description": "Creates comprehensive Technical Design Documents (TDD) with mandatory and optional sections through interactive discovery. Use when user asks to \"write a design doc\", \"create a TDD\", \"technical spec\", \"architecture document\", \"RFC\", \"design proposal\", or needs to document a technical decision before implementation. Do NOT use for README files, API docs, or general documentation (use docs-writer instead)."
+      "scope": "tech-leads-club"
     },
     {
       "name": "tests-code-review",
       "source": "local",
-      "scope": "built",
-      "description": "Reviews test code quality, coverage patterns, and maintainability. Supports local workspace, GitHub PR, and multi-commit review modes."
+      "scope": "built"
     },
     {
       "name": "tlc-spec-driven",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
-      "extended": true,
-      "description": "Feature planning and implementation with 4 adaptive phases — Specify, Design, Tasks, Execute. Auto-sizes depth by complexity. Creates atomic tasks with verification criteria, atomic git commits, and requirement traceability. Features an independent Verifier (author != verifier, evidence-or-zero), persistent decision log (STATE.md), and test-coverage-matrix-driven tests, plus a self-improving lessons layer that turns verification failures into reusable project-local guidance. Stack-agnostic. Use when (1) Planning features (requirements, design, task breakdown), (2) Implementing with verification and atomic commits, (3) Validating or verifying an implementation against a spec. Triggers on \"specify feature\", \"discuss feature\", \"design\", \"tasks\", \"implement\", \"validate\", \"verify work\", \"UAT\", \"record decision\", \"pause work\", \"resume work\". Do NOT use for architecture decomposition analysis (use architecture skills) or technical design docs (use create-technical-design-doc)."
+      "extended": true
     }
   ]
 }

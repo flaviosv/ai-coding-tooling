@@ -22,8 +22,7 @@ mutating command with `--dry-run` first.
   `matt-pocock` (vendor, via `npx`).
 - **Scope** — global (`~/.claude/skills/`) by default; project-local (`.claude/skills/`) for
   `local-only` skills or `add --local`.
-- **Registry** — `config/skills.json`, the source of truth for install state. Don't hand-edit it;
-  `docs/AGENT-SKILLS.md` is regenerated from it on `add` / `delete` / `override`.
+- **Registry** — `config/skills.json`, the source of truth for install state. Don't hand-edit it.
 - **Overlay** — `extended/<skill>/` augments a vendor skill without forking it (installed as
   `SKILL.extended.md` + `references.extended/` beside the vendor skill).
 
