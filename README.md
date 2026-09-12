@@ -4,7 +4,7 @@ Shared agent configuration and skills for Claude Code.
 
 ## Installation
 
-Everything is managed by the **`fsvskills`** command (`bin/skills.mjs`) — a single-file Node CLI with no dependencies. It replaces the former `agent-setup`/`skill-manager` skills and the `Makefile`.
+Everything is managed by the **`fs-harness`** command (`bin/fs-harness.mjs`) — a single-file Node CLI with no dependencies. It replaces the former `agent-setup`/`skill-manager` skills and the `Makefile`.
 
 > The command is **repo-local for now** — it requires this cloned repository. Making it available on any computer (publishing to npm) is a deferred follow-up (see scope in [docs/codebase/PROJECT.md](docs/codebase/PROJECT.md)).
 
@@ -22,37 +22,37 @@ git clone <repo-url>
 cd ai-coding-tooling
 ```
 
-### 2. Make the `fsvskills` command available
+### 2. Make the `fs-harness` command available
 
 ```bash
 npm link
 ```
 
-This exposes `fsvskills` from any directory on this machine. (Or skip it and run `node bin/skills.mjs …` from the repo.)
+This exposes `fs-harness` from any directory on this machine. (Or skip it and run `node bin/fs-harness.mjs …` from the repo.)
 
-> **`fsvskills: command not found` right after `npm link`?**
-> Your shell cached the old "not found" result. Run `rehash` (zsh) / `hash -r` (bash) in the current shell, or open a new terminal, then `which fsvskills` should resolve.
+> **`fs-harness: command not found` right after `npm link`?**
+> Your shell cached the old "not found" result. Run `rehash` (zsh) / `hash -r` (bash) in the current shell, or open a new terminal, then `which fs-harness` should resolve.
 >
-> **Using nvm?** `npm link` installs the symlink under the **active** Node's global prefix, and `fsvskills` runs on whatever `node` is active in the current directory (its shebang is `#!/usr/bin/env node`). Run `npm link` on the Node version you intend to use, and confirm with `node --version` before a real `setup`. If you add a `.nvmrc` that pins an old version, the CLI will execute on it.
+> **Using nvm?** `npm link` installs the symlink under the **active** Node's global prefix, and `fs-harness` runs on whatever `node` is active in the current directory (its shebang is `#!/usr/bin/env node`). Run `npm link` on the Node version you intend to use, and confirm with `node --version` before a real `setup`. If you add a `.nvmrc` that pins an old version, the CLI will execute on it.
 
 ### 3. Set up the agent
 
 ```bash
-fsvskills setup claude-code
+fs-harness setup claude-code
 ```
 
 One command bootstraps everything:
 
-- **Global:** symlinks `AGENTS.global.md` to the agent's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into the agent's `settings.json` (`hooks/` — see `docs/CLI.md`).
+- **Global:** symlinks `CLAUDE.global.md` to the agent's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into the agent's `settings.json` (`hooks/` — see `docs/CLI.md`).
 - **Project-local:** this repo's own instructions (`CLAUDE.md`) and project-local skills (`.claude/skills/`) are tracked directly in the repo — no setup step needed to see them.
 
-It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fsvskills destroy claude-code`.
+It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fs-harness destroy claude-code`.
 
 ### 4. Install the status line script
 
 ```bash
-fsvskills statusline          # skip if file already exists
-fsvskills statusline --force  # overwrite with the version from this repo
+fs-harness statusline          # skip if file already exists
+fs-harness statusline --force  # overwrite with the version from this repo
 ```
 
 Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `config/statusline-command.sh`). It shows the active model, effort level, directory, git branch, context-window usage, and the 5-hour rate-limit usage:
@@ -80,11 +80,11 @@ To customize without losing changes on the next `--force` run, edit `~/.claude/s
 
 | Command | Action |
 |---|---|
-| `fsvskills add claude-code <skill> --source <local\|tech-leads-club\|matt-pocock>` | Install one skill and register it in `config/skills.json` |
-| `fsvskills delete claude-code <skill>` | Remove one skill: uninstall + deregister from `config/skills.json`; keeps `skills/<skill>` source and `extended/<skill>/` |
-| `fsvskills list claude-code` | Show each skill's source and install state |
-| `fsvskills override claude-code <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
-| `fsvskills update claude-code [skills...]` | Update Tech Leads Club / Matt Pocock skills |
+| `fs-harness add claude-code <skill> --source <local\|tech-leads-club\|matt-pocock>` | Install one skill and register it in `config/skills.json` |
+| `fs-harness delete claude-code <skill>` | Remove one skill: uninstall + deregister from `config/skills.json`; keeps `skills/<skill>` source and `extended/<skill>/` |
+| `fs-harness list claude-code` | Show each skill's source and install state |
+| `fs-harness override claude-code <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
+| `fs-harness update claude-code [skills...]` | Update Tech Leads Club / Matt Pocock skills |
 
 `docs/AGENT-SKILLS.md` is regenerated automatically when `add`, `delete`, or `override` change the registry.
 
@@ -103,11 +103,11 @@ These skills live in `.claude/skills/`, tracked directly in the repo — Claude 
 | **kb-from-folder** | Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
 | **kb-from-raindrop** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
 
-> Skill installation/update is handled by the `fsvskills` command (`bin/skills.mjs`), not by a skill. See [Managing skills](#managing-skills).
+> Skill installation/update is handled by the `fs-harness` command (`bin/fs-harness.mjs`), not by a skill. See [Managing skills](#managing-skills).
 
 ### Source: This Project (`ai-coding-tooling`)
 
-Maintained here and installed globally via `fsvskills setup` / `fsvskills add`. These are the only skills you should modify:
+Maintained here and installed globally via `fs-harness setup` / `fs-harness add`. These are the only skills you should modify:
 
 | Skill | Description |
 |---|---|
@@ -130,7 +130,7 @@ personal/
     SKILL.md
 ```
 
-`fsvskills setup` auto-discovers and installs everything in `personal/` via symlink. These skills are never listed in `config/skills.json` and are discovered dynamically at setup time.
+`fs-harness setup` auto-discovers and installs everything in `personal/` via symlink. These skills are never listed in `config/skills.json` and are discovered dynamically at setup time.
 
 The `personal/` directory is gitignored — nothing inside it is tracked or committed.
 
@@ -144,7 +144,7 @@ Context7 is optional but strongly recommended. When available, `tech-reference-a
 
 ### Source: [Tech Leads Club](https://techlead.club)
 
-Installed globally by `fsvskills setup`. Treated as read-only — do not edit these directly:
+Installed globally by `fs-harness setup`. Treated as read-only — do not edit these directly:
 
 | Skill | Description |
 |---|---|
@@ -164,5 +164,5 @@ Installed on demand via the `npx skills` CLI. Treated as read-only — override 
 No Matt Pocock skills are adopted yet — the vendor is wired up and ready. Install one with:
 
 ```bash
-fsvskills add claude-code <skill> --source matt-pocock
+fs-harness add claude-code <skill> --source matt-pocock
 ```

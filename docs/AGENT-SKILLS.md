@@ -2,7 +2,7 @@
 
 > The **Project Skill Overrides** below are hand-maintained — edit them directly. Everything
 > from the marker down (**Global Skills Registry**) is auto-generated from `config/skills.json`
-> by `fsvskills` on `add`/`override`; do not hand-edit it.
+> by `fs-harness` on `add`/`override`; do not hand-edit it.
 
 ## Project Skill Overrides
 
@@ -14,7 +14,7 @@ When **architecture-evaluate** runs an **incremental documentation sync** ("upda
 
 if `extended/skill-architect/SKILL.md` exists, load it alongside the parent; it adds guardrail design guidance into workflow phases and documents the `extended/` pattern; also enforces token-efficiency rules for generated skill and reference files via `templates/token-efficiency-rules.md`.
 
-<!-- fsvskills:generated — do not edit below this line; regenerated from config/skills.json -->
+<!-- fs-harness:generated — do not edit below this line; regenerated from config/skills.json -->
 
 ## Global Skills Registry
 

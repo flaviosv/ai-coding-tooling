@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// fsvskills — skill manager for AI coding agents. config/skills.json is the
+// fs-harness — skill manager for AI coding agents. config/skills.json is the
 // authoritative source map (sources: local, tech-leads-club, matt-pocock).
 // Vendor calls go through execFileSync with an argument array, never a shell
 // string, so skill names cannot inject commands.
@@ -83,7 +83,7 @@ function validateSkillName(name) {
 }
 
 function resolveAgent(agents, id) {
-  if (!id) throw new UserError('Missing agent. Usage example: fsvskills setup claude-code');
+  if (!id) throw new UserError('Missing agent. Usage example: fs-harness setup claude-code');
   const a = agents[id];
   if (!a) {
     throw new UserError(`Unknown agent "${id}". Known: ${Object.keys(agents).join(', ')}.`);
@@ -275,7 +275,7 @@ function cmdSetup(agentId) {
   log(`${c.bold}Setting up ${agent.id}${c.reset}`);
   ensureDir(agent.skillsDir);
 
-  linkSafe(path.join(ROOT, 'AGENTS.global.md'), agent.configPath);
+  linkSafe(path.join(ROOT, 'CLAUDE.global.md'), agent.configPath);
 
   ensureTemplatesLink(agent);
 
@@ -497,7 +497,7 @@ function cmdList(agentId) {
   // reference in an installed skill reads as a missing file, silently.
   const tl = templatesLinkPath(agent);
   const tlState = !lexists(tl)
-    ? `${c.yellow}missing — run \`fsvskills setup ${agent.id}\`${c.reset}`
+    ? `${c.yellow}missing — run \`fs-harness setup ${agent.id}\`${c.reset}`
     : isSymlink(tl) ? `${c.green}symlink${c.reset}` : `${c.yellow}real dir (expected a symlink)${c.reset}`;
   log(`\n${c.bold}Shared templates${c.reset}  ${tl}  ${tlState}`);
 }
@@ -531,11 +531,11 @@ function cmdDestroy(agentId) {
   log(`\n${c.green}Teardown complete. Only setup-managed skills and symlinks were removed.${c.reset}`);
 }
 
-// Remove the global config symlink only if it points at this repo's AGENTS.global.md.
+// Remove the global config symlink only if it points at this repo's CLAUDE.global.md.
 function removeConfigSymlink(configPath) {
   if (!lexists(configPath)) { skip(`${configPath} not present`); return; }
   if (!isSymlink(configPath)) { warn(`${configPath} is a real file — leaving it untouched`); return; }
-  const expected = path.join(ROOT, 'AGENTS.global.md');
+  const expected = path.join(ROOT, 'CLAUDE.global.md');
   const actual = path.resolve(path.dirname(configPath), fs.readlinkSync(configPath));
   if (actual !== expected) { warn(`${configPath} points elsewhere (${actual}) — leaving it untouched`); return; }
   if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm ${configPath}`); return; }
@@ -621,7 +621,7 @@ function cmdStatusline(force) {
 // etc.) are never touched, and re-running is a no-op once a script's
 // absolute path is already present for an event.
 function cmdHooks(agentId) {
-  if (!agentId) throw new UserError('Missing agent. Usage example: fsvskills hooks claude-code');
+  if (!agentId) throw new UserError('Missing agent. Usage example: fs-harness hooks claude-code');
   const agents = loadJson('config/agents.json');
   if (!agents[agentId]) {
     throw new UserError(`Unknown agent "${agentId}". Known: ${Object.keys(agents).join(', ')}.`);
@@ -679,7 +679,7 @@ function skillPath(s) {
 }
 
 const DOC_PATH = 'docs/AGENT-SKILLS.md';
-const DOC_MARKER = '<!-- fsvskills:generated — do not edit below this line; regenerated from config/skills.json -->';
+const DOC_MARKER = '<!-- fs-harness:generated — do not edit below this line; regenerated from config/skills.json -->';
 
 function generateDocs() {
   const { skills } = loadJson('config/skills.json');
@@ -699,7 +699,7 @@ function generateDocs() {
     const inScope = skills.filter((s) => s.scope === section.key).sort((a, b) => a.name.localeCompare(b.name));
     if (!inScope.length) {
       if (section.key === 'matt-pocock') {
-        lines.push(`### ${section.title}`, '', '_No Matt Pocock skills installed yet. Add one with:_ `fsvskills add claude-code <skill> --source matt-pocock`', '');
+        lines.push(`### ${section.title}`, '', '_No Matt Pocock skills installed yet. Add one with:_ `fs-harness add claude-code <skill> --source matt-pocock`', '');
       }
       continue;
     }
@@ -731,9 +731,9 @@ function generateDocs() {
 // CLI
 // ---------------------------------------------------------------------------
 
-const HELP = `${c.bold}fsvskills${c.reset} — skill manager for AI coding agents
+const HELP = `${c.bold}fs-harness${c.reset} — skill manager for AI coding agents
 
-${c.bold}Usage:${c.reset} fsvskills <command> [args] [--dry-run]
+${c.bold}Usage:${c.reset} fs-harness <command> [args] [--dry-run]
 
 ${c.bold}Commands:${c.reset}
   setup <agent>                 Bootstrap: global config + skills + overrides
@@ -782,18 +782,18 @@ function main() {
     case 'setup': cmdSetup(rest[0]); break;
     case 'destroy': cmdDestroy(rest[0]); break;
     case 'add': {
-      if (!rest[1]) throw new UserError('Usage: fsvskills add <agent> <skill> [--source <s>] [--local]');
+      if (!rest[1]) throw new UserError('Usage: fs-harness add <agent> <skill> [--source <s>] [--local]');
       cmdAdd(rest[0], rest[1], flags.source, flags);
       break;
     }
     case 'delete': {
-      if (!rest[1]) throw new UserError('Usage: fsvskills delete <agent> <skill>');
+      if (!rest[1]) throw new UserError('Usage: fs-harness delete <agent> <skill>');
       cmdDelete(rest[0], rest[1]);
       break;
     }
     case 'update': cmdUpdate(rest[0], rest.slice(1), flags.all); break;
     case 'override': {
-      if (!rest[1]) throw new UserError('Usage: fsvskills override <agent> <skill>');
+      if (!rest[1]) throw new UserError('Usage: fs-harness override <agent> <skill>');
       cmdOverride(rest[0], rest[1]);
       break;
     }
@@ -801,7 +801,7 @@ function main() {
     case 'statusline': cmdStatusline(flags.force); break;
     case 'hooks': cmdHooks(rest[0]); break;
     default:
-      throw new UserError(`Unknown command "${command}". Run \`fsvskills help\`.`);
+      throw new UserError(`Unknown command "${command}". Run \`fs-harness help\`.`);
   }
 }
 

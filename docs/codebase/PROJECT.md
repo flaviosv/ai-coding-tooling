@@ -10,7 +10,7 @@
 
 - One set of agent instructions usable across all projects and machines, kept in sync automatically.
 - Reusable skills installable from a single location without duplication.
-- Bootstrapping a new machine or project reduced to one command (`fsvskills setup claude-code`).
+- Bootstrapping a new machine or project reduced to one command (`fs-harness setup claude-code`).
 - Vendor skills (Tech Leads Club, Matt Pocock) overridable without forking, via the `extended/` overlay system.
 
 ## Target Users
@@ -21,18 +21,18 @@ Developers (primarily the maintainer) running Claude Code across several machine
 
 **In scope:**
 
-- Global agent config symlinked from `AGENTS.global.md` to `~/.claude/CLAUDE.md`.
+- Global agent config symlinked from `CLAUDE.global.md` to `~/.claude/CLAUDE.md`.
 - 10 local skills (`skills/`) symlinked globally: `architecture-evaluate`, `build-feature`, `code-review`, `complete-review`, `fix-review`, `not-your-babysitter`, `qa-steps`, `session-evaluate`, `tech-reference-add`, `tests-code-review`.
 - Project-local skills (`.claude/skills/`), tracked directly in the repo — mechanism supported but currently unused (`.claude/` holds only `.skill-lock.json`, no skill content).
 - Vendor skill integration (Tech Leads Club, Matt Pocock) via `npx`.
 - `extended/` overlay system for customizing vendor skills without forking.
-- `fsvskills` CLI: `setup`, `destroy`, `add`, `delete`, `update`, `override`, `list`, `statusline`.
+- `fs-harness` CLI: `setup`, `destroy`, `add`, `delete`, `update`, `override`, `list`, `statusline`.
 - `config/skills.json` + `config/agents.json` as the authoritative registry.
 
 **Out of scope:**
 
 - Supporting AI tools other than Claude Code.
-- Publishing `fsvskills` to npm (currently requires `npm link` from the repo clone).
+- Publishing `fs-harness` to npm (currently requires `npm link` from the repo clone).
 - Runtime application logic — no server, no build step, no automated tests.
 
 ## Status

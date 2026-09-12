@@ -116,7 +116,7 @@ Whenever this skill updates the `docs/codebase/` context set — in Full or Incr
 
 The `docs/codebase/` set is **open-ended**. Beyond the canonical nine, a project may keep other context documents there. Treat **every** `.md` in `docs/codebase/` as part of the context set for Holistic Updates — discover them, don't assume only the canonical nine exist. For each `.md` not in the canonical set (e.g. a hand-added `SECURITY.md`, or nested docs under `docs/codebase/adr/`), do not silently overwrite or drop it. Investigate it against the current code; if impacted or stale, flag it and offer to refresh it rather than rewriting silently.
 
-When a context file in `docs/codebase/` is **not** referenced by the project's session-start context list — the context-files table in the global `AGENTS.global.md` or the project root `CLAUDE.md`/`AGENTS.md` — **suggest adding a pointer to it** as a new table row (file path + a one-line "when to read it"), matching the existing rows, so agents auto-load it. Confirm before editing the root file.
+When a context file in `docs/codebase/` is **not** referenced by the project's session-start context list — the context-files table in the global `CLAUDE.global.md` or the project root `CLAUDE.md`/`AGENTS.md` — **suggest adding a pointer to it** as a new table row (file path + a one-line "when to read it"), matching the existing rows, so agents auto-load it. Confirm before editing the root file.
 
 ### Detecting & Migrating Misplaced Context Files
 
@@ -139,7 +139,7 @@ find . -type f \( -name ARCHITECTURE.md -o -name CONCERNS.md -o -name CONVENTION
 
 Once the user confirms a migration:
 - Move/merge the files into `docs/codebase/` (never blind-overwrite a same-named file already there — merge per the Update Merge Strategy).
-- Update references to the old paths (consumers, root `CLAUDE.md`/`AGENTS.md`, `AGENTS.global.md`).
+- Update references to the old paths (consumers, root `CLAUDE.md`/`AGENTS.md`, `CLAUDE.global.md`).
 - Treat it as a structural change → suggest a Full-mode re-evaluation (see Re-evaluate on Structural Change).
 
 Use judgment on the project-wide `find`: a same-named file inside a package or an unrelated docs tree may not be a context doc — flag ambiguous hits and ask rather than assuming.
@@ -788,7 +788,7 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 ✓ docs/codebase/PIPELINE.md      — [created | updated | skipped (no pipeline config found)]
 
 These files are automatically loaded by agents at the start of each session
-via the directive in AGENTS.global.md.
+via the directive in CLAUDE.global.md.
 ```
 
 If any file could not be written, report the error and reason.

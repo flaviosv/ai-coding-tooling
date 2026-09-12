@@ -12,7 +12,7 @@ External integrations are limited to skill-package registries reached through `n
 - Purpose: source of vendor skills (`codenavi`, `docs-writer`, `tlc-spec-driven` (v3), and others)
 - Protocol: `npx` (public npm package, no auth)
 - Data flow: outbound only (install/update)
-- Location: `bin/skills.mjs` → `installSkill` / `updateSkill`
+- Location: `bin/fs-harness.mjs` → `installSkill` / `updateSkill`
 - Install: `npx @tech-leads-club/agent-skills install --skill <name> --agent claude-code [--global]`
 - Update: same call (idempotent reinstall)
 
@@ -22,13 +22,13 @@ External integrations are limited to skill-package registries reached through `n
 - Purpose: source of vendor skills (`deep-research`, `keybindings-help`, and others)
 - Protocol: `npx` (public npm package, no auth)
 - Data flow: outbound only (install/update)
-- Location: `bin/skills.mjs` → `installSkill` / `updateSkill`
+- Location: `bin/fs-harness.mjs` → `installSkill` / `updateSkill`
 - Install: `npx skills@latest add mattpocock/skills --agent claude-code --skill <name> --yes [--global]`
 - Update: `npx skills update <name> --yes [-g]`
 
 **npm:**
 
-- Purpose: `npm link` exposes the `fsvskills` binary globally from the cloned repo
+- Purpose: `npm link` exposes the `fs-harness` binary globally from the cloned repo
 - Protocol: local `npm link` (not published to the npm registry)
 - Auth: none
 

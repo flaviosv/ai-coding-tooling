@@ -33,7 +33,7 @@
 ### AD-004
 - **Decision**: Write and update `progress.md` with a dedicated script (`scripts/progress.mjs`) instead of hand-editing it with `Edit`/`Write` calls.
 - **Reason**: A measured run hand-edited `progress.md` 24 times — 2-3 `Edit` calls per checkpoint (a counter bump, a step-log append anchored on the full previous line, and occasionally a status-field update) — for a transformation with no per-call judgment, ~12 avoidable round-trips. The script performs all three in one call and is idempotent on a re-run of the same step (overwrites that step's own line rather than duplicating it), which the hand-edit approach was not.
-- **Trade-off**: Adds a small code dependency (`scripts/progress.mjs`, plain Node, no external packages) to what was previously pure prose/hand-editing — a maintenance surface `fsvskills` doesn't track, per this project's usual skill-registry conventions.
+- **Trade-off**: Adds a small code dependency (`scripts/progress.mjs`, plain Node, no external packages) to what was previously pure prose/hand-editing — a maintenance surface `fs-harness` doesn't track, per this project's usual skill-registry conventions.
 - **Date**: 2026-09-02
 - **Status**: active
 

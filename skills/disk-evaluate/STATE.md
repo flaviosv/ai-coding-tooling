@@ -10,8 +10,8 @@
 - **Status**: active
 
 ### AD-002
-- **Decision**: Built as a repo-owned local skill (`skills/disk-evaluate`, registered via `fsvskills add --source local`) rather than an untracked folder directly under `~/.claude/skills/`.
-- **Reason**: user chose repo-tracked + `fsvskills`-managed over a bare global install, despite the skill's content being machine-personal (macOS disk hygiene) rather than project-specific.
+- **Decision**: Built as a repo-owned local skill (`skills/disk-evaluate`, registered via `fs-harness add --source local`) rather than an untracked folder directly under `~/.claude/skills/`.
+- **Reason**: user chose repo-tracked + `fs-harness`-managed over a bare global install, despite the skill's content being machine-personal (macOS disk hygiene) rather than project-specific.
 - **Trade-off**: a personal utility now lives inside a repo whose stated purpose is this project's own tooling; accepted knowingly by the user over the global-only alternative.
 - **Date**: 2026-09-09
 - **Status**: active

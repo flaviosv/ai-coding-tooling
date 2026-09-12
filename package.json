@@ -1,17 +1,17 @@
 {
-  "name": "fsvskills",
+  "name": "fs-harness",
   "version": "0.1.0",
   "description": "Skill manager for AI coding agents — installs, updates, and overrides skills from local, Tech Leads Club, and Matt Pocock sources.",
   "type": "module",
   "bin": {
-    "fsvskills": "bin/skills.mjs"
+    "fs-harness": "bin/fs-harness.mjs"
   },
   "files": [
     "bin",
     "config",
     "skills",
     "extended",
-    "AGENTS.global.md"
+    "CLAUDE.global.md"
   ],
   "engines": {
     "node": ">=18"

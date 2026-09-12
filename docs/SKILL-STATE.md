@@ -4,7 +4,7 @@ Every skill in `skills/` (built here) or `extended/` (overlay on a vendor skill)
 
 This mirrors the `## Decisions` log that `tlc-spec-driven` keeps in `.specs/STATE.md` for feature work, scoped here to one skill instead of one project. It does **not** carry that file's `## Handoff` section — skills aren't paused/resumed mid-task the way a feature spec is, so there's no in-flight snapshot to track.
 
-> **For agents:** whenever you modify a skill's `SKILL.md`, `references/`, or scripts (in `skills/` or `extended/`), check that skill's `STATE.md` before you start — conform to its active decisions or knowingly supersede one — and append an entry when the change reflects a real decision. This is a manual convention; `fsvskills` does not create, update, or track this file.
+> **For agents:** whenever you modify a skill's `SKILL.md`, `references/`, or scripts (in `skills/` or `extended/`), check that skill's `STATE.md` before you start — conform to its active decisions or knowingly supersede one — and append an entry when the change reflects a real decision. This is a manual convention; `fs-harness` does not create, update, or track this file.
 
 ## Where it lives
 

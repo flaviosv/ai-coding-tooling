@@ -30,7 +30,7 @@
 !skills/**
 !templates
 !templates/**
-!AGENTS.global.md
+!CLAUDE.global.md
 !README.md
 !LICENSE.md
 !package.json
