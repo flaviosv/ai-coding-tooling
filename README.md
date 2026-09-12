@@ -55,7 +55,7 @@ fs-harness statusline          # skip if file already exists
 fs-harness statusline --force  # overwrite with the version from this repo
 ```
 
-Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `config/statusline-command.sh`). It shows the active model, effort level, directory, git branch, context-window usage, and the 5-hour rate-limit usage:
+Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `bin/statusline-command.sh`). It shows the active model, effort level, directory, git branch, context-window usage, and the 5-hour rate-limit usage:
 
 ```
 [Opus 4.8 (1M context) (high) - 📁 ai-coding-tooling (main)] ctx:6% 5h:3%

@@ -17,11 +17,12 @@ ai-coding-tooling/
 │   └── features/            # 8 past feature specs for this repo's own skills (spec/design/tasks/validation)
 ├── assets/                  # static assets referenced by skills/docs
 ├── bin/
-│   └── fs-harness.mjs           # fs-harness CLI — all install/update/override/link logic (784 lines)
+│   ├── fs-harness.mjs           # fs-harness CLI — all install/update/override/link logic (784 lines)
+│   ├── sonar-mcp-wrapper.sh     # Docker DNS fix for k3d-hosted SonarQube MCP server
+│   └── statusline-command.sh
 ├── config/
 │   ├── hooks.json           # Hook manifest (flat array, merged into settings.json by `hooks`)
-│   ├── skills.json          # Skill registry (20 skills: source, scope, description)
-│   └── statusline-command.sh
+│   └── skills.json          # Skill registry (20 skills: source, scope, description)
 ├── docs/
 │   ├── AGENT-SKILLS.md      # Auto-generated skills registry (fs-harness regenerates on add/delete/override)
 │   ├── CLI.md                # fs-harness command reference
@@ -61,11 +62,11 @@ ai-coding-tooling/
 
 ### CLI (`bin/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, statusline.
-**Key files:** `fs-harness.mjs` (single file, 784 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven.
+**Key files:** `fs-harness.mjs` (single file, 784 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `statusline-command.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/UNINSTALL_SONAR.md`.
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for skill and hook configuration.
-**Key files:** `skills.json` (20 skills: 10 local, 8 tech-leads-club, 2 matt-pocock), `hooks.json` (flat array of hook entries), `statusline-command.sh`.
+**Key files:** `skills.json` (20 skills: 10 local, 8 tech-leads-club, 2 matt-pocock), `hooks.json` (flat array of hook entries).
 
 ### Local Skills (`skills/`)
 **Purpose:** Skills owned and maintained by this repo; installed globally via `fs-harness setup`.

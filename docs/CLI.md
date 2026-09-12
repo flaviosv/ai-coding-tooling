@@ -118,7 +118,7 @@ fs-harness statusline --force          # (re)install the status line script
 
 ## Notes & safety
 
-- Editing the status line: change `config/statusline-command.sh` first, then `fs-harness statusline --force` (never edit the global copy directly).
+- Editing the status line: change `bin/statusline-command.sh` first, then `fs-harness statusline --force` (never edit the global copy directly).
 - Editing hooks: change `config/hooks.json` (and/or the script it points to) first, then `fs-harness hooks` — never hand-edit `hooks` in the global `settings.json` directly.
 - Mutating commands support `--dry-run` — use it to preview before applying.
 - `add` / `delete` / `override` regenerate `docs/AGENT-SKILLS.md` from `skills.json` (content above its marker is preserved).

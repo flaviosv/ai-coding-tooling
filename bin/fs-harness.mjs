@@ -580,7 +580,7 @@ function cmdDelete(skillName) {
 
 function cmdStatusline(force) {
   const dest = STATUSLINE_PATH;
-  const src = path.join(ROOT, 'config', 'statusline-command.sh');
+  const src = path.join(ROOT, 'bin', 'statusline-command.sh');
   if (!lexists(src)) throw new UserError(`Status line source not found: ${src}`);
 
   if (lexists(dest) && !force) {
