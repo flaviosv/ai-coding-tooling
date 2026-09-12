@@ -30,7 +30,7 @@ metadata:
 
 # Code Review
 
-Comprehensive code reviews. Local workspace by default; GitHub PR when explicitly requested.
+Work through the steps below in order — mode detection, context collection, and dispatch all happen automatically; nothing here is meant to be run ad hoc or out of sequence.
 
 ## Reviewer Stance
 
@@ -49,7 +49,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 - **Local workspace** (default): review all changed/added files in git workspace.
 - **GitHub PR**: review only the PR diff from GitHub. Do NOT review local workspace files. User must explicitly provide a PR number to activate GitHub PR mode.
-- **Performance Audit**: full-codebase performance scan. Activated when user says "performance review", "performance audit", "optimize performance", "slow code", "performance bottleneck", or "slow query". Scope is full codebase (not just changed files). Produces executive summary + P0/P1/P2/P3 findings report.
+- **Performance Audit**: full-codebase performance scan. Activated by the performance-related phrases in this skill's frontmatter `metadata.triggers` (see the top of this file). Scope is full codebase (not just changed files). Produces executive summary + P0/P1/P2/P3 findings report.
 
 ### What NOT to Review
 
@@ -81,7 +81,7 @@ Parse the user's request and resolve to exactly one mode before proceeding. Prio
 
 | Priority | Trigger | Mode |
 |----------|---------|------|
-| 1 | "performance audit", "performance review", "optimize performance", "slow code", "performance bottleneck", "slow query" | Performance Audit |
+| 1 | Performance-related phrases (see frontmatter `metadata.triggers`) | Performance Audit |
 | 2 | "review commits X Y Z", "review commits X..Y", "review last N commits", comma/space-separated hashes after "review" | Multi-commit |
 | 3 | PR number present (e.g. "review PR #42", "code review PR 456") | GitHub PR |
 | 4 | Default | Local workspace |
@@ -321,7 +321,7 @@ Execute the Review Plan from Step 5. The execution mode determines how active di
 
 Every dispatch follows [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md): completion condition is every checklist item in the agent's `## Before You Begin` block having been checked against the diff, findings written and tagged by dimension; return shape is exactly that — findings only, never the diff or codebase-doc content it read to produce them; delegation depth is none, a dimension agent never dispatches its own subagent.
 
-**Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line` — the exact text of the line the finding points at, one line, trimmed, no ellipsis or paraphrase. The agent has the file open at the moment it writes the finding, so this costs nothing there; captured any later it costs a re-read. And `File:Line` is always the line in the file at the PR head, never an offset into a diff or patch artifact the agent was handed — resolve it back to the source line before returning (the hunk header `@@ -a,b +c,d @@` gives the base). Consumers downstream anchor GitHub comments on these values and confirm them with a `grep` of the anchor text; without it they re-read whole files instead, which measured 13–35% of the merge step's cost across four real runs. See [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract.
+**Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line` — same guardrail, identical wording, as [`tests-code-review/SKILL.md`](../tests-code-review/SKILL.md) states at its own Step 6 (that file is canonical for this text). See [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract.
 
 ### Execution Modes
 
@@ -339,7 +339,7 @@ Fire all active dimension agents in a **single parallel message. Never sequentia
 
 **Merge rule 1 — design quality:** when BOTH `architecture-reviewer` and `code-quality-reviewer` are in the active dimension set, they dispatch together as a single `design-quality-reviewer` agent — union of both checklists, findings returned tagged by original dimension. This happens only for content type `general` (the only content type where both are active per Axis 2's table — `architecture-reviewer` never appears in the active set for `docs-only`/`config-infra-only`/`frontend-assets-only`). Whenever only `code-quality-reviewer` is active, it dispatches alone exactly as before the merge.
 
-**Merge rule 2 — intent & regression:** when BOTH `regression-reviewer` and `requirements-tracer` are in the active dimension set, they dispatch together as a single `intent-regression-reviewer` agent — union of both checklists, findings returned tagged by original dimension. They ask the same underlying question from two directions (does this change still do what was intended, and does it break what already worked), and measurement across four real PRs found them to be the two lowest-yield dimensions by a wide margin: 8 runs, 31.9M billed input — 28% of all fan-out spend — for 12 findings, of which 7 were fixed, 4 of those 7 duplicated another dimension's finding, and 3 were factually wrong. Every Critical or High either produced was independently found by 2–4 other dimensions in the same run. Whenever only one of the two is active — `requirements-tracer` is conditional and absent when no spec/JIRA was found in Step 2 — the other dispatches alone exactly as before.
+**Merge rule 2 — intent & regression:** when BOTH `regression-reviewer` and `requirements-tracer` are in the active dimension set, they dispatch together as a single `intent-regression-reviewer` agent — union of both checklists, findings returned tagged by original dimension. They ask the same underlying question from two directions (does this change still do what was intended, and does it break what already worked) — see [STATE.md AD-002](./STATE.md) for the measurement behind this merge (cost share, findings fixed/duplicated/invalid). Whenever only one of the two is active — `requirements-tracer` is conditional and absent when no spec/JIRA was found in Step 2 — the other dispatches alone exactly as before.
 
 Together these reduce the general-content, all-dimensions-active case from 6 agents to 4.
 
@@ -426,14 +426,7 @@ Codebase docs: all reviewing agents except a standalone `requirements-tracer` se
 
 ### Reviewer Stance (injected into every agent)
 
-You are the villain. Find every flaw, violation, and risk — not encourage.
-
-- Be relentless. Code is guilty until proven innocent.
-- Every principle violated is worth flagging — no "minor" issues.
-- Flag issues even if possibly intentional — surface them regardless.
-- State problems directly: file, line number, consequence.
-- Never sign off on violations just because they are small.
-- Only report a finding when confidence is ≥ 80%. If uncertain whether a pattern is a violation, skip it — do not guess.
+Same stance as [Reviewer Stance](#reviewer-stance) above, injected verbatim into every dispatched agent's prompt.
 
 ### Performance Audit mode exception
 
@@ -612,55 +605,11 @@ Recommendation: <specific fix>
 
 ## Examples
 
-### Example 1: Local workspace review
+All four modes run Steps 1–9 exactly as specified above. Only these deltas differ per mode:
 
-User: "review my code"
-
-1. Step 1: No PR number, no commit refs → local workspace mode
-2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check for active spec or JIRA task ID — build availability map (no content loaded by orchestrator)
-3. Step 3: Availability map ready (presence/absence only)
-4. Step 4: `git diff HEAD -- $EXCLUDE` + `git diff --cached -- $EXCLUDE` + `git ls-files --others --exclude-standard`; collect `git diff --stat -- $EXCLUDE`; record `excluded_count`
-5. Step 5: Complexity assessment — emit Review Plan and complexity banner; route to execution mode (Small → inline, Medium → single agent, Large/Complex → parallel)
-6. Step 6: Dispatch per Review Plan (e.g. Medium: 1 agent covering all active dimensions; Large: N parallel agents); each agent self-loads checklists + codebase docs via `## Before You Begin`
-7. Step 7: Await all results; mark any failures/degraded agents
-8. Step 8: Report header (with excluded count if any) → at-a-glance table (active dimensions only) → zoned findings; iterative review until P0/P1 resolved
-
-### Example 2: GitHub PR review
-
-User: "review PR #42"
-
-1. Step 1: PR #42 → GitHub PR mode
-2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check PR description for JIRA task ID — build availability map
-3. Step 3: Availability map ready
-4. Step 4: Fetch diff via `gh`; filter changed-file list to remove EXCLUDE-matching paths; record `excluded_count`
-5. Step 5: Complexity assessment — emit banner; route to execution mode
-6. Step 6: Dispatch per Review Plan execution mode against PR diff only — ignore local workspace; agents self-load context via `## Before You Begin`
-7. Step 7: Await results
-8. Step 8: Consolidated report with at-a-glance table (active dimensions only)
-9. Step 9: User selects findings to post → create pending review comments via `gh`; user submits manually on GitHub
-
-### Example 3: Performance audit
-
-User: "do a performance audit of the orders module"
-
-1. Step 1: Trigger phrase matches → Performance Audit mode
-2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists — build availability map
-3. Step 3: Availability map ready
-4. Step 4: No diff — full codebase scan (EXCLUDE does not apply)
-5. Step 5: Complexity assessment skipped — Performance Audit always uses parallel dispatch
-6. Step 6: Dispatch `architecture-reviewer` and `performance-reviewer` against full codebase; `regression-reviewer`, `security-reviewer`, `code-quality-reviewer` scope to changed files only; `requirements-tracer` skipped; each agent self-loads via `## Before You Begin`
-7. Step 7: Await results
-8. Step 8: Produce Performance Audit Report in the format above
-
-### Example 4: Multi-commit review
-
-User: "review commits abc123 def456 ghi789"
-
-1. Step 1: Commit hashes detected → multi-commit mode
-2. Step 2: Check presence of `docs/codebase/` docs and `references/` checklists; check commit messages for JIRA task IDs — build availability map
-3. Step 3: Availability map ready
-4. Step 4: `git show abc123 -- $EXCLUDE; git show def456 -- $EXCLUDE; git show ghi789 -- $EXCLUDE` — concatenated into one combined diff; collect commit list (hash + subject) for report header; record `excluded_count`
-5. Step 5: Complexity assessment applied against combined diff totals; emit banner; route to execution mode
-6. Step 6: Dispatch per Review Plan execution mode against the combined diff; agents self-load context via `## Before You Begin`
-7. Step 7: Await results
-8. Step 8: Single consolidated report — header lists all 3 commits and excluded count; at-a-glance table (active dimensions only) + findings as normal
+| Mode | Example invocation | Step 4 diff source | Step 5/6 delta | Step 8/9 delta |
+|------|--------------------|--------------------|-----------------|-----------------|
+| Local workspace (default) | "review my code" | `git diff HEAD -- $EXCLUDE` + `git diff --cached -- $EXCLUDE` + `git ls-files --others --exclude-standard` | Standard Review Plan (Small → inline, Medium → single agent, Large/Complex → parallel) | Standard report; no Step 9 |
+| GitHub PR | "review PR #42" | Fetch via `gh`; filter EXCLUDE-matching paths from the changed-file list | Same Review Plan, scoped to the PR diff only — never local workspace | Step 9 runs: user selects findings → pending review comments via `gh`; user submits manually |
+| Performance Audit | "do a performance audit of the orders module" | No diff — full codebase scan, EXCLUDE does not apply | Step 5 (complexity assessment) skipped — always parallel dispatch; `architecture-reviewer` + `performance-reviewer` scan the full codebase, all other agents scope to changed files only; `requirements-tracer` skipped | Performance Audit Report format (Executive Summary + P0–P3) replaces the standard report |
+| Multi-commit | "review commits abc123 def456 ghi789" | `git show <hash> -- $EXCLUDE` per commit (concatenated), or `git diff <base>..<tip> -- $EXCLUDE` for a range | Complexity assessed against combined diff totals across all commits | Report header lists every commit (hash + subject) plus excluded count |
