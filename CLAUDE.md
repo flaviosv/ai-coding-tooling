@@ -21,7 +21,7 @@ This is **not an implementation-heavy codebase**. The vast majority of the proje
 
 ## Skill Decision Log
 
-Every skill in `skills/` or `extended/` keeps its own `STATE.md` — a per-skill decision log, appended whenever that skill changes for a real reason. See [docs/SKILL-STATE.md](docs/SKILL-STATE.md) for the format and write triggers.
+Every skill in `skills/` or `extended/` keeps its own `STATE.md` — a per-skill decision log, appended whenever that skill changes for a real reason. See [docs/SKILL-ADR.md](docs/SKILL-ADR.md) for the format and write triggers.
 
 ## Other Sessions' Transcripts
 

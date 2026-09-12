@@ -21,7 +21,7 @@ ai-coding-tooling/
 │   └── skills.json          # Skill registry (20 skills: name, source, scope)
 ├── docs/
 │   ├── CLI.md                # fs-harness command reference
-│   ├── SKILL-STATE.md        # Per-skill STATE.md decision-log format spec
+│   ├── SKILL-ADR.md        # Per-skill STATE.md decision-log format spec
 │   ├── UNINSTALL_SONAR.md    # Historical removal guide for a since-uninstalled SonarQube integration
 │   └── codebase/            # Agent context docs (THIS set — canonical location)
 ├── extended/                # Additive overrides for vendor skills
