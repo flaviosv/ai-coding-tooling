@@ -1,6 +1,6 @@
 # Tech Stack
 
-**Analyzed:** 2026-09-01
+**Analyzed:** 2026-09-12
 
 ## Core
 
@@ -43,7 +43,7 @@ Clone the repo; run `npm link` to expose `fs-harness` globally. No build step, n
 
 ## Environment Configuration
 
-No environment variables. All paths are resolved from the repo root (`import.meta.url`) plus hardcoded constants for Claude Code's global locations (`~/.claude/CLAUDE.md`, `~/.claude/skills`, `~/.claude/statusline-command.sh`, `~/.claude/settings.json`, via `os.homedir()`) — `config/agents.json` no longer exists; this tool manages Claude Code only.
+No environment variables. All paths are resolved from the repo root (`import.meta.url`) plus hardcoded constants for Claude Code's global locations (`~/.claude/CLAUDE.md`, `~/.claude/skills`, `~/.claude/statusline-command.sh`, `~/.claude/settings.json`, via `os.homedir()`).
 
 ## Development Tools
 

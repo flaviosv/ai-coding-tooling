@@ -1,6 +1,6 @@
 # Testing Infrastructure
 
-**Analyzed:** 2026-09-01
+**Analyzed:** 2026-09-12
 
 ## Test Frameworks
 
@@ -27,4 +27,4 @@ The only implementation code (`bin/fs-harness.mjs`, 784 lines) is untested. `.md
 
 ## Notes
 
-No test runner, no coverage tooling, no CI gate. Changes to `bin/fs-harness.mjs` are validated manually by running CLI commands with `--dry-run`. Test coverage was proposed and explicitly declined during the multi-agent-removal refactor (2026-09-12) rather than simply never having come up. See `CONCERNS.md` for the risk assessment and a suggested fix approach.
+No test runner, no coverage tooling, no CI gate. Changes to `bin/fs-harness.mjs` are validated manually by running CLI commands with `--dry-run`. See `CONCERNS.md` for the risk assessment and a suggested fix approach.

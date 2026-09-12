@@ -6,7 +6,7 @@
 
 ```
 ai-coding-tooling/
-├── .claude/                 # Project-local, tracked directly (no longer a symlink)
+├── .claude/                 # Project-local, tracked directly in the repo
 │   └── .skill-lock.json     # Tracked skill-install metadata — skills/ mechanism supported, not yet materialized
 ├── .specs/                  # tlc-spec-driven (v3) artifacts
 │   ├── STATE.md             # tlc memory: Decisions (AD-NNN) + Handoff (created on first decision)
@@ -50,7 +50,7 @@ ai-coding-tooling/
 │   └── tests-code-review/
 ├── templates/               # Reusable authoring patterns for skill files (12 files)
 ├── CLAUDE.global.md         # Global agent config (symlinked → ~/.claude/CLAUDE.md)
-├── CLAUDE.md                # Project constraints for Claude Code — tracked directly (no longer a symlink)
+├── CLAUDE.md                # Project constraints for Claude Code — tracked directly in the repo
 ├── karpathy.skill.md        # SKILL.md-shaped file at repo root — NOT under skills/, not registered in config/skills.json (see CONCERNS.md)
 ├── LICENSE.md
 ├── package.json             # name: fs-harness, type: module, bin: fs-harness, no deps
@@ -72,7 +72,7 @@ ai-coding-tooling/
 **Key files:** one `SKILL.md` per skill; some have `references/` subdirs with tech-specific files.
 
 ### Project-Local Skills (`.claude/skills/`)
-**Purpose:** Skills exposed only to Claude Code within this project. `.claude/` is tracked directly in the repo (no longer a symlink to `.agents/`) — no setup step needed to see it.
+**Purpose:** Skills exposed only to Claude Code within this project. `.claude/` is tracked directly in the repo — no setup step needed to see it.
 **Key files:** currently none — `.claude/` holds only `.skill-lock.json` (tracked skill-install metadata), no `skills/` subdirectory yet. The mechanism is intact and supported but unused at present.
 
 ### Overrides (`extended/`)

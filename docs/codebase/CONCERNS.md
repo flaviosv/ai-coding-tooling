@@ -1,6 +1,6 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-09-01
+**Analysis Date:** 2026-09-12
 
 ## Tech Debt
 
@@ -9,7 +9,7 @@
 - Issue: `bin/fs-harness.mjs` is now 784 lines, still entirely untested — zero test files in the repo.
 - Files: `bin/fs-harness.mjs`
 - Why: project began as `.md`-only tooling; the CLI grew without a test harness.
-- Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`. Sharpened by a recent event: a full refactor dropping multi-agent parameterization across every CLI command (removing `config/agents.json`, hardcoding Claude Code's paths as constants) was merged with test coverage explicitly considered and then explicitly declined, verified only by `node --check` plus manual `--dry-run`/temp-`$HOME` smoke testing — a nontrivial, repo-wide signature change landed with zero regression coverage.
+- Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`.
 - Fix approach: add Node's built-in `node:test` runner with integration tests over temp directories (create a scratch dir, run commands, assert symlink state). No extra dependencies needed.
 
 **Orphaned skill-shaped file outside the skill registry:**
@@ -22,7 +22,7 @@
 
 **Project-local skills mechanism unused:**
 
-- Issue: `.claude/skills/` previously held two skills (`kb-from-folder`, `kb-from-raindrop`); `.claude/` (now tracked directly in the repo, no longer a symlink target) holds only `.skill-lock.json`, no skill content.
+- Issue: `.claude/skills/` holds no skill content — `.claude/` (tracked directly in the repo) contains only `.skill-lock.json`.
 - Files: `.claude/`
 - Impact: none currently — the mechanism is architecturally intact and ready to use — but worth confirming whether this is intentional deprecation or a pending re-add, since an unexplained empty directory invites confusion.
 - Fix approach: none required; a one-line note in `PROJECT.md` (already added) is enough until the intent is clarified.
@@ -49,7 +49,7 @@
 - Problem: `skills/session-evaluate/SKILL.md`'s Step 6 dispatched subagents (the Medium-tier single covering agent, and the Large-tier per-active-dimension agents) run on `model: opus` (changed 2026-09-01 from `sonnet`) — see `skills/session-evaluate/STATE.md` AD-006 for the decision record.
 - Files: `skills/session-evaluate/SKILL.md`
 - Cause: the classification work (matching digest signals to a finding catalog, judging Structural vs Incidental, attributing fix targets) was judged reasoning-dense enough to warrant the stronger model.
-- Measurement: not yet measured in dollars — Opus costs materially more per token than Sonnet, and a Large-tier run can dispatch several dimension agents in parallel (one per active dimension A–F, up to 6), so a large/complex session evaluation now costs meaningfully more in tokens than before the change.
+- Measurement: not yet measured in dollars — Opus costs materially more per token than Sonnet, and a Large-tier run can dispatch several dimension agents in parallel (one per active dimension A–F, up to 6), so a large/complex session evaluation costs meaningfully more in tokens than a Sonnet-only run would.
 - Improvement path: this is a deliberate quality-over-cost trade-off, not a defect — worth monitoring as evaluation frequency grows. If cost becomes a concern, consider reverting specific dimensions to `sonnet` while keeping `opus` only where it most benefits reasoning, or add a lighter-weight tier boundary.
 
 ## Missing Critical Features

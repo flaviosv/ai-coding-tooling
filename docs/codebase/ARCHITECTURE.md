@@ -45,7 +45,7 @@ Repository (single source of truth)
 
 ## State Management
 
-Stateless. All persistent state lives in `config/skills.json` (skill registry) and `config/hooks.json` (hook manifest). `config/agents.json` no longer exists — Claude Code's own paths (`~/.claude/CLAUDE.md`, `~/.claude/skills`, etc.) are hardcoded constants in `bin/fs-harness.mjs`, since this tool manages Claude Code exclusively. No sessions, no cache, no database.
+Stateless. All persistent state lives in `config/skills.json` (skill registry) and `config/hooks.json` (hook manifest). Claude Code's own paths (`~/.claude/CLAUDE.md`, `~/.claude/skills`, etc.) are hardcoded constants in `bin/fs-harness.mjs`. No sessions, no cache, no database.
 
 ## Error Handling Strategy
 
@@ -66,4 +66,4 @@ No structured logging, no tracing, no metrics. Output is ANSI-colored terminal t
 - **Collision-aware overlays:** `extended/<skill>/references/` installs as `references/` (if the parent has none) or `references.extended/` (when the parent already ships `references/`).
 - **Per-skill decision log:** every skill in `skills/` or `extended/` keeps its own `STATE.md` — an append-only log of `AD-NNN` decision entries, mirroring `tlc-spec-driven`'s project-level `.specs/STATE.md` Decisions log but scoped per skill instead of per project. Format and write triggers are in `docs/SKILL-STATE.md`; referenced from `CLAUDE.md`'s "Skill Decision Log" section. This is a manual convention — `fs-harness` does not create, update, or track it.
 
-**Project-local skills currently unused:** `.claude/skills/` is tracked directly in the repo (no longer surfaced via a symlink) but holds no skill content at present — `.claude/` contains only `.skill-lock.json`. Any future project-local skill can still be added there without further setup.
+**Project-local skills currently unused:** `.claude/skills/` is tracked directly in the repo but holds no skill content at present — `.claude/` contains only `.skill-lock.json`. Any future project-local skill can be added there without further setup.
