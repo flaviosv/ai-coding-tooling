@@ -30,8 +30,6 @@ Optional:
 
 - tlc-spec-driven owns Specify/Design/Tasks/Execute's own internal mechanics (auto-sizing, atomic commits, gate checks, the Verifier). Invoke it; don't duplicate its logic.
 - `complete-review` owns the review-and-publish mechanics — it always publishes findings as a pending GitHub review immediately (see Step 11); this skill never passes it `human_review` and never uses its Publish Mode. This skill's own `human_review` only decides whether *this* skill pauses, in its own Step 11 checkpoint, before proceeding to `fix-review`. When that checkpoint doesn't pause, this skill also submits the pending review itself, right there in Step 11 — `complete-review` never submits its own reviews, by design (see its Guardrails), and `fix-review` refuses to act on a review still sitting `PENDING` (its own Step 1 rule 3), so without a human around to click "submit" on GitHub, this skill has to do it.
-- `fix-review` owns fetching threads fresh from GitHub, classifying them, and fixing — invoke it, don't duplicate it.
-- `architecture-evaluate` owns Incremental/Full mode's own scan and doc-writing logic.
 - `not-your-babysitter`: the orchestrator (this conversation) adopts it as a standing mode for genuinely unplanned situations — a tool failure, a dead end, an ambiguity this skill never anticipated. It does not gate anything this skill explicitly defines: `human_review`'s named checkpoints are planned, not the kind of thing not-your-babysitter's stops are for. The two never compete for the same decision.
 
 ### State ownership
@@ -71,7 +69,7 @@ When the repo tracks `docs/codebase/` in git, none of this runs and none of it i
 
 ### Subagent models
 
-Every `Agent` dispatch this skill makes takes its model from [Subagent Models](../../templates/subagent-models.md) — that table is the authority, and the model named in each step below restates it for readability, never overrides it. Set `model` explicitly on every dispatch (never let a subagent inherit this conversation's model), pass it as one of the four literal aliases, and note that the `Agent` tool has no effort parameter: where a step wants high effort, that lives in the subagent's prompt.
+Every `Agent` dispatch this skill makes takes its model from [Subagent Models](../../templates/subagent-models.md) — read it before the first dispatch; that table is the authority, and the model named in each step below restates it for readability, never overrides it. Set `model` explicitly on every dispatch (never let a subagent inherit this conversation's model), per that template's own rules for how.
 
 The model a step runs on **never depends on `human_review`**. That parameter decides where this skill pauses, not how capable the work is.
 
@@ -85,7 +83,7 @@ Step 4 (grilling) is not a subagent dispatch and the wait protocol does not appl
 
 ### gh account resolution
 
-Apply [gh Account Resolution](../../templates/gh-account-resolution.md) once at the start of every invocation (fresh or resumed) — this skill pushes branches, opens/updates PRs, and calls several `gh`-using subagents across a long run, exactly the situation that template exists for. Resolve once, cache the login for the rest of the run, persist only the login (never the token) to `progress.md`.
+Apply [gh Account Resolution](../../templates/gh-account-resolution.md) once at the start of every invocation (fresh or resumed) — this skill pushes branches, opens/updates PRs, and calls several `gh`-using subagents across a long run, exactly the situation that template exists for.
 
 ### PR
 
@@ -241,7 +239,7 @@ First, ask GitHub whether the PR can actually merge: `gh pr view <PR> --json mer
 
 - **`MERGEABLE`/`CLEAN`** → proceed.
 - **`UNKNOWN`** → GitHub computes mergeability asynchronously and often hasn't finished right after a push. Wait once — a single timed wait, per [Agent Wait Protocol](../../templates/agent-wait-protocol.md)'s clock rule, never a poll loop — and re-query. Still `UNKNOWN` → proceed, and say in the final report that the check was inconclusive rather than implying it passed.
-- **`CONFLICTING`** → dispatch a Sonnet subagent to resolve it: merge `origin/<target_branch>` into the feature branch, resolve every conflict, verify per [Test Execution Scope](../../templates/test-execution-scope.md), commit the merge, push. Scope that verification by what the merged range actually changes, never by the conflict count or the commit count, and state the tier in the subagent's prompt rather than telling it to "run the gate checks" — a merge range confined to docs runs no tests; a range bringing in code runs build/typecheck/lint plus the tests covering what it touched, since auto-merge produces semantic breakage that carries no conflict markers. It returns the conflicted file list, how each was resolved, and which verification tier it ran. Re-query afterwards, then proceed. Conflict resolution reads and edits files, so it belongs in a subagent, not here — this conversation only detects, dispatches, and re-checks. If a conflict is genuinely ambiguous — both sides implement the same behavior differently and either choice changes what ships — the subagent leaves it unresolved and says so: stop there, report exactly which files conflict and why, and leave the PR as a draft. Never guess at a merge resolution to reach a green state.
+- **`CONFLICTING`** → dispatch a Sonnet subagent to resolve it: merge `origin/<target_branch>` into the feature branch, resolve every conflict, verify per [Test Execution Scope](../../templates/test-execution-scope.md), commit the merge, push — state the verification tier explicitly in the subagent's prompt, per that template's own rules. It returns the conflicted file list, how each was resolved, and which verification tier it ran. Re-query afterwards, then proceed. Conflict resolution reads and edits files, so it belongs in a subagent, not here — this conversation only detects, dispatches, and re-checks. If a conflict is genuinely ambiguous — both sides implement the same behavior differently and either choice changes what ships — the subagent leaves it unresolved and says so: stop there, report exactly which files conflict and why, and leave the PR as a draft. Never guess at a merge resolution to reach a green state.
 
 Record the outcome in `progress.md` (`merge_check`), so a resumed run doesn't repeat it blindly.
 

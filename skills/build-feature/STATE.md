@@ -57,3 +57,10 @@
 - **Trade-off**: None identified — this only removes a duplicated text block; the behavioral rule and the script's own usage documentation are unchanged.
 - **Date**: 2026-09-12
 - **Status**: active
+
+### AD-008
+- **Decision**: Following human review of the 2026-09-12 `harness-eval` run's 6 disputed claims (`docs/HARNESS-EVALUATION.md`, Skills section, row #5): cut `C011`/`C012` (the `fix-review`/`architecture-evaluate` ownership bullets in Composability) entirely; trim `C033` (Subagent models), `C038` (gh account resolution), and `C099` (Step 15 `CONFLICTING` handling) to pointers at their respective templates (`templates/subagent-models.md`, `templates/gh-account-resolution.md`, `templates/test-execution-scope.md`), dropping the mechanics each template already states in full; keep `C046` (the `gh auth token` credential-hygiene line under Credentials) as-is, unedited.
+- **Reason**: `C011`/`C012` were near-verbatim restatements of `fix-review`'s and `architecture-evaluate`'s own frontmatter `description` fields — content already surfaced automatically in the skill listing. `C033`/`C038`/`C099` restated mechanics (the four model aliases and no-effort-parameter fact; gh-resolution's resolve-once/cache/never-persist-token steps; merge-conflict verification scoping and the "auto-merge produces semantic breakage" rationale) that already live verbatim in the linked templates, so this skill only needed to keep the routing instruction to read/apply each template plus its own behavioral rule, not a copy of the template's content. `C046` was kept because a repo-wide grep of both `CLAUDE.md` (project) and `~/.claude/CLAUDE.md` (user global) found no other statement of this specific `gh auth token` credential rule anywhere in the loaded context — J2's KEEP-POLICY case held up under verification, unlike the other five.
+- **Trade-off**: None identified for the cuts/trims — each replaced restatement with a pointer to the file that already states it in full, and the pointers were confirmed to resolve. `C046` has no trade-off since it wasn't touched.
+- **Date**: 2026-09-12
+- **Status**: active
