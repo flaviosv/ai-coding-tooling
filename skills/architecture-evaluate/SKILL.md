@@ -82,7 +82,7 @@ These apply to every mode.
 - **Default document location is `docs/codebase/`.** Every context file this skill writes lives in `docs/codebase/`. Create the directory if it does not exist. (Package mode is the exception: it writes a `CLAUDE.md` inside the target package directory, not under `docs/codebase/`.)
 - **Reading existing context for input** — when this skill loads a context file to inform its own work (not to write it), read it from `docs/codebase/<file>`.
 - **The folder is the source of truth.** Treat the actual contents of `docs/codebase/` as authoritative. Sweep the real directory and preserve every `.md` present, including files added by hand beyond the canonical nine. Never regenerate or sync only the fixed list while ignoring what's on disk.
-- **Out of scope — owned by `tlc-spec-driven`.** Never create or modify `.specs/STATE.md` (the decisions/handoff memory), feature specs under `.specs/features/`, or `docs/TECH_DEBTS.md` (the `tech-debt-report` ledger). This skill documents the codebase; those are other skills' artifacts. `CONCERNS.md` is the living risk snapshot and is separate from the `TD-XX` ledger — when a concern is already a tracked `TD-XX`, reference it rather than restating it.
+- **Out of scope — owned by `tlc-spec-driven`.** Never create or modify `.specs/STATE.md` (the decisions/handoff memory) or feature specs under `.specs/features/`. This skill documents the codebase; those are other skills' artifacts. `CONCERNS.md` is the living risk snapshot.
 - **No code samples** unless strictly necessary. Use prose, tables, bullets. Code blocks only for directory trees, ASCII or Mermaid diagrams, and exact runnable commands. No method signatures, SQL queries, or implementation examples.
 - **CI/CD belongs in `PIPELINE.md` only.** Other files may reference it but must not contain pipeline specifics.
 - **Diagrams** — author data flows, layer relationships, component interactions, and pipeline stages as **Mermaid** diagrams when the `mermaid-studio` skill is available — delegate creation through it. Fall back to simple box-and-arrow **ASCII** diagrams when `mermaid-studio` is not available. Converting existing ASCII diagrams to Mermaid is always permitted when `mermaid-studio` is present.
@@ -683,7 +683,7 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 - **Always include file paths** — concerns without locations are not actionable.
 - Be specific with measurements ("500ms p95", not "slow"); include reproduction steps for bugs; suggest fix approaches, not just problems. Prioritize by risk/impact.
 - **Exclude:** opinions without evidence, complaints without solutions, future feature ideas, normal TODOs, decisions that work fine, minor style issues.
-- **Tone:** professional, solution-oriented, factual. Coexists with `docs/TECH_DEBTS.md` — reference a tracked `TD-XX` rather than restating it.
+- **Tone:** professional, solution-oriented, factual.
 
 ## Step 12: Write PIPELINE.md
 
@@ -771,8 +771,6 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 **Instructions:**
 
 - Focus on "how code gets from commit to production" — not internal application implementation.
-- No secrets/tokens/values — only describe how secrets are managed.
-- Include only sections with evidence; omit those with no findings.
 
 ## Step 13: Report
 
@@ -842,7 +840,7 @@ Check if present and impacted: `README.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md
 find docs/codebase/ -name '*.md' -type f 2>/dev/null
 ```
 
-Read **every** file — the whole tree, not just the top level, so nested and manually-added docs are covered — compare against the change, mark impacted ones. Files beyond the canonical nine are handled per **Additional Context Files** above: investigate them as input, flag/offer before refreshing rather than silently rewriting. Do **not** modify `docs/TECH_DEBTS.md`, `.specs/STATE.md`, `.specs/features/*`, or other out-of-scope areas (see the `docs/` Traversal Guardrail).
+Read **every** file — the whole tree, not just the top level, so nested and manually-added docs are covered — compare against the change, mark impacted ones. Files beyond the canonical nine are handled per **Additional Context Files** above: investigate them as input, flag/offer before refreshing rather than silently rewriting. Do **not** modify `.specs/STATE.md`, `.specs/features/*`, or other out-of-scope areas (see the `docs/` Traversal Guardrail).
 
 ## Step 7: Apply Updates via docs-writer
 
@@ -872,39 +870,18 @@ No changes needed:
 
 Flag anything that could not be updated and explain what information is needed.
 
-## Incremental Mode Examples
-
-### Example 1: Standard documentation update
+## Incremental Mode Example
 
 User: "update docs"
 
-1. `git diff --name-only HEAD` → `src/api/auth.go`, `src/api/auth_test.go`, `docs/codebase/ARCHITECTURE.md`
-2. No new directories → skip package detection
+1. `git diff --name-only HEAD` → `src/api/auth.go`, `src/api/auth_test.go`; `git diff HEAD --name-only --diff-filter=A` → new files under `app/code/Vendor/Shipping/`
+2. New directory has `registration.php` + `etc/module.xml` → matches this stack's (Magento 2, from `STACK.md`) module pattern → ask to scaffold → user confirms → Package mode internally writes `Shipping/CLAUDE.md` via docs-writer (a decline here would just skip scaffolding and continue at Step 4)
 3. Update inline docs in `src/api/auth.go` (new exported `ValidateToken` undocumented)
 4. Root files: `README.md`, `CLAUDE.md` — not impacted
-5. Holistic sweep: `ARCHITECTURE.md` impacted; `TESTING.md` impacted (new test file); others opened and evaluated, not impacted
+5. Holistic sweep: `ARCHITECTURE.md` and `STRUCTURE.md` impacted (new package); `TESTING.md` impacted (new test file); others opened and evaluated, not impacted
 6. Delegate impacted files to docs-writer
-7. Report: 1 source file, 2 context docs updated
-
-### Example 2: New package detected — user confirms
-
-User: "document my changes"
-
-1. `git diff HEAD --name-only --diff-filter=A` → new files under `app/code/Vendor/Shipping/`
-2. Project is Magento 2 (from `STACK.md`). New dir has `registration.php` + `etc/module.xml` → matches module pattern
-3. Ask to scaffold → user confirms → Package mode internally → `Shipping/CLAUDE.md` via docs-writer
-4. Update inline docs; holistic sweep (`ARCHITECTURE.md`, `STRUCTURE.md` impacted)
-5. New package = structural change → suggest Full-mode re-evaluation
-6. Report
-
-### Example 3: New directory — user declines
-
-User: "sync documentation"
-
-1. New files under `internal/notifications/` (Go monolith)
-2. Ask: "Should `internal/notifications/` get its own CLAUDE.md?"
-3. User: "no, it's just a helper" → skip scaffolding
-4. Continue with inline docs, root files, and the holistic sweep
+7. New package = structural change → suggest Full-mode re-evaluation
+8. Report: 1 source file, 1 new package `CLAUDE.md`, 3 context docs updated
 
 # Mode C — Package
 
