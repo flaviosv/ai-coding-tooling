@@ -7,7 +7,7 @@ Every skill in `skills/` or `extended/` keeps its own `STATE.md` — an append-o
 ## Where it lives
 
 - `skills/<skill>/STATE.md` — skills built in this project.
-- `extended/<skill>/STATE.md` — overlays on a vendor skill; tracks decisions about the overlay only (see [Skill Modification Rules](../CLAUDE.md#skill-modification-rules)).
+- `extended/<skill>/STATE.md` — overlays on a vendor skill; tracks decisions about the overlay only, since a vendor skill's own source is never modified directly.
 
 ## When to write
 

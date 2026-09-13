@@ -15,16 +15,16 @@ import { fileURLToPath } from 'node:url';
 // ---------------------------------------------------------------------------
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.dirname(path.dirname(SCRIPT_DIR)); // repo root (scripts/bin/ is two levels down)
+export const ROOT = path.dirname(path.dirname(SCRIPT_DIR)); // repo root (scripts/bin/ is two levels down)
 
 // Project-local skill installs (scope: local-only, or `add --local`) land under
 // this repo's own .claude/skills/ — tracked directly in the repo, no linking.
-const PROJECT_LOCAL_DIR = '.claude';
-const REFERENCES_DIR = path.join(ROOT, 'references');
+export const PROJECT_LOCAL_DIR = '.claude';
+export const REFERENCES_DIR = path.join(ROOT, 'references');
 
 // Claude Code's global paths (hardcoded — this tool manages Claude Code only).
-const CONFIG_PATH = expandHome('~/.claude/CLAUDE.md');
-const SKILLS_DIR = expandHome('~/.claude/skills');
+export const CONFIG_PATH = expandHome('~/.claude/CLAUDE.md');
+export const SKILLS_DIR = expandHome('~/.claude/skills');
 const STATUSLINE_PATH = expandHome('~/.claude/statusline-command.sh');
 const SETTINGS_PATH = expandHome('~/.claude/settings.json');
 const NPX_AGENT_ID = 'claude-code';
@@ -55,25 +55,25 @@ function expandHome(p) {
 }
 
 // Existence check that does NOT follow symlinks (so broken symlinks count).
-function lexists(p) {
+export function lexists(p) {
   try { fs.lstatSync(p); return true; } catch { return false; }
 }
-function isSymlink(p) {
+export function isSymlink(p) {
   try { return fs.lstatSync(p).isSymbolicLink(); }
   catch { return false; }
 }
-function isDir(p) {
+export function isDir(p) {
   try { return fs.statSync(p).isDirectory(); } catch { return false; }
 }
 
 // Returns the correct install path for a skill: project-local (.claude/skills/) for
 // local-only scope, global SKILLS_DIR otherwise.
-function skillDest(skill) {
+export function skillDest(skill) {
   if (skill.scope === 'local-only') return path.join(ROOT, PROJECT_LOCAL_DIR, 'skills', skill.name);
   return path.join(SKILLS_DIR, skill.name);
 }
 
-function loadJson(rel) {
+export function loadJson(rel) {
   const p = path.join(ROOT, rel);
   try {
     return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -105,7 +105,7 @@ function ensureDir(p) {
 // absolute path, since CLAUDE.md has no "own directory" to resolve relative to.
 // references/ is CLAUDE.md-only; skills keep what they link inside their own directory —
 // see CLAUDE.global.md's "Shared Reference Files" section.
-function referencesLinkPath() {
+export function referencesLinkPath() {
   return path.join(path.dirname(SKILLS_DIR), 'references');
 }
 
@@ -163,6 +163,12 @@ function runNpx(args, label, { cwd } = {}) {
 // Overrides (extended/) overlay
 // ---------------------------------------------------------------------------
 
+// Collision-aware: if the parent skill already ships a references/ dir, the overlay
+// installs alongside it as references.extended/ instead of clobbering/merging into it.
+export function overlayReferencesDestName(targetDir) {
+  return isDir(path.join(targetDir, 'references')) ? 'references.extended' : 'references';
+}
+
 // Apply the extended/<skill>/ overlay into SKILLS_DIR/<skill>/ (or the project-local
 // dest for local-only skills). skill may be a full skill object or a plain
 // {name, scope} for the path resolver.
@@ -181,8 +187,7 @@ function applyOverlay(skill) {
 
   const refSrc = path.join(extDir, 'references');
   if (isDir(refSrc)) {
-    // Collision-aware: if the vendor shipped a references/ dir, use references.extended.
-    const destName = isDir(path.join(targetDir, 'references')) ? 'references.extended' : 'references';
+    const destName = overlayReferencesDestName(targetDir);
     const r = relinkOverlay(refSrc, path.join(targetDir, destName));
     if (r === 'linked' || r === 'dry') ok(`override ${name}: ${destName}/`);
   }
@@ -446,7 +451,7 @@ function cmdDoctor() {
   log(`${c.bold}Doctor${c.reset}`);
   let failures = 0;
 
-  log(`\n${c.bold}Cross-references (references/)${c.reset}`);
+  log(`\n${c.bold}Cross-references (references/ + installed-location link resolution)${c.reset}`);
   try {
     execFileSync('node', [path.join(ROOT, 'scripts/bin/misc/check-references.mjs')], { stdio: 'inherit' });
   } catch {
@@ -724,9 +729,13 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (e) {
-  if (e instanceof UserError) { fail(e.message); process.exit(1); }
-  throw e;
+// Only run the CLI when this file is executed directly — check-references.mjs imports
+// this module's path-resolution helpers without triggering the CLI's own main().
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try {
+    main();
+  } catch (e) {
+    if (e instanceof UserError) { fail(e.message); process.exit(1); }
+    throw e;
+  }
 }

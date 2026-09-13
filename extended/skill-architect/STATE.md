@@ -36,3 +36,10 @@
 - **Trade-off**: Content two skills genuinely share would have to be duplicated or re-extracted into a new shared mechanism; accepted, since every template this repo ever had ended up with a single consumer.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-006
+- **Decision**: Replaced Phase 2.5's `[docs/cli.md](../../docs/cli.md)` link with an instruction to run `fs-harness help` and read the `override` entry.
+- **Reason**: A new `doctor` check (`docs/cli.md` "Notes & gotchas") resolves a skill/overlay file's relative `.md` links against its *installed* `~/.claude/` symlink location, not just its repo location — this file installs as `~/.claude/skills/skill-architect/SKILL.extended.md`, one directory shallower than `extended/skill-architect/` is in the repo, so `../../docs/cli.md` resolved to a nonexistent `~/.claude/docs/cli.md` once installed. Confirmed with a direct `readlink`/`ls` check, not just the new check's own report. A live command reference can't drift the same way a linked doc path can.
+- **Trade-off**: None identified — `fs-harness help` is already documented as the CLI's own source of truth for syntax (`docs/cli.md`), so this loses no information the doc link had.
+- **Date**: 2026-09-13
+- **Status**: active

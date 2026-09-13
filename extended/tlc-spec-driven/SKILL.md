@@ -106,13 +106,3 @@ Tasks sits a tier below the rest deliberately: by the time it runs, Specify and 
 - **Invoked directly by the user** → the phase runs in that conversation, on whatever model the session is using. Nothing here overrides the user's session model or asks them to switch; note the intended tier if it's obviously mismatched and let them decide.
 
 The model never varies with whether a human is reviewing the phase's output. Approval gates decide where a run pauses, not how capable the work is.
-
-## Technical Design Docs → `technical-design-doc-creator`
-
-**Overrides the parent.** The parent's description routes formal technical design docs to
-`create-technical-design-doc` — **that skill does not exist** (no directory, registry entry,
-or trigger anywhere). The actual installed skill is **`technical-design-doc-creator`** (Tech
-Leads Club). When a task needs a formal Technical Design Document (TDD), invoke
-`technical-design-doc-creator`; ignore the parent's stale `create-technical-design-doc`
-pointer. The parent's own Design phase still covers lighter spec-style design notes inline —
-reach for `technical-design-doc-creator` only when a full standalone TDD is wanted.
