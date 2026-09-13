@@ -92,3 +92,10 @@
 - **Trade-off**: No legacy alias: an in-flight run whose `progress.md` or invocation still says `complete-review` / `complete_review` needs that value updated by hand before resuming.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-013
+- **Decision**: Drop the direct `templates/test-execution-scope.md` link in Step 15's `CONFLICTING` handling — state "verify per Test Execution Scope" as a named convention, no file path, no mention of `CLAUDE.md` by name.
+- **Reason**: A direct subagent probe confirmed a dispatched subagent inherits the user's global `CLAUDE.md` in full, including the condensed Test Execution Scope tiers/stop-rule already mirrored there. The one piece of the full template not already inline — the Merges-scope-by-content rule this step actually needs — was folded into that global `CLAUDE.md` directly, so nothing this step depended on was lost by cutting the link. This is not a re-litigation of `docs/HARNESS-EVALUATION.md` row 13's earlier "do not cut" verdict: that review rejected cutting for exactly this gap; closing the gap first is what makes the cut safe now.
+- **Trade-off**: This step's own text no longer names any file for a reader wanting the full rationale behind Test Execution Scope (still available at `~/.claude/references/test-execution-scope.md`, just not linked from here); the guarantee now depends on the user's global `CLAUDE.md` staying loaded and in sync wherever this skill runs.
+- **Date**: 2026-09-13
+- **Status**: active

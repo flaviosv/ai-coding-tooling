@@ -90,7 +90,7 @@ Two machine-wide symlinked folders hold shared `.md` content, kept separate beca
 
 Both symlinks are created by `fs-harness setup`; `fs-harness doctor` validates that every cross-reference on both sides resolves and that neither folder is referenced from the other's consumer.
 
-**Known exception:** `test-execution-scope.md` is needed verbatim by both sides — this file's condensed rules point to the full decision procedure, and `build-feature`/`fix-review` link that same procedure directly when writing subagent-dispatch prompts. Rather than break one of those links or duplicate silently, it exists as two manually-synced copies (`references/test-execution-scope.md` and `templates/test-execution-scope.md`), each flagged with a "known duplicate" note. Reconciling this into one source is a known follow-up, not yet scheduled.
+`test-execution-scope.md` used to be the one file both sides needed — CLAUDE.md's condensed rules plus a full decision procedure that `build-feature`/`fix-review` linked directly for subagent-dispatch prompts. Confirmed by direct test that a dispatched subagent inherits this file's content in full, the only real gap was the Merges rule above (folded in here); every skill that cited the full template needed nothing beyond what's now inline. So it lives only in `references/` — no skill links it, and there is no exception to the mutual-exclusion rule above.
 
 ## MCP Tools
 
@@ -139,6 +139,8 @@ Scope test execution to what the change can actually affect. These rules bind on
 - **Stop when it passes.** Once the targeted run for the change's scope is green, verification is done — do not widen. Widening after green requires naming the specific risk the wider run would catch and why the narrower one could not. "To be thorough", "to be safe", and "while I'm here" are not risks.
 
 Full suite runs are warranted only for genuinely cross-cutting work — shared modules, contracts between components, several subsystems at once — and even then, scope by what the change touches, not by how large the surrounding branch or merge happens to be. When unsure which case applies, take the narrower run and widen only if the blast radius turns out to be broader than expected.
+
+**Merges: scope by what the merge brings in, never by conflict size or commit count.** A merge whose entire merged range is documentation is docs-only, however many commits it spans. A merge that brings in code is at minimum build/typecheck/lint — even when every conflict was in a `.md` file — because auto-merge can produce semantic breakage with no conflict markers at all.
 
 **When delegating, state the scope in the subagent's prompt.** A subagent resolves an unqualified verification instruction to the widest tier it can reach, so never write "run the gate checks", "run the tests", or "verify it works" without naming what to run and what to skip.
 

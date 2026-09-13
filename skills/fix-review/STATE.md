@@ -92,3 +92,10 @@
 - **Trade-off**: Same dependency as AD-011 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-013
+- **Decision**: Drop the three direct `templates/test-execution-scope.md` links (Guardrails' fix-time note, the per-item test-run note in step 5, and the validation-gate note in step 6) — state "Test Execution Scope" as a named convention, no file path, no mention of `CLAUDE.md` by name.
+- **Reason**: Same finding as `build-feature`'s AD-013: a direct subagent probe confirmed a dispatched subagent inherits the user's global `CLAUDE.md` in full, including the condensed Test Execution Scope tiers/stop-rule already mirrored there. This skill's three citations only ever needed those tiers/stop-rule — none of them touch the Merges section, the one piece of the full template not already inline — so nothing was lost by cutting the links.
+- **Trade-off**: These three spots no longer name any file for a reader wanting the full rationale (still available at `~/.claude/references/test-execution-scope.md`, just not linked from here); relies on the user's global `CLAUDE.md` staying loaded wherever this skill runs.
+- **Date**: 2026-09-13
+- **Status**: active

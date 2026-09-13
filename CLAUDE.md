@@ -2,6 +2,8 @@
 
 See [`docs/codebase/`](docs/codebase/) for the project concept, goals, and full agent context set.
 
+`CLAUDE.global.md` at the repo root is this user's global Claude Code directives, not project-scoped content — `fs-harness setup` symlinks it to `~/.claude/CLAUDE.md`, so it loads for every session on this machine, not just this repo. Other docs in this project (skill `STATE.md` files, `docs/HARNESS-EVALUATION.md`) refer to it as "the global `CLAUDE.md`" or "the user's global `CLAUDE.md`" — that name always means this file. This root `CLAUDE.md` file, by contrast, is project-scoped and loads only for sessions working in this repo.
+
 ## Project Nature
 
 This is **not an implementation-heavy codebase**. The vast majority of the project consists of `.md` files: skill definitions (`SKILL.md`), reference documents, configuration (`config/*.json`), and documentation. Treat it accordingly:

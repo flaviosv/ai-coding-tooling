@@ -4,8 +4,6 @@ description: Shared decision procedure for how much to verify after a change —
 type: reference
 ---
 
-> **Known duplicate:** this file is a manually-kept copy of `templates/test-execution-scope.md`. `CLAUDE.global.md` reads from here (`references/`); `skills/build-feature` and `skills/fix-review` read from there (`templates/`) — the two folders may not cross-reference each other (see CLAUDE.md's "Reference vs. Template Files" section). Reconciling this into one file is a known follow-up, not yet scheduled — keep both copies in sync until then.
-
 ## Why this exists
 
 Verification has an asymmetric felt cost. "Did I verify enough?" hurts visibly when the answer is no — a bug ships. "Did I verify too much?" costs nothing anyone in the turn can feel: suite minutes and tokens are invisible from the inside. Left to judgment, that asymmetry ratchets one way, every time.
