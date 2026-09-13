@@ -56,8 +56,7 @@ mutating command with `--dry-run` first.
 - `setup` links `templates/` next to the global skills dir so a `SKILL.md`'s
   `../../templates/<name>.md` references resolve after installation — without it those
   references silently read as missing files. Don't remove that link by hand.
-- Only `local` skills (`skills/`, `.claude/skills/`) may be edited in this repo; vendor skills
-  are read-only — customize via `override` instead.
+- Skill edit permissions are governed by root [`CLAUDE.md`'s Skill Modification Rules](../CLAUDE.md#skill-modification-rules) — customize a vendor skill via `override` instead of editing it directly.
 - Re-run `override <skill>` after `update <skill>` to re-attach the overlay to the new version.
 - Editing hooks: change `config/hooks.json` first, then run `fs-harness hooks` — never hand-edit
   `hooks` in the global `settings.json` directly.
