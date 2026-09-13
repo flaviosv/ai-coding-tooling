@@ -40,12 +40,9 @@ Before appending, scan the target file for semantically equivalent rules. If fou
 
 ## Step 1: Extract the Insight
 
-Parse from the user's message:
 - **Tech** — e.g. `Django`, `Go`. Ask if ambiguous.
 - **Insight** — the rule, pattern, or convention. If too vague to write a precise rule, ask for clarification.
 - **Code snippet** — if the insight references specific syntax and no example was provided, ask whether one would help. Omit if purely conceptual.
-
-Ask clarifying questions before proceeding if any of the above is unclear.
 
 ## Step 2: Public Knowledge Check
 
@@ -86,8 +83,6 @@ Ask: **"Confirm saving to these files? Remove any you don't want or adjust the l
 Do not write until the user confirms.
 
 ## Step 6: Write
-
-For each confirmed target file:
 
 **If the file does not exist**, create it with this header:
 
