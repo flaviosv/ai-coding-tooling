@@ -9,6 +9,9 @@ const PATTERN = process.argv[2] || "token-efficiency-rules";
 
 // Files allowed to keep the string as a historical record, not a live reference.
 const ALLOWED = new Set(["docs/HARNESS-EVALUATION.md", "scripts/bin/misc/check-no-stale-refs.mjs"]);
+// Every skill's STATE.md is the same class of historical record (docs/SKILL-ADR.md) —
+// append-only, so a past decision entry legitimately names a since-removed file.
+const isAllowed = (file) => ALLOWED.has(file) || file.endsWith("/STATE.md") || file === "STATE.md";
 
 let output = "";
 try {
@@ -24,7 +27,7 @@ try {
 const hits = output
   .trim()
   .split("\n")
-  .filter((line) => !ALLOWED.has(line.split(":")[0]));
+  .filter((line) => !isAllowed(line.split(":")[0]));
 
 if (hits.length === 0) {
   console.log(`OK — no references to "${PATTERN}" found (outside the allowed historical record).`);
