@@ -1,10 +1,10 @@
 ---
 name: test-execution-scope
 description: Shared decision procedure for how much to verify after a change — which tier of tests to run, when to stop, and how to state that scope in a subagent prompt — for any skill that ends a change with verification.
-type: template
+type: reference
 ---
 
-> **Known duplicate:** this file is manually kept in sync with `references/test-execution-scope.md`. Skills (`build-feature`, `fix-review`) read from here (`templates/`); `CLAUDE.global.md` reads from there (`references/`) — the two folders may not cross-reference each other (see CLAUDE.md's "Reference vs. Template Files" section). Reconciling this into one file is a known follow-up, not yet scheduled — keep both copies in sync until then.
+> **Known duplicate:** this file is a manually-kept copy of `templates/test-execution-scope.md`. `CLAUDE.global.md` reads from here (`references/`); `skills/build-feature` and `skills/fix-review` read from there (`templates/`) — the two folders may not cross-reference each other (see CLAUDE.md's "Reference vs. Template Files" section). Reconciling this into one file is a known follow-up, not yet scheduled — keep both copies in sync until then.
 
 ## Why this exists
 

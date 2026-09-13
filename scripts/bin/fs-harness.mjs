@@ -21,6 +21,7 @@ const ROOT = path.dirname(path.dirname(SCRIPT_DIR)); // repo root (scripts/bin/ 
 // this repo's own .claude/skills/ — tracked directly in the repo, no linking.
 const PROJECT_LOCAL_DIR = '.claude';
 const TEMPLATES_DIR = path.join(ROOT, 'templates');
+const REFERENCES_DIR = path.join(ROOT, 'references');
 
 // Claude Code's global paths (hardcoded — this tool manages Claude Code only).
 const CONFIG_PATH = expandHome('~/.claude/CLAUDE.md');
@@ -115,6 +116,22 @@ function ensureTemplatesLink() {
   const dest = templatesLinkPath();
   if (lexists(dest)) return 'present';
   return linkSafe(TEMPLATES_DIR, dest);
+}
+
+// CLAUDE.global.md references shared docs as ~/.claude/references/<name>.md — a plain
+// absolute path (CLAUDE.md has no "own directory" to resolve relative to), so this link
+// only needs to exist, never a lexical-normalization workaround like templates/ above.
+// Kept as its own function (mirroring ensureTemplatesLink) because the two folders are
+// deliberately separate: references/ is CLAUDE.md-only, templates/ is skills-only —
+// see CLAUDE.md's "Reference vs. Template Files" section.
+function referencesLinkPath() {
+  return path.join(path.dirname(SKILLS_DIR), 'references');
+}
+
+function ensureReferencesLink() {
+  const dest = referencesLinkPath();
+  if (lexists(dest)) return 'present';
+  return linkSafe(REFERENCES_DIR, dest);
 }
 
 // Create a symlink, never clobbering anything that already exists.
@@ -269,6 +286,7 @@ function cmdSetup() {
   linkSafe(path.join(ROOT, 'CLAUDE.global.md'), CONFIG_PATH);
 
   ensureTemplatesLink();
+  ensureReferencesLink();
 
   log(`\n${c.bold}Skills${c.reset}`);
   for (const skill of skills) installSkill(skill);
@@ -440,6 +458,75 @@ function cmdList() {
     ? `${c.yellow}missing — run \`fs-harness setup\`${c.reset}`
     : isSymlink(tl) ? `${c.green}symlink${c.reset}` : `${c.yellow}real dir (expected a symlink)${c.reset}`;
   log(`\n${c.bold}Shared templates${c.reset}  ${tl}  ${tlState}`);
+
+  // Surface the CLAUDE.md-only references/ link, same reasoning as templates/ above —
+  // see CLAUDE.md's "Reference vs. Template Files" section for why the two are separate.
+  const rl = referencesLinkPath();
+  const rlState = !lexists(rl)
+    ? `${c.yellow}missing — run \`fs-harness setup\`${c.reset}`
+    : isSymlink(rl) ? `${c.green}symlink${c.reset}` : `${c.yellow}real dir (expected a symlink)${c.reset}`;
+  log(`${c.bold}Shared references${c.reset}  ${rl}  ${rlState}`);
+}
+
+// Health check for the harness itself. Not single-purpose: add a new check here
+// whenever a new harness invariant needs validating (another symlink, another
+// install rule, another cross-reference contract) — see CLAUDE.md's fs-harness
+// doctor note. Exits non-zero if anything fails.
+function cmdDoctor() {
+  log(`${c.bold}Doctor${c.reset}`);
+  let failures = 0;
+
+  log(`\n${c.bold}Cross-references (templates/ vs references/)${c.reset}`);
+  try {
+    execFileSync('node', [path.join(ROOT, 'scripts/bin/misc/check-references.mjs')], { stdio: 'inherit' });
+  } catch {
+    failures++;
+  }
+
+  log(`\n${c.bold}Installation${c.reset}`);
+  failures += checkSymlink('CLAUDE.md', CONFIG_PATH, path.join(ROOT, 'CLAUDE.global.md'));
+  failures += checkSymlink('templates/', templatesLinkPath(), TEMPLATES_DIR);
+  failures += checkSymlink('references/', referencesLinkPath(), REFERENCES_DIR);
+
+  const { skills } = loadJson('config/skills.json');
+  for (const skill of skills) {
+    if (skill.installScope === 'none') continue;
+    const dest = skillDest(skill);
+    if (!lexists(dest)) { fail(`skill ${skill.name}: not installed (expected ${dest})`); failures++; }
+    else if (isSymlink(dest) && !fs.existsSync(dest)) { fail(`skill ${skill.name}: broken symlink at ${dest}`); failures++; }
+    else ok(`skill ${skill.name}: installed at ${dest}`);
+
+    if (skill.extended) {
+      const extSkill = path.join(ROOT, 'extended', skill.name, 'SKILL.md');
+      const overlayDest = path.join(dest, 'SKILL.extended.md');
+      if (lexists(extSkill) && !lexists(overlayDest)) {
+        fail(`skill ${skill.name}: extended/${skill.name}/SKILL.md exists but ${overlayDest} is missing — run \`fs-harness override ${skill.name}\``);
+        failures++;
+      }
+    }
+  }
+
+  log(failures
+    ? `\n${c.red}${c.bold}${failures} issue(s) found.${c.reset}`
+    : `\n${c.green}${c.bold}All checks passed.${c.reset}`);
+  if (failures) process.exitCode = 1;
+}
+
+// Verify dest is a symlink resolving to expectedTarget. Returns 0/1 for tallying.
+function checkSymlink(label, dest, expectedTarget) {
+  if (!lexists(dest)) { fail(`${label}: missing symlink at ${dest} — run \`fs-harness setup\``); return 1; }
+  if (!isSymlink(dest)) { fail(`${label}: ${dest} exists but is not a symlink`); return 1; }
+  let real, expectedReal;
+  try {
+    real = fs.realpathSync(dest);
+    expectedReal = fs.realpathSync(expectedTarget);
+  } catch (e) {
+    fail(`${label}: ${dest} is a broken symlink (${e.message})`);
+    return 1;
+  }
+  if (real !== expectedReal) { fail(`${label}: ${dest} points to ${real}, expected ${expectedReal}`); return 1; }
+  ok(`${label}: ${dest} -> ${expectedTarget}`);
+  return 0;
 }
 
 // Undo setup: remove the global config symlink, uninstall the skills setup
@@ -452,6 +539,7 @@ function cmdDestroy() {
   log(`\n${c.bold}Global config${c.reset}`);
   removeConfigSymlink(CONFIG_PATH);
   unlinkIfSymlink(templatesLinkPath());
+  unlinkIfSymlink(referencesLinkPath());
 
   log(`\n${c.bold}Skills${c.reset}`);
   for (const skill of skills) uninstallSkill(skill);
@@ -605,6 +693,7 @@ ${c.bold}Commands:${c.reset}
                                   Pass a comma- or space-separated list, or --all for every vendor skill.
   override <skill>               Scaffold extended/<skill>/ and apply the overlay
   list                           Show each skill's source and install state
+  doctor                         Health check: cross-references, symlinks, skill installs
   statusline [--force]           Install the Claude Code status line script
   hooks                          Sync config/hooks.json into settings.json (run by setup)
   help                           Show this message
@@ -659,6 +748,7 @@ function main() {
       break;
     }
     case 'list': cmdList(); break;
+    case 'doctor': cmdDoctor(); break;
     case 'statusline': cmdStatusline(flags.force); break;
     case 'hooks': cmdHooks(); break;
     default:

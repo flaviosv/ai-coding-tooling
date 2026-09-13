@@ -81,6 +81,17 @@ in your context — do NOT re-read it. Re-read only when:
 
 After a re-read, the updated content becomes the cached version — do not re-read again unless another trigger occurs.
 
+## Reference vs. Template Files
+
+Two machine-wide symlinked folders hold shared `.md` content, kept separate because their consumers resolve paths differently and must never depend on the other's folder:
+
+- `~/.claude/references/` → this project's `references/` — files **this `CLAUDE.md` itself** links to, via absolute `~/.claude/references/<name>.md` paths (e.g. `gh-account-resolution.md`). CLAUDE.md never links `templates/`.
+- `~/.claude/templates/` → this project's `templates/` — files **skills** link to, via relative `../../templates/<name>.md` (or `../../../templates/<name>.md` from a skill's own `references/` subfolder). Skills never link `~/.claude/references/`.
+
+Both symlinks are created by `fs-harness setup`; `fs-harness doctor` validates that every cross-reference on both sides resolves and that neither folder is referenced from the other's consumer.
+
+**Known exception:** `test-execution-scope.md` is needed verbatim by both sides — this file's condensed rules point to the full decision procedure, and `build-feature`/`fix-review` link that same procedure directly when writing subagent-dispatch prompts. Rather than break one of those links or duplicate silently, it exists as two manually-synced copies (`references/test-execution-scope.md` and `templates/test-execution-scope.md`), each flagged with a "known duplicate" note. Reconciling this into one source is a known follow-up, not yet scheduled.
+
 ## MCP Tools
 
 ### Context7 — External Documentation
@@ -105,7 +116,7 @@ When a new skill is created, check whether it needs blacklisting in any client-s
 
 ## GitHub CLI (`gh`) Accounts
 
-Before any `gh` call, if more than one account may be logged in, resolve the correct one first — never trust `gh auth status`'s "active" marker (a parallel process can flip it at any time), and never use `gh auth switch` to fix it (that mutates the same global state, for every process on the machine). Full algorithm: `~/.claude/templates/gh-account-resolution.md`.
+Before any `gh` call, if more than one account may be logged in, resolve the correct one first — never trust `gh auth status`'s "active" marker (a parallel process can flip it at any time), and never use `gh auth switch` to fix it (that mutates the same global state, for every process on the machine). Full algorithm: `~/.claude/references/gh-account-resolution.md`.
 
 ## Worktree Scope
 
@@ -121,7 +132,7 @@ The same isolation guard also constrains **how** commands are written, not just 
 
 ### Test Execution Scope
 
-Scope test execution to what the change can actually affect. These rules bind on their own; the full decision procedure — tiers, merges, delegation — is in `~/.claude/templates/test-execution-scope.md`, which is worth loading whenever the scope is not obvious from the three rules below.
+Scope test execution to what the change can actually affect. These rules bind on their own; the full decision procedure — tiers, merges, delegation — is in `~/.claude/references/test-execution-scope.md`, which is worth loading whenever the scope is not obvious from the three rules below.
 
 - **Docs-only changes run no tests.** A change confined to `.md`, `docs/`, `.specs/`, comments, or config with no runtime effect is verified by its content being correct — not by a green suite.
 - **Punctual changes run only their own tests** — the specific test file(s), module, or targeted pattern covering the affected code. Never the full suite (unit + integration + e2e). Fixing review findings from GitHub, and resolving merge conflicts, both normally land here.

@@ -28,6 +28,8 @@
 !skills/**
 !templates
 !templates/**
+!references
+!references/**
 !CLAUDE.global.md
 !README.md
 !LICENSE.md

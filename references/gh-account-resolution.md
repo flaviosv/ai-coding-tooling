@@ -1,7 +1,7 @@
 ---
 name: gh-account-resolution
 description: Shared gh CLI account resolution — identify and scope every gh/git remote call to the correct authenticated account when more than one is logged in, without relying on gh's mutable global active-account state.
-type: template
+type: reference
 ---
 
 ## Why this exists
