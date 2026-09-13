@@ -22,3 +22,10 @@
 - **Trade-off**: Extension 4's wording now assumes `subagent-dispatch` stays installed; removing that skill without updating this overlay would leave a stale pointer.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-004
+- **Decision**: Phase 2.4's `<technology>-<skill-name>.md` rule gains an exception: a skill whose references split by scope declares `<technology>.<variant>.md` naming in its own `SKILL.md` (e.g. `code-review`'s `fastapi.code.md`, `fastapi.tests.md`), and the declaration wins. Examples no longer name the removed `tests-code-review`.
+- **Reason**: `code-review` absorbed `tests-code-review` and `complete-review` and now names checklists by scope suffix; an overlay still mandating `<tech>-<skill-name>.md` would steer new skills and `tech-reference-add` toward files that skill never loads.
+- **Trade-off**: Two naming patterns exist repo-wide instead of one; the default still applies to every skill that doesn't declare otherwise.
+- **Date**: 2026-09-13
+- **Status**: active

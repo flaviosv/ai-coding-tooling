@@ -1,6 +1,6 @@
 # Software Design Principles — Review Checklist
 
-Checklist for evaluating core design principles during code review. Use alongside `clean-code-checklist.md`.
+Checklist for evaluating core design principles during code review. Use alongside `clean-code-checklist.code.md`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Clean Code Review Checklist
 
-Focused checklist for evaluating clean code principles. Use alongside `review-checklist.md` — this file goes deeper on readability, naming, structure, and maintainability.
+Focused checklist for evaluating clean code principles. Use alongside `review-checklist.code.md` — this file goes deeper on readability, naming, structure, and maintainability.
 
 ---
 

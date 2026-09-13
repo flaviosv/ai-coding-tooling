@@ -1,9 +1,9 @@
 ---
 name: build-feature
-description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs complete-review and fix-review, syncs architecture docs, then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling, the one step that runs live in this conversation — and, when the project uses Claude Design, closes by handing design-sync back to the user as a required follow-up it cannot run itself, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/complete-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
+description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs code-review (publishing its findings) and fix-review, syncs architecture docs, then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling, the one step that runs live in this conversation — and, when the project uses Claude Design, closes by handing design-sync back to the user as a required follow-up it cannot run itself, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/code-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use fix-review directly).
 metadata:
   author: Flavio Studart
-  version: "1.8.2"
+  version: "1.9.0"
 ---
 
 # Build Feature
@@ -21,15 +21,15 @@ Required, never inferred — ask if missing, do not guess:
 Optional:
 
 - `target_branch` — the PR's merge target. Defaults to `base_branch` when omitted (a superset of a same-branch delivery, not a different default).
-- `human_review` — `yes` (default) or `no`. `yes` pauses after Specify, after Design (when Design runs at all), and after `complete-review` publishes its findings (already posted to GitHub as a pending review by that point — see Step 11), waiting for approval before continuing each time. `no` runs the whole pipeline without pausing anywhere this parameter controls.
-- `human_review_exclude` — comma-separated subset of `spec`, `design`, `complete-review` to skip pausing on even when `human_review=yes` (e.g. `human_review_exclude=complete-review`). Ignored when `human_review=no`.
+- `human_review` — `yes` (default) or `no`. `yes` pauses after Specify, after Design (when Design runs at all), and after `code-review` publishes its findings (already posted to GitHub as a pending review by that point — see Step 11), waiting for approval before continuing each time. `no` runs the whole pipeline without pausing anywhere this parameter controls.
+- `human_review_exclude` — comma-separated subset of `spec`, `design`, `code-review` to skip pausing on even when `human_review=yes` (e.g. `human_review_exclude=code-review`). Ignored when `human_review=no`.
 
 ## Guardrails
 
 ### Composability — do not reimplement what other skills own
 
 - tlc-spec-driven owns Specify/Design/Tasks/Execute's own internal mechanics (auto-sizing, atomic commits, gate checks, the Verifier). Invoke it; don't duplicate its logic.
-- `complete-review` owns the review-and-publish mechanics — it always publishes findings as a pending GitHub review immediately (see Step 11); this skill never passes it `human_review` and never uses its Publish Mode. This skill's own `human_review` only decides whether *this* skill pauses, in its own Step 11 checkpoint, before proceeding to `fix-review`. When that checkpoint doesn't pause, this skill also submits the pending review itself, right there in Step 11 — `complete-review` never submits its own reviews, by design (see its Guardrails), and `fix-review` refuses to act on a review still sitting `PENDING` (its own Step 1 rule 3), so without a human around to click "submit" on GitHub, this skill has to do it.
+- `code-review` owns the review-and-publish mechanics — Step 11 always invokes it with `post: true`, so it publishes findings as a pending GitHub review immediately; this skill never passes it `findings_path` and never uses its Publish Mode. This skill's own `human_review` only decides whether *this* skill pauses, in its own Step 11 checkpoint, before proceeding to `fix-review`. When that checkpoint doesn't pause, this skill also submits the pending review itself, right there in Step 11 — `code-review` never submits its own reviews, by design (see its Guardrails), and `fix-review` refuses to act on a review still sitting `PENDING` (its own Step 1 rule 3), so without a human around to click "submit" on GitHub, this skill has to do it.
 - `not-your-babysitter`: the orchestrator (this conversation) adopts it as a standing mode for genuinely unplanned situations — a tool failure, a dead end, an ambiguity this skill never anticipated. It does not gate anything this skill explicitly defines: `human_review`'s named checkpoints are planned, not the kind of thing not-your-babysitter's stops are for. The two never compete for the same decision.
 
 ### State ownership
@@ -42,7 +42,7 @@ Write and update `progress.md` with `scripts/progress.mjs` — see the script's 
 
 When handing work to a subagent, pass resolved metadata and file **paths** (branch name, feature folder path, "read `spec.md` at this path") — never inline a file's bulk content into this conversation just to relay it. Never `Read` a file for the sole purpose of pasting its contents into an `Agent` prompt: that pays for the content twice, once on the way in and again in every cached turn afterward. Each subagent does its own targeted reads inside its own isolated context; the orchestrator stays small by construction, not by discipline alone.
 
-This binds every step, including the ones that delegate to `complete-review` and `fix-review`. If a sub-skill's mechanics call for reading bulk file content, editing source files, or looping over a list of items one tool call at a time, that work belongs in a dispatched subagent — not here. This conversation's own tool calls are limited to git/gh state, `progress.md`, dispatching, and the checkpoints.
+This binds every step, including the ones that delegate to `code-review` and `fix-review`. If a sub-skill's mechanics call for reading bulk file content, editing source files, or looping over a list of items one tool call at a time, that work belongs in a dispatched subagent — not here. This conversation's own tool calls are limited to git/gh state, `progress.md`, dispatching, and the checkpoints.
 
 ### Worktree
 
@@ -77,7 +77,7 @@ The model a step runs on **never depends on `human_review`**. That parameter dec
 
 Every step below that spawns a subagent directly via the `Agent` tool — Steps 3, 6a, 6b, 7, 9, 11, 12, 13, and Step 15's conflict-resolution dispatch — waits for it the same way: **load the `subagent-dispatch` skill's wait protocol before the first dispatch, not once the first wait has already started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. This applies whether the step dispatches one subagent or several; the default single-subagent case is exactly what the protocol already covers, not a special case of it. Step 3 is the one exception in *timing*, not mechanism: it's dispatched at the start of Step 3 but not collected until just before Step 6a starts, once Step 4's grilling session has run its course — the protocol still governs how that eventual wait happens.
 
-Steps 11 and 12 dispatch a subagent that then invokes `complete-review`/`fix-review` via the `Skill` tool **inside its own context** — never via the `Skill` tool in this conversation. Those two skills carry the heaviest mechanics in the pipeline (publishing dozens of review comments; fetching threads, classifying and fixing every item inline, running the validation gate, pushing, and replying per thread), and invoking them here runs all of it in the orchestrator's context, at its largest, in the run's final steps. Measured across four real runs, that single mistake accounted for 39–60% of the orchestrator's entire token cost — in one case 83M tokens to move 80 comments onto a PR, more than the feature's own implementation step. `complete-review` invoked this way costs the orchestrator ~3M for the same work.
+Steps 11 and 12 dispatch a subagent that then invokes `code-review`/`fix-review` via the `Skill` tool **inside its own context** — never via the `Skill` tool in this conversation. Those two skills carry the heaviest mechanics in the pipeline (publishing dozens of review comments; fetching threads, classifying and fixing every item inline, running the validation gate, pushing, and replying per thread), and invoking them here runs all of it in the orchestrator's context, at its largest, in the run's final steps. Measured across four real runs, that single mistake accounted for 39–60% of the orchestrator's entire token cost — in one case 83M tokens to move 80 comments onto a PR, more than the feature's own implementation step. `code-review` publishing a PR review invoked this way costs the orchestrator ~3M for the same work.
 
 Step 4 (grilling) is not a subagent dispatch and the wait protocol does not apply to it: it runs directly in this conversation via the `Skill` tool, and each round ends this turn waiting for the user's actual reply — the same mechanism as the `spec`/`design` checkpoints in Steps 6a/6b, not a background task with a stall ceiling.
 
@@ -118,7 +118,7 @@ Before anything else, look for `.specs/features/<task_id>-<slug>/progress.md` (d
 - **Not found** → fresh run, continue to Step 1.
 - **Found, status `complete`, PR merged or closed** → this is the cleanup case described under Worktree above; report and stop, nothing else to do for this spec.
 - **Found, status `complete`, PR still open** → this is a later re-invocation for fresh review comments, not a new delivery. Invoke `fix-review` directly for the tracked PR, working inside the existing worktree (already checked out, no new one needed — see `references/progress-schema.md` for exactly what `progress.md` records to make this possible without re-deriving anything). Once it returns, run Step 13 (architecture-evaluate) if it reports any commits pushed, then report and stop. Do not re-mark the PR ready (it already is) and do not touch Steps 1–12 or 14–15.
-- **Found, status `in-progress`** → resume at the first step `progress.md` marks incomplete, using the state it recorded (worktree path, branch name, PR number, resolved gh login, feature folder path, which of `spec`/`design`/`complete-review` already completed or is mid-pause). Grilling (Step 4) has no partial-round state to recover — nothing is logged for it until the session concludes — so an interruption mid-grilling simply resumes by restarting Step 4 from round 1; Step 3's quick-gate result, if it already reported back before the interruption, is not redispatched. See `references/progress-schema.md` for the exact field set.
+- **Found, status `in-progress`** → resume at the first step `progress.md` marks incomplete, using the state it recorded (worktree path, branch name, PR number, resolved gh login, feature folder path, which of `spec`/`design`/`code-review` already completed or is mid-pause). Grilling (Step 4) has no partial-round state to recover — nothing is logged for it until the session concludes — so an interruption mid-grilling simply resumes by restarting Step 4 from round 1; Step 3's quick-gate result, if it already reported back before the interruption, is not redispatched. See `references/progress-schema.md` for the exact field set.
 
 ## Step 1: Worktree and Branch
 
@@ -157,7 +157,7 @@ Derive `<slug>` (kebab-case, 2–4 words) from `description`. Create `.specs/fea
 
 First, collect Step 3's quick-gate result (per the Agent Wait Protocol) if it hasn't already reported back — a multi-round grilling session almost always outlasts it, so this is typically an instant check, not a real wait. Then spawn a Sonnet subagent to run tlc-spec-driven's Specify phase against the pre-created feature folder path. Writes `spec.md`.
 
-**Checkpoint — `spec`:** if `human_review=yes` and `spec` is not in `human_review_exclude`, show `spec.md` to the user and end this turn, waiting for their next message before continuing to 7b — never invent an approval or continue speculatively. Otherwise continue immediately. (Every other checkpoint in this skill — `design` in 7b, `complete-review` in Step 11 — pauses the same way.)
+**Checkpoint — `spec`:** if `human_review=yes` and `spec` is not in `human_review_exclude`, show `spec.md` to the user and end this turn, waiting for their next message before continuing to 7b — never invent an approval or continue speculatively. Otherwise continue immediately. (Every other checkpoint in this skill — `design` in 7b, `code-review` in Step 11 — pauses the same way.)
 
 ## Step 6b: Design (Sonnet)
 
@@ -181,25 +181,25 @@ Spawn a Sonnet subagent to run tlc-spec-driven's Execute phase for every task in
 
 ## Step 10: Push Execute's Commits and Rewrite the PR Description
 
-`git push` — Step 9's commits are local-only until this point; push them now so the PR (and `complete-review`, next) reflect what Execute actually did, not a stale remote branch.
+`git push` — Step 9's commits are local-only until this point; push them now so the PR (and `code-review`, next) reflect what Execute actually did, not a stale remote branch.
 
 Then rewrite the PR description, sourced from existing artifacts, invent nothing new: **Problem** ← `spec.md`; **What was done** ← `tasks.md`'s completed checklist and `commits.md`; **Test results** ← `validation.md` (the Verifier's report). `gh pr edit <PR> --body "..."`.
 
-## Step 11: complete-review (Sonnet)
+## Step 11: code-review (Sonnet)
 
-Spawn a Sonnet subagent whose only job is to invoke `complete-review` for this PR — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login. It returns a structured result: PR URL, each skill's complexity banner, finding counts, and the findings file path. The findings themselves stay on disk and in that subagent's context; this conversation never reads them.
+Spawn a Sonnet subagent whose only job is to invoke `code-review` for this PR with `post: true` (default `scope: both`) — pass the PR number, repo, branch name, worktree path, and the run's resolved gh login. It returns `code-review`'s compact publishing result: PR URL, the complexity banner, finding counts per scope, and the collapsed/re-anchored/unpostable counts. The findings themselves stay in that subagent's context; this conversation never reads them.
 
-Inside that subagent, `complete-review` is invoked with no `human_review` parameter, ever — it always publishes its findings as a pending GitHub review immediately, its own unchanged default behavior. Findings are never held back from GitHub waiting on this skill's own approval step.
+Inside that subagent, `code-review` is always invoked with `post: true` and never with `findings_path` — it publishes its findings as a pending GitHub review immediately. Omitting `post` is a real bug, not a default: a PR review without it only reports locally, inside a subagent nobody reads, and Step 12 then finds nothing to fix. Findings are never held back from GitHub waiting on this skill's own approval step.
 
-Never post, append, or verify review comments one tool call at a time from this conversation. If `complete-review` reports it could not publish, dispatch a subagent to retry the posting — do not take the loop over yourself.
+Never post, append, or verify review comments one tool call at a time from this conversation. If `code-review` reports it could not publish, dispatch a subagent to retry the posting — do not take the loop over yourself.
 
-**Checkpoint — `complete-review`:** if `human_review=yes` and `complete-review` not in `human_review_exclude`, show the returned summary (PR URL, each skill's complexity banner, finding counts) to the user and end this turn, waiting for their next message before continuing to Step 12 — the findings are already posted to the PR as a pending review at this point, so the pause is the user's chance to look them over on GitHub, **submit the review** (required — `fix-review` refuses to act on a review still `PENDING`, its own Step 1 rule 3), and add their own comments to it before `fix-review` runs. Never invent an approval or continue speculatively.
+**Checkpoint — `code-review`:** if `human_review=yes` and `code-review` not in `human_review_exclude`, show the returned summary (PR URL, complexity banner, finding counts) to the user and end this turn, waiting for their next message before continuing to Step 12 — the findings are already posted to the PR as a pending review at this point, so the pause is the user's chance to look them over on GitHub, **submit the review** (required — `fix-review` refuses to act on a review still `PENDING`, its own Step 1 rule 3), and add their own comments to it before `fix-review` runs. Never invent an approval or continue speculatively.
 
-Otherwise (`human_review=no`, or `complete-review` excluded) there's no human around to submit it, so submit the pending review here, on `complete-review`'s behalf, before continuing to Step 12:
+Otherwise (`human_review=no`, or `code-review` excluded) there's no human around to submit it, so submit the pending review here, on `code-review`'s behalf, before continuing to Step 12:
 
-1. Resolve the pending review's node ID under the run's own resolved gh login — same query as `complete-review`'s own Posting Mechanics step 1 (`reviews(first: 1, states: PENDING, author: $me)`), `$me` being the login this run already resolved at the start (see `gh` account resolution above).
-2. If none is found (`complete-review` hit a full failure and posted nothing — see its own Guardrails — or it was already submitted by an earlier, interrupted run of this same step), skip submission and go straight to Step 12; there's nothing left for it to act on either, and it will report that itself.
-3. Otherwise submit it as `COMMENT` — never `APPROVE` or `REQUEST_CHANGES`, this skill isn't rendering a review verdict, only making `complete-review`'s already-decided findings visible so `fix-review` can see them:
+1. Resolve the pending review's node ID under the run's own resolved gh login — same query as `code-review`'s own Posting Mechanics step 1 (`references/posting-mechanics.md`) (`reviews(first: 1, states: PENDING, author: $me)`), `$me` being the login this run already resolved at the start (see `gh` account resolution above).
+2. If none is found (`code-review` hit a full failure and posted nothing — see its `references/pr-publishing.md` — or it was already submitted by an earlier, interrupted run of this same step), skip submission and go straight to Step 12; there's nothing left for it to act on either, and it will report that itself.
+3. Otherwise submit it as `COMMENT` — never `APPROVE` or `REQUEST_CHANGES`, this skill isn't rendering a review verdict, only making `code-review`'s already-decided findings visible so `fix-review` can see them:
    ```
    gh api graphql -f query='
      mutation($reviewId: ID!) {
@@ -269,7 +269,7 @@ User: `/build-feature base_branch=main task_id=PROJ-42 description="add rate lim
 10. Step 8: spec artifacts committed and pushed — the branch's first real commit, so the draft PR #512 opens now, body sourced from `spec.md`/`tasks.md`
 11. Step 9: Execute runs all tasks, Verifier passes
 12. Step 10: Execute's commits pushed; PR #512's description rewritten with problem/what-was-done/test-results
-13. Step 11: subagent invokes `complete-review` (no `human_review` param) → posts 9 findings as one pending review on PR #512 immediately → returns counts and banners; summary shown to user, who reviews and submits the pending review on GitHub, then approves in this conversation → continues to Step 12
+13. Step 11: subagent invokes `code-review` with `post: true` → posts 9 findings as one pending review on PR #512 immediately → returns counts and the banner; summary shown to user, who reviews and submits the pending review on GitHub, then approves in this conversation → continues to Step 12
 14. Step 12: subagent invokes `fix-review`, which fixes 6 of 9 findings, replies to and resolves them, leaves 1 answered-only and 2 blocked with reasons → returns those counts and the pushed SHAs
 15. Step 13: `architecture-evaluate` Incremental mode updates 2 already-tracked files → committed and pushed
 16. Step 14: no `.design-sync/config.json` at the worktree root → skipped silently
@@ -279,7 +279,7 @@ User: `/build-feature base_branch=main task_id=PROJ-42 description="add rate lim
 
 User: `/build-feature base_branch=main task_id=PROJ-43 description="cache invalidation for job listings" human_review=no`
 
-Same steps, but 7a/7b/12 never pause — Specify and Design proceed immediately without showing anything to the user first, and Step 11's checkpoint doesn't pause either (`complete-review` still publishes its pending review immediately either way — that part never depended on `human_review`). With no human around to submit it, Step 11 submits the pending review itself (`COMMENT` event, via `gh api graphql`) before Step 12 (`fix-review`) starts right after — otherwise `fix-review` would find only a `PENDING` review and refuse to run.
+Same steps, but 7a/7b/12 never pause — Specify and Design proceed immediately without showing anything to the user first, and Step 11's checkpoint doesn't pause either (`code-review` still publishes its pending review immediately either way — that part never depended on `human_review`). With no human around to submit it, Step 11 submits the pending review itself (`COMMENT` event, via `gh api graphql`) before Step 12 (`fix-review`) starts right after — otherwise `fix-review` would find only a `PENDING` review and refuse to run.
 
 ### Example 3: Resuming after an interruption
 

@@ -16,11 +16,6 @@
       "scope": "built"
     },
     {
-      "name": "complete-review",
-      "source": "local",
-      "scope": "built"
-    },
-    {
       "name": "disk-evaluate",
       "source": "local",
       "scope": "built"
@@ -107,11 +102,6 @@
       "name": "technical-design-doc-creator",
       "source": "tech-leads-club",
       "scope": "tech-leads-club"
-    },
-    {
-      "name": "tests-code-review",
-      "source": "local",
-      "scope": "built"
     },
     {
       "name": "tlc-spec-driven",

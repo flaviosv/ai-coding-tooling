@@ -110,9 +110,8 @@ Maintained here and installed globally via `fs-harness setup` / `fs-harness add`
 | Skill | Description |
 |---|---|
 | **architecture-evaluate** | Creates and incrementally syncs the project context docs in `docs/codebase/` (PROJECT, STACK, STRUCTURE, ARCHITECTURE, CONVENTIONS, INTEGRATIONS, TESTING, CONCERNS, PIPELINE) that agents load at session start. Full mode maps the whole codebase; Incremental mode syncs only what changed (and root files like this README); Package mode documents a single module. |
-| **code-review** | Performs comprehensive code reviews covering architecture, performance, code quality, API design, and security. Reviews local workspace changes, a GitHub PR, or a range of commits (multi-commit mode). Also performs standalone Performance Audits (full-codebase P0–P3 findings report) when triggered by performance audit phrases. |
+| **code-review** | Reviews implementation code and tests together (or either alone, via `scope`) — architecture, code quality, performance, regression, security, and requirements; test coverage, gaps, isolation, clarity, and maintainability. Reviews local workspace changes, a range of commits, or a GitHub PR; with `post: true` publishes every finding as one pending PR review, and Batch Mode sweeps every open PR awaiting your review. Also performs standalone Performance Audits (full-codebase P0–P3 findings report). |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
-| **tests-code-review** | Reviews test code quality, coverage patterns, and maintainability. Supports local workspace, GitHub PR, and multi-commit review modes. |
 
 > ⭐ **Highlighted skills:**
 >

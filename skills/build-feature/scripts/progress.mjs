@@ -77,7 +77,7 @@ if (args.init) {
 
 - spec: n/a
 - design: n/a
-- complete_review: n/a
+- code_review: n/a
 
 ## Step Log
 

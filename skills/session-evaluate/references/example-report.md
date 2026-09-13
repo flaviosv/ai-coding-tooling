@@ -15,7 +15,7 @@ A full, real Step 8 output (from a `build-feature` session, Large tier, Parallel
 | `~/.claude/CLAUDE.md` | Mistakes and corrections | 3 | P2 | Manual shell backgrounding (`&`/`disown`) stacked with `run_in_background: true` produces a false completion signal | 1 self-corrected mistake; stated fix never actually executed | Structural | Pending |
 | — (built-in `design`/design-sync) | Token consumption | 4 | P3 | Repeated, oversized reads of design-sync bundle/config files | 11×/9× repeated reads; 162.9k tokens = 68% of all Read spend; 2 failed path-guess reads | Structural (inferred) | Informational |
 | — (built-in `DesignSync` tool) | Runtime | 5 | P3 | Independent screenshot reads issued one-per-turn during design review | 143 single-call turns inside one 30m07s turn | Structural (inferred) | Informational |
-| — (execution deviation, `complete-review`) | Workflow and orchestration | 6 | P3 | Duplicate review-comment posting required 9 serial deletes after harness blocked the batched delete | 156 turns, 23.0M tokens, 9 serial `deletePullRequestReviewComment` calls | Incidental | Informational |
+| — (execution deviation, `code-review`) | Workflow and orchestration | 6 | P3 | Duplicate review-comment posting required 9 serial deletes after harness blocked the batched delete | 156 turns, 23.0M tokens, 9 serial `deletePullRequestReviewComment` calls | Incidental | Informational |
 
 ## Verification
 
@@ -29,7 +29,7 @@ A full, real Step 8 output (from a `build-feature` session, Large tier, Parallel
 | build-feature | 1 | 5m04s | 12.8M | 22.1k | 30 | 1, 202.5k |
 | grilling ⚠ | 1 | 3h39m | 118.2M | 359.3k | 234 | 41, 314.4M |
 
-⚠ **grilling** #1: also contains subagent work for `tlc-spec-driven`, `fix-review`, `complete-review`, `architecture-evaluate`, `code-review`, and 12 others — this window's own totals are not this skill's real cost. See the digest's `Subagent spend by named skill/phase` table for the real per-skill breakdown (e.g. `tlc-spec-driven`: 5 runs, 52.2M tokens, 415 turns; `fix-review`: 2 runs, 30.9M tokens, 287 turns).
+⚠ **grilling** #1: also contains subagent work for `tlc-spec-driven`, `fix-review`, `architecture-evaluate`, `code-review`, and 13 others — this window's own totals are not this skill's real cost. See the digest's `Subagent spend by named skill/phase` table for the real per-skill breakdown (e.g. `tlc-spec-driven`: 5 runs, 52.2M tokens, 415 turns; `fix-review`: 2 runs, 30.9M tokens, 287 turns).
 
 **Full test-suite runs:**
 
@@ -114,7 +114,7 @@ Both ran inside the `tlc-spec-driven` Execute-phase subagent's Build gate after 
 
 **5. Independent screenshot reads issued one-per-turn during design review** (Runtime, P3) — same attribution, built-in `DesignSync` tool.
 
-**6. Duplicate review-comment posting required 9 serial deletes after the harness blocked a batched delete** (Workflow and orchestration, P3) — execution deviation from already-correct guidance in `complete-review`, compounded by a harness permission-classifier block; not a documentation gap.
+**6. Duplicate review-comment posting required 9 serial deletes after the harness blocked a batched delete** (Workflow and orchestration, P3) — execution deviation from already-correct guidance in `code-review`, compounded by a harness permission-classifier block; not a documentation gap.
 
 ---
 

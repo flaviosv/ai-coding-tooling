@@ -1,6 +1,6 @@
 ---
 name: subagent-dispatch
-description: Reference for creating a subagent via the `Agent` tool — the two hard facts about the tool (model is one of four literal aliases, never a versioned ID; no reasoning-effort parameter), the four-field dispatch-prompt contract (completion condition, observability prefix/scale estimate, return shape, delegation depth), the protocol for waiting on a dispatched subagent without polling or false-stall detection, and this project's model-tier matrix for named pipeline sites. Load before writing an `Agent` call, dispatching or waiting on a subagent, or setting its `model` — in build-feature, code-review, complete-review, fix-review, tests-code-review, architecture-evaluate, session-evaluate, tlc-spec-driven, or an ad hoc dispatch. Do NOT use for designing a new named, persistent subagent persona (frontmatter, system prompt, tool grants) — that's subagent-creator; this governs how an already-decided dispatch is written and waited on, not whether a new subagent type should exist.
+description: Reference for creating a subagent via the `Agent` tool — the two hard facts about the tool (model is one of four literal aliases, never a versioned ID; no reasoning-effort parameter), the four-field dispatch-prompt contract (completion condition, observability prefix/scale estimate, return shape, delegation depth), the protocol for waiting on a dispatched subagent without polling or false-stall detection, and this project's model-tier matrix for named pipeline sites. Load before writing an `Agent` call, dispatching or waiting on a subagent, or setting its `model` — in build-feature, code-review, fix-review, architecture-evaluate, session-evaluate, tlc-spec-driven, or an ad hoc dispatch. Do NOT use for designing a new named, persistent subagent persona (frontmatter, system prompt, tool grants) — that's subagent-creator; this governs how an already-decided dispatch is written and waited on, not whether a new subagent type should exist.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
@@ -65,7 +65,7 @@ The third, sharper failure: treating a quiet transcript as evidence of a stall. 
 
 ## This Project's Model Matrix
 
-The four items above apply to any `Agent` dispatch, anywhere. If the dispatch site is one of this project's own named pipeline steps — `build-feature`, `code-review`, `complete-review`, `fix-review`, `tests-code-review`, `architecture-evaluate`, `session-evaluate`, or `tlc-spec-driven` — read [references/model-matrix.md](references/model-matrix.md) for the exact tier required at that specific site before setting `model`. A dispatch outside that list has no matrix row; pick the tier the work actually needs and apply the two hard facts above.
+The four items above apply to any `Agent` dispatch, anywhere. If the dispatch site is one of this project's own named pipeline steps — `build-feature`, `code-review`, `fix-review`, `architecture-evaluate`, `session-evaluate`, or `tlc-spec-driven` — read [references/model-matrix.md](references/model-matrix.md) for the exact tier required at that specific site before setting `model`. A dispatch outside that list has no matrix row; pick the tier the work actually needs and apply the two hard facts above.
 
 ## Guardrails
 

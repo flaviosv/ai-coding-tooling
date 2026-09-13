@@ -54,16 +54,16 @@ If no, continue directly to Step 3.
 
 ## Step 3: Discover Reference-Enabled Skills
 
-Scan `skills/` and `extended/` for directories containing a `references/` or `reference/` folder. For each, read its `SKILL.md` description to understand the workflow it supports.
+Scan `skills/` and `extended/` for directories containing a `references/` or `reference/` folder. For each, read its `SKILL.md` description to understand the workflow it supports, and note any reference-file naming the skill declares for itself (e.g. `code-review`'s `<tech>.code.md` / `<tech>-performance.code.md` / `<tech>.tests.md`) — Step 5 proposes target files in that form instead of the default `<tech>-<skill-name>.md`.
 
 ## Step 4: Infer Relevant Skills
 
 For each reference-enabled skill, reason semantically: **"Does this insight affect the workflow this skill performs?"**
 
 Reasoning examples:
-- Naming convention → `tlc-spec-driven` (coding-principles style refs), `code-review`; performance-review not applicable
-- Query optimization → `code-review` (performance audit mode); likely `tlc-spec-driven` (coding-principles)
-- Test fixture pattern → `tests`, `tests-code-review`; not `tlc-spec-driven`
+- Naming convention → `tlc-spec-driven` (coding-principles style refs), `code-review` (code scope); performance-review not applicable
+- Query optimization → `code-review` (performance checklist); likely `tlc-spec-driven` (coding-principles)
+- Test fixture pattern → `tests`, `code-review` (tests scope); not `tlc-spec-driven`
 - Security input handling → `security-best-practices`, `code-review`; not `tests`
 
 Do not hardcode skill relationships — infer from each skill's SKILL.md description. When an insight is cross-cutting, include all skills where it would surface. If a skill's relevance is uncertain, include it in the proposal marked with `(?)` and let the user decide.
@@ -74,9 +74,9 @@ Present:
 
 | Skill | Target File | Action | Rationale |
 |-------|-------------|--------|-----------|
-| code-review | `skills/code-review/references/django-code-review.md` | Append | Affects review correctness |
+| code-review | `skills/code-review/references/django.code.md` | Append | Affects review correctness |
 | tlc-spec-driven | `extended/tlc-spec-driven/references/coding-guidelines/django-coding-guidelines.md` | Create + append | Style convention |
-| code-review | `skills/code-review/references/django-performance-review.md` | Append (?) | May surface during performance audit — confirm |
+| code-review | `skills/code-review/references/django-performance.code.md` | Append (?) | May surface during performance audit — confirm |
 
 Ask: **"Confirm saving to these files? Remove any you don't want or adjust the list."**
 
@@ -121,7 +121,7 @@ Tech: {tech}
 Insight: {rule}
 
 Written to
-- skills/code-review/references/django-code-review.md (appended, item 3)
+- skills/code-review/references/django.code.md (appended, item 3)
 - extended/tlc-spec-driven/references/coding-guidelines/django-coding-guidelines.md (created)
 
 Skipped

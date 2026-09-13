@@ -46,13 +46,11 @@ ai-coding-tooling/
 │   ├── architecture-evaluate/   # codebase-doc owner (Full / Incremental / Package modes)
 │   ├── build-feature/
 │   ├── code-review/
-│   ├── complete-review/
 │   ├── fix-review/
 │   ├── not-your-babysitter/
 │   ├── qa-steps/
 │   ├── session-evaluate/
-│   ├── tech-reference-add/
-│   └── tests-code-review/
+│   └── tech-reference-add/
 ├── templates/               # Reusable authoring patterns for skill files (12 files)
 ├── CLAUDE.global.md         # Global agent config (symlinked → ~/.claude/CLAUDE.md)
 ├── CLAUDE.md                # Project constraints for Claude Code — tracked directly in the repo
@@ -93,7 +91,7 @@ ai-coding-tooling/
 | Need | Location |
 | ---- | -------- |
 | Add a new local skill | `skills/<name>/SKILL.md` → `fs-harness add <name> --source local` |
-| Add a tech-specific reference | `skills/<name>/references/<tech>-<name>.md` |
+| Add a tech-specific reference | `skills/<name>/references/<tech>-<name>.md` (`code-review`: `<tech>.code.md`, `<tech>-performance.code.md`, `<tech>.tests.md`) |
 | Add a skill workflow reference | `skills/<name>/reference.md` |
 | Codebase context docs | `docs/codebase/` (this set) |
 | Feature specs / tlc memory | `.specs/features/`, `.specs/STATE.md` (owned by tlc-spec-driven) |

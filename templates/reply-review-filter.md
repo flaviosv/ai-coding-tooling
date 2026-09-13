@@ -20,7 +20,7 @@ A review is a **reply-review** when **both** hold:
 1. its `body` is empty, and
 2. every one of its comments has a non-null `replyTo`.
 
-Both conditions are required. Empty `body` alone is wrong: a real review created via `addPullRequestReview` and submitted with `event: COMMENT` — exactly what `complete-review` publishes and `build-feature` submits — also has an empty body. On PR #16 the genuine 33-finding review has `body_len 0`; a body-only test discards it and keeps nothing.
+Both conditions are required. Empty `body` alone is wrong: a real review created via `addPullRequestReview` and submitted with `event: COMMENT` — exactly what `code-review` publishes and `build-feature` submits — also has an empty body. On PR #16 the genuine 33-finding review has `body_len 0`; a body-only test discards it and keeps nothing.
 
 A review carrying more than 100 comments is never a reply-review (they hold exactly one), so a truncated comment page must never decide the answer — treat `comments.totalCount > 100` as real without inspecting further.
 

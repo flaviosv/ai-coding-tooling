@@ -85,3 +85,10 @@
 - **Trade-off**: Same dependency as AD-010 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-012
+- **Decision**: Step 11 invokes `code-review` with `post: true` instead of `complete-review` with no `human_review` parameter; the checkpoint name in `human_review_exclude` and `progress.md`'s `Checkpoints` key become `code-review` / `code_review` (written by `scripts/progress.mjs`).
+- **Reason**: `complete-review` and `tests-code-review` were merged into `code-review` (see `skills/code-review/STATE.md` AD-009). There a PR review reports locally unless `post: true`, so the flag is what preserves this skill's always-publish-immediately behavior — omitting it would leave Step 12 with no review to fix.
+- **Trade-off**: No legacy alias: an in-flight run whose `progress.md` or invocation still says `complete-review` / `complete_review` needs that value updated by hand before resuming.
+- **Date**: 2026-09-13
+- **Status**: active

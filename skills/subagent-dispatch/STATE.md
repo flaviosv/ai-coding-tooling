@@ -15,3 +15,10 @@
 - **Trade-off**: None identified — content is a straight move, not a summary; every real caller was migrated in the same change so no dangling link was left behind.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-003
+- **Decision**: Model matrix rows for `complete-review` (Single PR Mode subagent, Batch Mode per-PR subagents) and `tests-code-review` (Step 6 dimension subagents) become `code-review` rows (publishing worker, Batch Mode per-PR subagents, Step 6 dimension subagents across every scope), all still `sonnet`; the description and named-site list drop the two removed skills.
+- **Reason**: Both skills were merged into `code-review` (see `skills/code-review/STATE.md` AD-009); every dispatch site kept its tier, only its owning skill changed.
+- **Trade-off**: None identified — no tier changed.
+- **Date**: 2026-09-13
+- **Status**: active
