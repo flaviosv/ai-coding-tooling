@@ -174,7 +174,7 @@ If the skill will include technology-specific reference files:
 - **Exception — scoped variants.** A skill whose references split by scope declares its own naming in its `SKILL.md` and uses `<technology>.<variant>.md` instead (e.g. `code-review`: `fastapi.code.md`, `fastapi-performance.code.md`, `fastapi.tests.md`). Follow the skill's declaration over the default pattern.
 - Generic baseline files (non-tech-specific) are exempt from this pattern and keep their existing names (e.g. `review-checklist.md`, `testing-patterns.md`).
 
-**Linking a shared template** — count the `../` from the linking file's own depth, not from the skill root. A `SKILL.md` sits at `<skill>/SKILL.md`, so it uses `../../templates/<name>.md`; a file under `<skill>/references/` is one level deeper and needs `../../../templates/<name>.md`. Both resolve because `fs-harness setup` symlinks `templates/` into the agent config directory alongside `skills/` — never copy a template into a skill folder to work around a broken link, since duplicating it is what template extraction exists to prevent. A link that reads as a missing file at runtime means the depth is wrong or `setup` has not been run on that machine.
+**Keep links inside the skill** — a skill links only files in its own directory (`references/…`, `scripts/…`, or `../SKILL.md` from a reference file). There is no shared template folder to link: content one skill needs lives in that skill, and content only `CLAUDE.md` needs lives in the repo's `references/`, which skills never link.
 
 ### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
 

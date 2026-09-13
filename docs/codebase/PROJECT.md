@@ -22,7 +22,7 @@ Developers (primarily the maintainer) running Claude Code across several machine
 **In scope:**
 
 - Global agent config symlinked from `CLAUDE.global.md` to `~/.claude/CLAUDE.md`.
-- 8 local skills (`skills/`) symlinked globally: `architecture-evaluate`, `build-feature`, `code-review`, `fix-review`, `not-your-babysitter`, `qa-steps`, `session-evaluate`, `tech-reference-add`.
+- 7 local skills (`skills/`) symlinked globally: `architecture-evaluate`, `build-feature`, `code-review`, `not-your-babysitter`, `qa-steps`, `session-evaluate`, `tech-reference-add`.
 - Project-local skills (`.claude/skills/`), tracked directly in the repo — mechanism supported but currently unused (`.claude/` holds only `.skill-lock.json`, no skill content).
 - Vendor skill integration (Tech Leads Club, Matt Pocock) via `npx`.
 - `extended/` overlay system for customizing vendor skills without forking.

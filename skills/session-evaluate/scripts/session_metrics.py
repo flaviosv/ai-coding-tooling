@@ -425,7 +425,7 @@ def named_skill_rollup(sub_runs):
     """Session-wide subagent spend grouped by each run's real governing skill/phase.
 
     Independent of skill_windows()'s wall-clock buckets — this is what actually answers "how
-    much did tlc-spec-driven / code-review / fix-review cost", including when they ran
+    much did tlc-spec-driven / code-review / build-feature cost", including when they ran
     nested inside another skill's mis-closed window.
     """
     rollup = defaultdict(lambda: {"n": 0, "billed": 0, "output": 0, "turns": 0, "confident": 0})
@@ -566,7 +566,7 @@ def test_suite_runs(calls):
     """Bash calls shaped like a full test-suite run — no path/filter narrowing them.
 
     `calls` must include subagent tool calls, not just the main thread — the actual test/build
-    work in an orchestrated session (tlc-spec-driven's Execute phase, fix-review's validation,
+    work in an orchestrated session (tlc-spec-driven's Execute phase, code-review's fix-stage validation,
     etc.) almost always runs inside a subagent, invisible to this detector otherwise. Callers
     should pass calls merged from collect_tool_calls() on the main records plus every subagent's
     own records (subagents()' 4th return value), sorted by timestamp.

@@ -48,7 +48,7 @@ Step 8 reads this directory (if it exists) to surface repeat offenders when pres
 
 ### Step 1: Mode Detection
 
-1. If the invocation names one or more specific skills to evaluate within the session (e.g. "evaluate how `fix-review` did in that session", "/session-evaluate this session for code-review and build-feature") — **Scoped Mode**: restrict the entire evaluation to those skills' invocation window(s) only. Every other skill invoked in the session is out of scope, not just deprioritized.
+1. If the invocation names one or more specific skills to evaluate within the session (e.g. "evaluate how `code-review` did in that session", "/session-evaluate this session for code-review and build-feature") — **Scoped Mode**: restrict the entire evaluation to those skills' invocation window(s) only. Every other skill invoked in the session is out of scope, not just deprioritized.
 2. Otherwise — **Full Session Mode** (default): evaluate the whole session, every skill it invoked, exactly as this skill has always worked.
 
 Scoped Mode changes what's measured, not how it's judged — the catalog, the priority formula, and the apply scope all apply identically in both modes.
@@ -81,7 +81,7 @@ python3 <skill-dir>/scripts/session_metrics.py <path-to-session.jsonl> --top 10
 In **Scoped Mode**, add `--skill <name>` once per named skill (repeatable):
 
 ```bash
-python3 <skill-dir>/scripts/session_metrics.py <path-to-session.jsonl> --top 10 --skill fix-review --skill code-review
+python3 <skill-dir>/scripts/session_metrics.py <path-to-session.jsonl> --top 10 --skill code-review --skill build-feature
 ```
 
 If the script reports "No invocation of `<name>` found in this session," stop and say so plainly, listing the skills it did detect (the script includes them in the same message) — do not fall back to Full Session Mode or guess a different name.
@@ -251,7 +251,7 @@ Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E/F sec
 
 | Skill | Dimension | # | Priority | Title | Metric | Recurrence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `skills/fix-review/SKILL.md` | Token consumption | 1 | P0 | 3 whole-file reads of the same 13k-token SKILL.md | 39k tok/session | Structural | Pending |
+| `skills/code-review/SKILL.md` | Token consumption | 1 | P0 | 3 whole-file reads of the same 13k-token SKILL.md | 39k tok/session | Structural | Pending |
 | `skills/code-review/SKILL.md` | Runtime | 2 | P1 | 50 consecutive single-call turns during the edit phase | ~6 min added latency | Incidental | Pending |
 | — (user-triggered) | Workflow and orchestration | 3 | P3 | 2 manual compactions, 394k tokens dropped | 394k tok dropped | Incidental | Pending |
 
@@ -323,7 +323,7 @@ Always run this step, whether the answer to Step 8 was "all", "none", or a parti
 2. Resolve `~/.claude/projects/-Users-me-Projects-foo/3921ef51-....jsonl`.
 3. Run the extractor; digest shows 4 reads of the same 13.2k-token file, a 50-turn single-call run, 340 total records — Small tier, Inline.
 4. Classify: A2 (repeated identical work), B1 (missed parallelism).
-5. Attribute both to `skills/fix-review/SKILL.md` (source `local` — directly editable).
+5. Attribute both to `skills/code-review/SKILL.md` (source `local` — directly editable).
 6. Present 2 findings; user approves both.
 7. Add a bounded-read guideline and a batching guideline to that skill; bump version; commit.
 
@@ -342,13 +342,13 @@ Digest shows 9 permission denials for the same `gh` command shape. This is a set
 
 ### Example 4: Scoped Mode, one skill named
 
-**User:** "evaluate how fix-review did in the last session in applyr"
+**User:** "evaluate how code-review did in the last session in applyr"
 
-1. Step 1: `fix-review` named — Scoped Mode.
+1. Step 1: `code-review` named — Scoped Mode.
 2. Resolve the most recent session in the `applyr` project.
-3. Run the extractor with `--skill fix-review`. It finds two `fix-review` invocations and returns a digest confined to those windows (612 records total) — Small tier, Inline.
-4. Classify and attribute within that scope only — a large repeated-read pattern elsewhere in the session, outside `fix-review`'s windows, is invisible to this run by design.
-5. Present findings scoped to `fix-review`; proceed as normal.
+3. Run the extractor with `--skill code-review`. It finds two `code-review` invocations and returns a digest confined to those windows (612 records total) — Small tier, Inline.
+4. Classify and attribute within that scope only — a large repeated-read pattern elsewhere in the session, outside `code-review`'s windows, is invisible to this run by design.
+5. Present findings scoped to `code-review`; proceed as normal.
 
 ### Example 5: Large session, Parallel tier
 

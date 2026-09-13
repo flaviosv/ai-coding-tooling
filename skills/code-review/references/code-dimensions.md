@@ -1,6 +1,6 @@
 # Code Dimensions
 
-The code scope's dimension set: which dimensions a change activates, how they merge into agents, what each agent self-loads, and how a failure is marked. Loaded whenever the code scope is active. Performance Audit overrides the dispatch rules here — see [Performance Audit](performance-audit.md).
+The code scope's dimension set: which dimensions a change activates, how they merge into agents, what each agent self-loads, and how a failure is marked. Loaded whenever the code scope is active.
 
 ---
 

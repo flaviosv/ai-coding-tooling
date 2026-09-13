@@ -20,7 +20,6 @@ const ROOT = path.dirname(path.dirname(SCRIPT_DIR)); // repo root (scripts/bin/ 
 // Project-local skill installs (scope: local-only, or `add --local`) land under
 // this repo's own .claude/skills/ — tracked directly in the repo, no linking.
 const PROJECT_LOCAL_DIR = '.claude';
-const TEMPLATES_DIR = path.join(ROOT, 'templates');
 const REFERENCES_DIR = path.join(ROOT, 'references');
 
 // Claude Code's global paths (hardcoded — this tool manages Claude Code only).
@@ -102,28 +101,10 @@ function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
 
-// Skills reference shared templates as ../../templates/<name>.md. Installed skills are
-// symlinks, so the kernel resolves that to the repo — but tools that normalize paths
-// lexically (collapsing ../../ before following the symlink) resolve it to
-// <skillsDir>/../templates instead. Link that path at the same target so both resolve.
-// Any command that installs a skill must call this: a skill whose template links are
-// dead fails silently at run time, with the agent guessing instead of erroring.
-function templatesLinkPath() {
-  return path.join(path.dirname(SKILLS_DIR), 'templates');
-}
-
-function ensureTemplatesLink() {
-  const dest = templatesLinkPath();
-  if (lexists(dest)) return 'present';
-  return linkSafe(TEMPLATES_DIR, dest);
-}
-
 // CLAUDE.global.md references shared docs as ~/.claude/references/<name>.md — a plain
-// absolute path (CLAUDE.md has no "own directory" to resolve relative to), so this link
-// only needs to exist, never a lexical-normalization workaround like templates/ above.
-// Kept as its own function (mirroring ensureTemplatesLink) because the two folders are
-// deliberately separate: references/ is CLAUDE.md-only, templates/ is skills-only —
-// see CLAUDE.md's "Reference vs. Template Files" section.
+// absolute path, since CLAUDE.md has no "own directory" to resolve relative to.
+// references/ is CLAUDE.md-only; skills keep what they link inside their own directory —
+// see CLAUDE.global.md's "Shared Reference Files" section.
 function referencesLinkPath() {
   return path.join(path.dirname(SKILLS_DIR), 'references');
 }
@@ -285,7 +266,6 @@ function cmdSetup() {
 
   linkSafe(path.join(ROOT, 'CLAUDE.global.md'), CONFIG_PATH);
 
-  ensureTemplatesLink();
   ensureReferencesLink();
 
   log(`\n${c.bold}Skills${c.reset}`);
@@ -326,7 +306,6 @@ function cmdAdd(skillName, source, flags = {}) {
   if (lexists(dest)) throw new UserError(`${dest} already exists. Remove it manually or run update.`);
 
   ensureDir(path.dirname(dest));
-  ensureTemplatesLink();
   const installed = installSkill(skill, { force: !!flags.local });
   if (!installed) throw new UserError(`Install of ${name} failed.`);
 
@@ -386,7 +365,6 @@ function cmdOverride(skillName) {
     return;
   }
 
-  ensureTemplatesLink();
 
   // Scaffold extended/<name>/SKILL.md from the frontmatter template.
   const extDir = path.join(ROOT, 'extended', name);
@@ -451,21 +429,13 @@ function cmdList() {
     log(`  ${s.name.padEnd(pad)}  ${s.source.padEnd(16)} ${state}${ext}`);
   }
 
-  // Surface the shared-templates link: without it every ../../templates/<name>.md
-  // reference in an installed skill reads as a missing file, silently.
-  const tl = templatesLinkPath();
-  const tlState = !lexists(tl)
-    ? `${c.yellow}missing — run \`fs-harness setup\`${c.reset}`
-    : isSymlink(tl) ? `${c.green}symlink${c.reset}` : `${c.yellow}real dir (expected a symlink)${c.reset}`;
-  log(`\n${c.bold}Shared templates${c.reset}  ${tl}  ${tlState}`);
-
-  // Surface the CLAUDE.md-only references/ link, same reasoning as templates/ above —
-  // see CLAUDE.md's "Reference vs. Template Files" section for why the two are separate.
+  // Surface the CLAUDE.md-only references/ link: without it every ~/.claude/references/<name>.md
+  // link in CLAUDE.global.md reads as a missing file, silently.
   const rl = referencesLinkPath();
   const rlState = !lexists(rl)
     ? `${c.yellow}missing — run \`fs-harness setup\`${c.reset}`
     : isSymlink(rl) ? `${c.green}symlink${c.reset}` : `${c.yellow}real dir (expected a symlink)${c.reset}`;
-  log(`${c.bold}Shared references${c.reset}  ${rl}  ${rlState}`);
+  log(`\n${c.bold}Shared references${c.reset}  ${rl}  ${rlState}`);
 }
 
 // Health check for the harness itself. Not single-purpose: add a new check here
@@ -476,7 +446,7 @@ function cmdDoctor() {
   log(`${c.bold}Doctor${c.reset}`);
   let failures = 0;
 
-  log(`\n${c.bold}Cross-references (templates/ vs references/)${c.reset}`);
+  log(`\n${c.bold}Cross-references (references/)${c.reset}`);
   try {
     execFileSync('node', [path.join(ROOT, 'scripts/bin/misc/check-references.mjs')], { stdio: 'inherit' });
   } catch {
@@ -485,7 +455,6 @@ function cmdDoctor() {
 
   log(`\n${c.bold}Installation${c.reset}`);
   failures += checkSymlink('CLAUDE.md', CONFIG_PATH, path.join(ROOT, 'CLAUDE.global.md'));
-  failures += checkSymlink('templates/', templatesLinkPath(), TEMPLATES_DIR);
   failures += checkSymlink('references/', referencesLinkPath(), REFERENCES_DIR);
 
   const { skills } = loadJson('config/skills.json');
@@ -538,7 +507,6 @@ function cmdDestroy() {
 
   log(`\n${c.bold}Global config${c.reset}`);
   removeConfigSymlink(CONFIG_PATH);
-  unlinkIfSymlink(templatesLinkPath());
   unlinkIfSymlink(referencesLinkPath());
 
   log(`\n${c.bold}Skills${c.reset}`);

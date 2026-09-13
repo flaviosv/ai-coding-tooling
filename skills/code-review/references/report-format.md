@@ -1,6 +1,6 @@
 # Report Format
 
-The consolidated report for every run except Batch Mode (which reports per PR) and Performance Audit (its own format). One report covers every active scope.
+The consolidated review report, written at the end of the review stage for every entry except Batch Mode (which reports per PR). One report covers every active scope. On a PR, it is also the source of the comments `post` publishes; the checkpoint shows the user its header and at-a-glance table.
 
 ---
 
@@ -83,7 +83,7 @@ At the very bottom: an open/untriaged summary table of every finding with no dis
 - **Priority and Type:** per scope — see [Code Dimensions](code-dimensions.md#priority-and-type) and [Test Dimensions](test-dimensions.md#priority-and-type).
 - Give specific line numbers and concrete solutions; keep explanations concise.
 
-A GitHub PR report with `post: false` ends with one line offering to publish: "Post to PR #N as a pending review? Say `post all`, `post all P0`, or `post A1, V2`."
+With `human_review: true`, a local report shown at the checkpoint ends with one line: "Drop any finding by ID (e.g. `drop Q2, H1`), then say continue to fix what remains."
 
 ## Markdown File Output
 

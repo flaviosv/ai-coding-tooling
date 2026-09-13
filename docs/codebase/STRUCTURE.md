@@ -45,13 +45,11 @@ ai-coding-tooling/
 ├── skills/                  # Project-owned skills (installed globally via fs-harness setup)
 │   ├── architecture-evaluate/   # codebase-doc owner (Full / Incremental / Package modes)
 │   ├── build-feature/
-│   ├── code-review/
-│   ├── fix-review/
+│   ├── code-review/             # review → optional checkpoint → fix (see its WORKFLOW.md)
 │   ├── not-your-babysitter/
 │   ├── qa-steps/
 │   ├── session-evaluate/
 │   └── tech-reference-add/
-├── templates/               # Reusable authoring patterns for skill files (12 files)
 ├── CLAUDE.global.md         # Global agent config (symlinked → ~/.claude/CLAUDE.md)
 ├── CLAUDE.md                # Project constraints for Claude Code — tracked directly in the repo
 ├── karpathy.skill.md        # SKILL.md-shaped file at repo root — NOT under skills/, not registered in config/skills.json (see CONCERNS.md)
@@ -81,10 +79,6 @@ ai-coding-tooling/
 ### Overrides (`extended/`)
 **Purpose:** Additive overlays for vendor skills — augment without forking the vendor source.
 **Key files:** `<skill>/SKILL.md` → installed as `SKILL.extended.md`; `<skill>/references/` → `references.extended/`.
-
-### Templates (`templates/`)
-**Purpose:** Reusable `.md` patterns referenced by skill authoring and CLI scaffold logic.
-**Key files:** 9 files covering naming, loading constraints, formatting, frontmatter, and shared runtime protocols (agent waiting, subagent models, test execution scope).
 
 ## Where Things Live
 

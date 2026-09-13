@@ -22,3 +22,10 @@
 - **Trade-off**: None identified — no tier changed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-004
+- **Decision**: Model-matrix rows follow the `fix-review` → `code-review` merge: `build-feature`'s Step 11 and Step 12 wrapper rows are removed (Step 11 now invokes `code-review` from the orchestrator), its Step 13/15 rows renumber to 12/14, `fix-review`'s two rows and `code-review`'s publishing-worker row become `code-review`'s Stage 1 review worker, Stage 3 fix worker, and Batch Mode workers, all `sonnet`. The named-site list and two historical examples no longer name `fix-review`.
+- **Reason**: `fix-review` no longer exists as a skill (`skills/code-review/STATE.md` AD-010) and `build-feature` dropped its wrappers (`skills/build-feature/STATE.md` AD-014); every surviving dispatch site kept its tier.
+- **Trade-off**: None identified — no tier changed.
+- **Date**: 2026-09-13
+- **Status**: active

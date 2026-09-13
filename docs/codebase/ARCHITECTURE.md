@@ -28,13 +28,12 @@ Repository (single source of truth)
 | Registry | Authoritative skill + hook configuration | `config/skills.json`, `config/hooks.json` |
 | Skills (local) | Skill definitions owned by this repo | `skills/`, `.claude/skills/` |
 | Skills (vendor) | Third-party skills, read-only | `~/.claude/skills/<name>/` (installed via npx) |
-| Templates | Reusable authoring patterns for skills | `templates/` |
 
 ## Dependency Rules
 
 - `scripts/bin/fs-harness.mjs` reads `config/` and `extended/`; it never reads skill content beyond YAML frontmatter (description extraction).
 - `skills/` and `.claude/skills/` contain agent-facing `.md` content only — no imports, no JavaScript.
-- `templates/` files are referenced by skills and the CLI scaffold logic; never auto-loaded by agents.
+- A skill keeps everything it links inside its own directory (`references/`, `scripts/`); there is no shared skill-template folder. `references/` at the repo root is linked only by `CLAUDE.global.md`.
 - `extended/<skill>/` files must augment, never replace, the parent skill.
 
 ## Communication Patterns

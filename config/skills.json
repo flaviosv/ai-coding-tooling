@@ -27,11 +27,6 @@
       "extended": true
     },
     {
-      "name": "fix-review",
-      "source": "local",
-      "scope": "built"
-    },
-    {
       "name": "grill-me",
       "source": "matt-pocock",
       "scope": "matt-pocock"

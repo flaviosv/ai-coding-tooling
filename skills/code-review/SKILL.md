@@ -1,32 +1,34 @@
 ---
 name: code-review
 description: >
-  Reviews implementation code and tests together by default — or only one when asked — for local
-  workspace changes, specific commits, or a GitHub PR, dispatching Sonnet dimension agents sized to
-  the diff (architecture, code quality, performance, regression, security, requirements; test
-  coverage, gaps, isolation, clarity, maintainability). A PR review reports locally unless
-  post: true, which publishes every finding as one pending PR review (never submitted); findings can
-  also be held at findings_path for a later publish. Batch Mode sweeps every open PR awaiting your
-  review. Also runs full-codebase Performance Audits. Technology agnostic via docs/codebase context.
-  Use when the user says "review my code", "code review", "review my tests", "review PR #123",
-  "complete review", "review and post to PR", "review my pending PRs", "performance audit", or
-  invokes /code-review. Do NOT use to fix review findings (use fix-review) or to write tests.
+  Reviews code and fixes what the review finds, as one run: a review stage dispatches Sonnet
+  agents per dimension (architecture, code quality, performance, regression, security,
+  requirements; test coverage, gaps, isolation, clarity, maintainability) over local changes,
+  commits, or a GitHub PR; an optional human checkpoint (human_review, default false) lets you
+  edit the findings; a fix stage then fixes what remains, runs targeted tests, pushes, and replies
+  to and resolves every PR thread. All GitHub writes go through a verifying script. Also fixes
+  existing review comments on a PR, and batch-sweeps PRs awaiting your review or where you
+  requested changes. Technology agnostic via docs/codebase context. Use when the user says
+  "review my code", "review my tests", "review PR #123", "fix review comments", "fix the PRs I
+  requested changes on", "review my pending PRs", or invokes /code-review. Do NOT use to write new
+  tests or for spec planning (use tlc-spec-driven).
 metadata:
-  version: "3.0.0"
+  version: "4.0.0"
   triggers:
+    - "apply the review fixes"
+    - "batch-fix my change requests"
     - "check my code"
     - "check tests"
     - "code review"
     - "code review the"
     - "complete review"
     - "do a code review"
+    - "fix review comments"
+    - "fix review findings"
+    - "fix the PRs I requested changes on"
     - "full review"
-    - "optimize performance"
-    - "performance audit"
-    - "performance bottleneck"
-    - "performance review"
+    - "resolve review comments"
     - "review all PRs assigned to me"
-    - "review and post to PR"
     - "review my changes"
     - "review my code"
     - "review my pending PRs"
@@ -40,28 +42,32 @@ metadata:
     - "review this PR"
     - "run a code review"
     - "run a complete review"
-    - "slow code"
-    - "slow query"
     - "test code review"
+    - "triage PR feedback"
 ---
 
 # Code Review
 
-Work through the steps in order — mode detection, context collection, and dispatch all happen automatically. `SKILL.md` holds what every run does; `references/` holds what only some runs need, loaded at the step that needs it and never otherwise.
+One run, three stages. `SKILL.md` holds what every run does; `references/` holds what only some runs need, loaded at the step that needs it. [WORKFLOW.md](WORKFLOW.md) has the diagrams and design notes for human maintainers — it is never needed at runtime.
+
+| Stage | Runs in | Does | Reference |
+|---|---|---|---|
+| 1. Review | A Sonnet review worker | Steps 2–9: diff, dimension agents, duplicate collapse, report; on a PR, posts a pending review | [github-writes.md](references/github-writes.md) (PR) |
+| 2. Checkpoint | The root conversation | `human_review: true` → pause for the user; `false` → continue. On a PR, submits the review as `COMMENT` | — |
+| 3. Fix | A fresh Sonnet fix worker | Fixes what remains, tests, validation gate; on a PR, pushes, replies, resolves | [fix-stage.md](references/fix-stage.md) |
 
 ## Parameters
 
 | Parameter | Values | Effect |
 |---|---|---|
-| `findings_path` | path | With a PR target and `post: false`: write the assembled findings there for a later Publish request |
-| `post` | `false` (default) · `true` | `true` publishes every finding as one pending review on the PR. PR targets only; Batch Mode always posts |
-| `scope` | `both` (default) · `code` · `tests` | Which files are reviewed. Performance Audit is always `code` |
+| `human_review` | `false` (default) · `true` | `true` pauses at Stage 2 so the user can check and edit the findings before anything is fixed |
+| `scope` | `both` (default) · `code` · `tests` | Which files the review stage covers |
 
-A caller passes these explicitly. From a user's own words: **`scope`** narrows only on explicit wording — "review tests", "only the tests", "test commits" → `tests`; "only the implementation", "skip tests" → `code`. "Review my code" and "code review" mean `both`. **`post`** is `true` only on explicit wording such as "post to the PR" or "publish" — "complete review" and "full review" mean `scope: both`, not publishing.
+A caller passes these explicitly; `build-feature` passes its own `human_review`. From a user's own words: **`scope`** narrows only on explicit wording — "review tests", "only the tests", "test commits" → `tests`; "only the implementation", "skip tests" → `code`. "Review my code", "complete review", and "full review" mean `both`. **`human_review`** is `true` on wording such as "let me check the findings first" or "pause before fixing". **"Just review"** (or "review only", "don't fix") ends the run after Stage 2.
 
 ## Reviewer Stance
 
-You are the villain. Find every flaw, violation, gap, and risk — not encourage.
+Applies to the review stage. You are the villain. Find every flaw, violation, gap, and risk — not encourage.
 
 - Be relentless. Code is guilty until proven innocent, and weak tests are worse than no tests — they create false confidence.
 - Every violated principle, missing case, flawed assertion, or poorly isolated test is a finding — no "minor" issues.
@@ -71,37 +77,57 @@ You are the villain. Find every flaw, violation, gap, and risk — not encourage
 - Never sign off on a violation because it is small, or on a suite that would fail to catch real bugs.
 - Report a finding only at ≥ 80% confidence. If unsure whether a pattern is a violation, skip it — do not guess.
 
+The fix stage takes the opposite stance toward findings: each one is a claim to check against the code, never an order ([fix-stage.md](references/fix-stage.md)).
+
 ## Guardrails
 
 - **Not reviewed:** anything outside the target — a GitHub PR review covers only the PR's diff, never local workspace files; deleted files; noise files (removed at the git level by EXCLUDE, Step 4); files marked "do not review"; third-party test utilities and generated test code; files unchanged in the reviewed diff. **New files are always in scope**, against every loaded checklist. Test files belong to the tests scope only, implementation files to the code scope only.
-- **GitHub writes happen only with `post: true`, a Publish request, or the user's explicit selection after a report** — always through [Posting Mechanics](references/posting-mechanics.md): pending state only, never submitted, never a GitHub Issue, never deleting a pending review or comment, never touching another identity's pending review, never replying to or resolving existing threads.
-- **Never auto-fix, filter, or withhold findings** when publishing — every finding is posted, unfiltered. Merging same-root-cause duplicates (Step 8) is merging, not filtering.
-- **Every subagent runs on Sonnet** — dimension agents, the publishing worker, Batch Mode's per-PR agents — set explicitly on each `Agent` call, whatever model this session runs on. `post` never changes the model. Load the `subagent-dispatch` skill for the alias-only `model` rule, the missing reasoning-effort parameter, the dispatch-prompt contract, and the wait protocol.
+- **Never filter or withhold findings** before the checkpoint — every finding is reported and, on a PR, posted. Merging same-root-cause duplicates (Step 8) is merging, not filtering.
+- **Only what remains is a finding.** Whatever the user deletes on GitHub or drops at the checkpoint does not exist for the fix stage.
+- **Every GitHub write goes through `scripts/github_review.py`** per [github-writes.md](references/github-writes.md): a review is pending until Stage 2 submits it, the verdict is always `COMMENT`, never a GitHub Issue, never deleting a review, comment, or thread, never touching another identity's pending review.
+- **Only the root conversation dispatches stage workers.** The root is a live conversation, or `build-feature`'s orchestrator invoking this skill via `Skill`. A review worker dispatches only its dimension agents; a fix worker dispatches nothing. **When this skill is executed by any subagent** (started via the `Agent` tool for any reason, other than as a stage worker this skill dispatched) — the test is mechanical, never a judgment about why you were started: it is already the isolated context and must never call `Agent` for a stage worker. It runs the review stage inline, then — with `human_review: false` — `submit` and the fix stage inline, in that same context; with `human_review: true` it stops after Stage 1 and returns its result with `awaiting_approval: true`. This is the one case where the fix stage does not start in a fresh worker.
+- **A stage worker that fails outright** (crash, auth failure, PR not found — distinct from a dimension agent or item failing) is retried once with a fresh worker; a second failure stops the run and is reported. Never claim a review was posted or a fix landed on a failed run.
+- **Every subagent runs on Sonnet** — review workers, fix workers, dimension agents, batch workers — set explicitly on each `Agent` call, whatever model this session runs on. `human_review` never changes the model. Load the `subagent-dispatch` skill for the alias-only `model` rule, the missing reasoning-effort parameter, the dispatch-prompt contract, and the wait protocol.
 - Never print `gh auth token` output or any credential — refer to auth state by status only.
 - `gh` account resolution: opt-in.
-- **Resolving links.** `references/…` resolves inside this skill's directory. From a reference file, `../../../templates/<name>.md` resolves to `~/.claude/templates/<name>.md` (not `~/.claude/skills/templates/`). Read those paths directly — never `find`: the installed skill directory is a symlink into the source repo, and a search surfaces confusing near-matches.
+- **Resolving paths.** `references/…` and `scripts/…` resolve inside this skill's directory (`~/.claude/skills/code-review/`, a symlink into the source repo). Read them directly — never `find`: the search surfaces confusing near-matches.
 
-## Step 1: Mode Detection
+## Step 1: Entry Detection
 
-Resolve the target — first match wins — then load that target's references:
+First match wins:
 
-| Priority | Trigger | Target | Load |
+| # | Trigger | Entry | Then |
 |---|---|---|---|
-| 1 | Explicit request to publish held findings ("publish code-review findings for PR #N from `<findings_path>`") | Publish | [pr-publishing.md](references/pr-publishing.md) → Publish Mode, then stop |
-| 2 | A sweep across PRs awaiting your review ("review my pending PRs", "review pending PRs", "review all PRs assigned to me", "review the PRs I haven't reviewed yet") | Batch | [batch-mode.md](references/batch-mode.md), then stop |
-| 3 | Performance phrases ("performance audit", "performance review", "performance bottleneck", "optimize performance", "slow code", "slow query") | Performance Audit | [performance-audit.md](references/performance-audit.md) |
-| 4 | "review [test] commits X Y Z", "review [test] commits X..Y", "review last N [test] commits", hashes after "review" | Multi-commit | — |
-| 5 | A PR number already established in this conversation | GitHub PR | [pr-publishing.md](references/pr-publishing.md) when `post: true` or `findings_path` |
-| 6 | Default | Local workspace | — |
+| 1 | A sweep with fix wording ("fix the PRs I requested changes on", "batch-fix my change requests") | Batch fix sweep | [batch-mode.md](references/batch-mode.md), stop here |
+| 2 | A sweep with review wording ("review my pending PRs", "review pending PRs", "review all PRs assigned to me", "review the PRs I haven't reviewed yet") | Batch review sweep | [batch-mode.md](references/batch-mode.md), stop here |
+| 3 | A caller or user continuing a review this skill already posted ("continue the code review on PR #N") | Continue after checkpoint | Stage 2's continue path, then Stage 3 |
+| 4 | Fix wording with no review wording ("fix the review comments on PR #N", "resolve review comments", "fix Q1, H2") | Fix existing findings | Stage 3 only |
+| 5 | "review [test] commits X Y Z", "review [test] commits X..Y", "review last N [test] commits", hashes after "review" | Multi-commit | Stages 1–3 |
+| 6 | A PR number already established in this conversation | GitHub PR | Stages 1–3 |
+| 7 | Default | Local workspace | Stages 1–3 |
 
-- **A PR number counts only when it's established in the conversation** — stated by the user ("review PR #42") or produced by an earlier step (e.g. `build-feature` just opened one). Never infer it from git or `gh` state (current branch, `gh pr view` on the checkout).
-- `post: true` with no PR known, and no batch wording → ask: "Should I review one specific PR (give me the number), or run a batch review of every open PR waiting on your review?" Never guess.
-- A PR run with `post: true` or `findings_path`, from a root conversation, hands Steps 2–9 to one publishing worker — [pr-publishing.md](references/pr-publishing.md) says when and how. A subagent never dispatches it.
-- Then load the dimension file for each active scope: [code-dimensions.md](references/code-dimensions.md) for code, [test-dimensions.md](references/test-dimensions.md) for tests.
+- **A PR number counts only when it's established in the conversation** — stated by the user or produced by an earlier step (e.g. `build-feature` just opened one). Never infer it from git or `gh` state.
+- **Fix existing findings on a PR** needs at least one submitted review with comments (`gh pr view <N> --json reviews`): the only review is still `PENDING` → stop: "Your review is still pending on GitHub — submit it before asking me to fix findings." No review at all → fall through to local fix mode with the findings already in this conversation, on that PR's branch; none in the conversation either → say there is nothing published to fix and offer to review it. **Without a PR**, the findings are the ones already in this conversation (all of them, or the IDs named); none → ask which branch and which findings.
+- **Continue after checkpoint** runs Stage 2's continue path for a PR review this skill posted earlier: `submit` (a `submitted: false` is fine), then Stage 3. It never re-runs the review.
+- A fix request that is unclear between one PR and a sweep → ask: "Should I fix one specific PR (give me the number), or batch-fix every open PR where you requested changes?"
+- Load the dimension file for each active scope before Stage 1: [code-dimensions.md](references/code-dimensions.md) for code, [test-dimensions.md](references/test-dimensions.md) for tests.
 
-Target and scope are fixed for the rest of the run.
+Entry and scope are fixed for the rest of the run.
 
-## Step 2: Context Collection
+## Stage 1: Review
+
+**Dispatch (root):** one `Agent` call, `subagent_type: general-purpose`, `model: sonnet`, prompt per the `subagent-dispatch` contract:
+
+- Prefix `[code-review][review:PR-<N>]`, `[code-review][review:commits]`, or `[code-review][review:local]`.
+- The entry, PR number or commits, `scope`, and owner/repo for a PR.
+- "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents. Load the `subagent-dispatch` wait protocol before the first dispatch; when waiting on an agent, end your turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll."
+- Completion condition: Step 8's report written and, on a PR, Step 9's `post` exited with its JSON captured.
+- Return shape, **local or commits:** the full Step 8 report plus the banner. **PR:** the PR URL; the banner verbatim (a Complex caveat with its actual wording); finding counts per scope and severity; the most important finding in one line; clusters collapsed; `post`'s exit code and, from its JSON, `posted_confirmed`, `carried_over`, `reanchored`, `anchor_corrected`, `missing`, `duplicates_found`, any batch that had to be retried, and every `unpostable` entry by `path:line` (report `0` for each count when none — a missing count is indistinguishable from never having looked); dimensions not executed with reasons. Never the diff, the full report, or comment bodies.
+- Delegation depth: dimension agents only.
+
+Track the review worker's name (and later the fix worker's) against the PR for the rest of the conversation: a later "a new commit landed on PR #N" routes through them per [batch-mode.md — New Commits or Comments](references/batch-mode.md#new-commits-or-comments-after-dispatch), which applies to single-PR runs too. Wait per the `subagent-dispatch` wait protocol, then go to Stage 2.
+
+### Step 2: Context Collection
 
 Record whether each item exists — `present` or `absent`. **Do not load content**; agents self-load their own.
 
@@ -122,11 +148,11 @@ Record whether each item exists — `present` or `absent`. **Do not load content
 
 Reference file naming: checklists carry their scope as a suffix — `<topic>.code.md`, `<topic>.tests.md`, and stack-specific `<stack>.code.md`, `<stack>-performance.code.md`, `<stack>.tests.md`. Orchestration references have no suffix.
 
-## Step 3: Context Availability Map
+### Step 3: Context Availability Map
 
-The orchestrator holds **only this map** — no file content. An agent skips any absent file on its `## Before You Begin` list silently. If an agent's **required** item is absent, it runs `degraded`: it notes the gap in its findings, and its at-a-glance row shows `⚠️ degraded — <missing item>`. Each dimension file names what its agents require.
+The review worker holds **only this map** — no file content. An agent skips any absent file on its `## Before You Begin` list silently. If an agent's **required** item is absent, it runs `degraded`: it notes the gap in its findings, and its at-a-glance row shows `⚠️ degraded — <missing item>`. Each dimension file names what its agents require.
 
-## Step 4: Diff Collection
+### Step 4: Diff Collection
 
 ```
 EXCLUDE = [
@@ -140,15 +166,14 @@ EXCLUDE = [
 ]
 ```
 
-The one noise list for every mode — never duplicate it.
+The one noise list for every entry — never duplicate it.
 
-| Target | Commands |
+| Entry | Commands |
 |---|---|
 | GitHub PR | `gh auth status` must succeed — otherwise stop: "No way to reach GitHub — install/authenticate `gh` (`gh auth status` must succeed) before reviewing a PR." Then `gh pr view <PR> --json title,body,baseRefName,headRefName,files` — PR not found → stop and report, never guess another number — and `gh pr diff <PR>`; drop every path matching EXCLUDE before assembling diffs |
 | Local workspace | `git diff HEAD -- $EXCLUDE`, `git diff --cached -- $EXCLUDE`, `git ls-files --others --exclude-standard` |
 | Multi-commit (hashes) | `git show <h1> -- $EXCLUDE; git show <h2> -- $EXCLUDE; ...`, concatenated in order |
 | Multi-commit (range) | `git diff <base>..<tip> -- $EXCLUDE` |
-| Performance Audit | No diff for the scan — see [performance-audit.md](references/performance-audit.md); changed files still come from the local workspace commands |
 
 Then, once for every scope:
 
@@ -163,17 +188,17 @@ Then, once for every scope:
 - **Tests** runs when `test_diff` has files. With no test files but a non-empty `impl_diff`, it runs **Coverage Gaps only** — Small tier, inline, banner `Tests: **Small** (0 test files) · Inline — Coverage Gaps only`, and the report carries only the Coverage Gaps row.
 - A requested scope with nothing to review at all is shown as `skipped — no <implementation|test> changes` in the banner, never silently dropped.
 
-## Step 4.5: Sonar Context
+### Step 4.5: Sonar Context
 
 `sonar_project_key` absent → `sonar_context = { status: 'skipped', skip_reason: 'no project key found' }`. Otherwise load [sonar.md](references/sonar.md) and resolve it there.
 
-## Step 5: Review Complexity Assessment
+### Step 5: Review Complexity Assessment
 
 Assess **each active scope separately**, on its own post-exclusion metrics — implementation files and `impl_diff` lines for code, test files and `test_diff` lines for tests. Multi-commit uses combined totals across commits. First match wins:
 
 | Tier | Condition | Execution mode |
 |---|---|---|
-| **Small** | ≤5 files **OR** <200 diff lines | **Inline** — the orchestrator reviews the scope's active dimensions itself, 0 agents |
+| **Small** | ≤5 files **OR** <200 diff lines | **Inline** — the review worker reviews the scope's active dimensions itself, 0 agents |
 | **Medium** | ≤15 files **AND** <800 diff lines | **Single agent** — 1 subagent covers every active dimension of the scope (1× diff) |
 | **Large** | ≤25 files **AND** <1,500 diff lines | **Parallel** — 1 subagent per active dimension after merge rules (N× diff) |
 | **Complex** | >25 files **OR** ≥1,500 diff lines | **Parallel + completeness handling** — as Large, plus the thoroughness directive and the report caveat |
@@ -188,9 +213,7 @@ Review Plan:
   Excluded files:   N
 ```
 
-### Complexity Banner
-
-Print this before any dispatch or inline review, in every mode and tier — one segment per active scope:
+**Complexity banner** — one segment per active scope, returned to the root with the result:
 
 ```
 🔍 Code review — Code: **<Tier>** (<N> files, <M> lines) · <content_type> · <execution> | Tests: **<Tier>** (<N> test files, <M> lines) · <execution>[ · <X> excluded]
@@ -202,20 +225,16 @@ Print this before any dispatch or inline review, in every mode and tier — one 
 🔍 Code review — Tests: **Large** (20 test files, 900 lines) · Parallel — 4 agents
 ```
 
-### Silent Operation
+The review worker produces no progress narration and no per-agent findings as they arrive — only its final result.
 
-The only user-facing outputs are the skill-invocation announcement, this banner, and the Step 8 report. Nothing in between — no progress narration, no per-agent findings as they arrive, no analytical commentary.
-
-## Step 6: Dispatch
+### Step 6: Dispatch
 
 Dispatch **every non-inline agent from every active scope in a single parallel message** — never sequentially — then review the Small-tier scopes inline while they run.
 
 - Every agent is pinned to `model: sonnet`.
 - Every prompt follows the `subagent-dispatch` contract: prefix `[code-review][dimension:<agent>]`; completion condition — every checklist item in its `## Before You Begin` checked against its diff, findings written and tagged by dimension; return shape — findings only, never the diff or doc content it read; delegation depth — none.
 - **Complex tier** adds to each of that scope's agents: *"This is a Complex review (large change set). Review every file in your scope thoroughly. Do not skip or skim any file. Focus on your assigned dimension(s) across all changed files."*
-- The orchestrator never inlines checklist or doc content — `## Before You Begin` is a Read instruction.
-
-### Agent Prompt
+- Never inline checklist or doc content — `## Before You Begin` is a Read instruction.
 
 ```
 ## Before You Begin
@@ -240,44 +259,67 @@ Findings: [{dimension, severity, title, file, line, anchor, explanation, recomme
 Issues: <any blockers>
 ```
 
-**`line` is the line at the PR head (or working tree), never a diff offset, and `anchor` is that line's exact text, verbatim** — the full contract and the measured cost of skipping it are in [Posting Mechanics — Comment Shape](references/posting-mechanics.md#comment-shape).
+**`line` is the line at the PR head (or working tree), never a diff offset, and `anchor` is that line's exact text, verbatim** — the contract and the measured cost of skipping it are in [GitHub Writes — Comment Shape](references/github-writes.md#comment-shape).
 
-## Step 7: Await + Fallback
+### Step 7: Await + Fallback
 
 **Load the `subagent-dispatch` wait protocol before the first dispatch, not once the first wait has started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. Wait for every agent; the 15-minute default stall ceiling applies as-is (a dimension agent is single-purpose).
 
 | Outcome | Action |
 |---|---|
-| Returned normally | Parse the structured result |
-| Failed or timed out | Re-dispatch that one agent once. Fails again → mark its dimension(s) `⚠️ not executed — <reason>` |
 | Degraded | Mark `⚠️ degraded — <missing item>` |
+| Failed or timed out | Re-dispatch that one agent once. Fails again → mark its dimension(s) `⚠️ not executed — <reason>` |
+| Returned normally | Parse the structured result |
 | Skipped by rule | As its dimension file says (row omitted, or `⚠️ skipped — <reason>`) |
 
-A merged agent's failure or degradation marks **every** dimension it covered — see each dimension file's Failure Marking. A failed agent never blocks the report; continue to Step 8.
+A merged agent's failure or degradation marks **every** dimension it covered — see each dimension file's Failure Marking. A failed agent never blocks the report. If **every** agent in every active scope failed, post nothing and return `review_failed: true` with every failure reason — never claim findings were published.
 
-## Step 8: Consolidate and Report
+### Step 8: Consolidate and Report
 
 **Collapse same-root-cause duplicates first.** Dimension agents across both scopes review overlapping diffs, so several describing one defect — in different words, at different lines or files — is the expected case. Keep the clearest instance of each cluster, fold the others' extra detail into its explanation, drop the rest, and count the clusters collapsed. This is merging, never severity filtering: nothing is dropped for being minor. Measured across four real PRs, ~17% of raw findings restated another dimension's; one bug was reported by five dimensions, and one PR's 43 posted threads were 25 distinct fixes.
 
-Then write the report per [report-format.md](references/report-format.md) — or [performance-audit.md](references/performance-audit.md) for a Performance Audit.
+Then write the report per [report-format.md](references/report-format.md).
 
-## Step 9: Publish (GitHub PR only)
+### Step 9: Post (GitHub PR only)
 
-- `post: true` or `findings_path` → [pr-publishing.md](references/pr-publishing.md) — Publishing Flow.
-- `post: false` → the report ends with the publish offer. If the user selects findings, publish that selection per [pr-publishing.md — Publishing After a Local Report](references/pr-publishing.md#publishing-after-a-local-report).
+Zero findings → skip `post` entirely and return zero counts; there is nothing to publish and never an empty comments array. Otherwise load [github-writes.md](references/github-writes.md), write `post.json` with every finding from the report (Comment Shape), and run `post`. Capture its JSON — it feeds the return shape. `post` never submits; the review stays pending until Stage 2.
+
+## Stage 2: Checkpoint
+
+Runs in the root conversation.
+
+| Target | `human_review: true` | `human_review: false` |
+|---|---|---|
+| GitHub PR | Show the PR URL, banner, counts, and unpostable findings, and **end the turn**: "Review posted as pending on PR #N. Edit, delete, or add comments on GitHub (or submit it), then reply to continue." Never invent an approval or continue speculatively. On the user's reply: `submit` (a `submitted: false` because the user already submitted is fine), then Stage 3 | `submit`, then Stage 3 |
+| Local or commits | Show the report and **end the turn**; the user drops findings by ID ("drop Q2, H1") and replies. Then Stage 3 with what remains | Stage 3 with every finding |
+
+- **Review failed** (`review_failed: true`) → no pause, no `submit`, no Stage 3; report every failure reason and stop.
+- **`post` exit `2`** → nothing was confirmed: the run is blocked; report its JSON and stop. **Exit `1`** → report every `missing`, `duplicates_found`, and error entry explicitly — never rounded to the intended count — and continue; the threads that landed are real.
+- **"Just review":** `true` → end the run at the pause (a PR review stays pending for the user to submit); `false` → `submit` on a PR, then end the run.
+- **No findings** from the review → no pause, no `submit`, no Stage 3; report. **The user dropped them all** at the pause → no Stage 3; on a PR, `submit` still runs (it leaves a review with no comments pending).
+- `submit` exits non-zero → the run is blocked; report its JSON and stop before Stage 3.
+
+## Stage 3: Fix
+
+The root dispatches a fresh fix worker per [Fix Stage — Dispatch](references/fix-stage.md#dispatch-root-conversation), waits per the `subagent-dispatch` wait protocol, and removes any worktree the dispatch created once the worker reports.
+
+## Final Report
+
+The root combines both stages: the review summary (URL or report, banner, counts, collapsed / re-anchored / unpostable) and the fix worker's report (outcomes by class, `deliver` counts verbatim, commits and whether pushed, validation gate, test changes, blocked and unclear items).
 
 ## Examples
 
-| Invocation | Target · scope · post | Delta from Steps 1–9 |
+| Invocation | Entry · `human_review` | What happens |
 |---|---|---|
-| "review my code" | Local · both · — | Standard run; the report is the output |
-| "review my tests" | Local · tests · — | Code scope inactive; `gap-detector` still gets `impl_diff` |
-| "review commits abc123 def456, only the implementation" | Multi-commit · code · — | `git show` per commit; tiers on combined totals; header lists every commit |
-| "review PR #42" | GitHub PR · both · false | Report ends with the publish offer; "post A1, V2" publishes that selection |
-| `build-feature` Step 11: PR #128, `post: true` | GitHub PR · both · true | Already a subagent → runs inline, publishes, returns the compact result |
-| "/code-review PR #456 and post it" from a live conversation | GitHub PR · both · true | One Sonnet publishing worker runs Steps 2–9 and returns the compact result |
-| A caller with its own approval gate: PR #512, `findings_path: .specs/features/PROJ-9-widget/code-review-findings.json` | GitHub PR · both · false | Findings held at the path, `awaiting_approval: true`; later "publish code-review findings for PR #512 from <path>" → Publish Mode posts exactly what was held |
-| "/code-review PR #310 and post it" with this identity's pending review already on the PR (6 comments) | GitHub PR · both · true | New findings appended to that same review (6 + 5 = 11), no delete, no prompt; report says 6 carried over |
-| "review my pending PRs except #205" | Batch · both · true | Batch Mode; #205 dropped for this run only; per-PR updates as each lands, then a summary table |
-| "a new commit just landed on PR #12" after Batch Mode | — | `SendMessage` to PR #12's tracked subagent → delta-only review appended to its pending review |
-| "performance audit of the orders module" | Performance Audit · code · — | Step 5 skipped; full-codebase scan by architecture and performance agents; P0–P3 report |
+| "review my code" | Local · false | Review worker → report → fix worker edits the working tree, commits nothing |
+| "review my tests, let me check the findings first" | Local · true, `scope: tests` | Report shown; user says "drop V2, continue"; fix worker handles the rest |
+| "review commits abc123 def456, only the implementation" | Multi-commit · false, `scope: code` | Tiers on combined totals; one local commit per fix, never pushed |
+| "review PR #42" | GitHub PR · false | Review posted, submitted as `COMMENT`, fix worker fixes, pushes, replies, resolves |
+| "review PR #42, just review" | GitHub PR · false | Review posted and submitted; no fix stage |
+| `build-feature` Step 11: PR #128, `human_review: true` | GitHub PR · true | Orchestrator is the root: review worker posts; pause; user edits on GitHub and replies; `submit`; fix worker runs in place on the branch |
+| PR #310 already has this identity's pending review (6 comments) | GitHub PR · false | `post` appends new findings to it (`carried_over: 6`), then submit and fix |
+| "fix the review comments on PR #201" | Fix existing · — | Stage 3 only; no checkout has the PR branch, so the fix worker gets `isolation: worktree` |
+| `build-feature` resuming with `code_review: pending` | Continue after checkpoint · — | `submit`, then Stage 3; the review is not re-run |
+| "fix Q1 and H2" after a "just review" local run | Fix existing · — | Stage 3 with exactly those two findings |
+| "review my pending PRs except #205" | Batch review sweep | #205 dropped for this run only; per-PR review → checkpoint → fix |
+| "fix the PRs I requested changes on" | Batch fix sweep | One worktree fix worker per qualifying PR, scoped to your own threads |

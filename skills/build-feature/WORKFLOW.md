@@ -8,12 +8,12 @@ flowchart TD
 
     Step0 -- no --> S1[Step 1: Worktree + branch<br/>EnterWorktree, native]
     Step0 -- "yes, complete,<br/>PR merged/closed" --> Cleanup[Sweep + remove worktrees<br/>across ALL completed specs]
-    Step0 -- "yes, complete,<br/>PR open" --> ReEntry[fix-review only,<br/>existing worktree]
+    Step0 -- "yes, complete,<br/>PR open" --> ReEntry[code-review fix-existing-findings entry,<br/>existing worktree]
     Step0 -- "yes, in-progress" --> Resume[Resume at first<br/>incomplete step]
 
     Cleanup --> End1([Stop])
-    ReEntry --> Step13b[architecture-evaluate<br/>if commits pushed]
-    Step13b --> End2([Stop])
+    ReEntry --> Step12b[architecture-evaluate<br/>if commits pushed]
+    Step12b --> End2([Stop])
 
     S1 --> SY[Step 1b: Sync docs/codebase into worktree<br/>only if untracked/ignored in the repo]
     SY --> S2[Step 2: Push branch — empty,<br/>no PR yet]
@@ -38,20 +38,20 @@ flowchart TD
     S8 --> S9[Step 9: Execute — Sonnet<br/>tlc-spec-driven owns gate checks + Verifier]
     S9 --> S10[Step 10: Push Execute's commits +<br/>rewrite PR description]
 
-    S10 --> CR[Step 11: code-review post: true — Sonnet subagent<br/>always publishes pending review immediately]
-    CR --> CP3{human_review and<br/>code-review<br/>not excluded?}
-    CP3 -- yes --> Wait3[Pause: user reviews +<br/>submits the pending review on GitHub]
-    Wait3 --> S12
-    CP3 -- no --> SubmitCR[Submit the pending review<br/>gh graphql, COMMENT event]
-    SubmitCR --> S12[Step 12: fix-review — Haiku subagent<br/>same worktree, no new one]
+    S10 --> CR[Step 11: code-review via Skill, in this conversation<br/>review worker posts a pending review]
+    CR --> CP3{code-review checkpoint:<br/>human_review and<br/>code-review not excluded?}
+    CP3 -- yes --> Wait3[Record code_review: pending, end turn<br/>user edits on GitHub, replies<br/>resume: continue-after-checkpoint entry]
+    Wait3 --> SubmitCR
+    CP3 -- no --> SubmitCR[code-review submits<br/>COMMENT]
+    SubmitCR --> Fix[code-review fix worker — Sonnet<br/>same worktree, fixes, pushes, replies, resolves]
 
-    S12 --> S13[Step 13: architecture-evaluate<br/>Incremental always — Sonnet]
-    S13 --> SYB[Sync docs/codebase back to main tree<br/>only if Step 1b copied it in]
+    Fix --> S12[Step 12: architecture-evaluate<br/>Incremental always — Sonnet]
+    S12 --> SYB[Sync docs/codebase back to main tree<br/>only if Step 1b copied it in]
     SYB --> DSCheck{".design-sync/config.json<br/>exists?"}
-    DSCheck -- yes --> S14a[Step 14: design-sync — Sonnet]
-    DSCheck -- no --> S15
-    S14a --> S15[Step 15: gh pr ready<br/>progress.md → complete]
-    S15 --> End3([Worktree stays —<br/>signal-driven cleanup only])
+    DSCheck -- yes --> S13a[Step 13: design-sync handoff<br/>nothing run — user runs it after]
+    DSCheck -- no --> S14
+    S13a --> S14[Step 14: merge check, gh pr ready<br/>progress.md → complete]
+    S14 --> End3([Worktree stays —<br/>signal-driven cleanup only])
 ```
 
 ## Key architectural notes (not in SKILL.md, kept here for maintainers)
@@ -63,10 +63,10 @@ flowchart TD
 - **Grilling (Step 4) is not a subagent dispatch, deliberately.** An `Agent`-tool subagent runs once, in the background, to completion — it cannot pause mid-run for a real reply from the user, and grilling's whole mechanic is multi-round back-and-forth with the user. So Step 4 runs `grilling` directly, in this conversation, via the `Skill` tool. Step 3 (the quick arch-eval gate) is still a background subagent — dispatched at the start of Step 3, then collected only once Step 4's conversation concludes, right before Step 6a. Fire-and-collect-later, not concurrent-and-awaited-together as it was before this design's fix — the two steps don't need to finish at the same moment, only before Step 6a needs Step 3's result.
 - **The orchestrator never writes large file content into its own context.** Every subagent gets metadata and paths; it does its own reads. This is what keeps a 15+ step run from blowing the orchestrator's context window.
 - **`progress.md` is written by a script, not hand-edited.** `scripts/progress.mjs` bumps `last_completed_step`, writes the `Step Log` line, and applies any `Run State` field updates in one call. A measured run hand-edited it 24 times (2-3 `Edit` calls per step, each re-anchoring on the full previous `Step Log` line just to append one more) — ~12 avoidable round-trips the script collapses into one call per step, and it's idempotent on a re-run of the same step, which raw `Edit` calls were not.
-- **The worktree's deferred tools (`EnterWorktree`/`ExitWorktree`/`Monitor`) load together, once, at Step 1.** A measured run loaded each with its own `ToolSearch` call at the moment it was first needed instead — a few extra full-conversation round-trips for something knowable up front, since every normal run uses all three (enter at Step 1, exit in the cleanup sweep, `Monitor` for Step 15's `UNKNOWN`-mergeability wait).
-- **Steps 11 and 12 dispatch subagents; they do not call `Skill` from the orchestrator.** They used to, on the reasoning that `code-review`/`fix-review` own their own internal delegation. Forensics across four production runs killed that reasoning: invoked from the orchestrator, Step 12 cost 39–60% of the entire main session every time (16.6M / 30.3M / 40.8M / 42.7M cache-read), because `fix-review`'s GitHub Mode deliberately keeps classification, cherry-picking, and thread replies in the *calling* conversation — and "the calling conversation" was the orchestrator. Step 11 was the control that proved it: `code-review`'s publishing flow delegates internally, so the same-shaped work cost the orchestrator ~3M. The subagent still invokes the skill via the `Skill` tool — just inside its own context, where the bulk belongs. Note this does not change either skill's own internals: invoked directly by a user, `fix-review` still runs in that conversation, which is correct, because there the user wants to watch it.
-- **`docs/codebase/` is synced into the worktree and back out.** A fresh `EnterWorktree` checkout carries neither untracked nor ignored files, so when a repo keeps its context docs untracked the worktree looks like a project with none. That misfired at both ends: Step 3's gate escalated to a Full brownfield scan (41 minutes in one measured run), and Step 13's output then died with the worktree because the path was gitignored — 7 of 9 files lost in one run, ~13.6M tokens of documentation that never reached a PR in another. Copy-in happens at Step 1 from the repo's *main* working tree (never a sibling worktree, which may hold a different run's stale copy); copy-out happens right after Step 13, not at Step 15, so an early stop still lands the docs, and it refuses to overwrite a source that changed mid-run. When the repo tracks `docs/codebase/`, none of this runs — which is the better arrangement, and worth saying so to the user.
-- **`code-review` always publishes immediately; `human_review` only gates the pause before `fix-review`.** Earlier versions had the review step hold findings off GitHub until approved in this conversation, then post them via a separate Publish Mode call. That round trip is gone — Step 11 always invokes `code-review` with `post: true` so it posts its pending review right away (a PR review without `post` only reports locally), and `human_review` decides only whether this skill pauses afterward, before Step 12 runs. The pending review is still unsubmitted (only the authenticated reviewer sees it), so this doesn't expose unapproved findings to anyone else.
-- **A pending review is invisible to `fix-review` until it's submitted — Step 11 has to submit it whenever nobody's around to.** `code-review` deliberately never submits its own reviews (only posts `PENDING` ones), and `fix-review`'s Step 1 refuses to act on a PR whose only review is still `PENDING`. When the checkpoint pauses (`human_review=yes`, not excluded), the human is expected to submit it on GitHub themselves as part of looking it over before replying to continue. When it doesn't pause (`human_review=no`, or `code-review` excluded), there's no human to do that, so Step 11 submits it itself via `submitPullRequestReview` (`event: COMMENT`, never `APPROVE`/`REQUEST_CHANGES` — this skill isn't rendering a verdict) before Step 12 starts. The "no existing pending review found" branch also quietly covers resuming after an interruption between submit and Step 12 — a second submit attempt would just find nothing `PENDING` left to submit.
+- **The worktree's deferred tools (`EnterWorktree`/`ExitWorktree`/`Monitor`) load together, once, at Step 1.** A measured run loaded each with its own `ToolSearch` call at the moment it was first needed instead — a few extra full-conversation round-trips for something knowable up front, since every normal run uses all three (enter at Step 1, exit in the cleanup sweep, `Monitor` for Step 14's `UNKNOWN`-mergeability wait).
+- **Step 11 calls `code-review` via `Skill` from the orchestrator; every other delegated step dispatches a subagent.** Steps 11 and 12 used to both dispatch wrapper subagents, because a separate fix skill kept classification, fixing, and thread replies in whatever context invoked it — invoked from the orchestrator, that cost 39–60% of the entire main session on four production runs (16.6M / 30.3M / 40.8M / 42.7M cache-read). `code-review` now owns review and fix as one run and, from a root conversation, does its heavy work only in its own review and fix workers, so invoking it here costs the orchestrator only compact results. It has to run here: its `human_review` checkpoint ends the turn, and a subagent cannot pause for the user. Step 12 (the old fix step) is gone and Steps 13–15 became 12–14; see STATE.md AD-014.
+- **`docs/codebase/` is synced into the worktree and back out.** A fresh `EnterWorktree` checkout carries neither untracked nor ignored files, so when a repo keeps its context docs untracked the worktree looks like a project with none. That misfired at both ends: Step 3's gate escalated to a Full brownfield scan (41 minutes in one measured run), and Step 12's output then died with the worktree because the path was gitignored — 7 of 9 files lost in one run, ~13.6M tokens of documentation that never reached a PR in another. Copy-in happens at Step 1 from the repo's *main* working tree (never a sibling worktree, which may hold a different run's stale copy); copy-out happens right after Step 12, not at Step 14, so an early stop still lands the docs, and it refuses to overwrite a source that changed mid-run. When the repo tracks `docs/codebase/`, none of this runs — which is the better arrangement, and worth saying so to the user.
+- **`human_review` is passed through to `code-review`, which owns the pause.** `code-review` always posts its review as pending first; with `human_review: true` (and `code-review` not in `human_review_exclude`) its checkpoint shows the summary and ends this turn so the user can edit, delete, or submit comments on GitHub before anything is fixed; otherwise it continues. Whatever the user removed is no longer a finding — the fix worker fetches threads fresh.
+- **`code-review` submits the review itself before fixing.** A pending review's threads are invisible to the fix stage, so `code-review` submits it as `COMMENT` (never `APPROVE`/`REQUEST_CHANGES` — no verdict) after its checkpoint, whether or not it paused. `build-feature` no longer submits anything on its behalf. A resumed run with `code_review: pending` waits for the user again, then calls `code-review`'s continue-after-checkpoint entry, which submits and fixes without re-running the review.
 - **Step 10 also pushes now.** Step 9 (Execute) only commits locally — nothing pushed those commits to origin before `code-review` (Step 11) reviewed the PR, so it could review a stale remote branch. Step 10 now pushes first, before rewriting the PR description.
 - **Worktree cleanup is signal-driven, not automatic-on-completion.** A PR merged via the GitHub UI, with build-feature never re-invoked, would otherwise leave the worktree on disk forever — the sweep at Step 0 checks every tracked spec's worktree, not just the current one.

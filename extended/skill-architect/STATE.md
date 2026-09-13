@@ -29,3 +29,10 @@
 - **Trade-off**: Two naming patterns exist repo-wide instead of one; the default still applies to every skill that doesn't declare otherwise.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-005
+- **Decision**: Phase 2.4's "Linking a shared template" guidance is replaced by "Keep links inside the skill": a skill links only files in its own directory, since the repo's `templates/` folder no longer exists.
+- **Reason**: Its last file, `reply-review-filter.md`, moved into `code-review` once that skill became its only consumer (`skills/code-review/STATE.md` AD-010), and `fs-harness` no longer creates the `~/.claude/templates` link; guidance to link `../../templates/` would now produce broken links.
+- **Trade-off**: Content two skills genuinely share would have to be duplicated or re-extracted into a new shared mechanism; accepted, since every template this repo ever had ended up with a single consumer.
+- **Date**: 2026-09-13
+- **Status**: active

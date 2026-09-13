@@ -81,16 +81,13 @@ in your context — do NOT re-read it. Re-read only when:
 
 After a re-read, the updated content becomes the cached version — do not re-read again unless another trigger occurs.
 
-## Reference vs. Template Files
+## Shared Reference Files
 
-Two machine-wide symlinked folders hold shared `.md` content, kept separate because their consumers resolve paths differently and must never depend on the other's folder:
+`~/.claude/references/` → this project's `references/` holds `.md` files **this `CLAUDE.md` itself** links to, via absolute `~/.claude/references/<name>.md` paths (e.g. `gh-account-resolution.md`). It is CLAUDE.md-only: skills never link it. A skill keeps everything it needs inside its own directory (`references/`, `scripts/`); there is no shared folder for skills.
 
-- `~/.claude/references/` → this project's `references/` — files **this `CLAUDE.md` itself** links to, via absolute `~/.claude/references/<name>.md` paths (e.g. `gh-account-resolution.md`). CLAUDE.md never links `templates/`.
-- `~/.claude/templates/` → this project's `templates/` — files **skills** link to, via relative `../../templates/<name>.md` (or `../../../templates/<name>.md` from a skill's own `references/` subfolder). Skills never link `~/.claude/references/`.
+The symlink is created by `fs-harness setup`; `fs-harness doctor` validates that every `~/.claude/references/` link resolves, that no skill links it, and that nothing links the removed `templates/` folder.
 
-Both symlinks are created by `fs-harness setup`; `fs-harness doctor` validates that every cross-reference on both sides resolves and that neither folder is referenced from the other's consumer.
-
-`test-execution-scope.md` used to be the one file both sides needed — CLAUDE.md's condensed rules plus a full decision procedure that `build-feature`/`fix-review` linked directly for subagent-dispatch prompts. Confirmed by direct test that a dispatched subagent inherits this file's content in full, the only real gap was the Merges rule above (folded in here); every skill that cited the full template needed nothing beyond what's now inline. So it lives only in `references/` — no skill links it, and there is no exception to the mutual-exclusion rule above.
+`test-execution-scope.md` lives only in `references/`. It was once also linked by skills for subagent-dispatch prompts; a direct test confirmed a dispatched subagent inherits this file's content in full, so the only real gap was the Merges rule above (folded in here).
 
 ## MCP Tools
 
