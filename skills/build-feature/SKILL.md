@@ -83,7 +83,7 @@ Step 4 (grilling) is not a subagent dispatch and the wait protocol does not appl
 
 ### gh account resolution
 
-Apply [gh Account Resolution](../../templates/gh-account-resolution.md) once at the start of every invocation (fresh or resumed) — this skill pushes branches, opens/updates PRs, and calls several `gh`-using subagents across a long run, exactly the situation that template exists for.
+`gh` account resolution: mandatory, once at the start of every invocation (fresh or resumed) — this skill pushes branches, opens/updates PRs, and calls several `gh`-using subagents across a long run, exactly the situation that resolution exists for.
 
 ### PR
 
@@ -197,7 +197,7 @@ Never post, append, or verify review comments one tool call at a time from this 
 
 Otherwise (`human_review=no`, or `complete-review` excluded) there's no human around to submit it, so submit the pending review here, on `complete-review`'s behalf, before continuing to Step 12:
 
-1. Resolve the pending review's node ID under the run's own resolved gh login — same query as `complete-review`'s own Posting Mechanics step 1 (`reviews(first: 1, states: PENDING, author: $me)`), `$me` being the login this run already resolved via [gh Account Resolution](../../templates/gh-account-resolution.md).
+1. Resolve the pending review's node ID under the run's own resolved gh login — same query as `complete-review`'s own Posting Mechanics step 1 (`reviews(first: 1, states: PENDING, author: $me)`), `$me` being the login this run already resolved at the start (see `gh` account resolution above).
 2. If none is found (`complete-review` hit a full failure and posted nothing — see its own Guardrails — or it was already submitted by an earlier, interrupted run of this same step), skip submission and go straight to Step 12; there's nothing left for it to act on either, and it will report that itself.
 3. Otherwise submit it as `COMMENT` — never `APPROVE` or `REQUEST_CHANGES`, this skill isn't rendering a review verdict, only making `complete-review`'s already-decided findings visible so `fix-review` can see them:
    ```

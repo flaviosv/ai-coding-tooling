@@ -19,7 +19,7 @@ Run this once per skill invocation, not once per `gh` call — cache the result 
 
 ## Using the resolved account
 
-Scope every `gh` call for the rest of the run with `GH_TOKEN=$(gh auth token --user <resolved-login>) gh ...` (or export it once for the run's shell scope) — never `gh auth switch`, which would mutate the same global state this resolution exists to route around, and would affect other processes on the machine too.
+Scope every `gh` call for the rest of the run with `GH_TOKEN=$(gh auth token --user <resolved-login>) gh ...` (or export it once for the run's shell scope) — never `gh auth switch`, which would undo this resolution (see "Why this exists" above).
 
 For `git` operations against a remote (`push`, `fetch`) that need the same identity, the account's token doubles as the `git` credential when the remote uses HTTPS; if the remote is configured over SSH, this resolution only covers `gh`/GitHub-API calls — SSH identity is a separate, key-based concern outside this template's scope.
 

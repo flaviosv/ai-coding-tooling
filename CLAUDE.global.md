@@ -103,6 +103,10 @@ When a new skill is created, check whether it needs blacklisting in any client-s
 - **No co-authoring credits** — never append `Co-Authored-By:`, `Generated with`, or any tool attribution trailer to commit messages. This applies to Claude Code, any other AI tool, or any automated system.
 - **Conventional Commits** — every commit message must follow the [Conventional Commits](https://www.conventionalcommits.org/) structure: `<type>[optional scope]: <description>` (e.g. `fix(auth): handle expired token refresh`). Use standard types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`) and a scope when the change is localized to a specific module/area.
 
+## GitHub CLI (`gh`) Accounts
+
+Before any `gh` call, if more than one account may be logged in, resolve the correct one first — never trust `gh auth status`'s "active" marker (a parallel process can flip it at any time), and never use `gh auth switch` to fix it (that mutates the same global state, for every process on the machine). Full algorithm: `~/.claude/templates/gh-account-resolution.md`.
+
 ## Worktree Scope
 
 When the session is working inside a git worktree, all edits must stay within that worktree. Never modify files in the original repository checkout (or in any sibling worktree) — even when a path there looks like the same file, and even for a quick fix. If a change genuinely belongs outside the worktree, report it and let me decide instead of editing across the boundary.
