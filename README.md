@@ -44,7 +44,7 @@ fs-harness setup
 One command bootstraps everything:
 
 - **Global:** symlinks `CLAUDE.global.md` to Claude Code's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into `settings.json` (`scripts/hooks/` — see `docs/cli.md`).
-- **Project-local:** this repo's own instructions (`CLAUDE.md`) and project-local skills (`.claude/skills/`) are tracked directly in the repo — no setup step needed to see them.
+- **Project-local:** this repo's own instructions (`CLAUDE.md`) are tracked directly in the repo — no setup step needed to see them.
 
 It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fs-harness destroy`.
 
@@ -92,17 +92,6 @@ Add `--dry-run` to any command to print the actions without changing anything. S
 
 Skills are reusable agent instructions that extend AI coding tools with specialized workflows. They are grouped below by source.
 
-### Project-Local Skills (`.claude/skills/`)
-
-These skills live in `.claude/skills/`, tracked directly in the repo — Claude Code loads them at project scope with no setup step and no global installation required.
-
-| Skill | Description |
-|---|---|
-| **kb-from-folder** | Reads files or folders (local paths or GitHub repositories via SSH), extracts intelligence, and produces a comprehensive Markdown knowledge note saved to the Obsidian vault. |
-| **kb-from-raindrop** | Converts a Raindrop.io bookmark collection into a consolidated knowledge base in the Obsidian vault. Clusters bookmarks by topic and generates deduplicated `.md` files per cluster. |
-
-> Skill installation/update is handled by the `fs-harness` command (`scripts/bin/fs-harness.mjs`), not by a skill. See [Managing skills](#managing-skills).
-
 ### Source: This Project (`ai-coding-tooling`)
 
 Maintained here and installed globally via `fs-harness setup` / `fs-harness add`. These are the only skills you should modify:
@@ -110,8 +99,16 @@ Maintained here and installed globally via `fs-harness setup` / `fs-harness add`
 | Skill | Description |
 |---|---|
 | **architecture-evaluate** | Creates and incrementally syncs the project context docs in `docs/codebase/` (PROJECT, STACK, STRUCTURE, ARCHITECTURE, CONVENTIONS, INTEGRATIONS, TESTING, CONCERNS, PIPELINE) that agents load at session start. Full mode maps the whole codebase; Incremental mode syncs only what changed (and root files like this README); Package mode documents a single module. |
+| **build-feature** | Delivers a brand-new feature end-to-end: creates a worktree, branch, and draft PR, optionally grills you on scope, runs `tlc-spec-driven`'s Specify → Design → Tasks → Execute cycle, runs `code-review`, syncs architecture docs, and confirms the PR merges before marking it ready. Resumable from any interrupted step via `progress.md`. |
 | **code-review** | Reviews code and tests (or either alone, via `scope`) and fixes what the review finds, as one run — architecture, code quality, performance, regression, security, and requirements; test coverage, gaps, isolation, clarity, and maintainability. Works on local changes, commits, or a GitHub PR, where it posts the review, optionally pauses for your edits (`human_review`), then fixes, pushes, and replies to and resolves every thread through a verifying script. Also fixes existing review comments, and batch-sweeps PRs awaiting your review or where you requested changes. |
+| **disk-evaluate** | Reports reclaimable disk space on this Mac (Docker/local Kubernetes, Homebrew, dev and system caches, `node_modules`, large files) with the exact command to free each one. Read-only — never deletes anything — and only runs when invoked explicitly via `/disk-evaluate`. |
+| **not-your-babysitter** | Autonomous senior-operator mode: resolves tasks end to end, verifies every claim against real evidence, and interrupts only for destructive actions, evidence dead-ends, or outcome-changing ambiguity. |
+| **qa-steps** | Generates a step-by-step manual QA test plan for a Jira ticket, optionally enriched with a linked GitHub PR's diff, and posts it to the ticket only after you confirm. |
+| **session-evaluate** | Analyzes a completed agent session transcript for token waste, slow turns, missed parallelism, subagent misuse, self-corrected mistakes, and oversized test runs — whole session or scoped to named skills — then applies the approved fixes to the responsible skill or context file. |
+| **subagent-dispatch** | Reference for dispatching and waiting on subagents via the `Agent` tool: model aliases, the dispatch-prompt contract, the no-polling wait protocol, and this project's model-tier matrix for pipeline sites. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
+
+> Skill installation/update is handled by the `fs-harness` command (`scripts/bin/fs-harness.mjs`), not by a skill. See [Managing skills](#managing-skills).
 
 > ⭐ **Highlighted skills:**
 >
@@ -146,6 +143,7 @@ Installed globally by `fs-harness setup`. Treated as read-only — do not edit t
 | Skill | Description |
 |---|---|
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
+| **harness-eval** | Audits a repo's agent harness (AGENTS.md, rules, skills, skill references) for broken paths/commands, redundant instructions, and usefulness, using a dual-judge protocol with planted traps. |
 | **jira-assistant** | Manages Jira issues via the Atlassian MCP — search, create, update, transition status, and handle sprint tasks. |
 | **mermaid-studio** | Mermaid diagram creation, validation, and rendering (SVG/PNG/ASCII) across 20+ diagram types, with code-to-diagram analysis and theming. |
 | **security-best-practices** | Language and framework specific security reviews (Python, JavaScript/TypeScript, Go). |
@@ -156,9 +154,14 @@ Installed globally by `fs-harness setup`. Treated as read-only — do not edit t
 
 ### Source: [Matt Pocock](https://github.com/mattpocock/skills)
 
-Installed on demand via the `npx skills` CLI. Treated as read-only — override via `extended/<skill>/` rather than editing directly.
+Installed globally by `fs-harness setup` via the `npx skills` CLI. Treated as read-only — override via `extended/<skill>/` rather than editing directly:
 
-No Matt Pocock skills are adopted yet — the vendor is wired up and ready. Install one with:
+| Skill | Description |
+|---|---|
+| **grill-me** | A relentless interview to sharpen a plan or design; user-invoked only (`/grill-me`), delegates to `grilling`. |
+| **grilling** | Grills you relentlessly about a plan, decision, or idea to stress-test your thinking. |
+
+Adopt another one with:
 
 ```bash
 fs-harness add <skill> --source matt-pocock
