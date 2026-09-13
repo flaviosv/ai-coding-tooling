@@ -71,7 +71,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 ### Subagent Model (hard requirement)
 
-Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex, Performance Audit) — **must run on Sonnet**, regardless of what model the current session is running on (even if the session is on Opus). See [Subagent Models](../../templates/subagent-models.md) for the alias-only naming rule, the missing reasoning-effort parameter, and the rest of the shared dispatch facts.
+Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex, Performance Audit) — **must run on Sonnet**, regardless of what model the current session is running on (even if the session is on Opus). Load the `subagent-dispatch` skill for the alias-only naming rule, the missing reasoning-effort parameter, and the rest of the shared dispatch facts.
 
 ## Step 1: Mode Detection
 
@@ -317,7 +317,7 @@ Execute the Review Plan from Step 5. The execution mode determines how active di
 
 **Every agent dispatched below must be pinned to the most recent Sonnet model** (see [Subagent Model](#subagent-model-hard-requirement) in Guardrails) — set this explicitly on every dispatch, independent of the session's own model.
 
-Every dispatch follows [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md): completion condition is every checklist item in the agent's `## Before You Begin` block having been checked against the diff, findings written and tagged by dimension; return shape is exactly that — findings only, never the diff or codebase-doc content it read to produce them; delegation depth is none, a dimension agent never dispatches its own subagent.
+Every dispatch follows the `subagent-dispatch` skill's contract: completion condition is every checklist item in the agent's `## Before You Begin` block having been checked against the diff, findings written and tagged by dimension; return shape is exactly that — findings only, never the diff or codebase-doc content it read to produce them; delegation depth is none, a dimension agent never dispatches its own subagent.
 
 **Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line`, per [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract and the measured cost of skipping it.
 

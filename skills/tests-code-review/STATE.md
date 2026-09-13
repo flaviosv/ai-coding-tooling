@@ -15,3 +15,10 @@
 - **Trade-off**: None identified — no repo-specific content was lost.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-003
+- **Decision**: Replace the `templates/subagent-models.md` and `templates/subagent-dispatch-contract.md` links (Subagent Model guardrail and Step 6 execution) with references to the new `subagent-dispatch` skill.
+- **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files, mirroring `code-review`'s identical change (AD-007).
+- **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
+- **Date**: 2026-09-13
+- **Status**: active

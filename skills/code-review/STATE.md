@@ -36,3 +36,10 @@
 - **Trade-off**: The Examples table is denser and requires reading the base Steps 1–9 to make sense of the deltas — a reader can no longer follow one mode top-to-bottom without cross-referencing. The Merge Rule 2 and anchor-line pointers mean this file is no longer self-contained for those two guardrails; a reader must open `STATE.md` or `tests-code-review/SKILL.md` to get the full text or numbers.
 - **Date**: 2026-09-12
 - **Status**: active
+
+### AD-007
+- **Decision**: Replace the `templates/subagent-models.md` and `templates/subagent-dispatch-contract.md` links (Subagent Model guardrail and Step 6 execution) with references to the new `subagent-dispatch` skill.
+- **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) instead of two linked files — the generic dispatch-contract content matches the shape of self-loading vendor skills like `subagent-creator`/`workflow-authoring`, so callers point at the skill rather than a markdown link.
+- **Trade-off**: This file's Sonnet-pinning and dispatch-contract sentences now depend on `subagent-dispatch` existing and staying installed; removing that skill without updating this file would leave a stale pointer.
+- **Date**: 2026-09-13
+- **Status**: active

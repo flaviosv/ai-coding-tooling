@@ -85,3 +85,10 @@
 - **Trade-off**: none — the two pointer lines rely on root `CLAUDE.md` being loaded every session (already true, per this repo's own setup), so no coverage is lost; the tagline is pure rewording with no behavior change. Row #29 (re-running Track B/C with `--include-doc` for this skill's two `references/` files) is a separate, still-`Pending` item and was left untouched.
 - **Date**: 2026-09-12
 - **Status**: active
+
+### AD-009
+- **Decision**: Replace the two `templates/subagent-models.md` / `templates/subagent-dispatch-contract.md` links (the "not part of `build-feature`'s pipeline" note and the return-shape justification) with references to the new `subagent-dispatch` skill.
+- **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files. This skill still isn't part of `build-feature`'s model matrix (still pinned independently to `opus`), but the skill's shared "two hard facts" section still applies, same as before.
+- **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
+- **Date**: 2026-09-13
+- **Status**: active

@@ -71,3 +71,10 @@
 - **Trade-off**: This skill's `gh` account resolution mandatory-tag no longer explains the mechanism itself — it depends on the user's global `CLAUDE.md` being loaded in whatever context runs this skill. Accepted since global `CLAUDE.md` load is standard for every Claude Code session and subagent in this environment; if a future execution context ever skips user-global config, this tag alone would not recover the algorithm.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-010
+- **Decision**: Replace the `templates/subagent-models.md` / `templates/subagent-dispatch-contract.md` links (State ownership's dispatch-contract sentence, the Subagent models section, and `WORKFLOW.md`'s diagram note) with references to the new `subagent-dispatch` skill.
+- **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files.
+- **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
+- **Date**: 2026-09-13
+- **Status**: active

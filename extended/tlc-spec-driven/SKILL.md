@@ -89,7 +89,7 @@ above.
 
 ## Phase Models
 
-Each phase has a model tier it is expected to run on, recorded in [Subagent Models](../../templates/subagent-models.md):
+Each phase has a model tier it is expected to run on, recorded in the `subagent-dispatch` skill's model matrix (`references/model-matrix.md`):
 
 | Phase | Model |
 |-------|-------|

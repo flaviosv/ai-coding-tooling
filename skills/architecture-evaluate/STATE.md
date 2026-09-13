@@ -15,3 +15,10 @@
 - **Trade-off**: The merged example demonstrates only the new-package-confirmed path directly; the decline branch is now a one-line parenthetical instead of its own full walkthrough.
 - **Date**: 2026-09-12
 - **Status**: active
+
+### AD-003
+- **Decision**: Replace the `templates/subagent-models.md` and `templates/subagent-dispatch-contract.md` links (Shared Guardrails Sonnet-pin and Model Pinning dispatch contract) with references to the new `subagent-dispatch` skill.
+- **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files.
+- **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
+- **Date**: 2026-09-13
+- **Status**: active

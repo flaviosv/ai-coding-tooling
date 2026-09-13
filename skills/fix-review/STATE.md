@@ -78,3 +78,10 @@
 - **Trade-off**: Same as the sibling entries above — this tag depends on the user's global `CLAUDE.md` being loaded wherever this skill runs.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-011
+- **Decision**: Replace the three `templates/subagent-models.md` / `templates/subagent-dispatch-contract.md` links (the fixing-pass dispatch shape, the Sonnet-pin guardrail, and the remaining-dispatch-sites contract) with references to the new `subagent-dispatch` skill.
+- **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files.
+- **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
+- **Date**: 2026-09-13
+- **Status**: active
