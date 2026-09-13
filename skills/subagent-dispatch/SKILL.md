@@ -1,10 +1,10 @@
 ---
 name: subagent-dispatch
-description: Reference for creating a subagent via the `Agent` tool — the two hard facts about the tool itself (model is one of four literal aliases, never a versioned ID; there is no reasoning-effort parameter), the four-field contract every dispatch prompt must carry (completion condition, observability prefix and scale estimate, return shape, delegation depth), and a pointer to this project's own model-tier matrix for named pipeline dispatch sites. Load before writing any `Agent` call, dispatching a subagent, spinning one up, or setting its `model` — inside build-feature, code-review, complete-review, fix-review, tests-code-review, architecture-evaluate, session-evaluate, tlc-spec-driven, or an ad hoc one-off dispatch. Do NOT use for designing a new named, persistent subagent persona (its own frontmatter, system prompt, tool grants) — that's subagent-creator; this skill governs how an already-decided dispatch call is written, not whether a new subagent type should exist.
+description: Reference for creating a subagent via the `Agent` tool — the two hard facts about the tool (model is one of four literal aliases, never a versioned ID; no reasoning-effort parameter), the four-field dispatch-prompt contract (completion condition, observability prefix/scale estimate, return shape, delegation depth), the protocol for waiting on a dispatched subagent without polling or false-stall detection, and this project's model-tier matrix for named pipeline sites. Load before writing an `Agent` call, dispatching or waiting on a subagent, or setting its `model` — in build-feature, code-review, complete-review, fix-review, tests-code-review, architecture-evaluate, session-evaluate, tlc-spec-driven, or an ad hoc dispatch. Do NOT use for designing a new named, persistent subagent persona (frontmatter, system prompt, tool grants) — that's subagent-creator; this governs how an already-decided dispatch is written and waited on, not whether a new subagent type should exist.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # Subagent Dispatch
@@ -35,7 +35,33 @@ Every `Agent` dispatch prompt states four things:
 
 ## Waiting on a Dispatched Subagent
 
-If this dispatch needs to know when the subagent finishes before continuing — a single dispatch carries the same risk as a fan-out of several — load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md) rather than inventing your own "wait for it to return" wording. Out of scope: a subagent invoked via the `Skill` tool rather than a direct `Agent` call — that skill's own dispatch, if it has any, already owns its own wait handling.
+Applies once a dispatch needs to know when the subagent finishes before continuing — a single dispatch carries the same risk as a fan-out of several. Out of scope: a subagent invoked via the `Skill` tool rather than a direct `Agent` call — that skill's own dispatch, if it has any, already owns its own wait handling.
+
+1. **After dispatching, do nothing else.** No polling loop (`sleep`/`echo` in Bash, repeated `Monitor` or status-check calls) to watch for completion. If N agents were dispatched, expect N notifications, in whatever order they actually finish — collect each result as its notification arrives, whether that means proceeding once every one has reported or acting on each one as it lands (the dispatching skill's own step defines which).
+
+2. **Waiting costs zero tool calls — end the turn with plain text and nothing else.** The notification wakes the conversation on its own; nothing has to be called to make that happen, and no tool call is needed to "hand the turn back". A no-op placeholder (`true`, `echo`, `:`, an empty `Monitor`) is the same anti-pattern as polling and carries the same per-call price — a hundred of them is a hundred full context re-sends, not a hundred free ones. If a turn has nothing to do but wait, say so in one line and stop.
+
+3. **Never infer a stall from an idle transcript or a quiet task list.** A finished agent looks the same as a stalled one by that measure.
+
+4. **If a notification hasn't arrived after a generous ceiling** (the dispatching skill's own step sets this — as a default, 15 minutes for a single-purpose subagent, longer for one doing substantial file work), confirm the agent is actually still running with one non-blocking `TaskOutput(task_id, block: false)` call before treating it as stalled.
+
+5. **Never call `TaskStop` on an agent whose status wasn't just confirmed** via step 4. A dimension, finding set, or fix that an agent genuinely completed must never be dropped because the wait for it was mishandled.
+
+### Waiting on a Clock, Not an Agent
+
+Sometimes the wait is for wall-clock time rather than a subagent — a rate-limit cooldown, a deliberate pace between API batches. Foreground `sleep` is blocked, and that block is exactly what tempts a session into a yield loop: one no-op call every two seconds until enough time has passed. That is the same mistake, in its most expensive form — a three-minute cooldown spent this way cost 183 calls in one real run.
+
+Spend **one** call on the whole interval instead: `Monitor` with a single plain sleeping command (`sleep 180 && echo done`, `timeout_ms` a little above the sleep). It returns immediately with a task id and notifies when the sleep ends — so end the turn right there and wait for that event exactly as for an agent. Keep the command plain: a worktree-isolated session refuses compound loops (`while`/`$(( ))`), a plain `sleep` it accepts.
+
+**This section is for a clock, never for an agent.** If what you are waiting on is a dispatched subagent, none of it applies: that agent's notification already arrives on its own, so a `Monitor` sleep adds a second thing to wait for and buys nothing. Reaching for it there is not a compliant substitute for the wait rules above — it is their violation wearing a sanctioned mechanism. One real `fix-review` invocation made exactly that substitution: 23 `Monitor{sleep 600}` calls, each killed by a `TaskStop` the moment a real completion notification arrived — 44 turns whose only purpose was to wait. Alongside 169 `Bash: echo idle` calls in the same invocation, **46% of its turns produced nothing**, at roughly 187k of context re-sent per turn. A `Monitor` sleep is correct only when the thing being waited on is time itself.
+
+### Why This Matters
+
+An `Agent` tool call runs in the background and delivers its own task notification the instant it finishes — that notification is what "done" means, and it costs nothing to wait for. Left unspecified, orchestrators invent their own wait: a Bash `sleep`/`echo` loop, or repeated `Monitor`/status-check calls, polling for a completion that was already going to arrive on its own. Every one of those calls re-sends the full accumulated conversation as cached input — in one real run this was the single largest cost driver for the entire skill invocation, an order of magnitude more expensive than the actual review work.
+
+The second failure doesn't look like polling at all: emitting a **no-op tool call purely to end the turn** — `Bash true`, `echo waiting`, a `Monitor` heartbeat, whatever the description calls "yield turn". It feels free, because it does nothing and returns instantly. It costs exactly what a poll costs: the whole conversation, re-sent, per call. In one real `build-feature` run, 345 of these burned **77.6M input tokens** waiting — 327 of them inside a single `fix-review` invocation, roughly 30% of that invocation's entire cost, spent on `true`.
+
+The third, sharper failure: treating a quiet transcript as evidence of a stall. A **finished** agent's transcript stops growing too — that's indistinguishable from a stalled one by size or elapsed time alone. Acting on that false signal (stopping the agent, retrying, discarding its output) has thrown away already-completed, valid work — twice, on two independent passes, in a real run — and the recovery afterward cost more than either wasted pass.
 
 ## This Project's Model Matrix
 
