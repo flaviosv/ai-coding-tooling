@@ -85,7 +85,7 @@ The fix stage takes the opposite stance toward findings: each one is a claim to 
 - **Never filter or withhold findings** before the checkpoint — every finding is reported and, on a PR, posted. Merging same-root-cause duplicates (Step 8) is merging, not filtering.
 - **Only what remains is a finding.** Whatever the user deletes on GitHub or drops at the checkpoint does not exist for the fix stage.
 - **Every GitHub write goes through `scripts/github_review.py`** per [github-writes.md](references/github-writes.md): a review is pending until Stage 2 submits it, the verdict is always `COMMENT`, never a GitHub Issue, never deleting a review, comment, or thread, never touching another identity's pending review.
-- **Only the root conversation dispatches stage workers.** The root is a live conversation, or `build-feature`'s orchestrator invoking this skill via `Skill`. A review worker dispatches only its dimension agents; a fix worker dispatches nothing. **When this skill is executed by any subagent** (started via the `Agent` tool for any reason, other than as a stage worker this skill dispatched) — the test is mechanical, never a judgment about why you were started: it is already the isolated context and must never call `Agent` for a stage worker. It runs the review stage inline, then — with `human_review: false` — `submit` and the fix stage inline, in that same context; with `human_review: true` it stops after Stage 1 and returns its result with `awaiting_approval: true`. This is the one case where the fix stage does not start in a fresh worker.
+- **Only the root conversation dispatches stage workers.** The root is a live conversation, or `build-feature`'s orchestrator invoking this skill via `Skill`. A review worker dispatches only its dimension agents; a fix worker dispatches nothing. **When this skill is executed by any subagent** (started via the `Agent` tool for any reason, other than as a stage worker this skill dispatched) — the test is mechanical, never a judgment about why you were started: it is already the isolated context and must never call `Agent` for a stage worker. It runs the review stage inline, then — with `human_review: false` — `submit` and the fix stage inline, in that same context; with `human_review: true` it stops after Stage 1 and returns its result with `awaiting_approval: true`. This is the one case where the fix stage does not start in a fresh worker, and the one case where the fix stage makes its own checkout: see [Fix Stage — PR Mode](references/fix-stage.md#pr-mode) step 0.
 - **A stage worker that fails outright** (crash, auth failure, PR not found — distinct from a dimension agent or item failing) is retried once with a fresh worker; a second failure stops the run and is reported. Never claim a review was posted or a fix landed on a failed run.
 - **Every subagent runs on Sonnet** — review workers, fix workers, dimension agents, batch workers — set explicitly on each `Agent` call, whatever model this session runs on. `human_review` never changes the model. Load the `subagent-dispatch` skill for the alias-only `model` rule, the missing reasoning-effort parameter, the dispatch-prompt contract, and the wait protocol.
 - Never print `gh auth token` output or any credential — refer to auth state by status only.
@@ -103,14 +103,13 @@ First match wins:
 | 3 | A caller or user continuing a review this skill already posted ("continue the code review on PR #N") | Continue after checkpoint | Stage 2's continue path, then Stage 3 |
 | 4 | Fix wording with no review wording ("fix the review comments on PR #N", "resolve review comments", "fix Q1, H2") | Fix existing findings | Stage 3 only |
 | 5 | "review [test] commits X Y Z", "review [test] commits X..Y", "review last N [test] commits", hashes after "review" | Multi-commit | Stages 1–3 |
-| 6 | A PR number already established in this conversation | GitHub PR | Stages 1–3 |
+| 6 | A PR number named in the current request, or passed by the caller | GitHub PR | Stages 1–3 |
 | 7 | Default | Local workspace | Stages 1–3 |
 
-- **A PR number counts only when it's established in the conversation** — stated by the user or produced by an earlier step (e.g. `build-feature` just opened one). Never infer it from git or `gh` state.
+- **A PR counts only when the current request names it or the caller passes it** (e.g. `build-feature` passing the PR it just opened) — never a PR merely mentioned earlier in the conversation, and never one inferred from git or `gh` state. A PR run posts, submits, pushes, and resolves threads, so "review my code" in a conversation that once discussed PR #N is a local review. A request that refers to a PR without naming it ("review it") → ask which PR, or whether a local review is meant.
 - **Fix existing findings on a PR** needs at least one submitted review with comments (`gh pr view <N> --json reviews`): the only review is still `PENDING` → stop: "Your review is still pending on GitHub — submit it before asking me to fix findings." No review at all → fall through to local fix mode with the findings already in this conversation, on that PR's branch; none in the conversation either → say there is nothing published to fix and offer to review it. **Without a PR**, the findings are the ones already in this conversation (all of them, or the IDs named); none → ask which branch and which findings.
-- **Continue after checkpoint** runs Stage 2's continue path for a PR review this skill posted earlier: `submit` (a `submitted: false` is fine), then Stage 3. It never re-runs the review.
+- **Continue after checkpoint** runs Stage 2's continue path for a PR review this skill posted earlier: `submit` (exit `0` either way is fine), then Stage 3. It never re-runs the review and never re-posts findings — it is the recovery path for a `submit` or `deliver` failure, never for a failed review or post (Stage 2).
 - A fix request that is unclear between one PR and a sweep → ask: "Should I fix one specific PR (give me the number), or batch-fix every open PR where you requested changes?"
-- Load the dimension file for each active scope before Stage 1: [code-dimensions.md](references/code-dimensions.md) for code, [test-dimensions.md](references/test-dimensions.md) for tests.
 
 Entry and scope are fixed for the rest of the run.
 
@@ -119,15 +118,17 @@ Entry and scope are fixed for the rest of the run.
 **Dispatch (root):** one `Agent` call, `subagent_type: general-purpose`, `model: sonnet`, prompt per the `subagent-dispatch` contract:
 
 - Prefix `[code-review][review:PR-<N>]`, `[code-review][review:commits]`, or `[code-review][review:local]`.
-- The entry, PR number or commits, `scope`, and owner/repo for a PR.
+- The entry, PR number or commits, `scope`, and for a PR owner/repo and the `gh` login to pass as `--login` when the caller resolved one.
 - "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents. Load the `subagent-dispatch` wait protocol before the first dispatch; when waiting on an agent, end your turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll."
 - Completion condition: Step 8's report written and, on a PR, Step 9's `post` exited with its JSON captured.
-- Return shape, **local or commits:** the full Step 8 report plus the banner. **PR:** the PR URL; the banner verbatim (a Complex caveat with its actual wording); finding counts per scope and severity; the most important finding in one line; clusters collapsed; `post`'s exit code and, from its JSON, `posted_confirmed`, `carried_over`, `reanchored`, `anchor_corrected`, `missing`, `duplicates_found`, any batch that had to be retried, and every `unpostable` entry by `path:line` (report `0` for each count when none — a missing count is indistinguishable from never having looked); dimensions not executed with reasons. Never the diff, the full report, or comment bodies.
+- Return shape, **local or commits:** the full Step 8 report plus the banner. **PR:** the PR URL; the banner verbatim (a Complex caveat with its actual wording); finding counts per scope and severity; the most important finding in one line; clusters collapsed; `post`'s exit code, `post_json_path`, and, from its JSON, `posted_confirmed`, `carried_over`, `reanchored`, `anchor_corrected`, `anchor_unverified`, `missing`, `duplicates_found`, any batch that had to be retried, and every `unpostable` entry by `path:line` (report `0` for each count when none — a missing count is indistinguishable from never having looked); dimensions not executed with reasons; `review_failed: true` with every reason when every agent failed. Never the diff, the full report, or comment bodies.
 - Delegation depth: dimension agents only.
 
 Track the review worker's name (and later the fix worker's) against the PR for the rest of the conversation: a later "a new commit landed on PR #N" routes through them per [batch-mode.md — New Commits or Comments](references/batch-mode.md#new-commits-or-comments-after-dispatch), which applies to single-PR runs too. Wait per the `subagent-dispatch` wait protocol, then go to Stage 2.
 
 ### Step 2: Context Collection
+
+The review worker loads the dimension file for each scope `scope` asks for: [code-dimensions.md](references/code-dimensions.md) for code, [test-dimensions.md](references/test-dimensions.md) for tests. The root never loads them.
 
 Record whether each item exists — `present` or `absent`. **Do not load content**; agents self-load their own.
 
@@ -282,7 +283,7 @@ Then write the report per [report-format.md](references/report-format.md).
 
 ### Step 9: Post (GitHub PR only)
 
-Zero findings → skip `post` entirely and return zero counts; there is nothing to publish and never an empty comments array. Otherwise load [github-writes.md](references/github-writes.md), write `post.json` with every finding from the report (Comment Shape), and run `post`. Capture its JSON — it feeds the return shape. `post` never submits; the review stays pending until Stage 2.
+Zero findings → skip `post` entirely and return zero counts; there is nothing to publish and never an empty comments array. Otherwise load [github-writes.md](references/github-writes.md), write `post.json` with every finding from the report (Comment Shape) at the path [GitHub Writes — `post`](references/github-writes.md#review-stage-post) gives, and run `post`. Capture its JSON — it feeds the return shape, with `post_json_path`. Leave `post.json` on disk: Stage 2 re-runs `post` from it if posting failed. `post` never submits; the review stays pending until Stage 2.
 
 ## Stage 2: Checkpoint
 
@@ -293,15 +294,25 @@ Runs in the root conversation.
 | GitHub PR | Show the PR URL, banner, counts, and unpostable findings, and **end the turn**: "Review posted as pending on PR #N. Edit, delete, or add comments on GitHub (or submit it), then reply to continue." Never invent an approval or continue speculatively. On the user's reply: `submit` (a `submitted: false` because the user already submitted is fine), then Stage 3 | `submit`, then Stage 3 |
 | Local or commits | Show the report and **end the turn**; the user drops findings by ID ("drop Q2, H1") and replies. Then Stage 3 with what remains | Stage 3 with every finding |
 
-- **Review failed** (`review_failed: true`) → no pause, no `submit`, no Stage 3; report every failure reason and stop.
-- **`post` exit `2`** → nothing was confirmed: the run is blocked; report its JSON and stop. **Exit `1`** → report every `missing`, `duplicates_found`, and error entry explicitly — never rounded to the intended count — and continue; the threads that landed are real.
+Recovery happens before the pause, so the user only ever checks findings that are really on GitHub:
+
+| Failure | Recovery — once | Still failing |
+|---|---|---|
+| **Posting failed** — `post` exit `2`, or a non-empty `missing` | Re-run `post` from the root with the same file: `github_review.py post <post_json_path> [--login <login>]`. Never re-run the review — `post` skips everything already on the review | Exit `2` → blocked: report its JSON and stop, never `submit`. Exit `1` → report every `missing`, `duplicates_found`, and error entry explicitly — never rounded to the intended count — and continue; the threads that landed are real |
+| **Review failed** — `review_failed: true`, or the review worker failed outright after its own retry | Run Stage 1 again with a fresh review worker | No pause, no `submit`, no Stage 3; report every failure reason and stop |
+| **`submit` exit non-zero** | Run `submit` again | Blocked: report its JSON and stop before Stage 3 |
+
+Remove the directory holding `post.json` once `post` exits `0`, or when the run ends.
+
+- **`submit` exit `0` always continues to Stage 3**, whatever it reports: `submitted: true`; `submitted: false` because nothing was pending (the user already submitted it); or `submitted: false` with `empty_review_removed: true` (the user deleted every comment — Stage 3 still runs for any other reviewer's threads, and reports when there are none).
 - **"Just review":** `true` → end the run at the pause (a PR review stays pending for the user to submit); `false` → `submit` on a PR, then end the run.
-- **No findings** from the review → no pause, no `submit`, no Stage 3; report. **The user dropped them all** at the pause → no Stage 3; on a PR, `submit` still runs (it leaves a review with no comments pending).
-- `submit` exits non-zero → the run is blocked; report its JSON and stop before Stage 3.
+- **No findings** from the review → no pause, no `submit`, no Stage 3; report. **Local: the user dropped them all** at the pause → no Stage 3.
 
 ## Stage 3: Fix
 
 The root dispatches a fresh fix worker per [Fix Stage — Dispatch](references/fix-stage.md#dispatch-root-conversation), waits per the `subagent-dispatch` wait protocol, and removes any worktree the dispatch created once the worker reports.
+
+**Delivery failed** — the fix worker reports a non-zero `deliver` exit, or failed outright after its own retry → run the continue-after-checkpoint path once more for that PR: `submit` (exit `0` either way), then a fresh fix worker carrying the retry note from [Fix Stage — Dispatch](references/fix-stage.md#dispatch-root-conversation). Never re-run the review or `post`. Two exceptions: a `deliver` result with `pending_review_id` is not retried — report "Submit or discard your pending review on PR #N, then ask me to continue" — and a result with `unaccounted` threads was already sent back to classification by the worker. Blocked again → stop and report its raw result.
 
 ## Final Report
 
@@ -320,6 +331,7 @@ The root combines both stages: the review summary (URL or report, banner, counts
 | PR #310 already has this identity's pending review (6 comments) | GitHub PR · false | `post` appends new findings to it (`carried_over: 6`), then submit and fix |
 | "fix the review comments on PR #201" | Fix existing · — | Stage 3 only; no checkout has the PR branch, so the fix worker gets `isolation: worktree` |
 | `build-feature` resuming with `code_review: pending` | Continue after checkpoint · — | `submit`, then Stage 3; the review is not re-run |
+| PR #42, `post` exits `2` on a rate-limit block | GitHub PR · false | Root re-runs `post` from `post_json_path` once; it lands → `submit`, fix. The review is never re-run |
 | "fix Q1 and H2" after a "just review" local run | Fix existing · — | Stage 3 with exactly those two findings |
 | "review my pending PRs except #205" | Batch review sweep | #205 dropped for this run only; per-PR review → checkpoint → fix |
 | "fix the PRs I requested changes on" | Batch fix sweep | One worktree fix worker per qualifying PR, scoped to your own threads |

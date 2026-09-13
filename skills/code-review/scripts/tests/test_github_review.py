@@ -1,10 +1,12 @@
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -67,6 +69,23 @@ class ResolveAnchorTest(unittest.TestCase):
     def test_unchecked_without_content(self):
         self.assertEqual(gr.resolve_anchor(4, "x = 1", None), (4, "unchecked"))
 
+    def test_whitespace_runs_are_ignored(self):
+        self.assertEqual(gr.resolve_anchor(2, "x   =  1", self.FILE), (2, "ok"))
+
+    def test_leading_diff_marker_is_ignored(self):
+        self.assertEqual(gr.resolve_anchor(3, "+    return x", self.FILE), (3, "ok"))
+
+    def test_partial_anchor_matches_its_own_line(self):
+        self.assertEqual(gr.resolve_anchor(3, "return", self.FILE), (3, "ok"))
+
+    def test_partial_anchor_elsewhere_needs_a_unique_match(self):
+        self.assertEqual(gr.resolve_anchor(1, "return", self.FILE), (3, "corrected"))
+        self.assertEqual(gr.resolve_anchor(3, "x =", self.FILE), (3, "mismatch"))
+        self.assertEqual(gr.resolve_anchor(1, "= 1", ["pass", "a = 1", "b = 1"]), (1, "mismatch"))
+
+    def test_marker_kept_when_the_line_really_starts_with_it(self):
+        self.assertEqual(gr.resolve_anchor(2, "- item", ["# list", "- item"]), (2, "ok"))
+
 
 class PlanPostTest(unittest.TestCase):
     def setUp(self):
@@ -121,10 +140,15 @@ class PlanPostTest(unittest.TestCase):
         self.assertEqual(plan["to_post"][0]["side"], "LEFT")
         self.assertEqual(plan["unpostable"], [])
 
-    def test_anchor_found_nowhere_with_line_is_unpostable(self):
+    def test_anchor_found_nowhere_with_line_posts_unverified(self):
         plan = gr.plan_post([self.comment(line=11, anchor="nope")], self.files, self.contents, [])
-        self.assertEqual(plan["to_post"], [])
-        self.assertEqual(plan["unpostable"], [{"path": "a.py", "line": 11, "reason": "anchor text not found at PR head"}])
+        self.assertEqual(plan["to_post"], [{"path": "a.py", "line": 11, "side": "RIGHT", "body": "finding"}])
+        self.assertEqual(plan["anchor_unverified"], [{"path": "a.py", "line": 11}])
+        self.assertEqual(plan["unpostable"], [])
+
+    def test_empty_patch_is_unpostable(self):
+        plan = gr.plan_post([self.comment()], {"a.py": ""}, self.contents, [])
+        self.assertIn("no diff hunk data", plan["unpostable"][0]["reason"])
 
 
 class ReconcilePostTest(unittest.TestCase):
@@ -167,10 +191,172 @@ class DeliverHelpersTest(unittest.TestCase):
         }
         self.assertEqual(gr.in_scope_threads(threads), {"t1"})
 
-    def test_new_comments_by_login(self):
-        base = {"comments": [("c1", "rev")]}
-        now = {"comments": [("c1", "rev"), ("c2", "me"), ("c3", "other")]}
+    def test_new_comments_by_login_count_only_delivered_replies(self):
+        marker = gr.REPLY_MARKER
+        base = {"comments": [("c1", "rev", "finding")]}
+        now = {"comments": [("c1", "rev", "finding"), ("c2", "me", f"done\n\n{marker}"),
+                            ("c3", "other", f"x {marker}"), ("c4", "me", "yes, fix this")]}
         self.assertEqual(gr.new_comments_by("me", base, now), ["c2"])
+
+    def test_marked_body_adds_the_marker_once(self):
+        once = gr.marked_body("Fixed.\n")
+        self.assertEqual(once, f"Fixed.\n\n{gr.REPLY_MARKER}")
+        self.assertEqual(gr.marked_body(once), once)
+
+    def test_own_plain_comment_is_not_a_delivered_reply(self):
+        entry = {"comments": [("c1", "me", "**[Security — S1, High]** ..."), ("c2", "me", "yes, fix this")]}
+        self.assertFalse(gr.has_delivered_reply("me", entry))
+        entry["comments"].append(("c3", "me", gr.marked_body("Fixed.")))
+        self.assertTrue(gr.has_delivered_reply("me", entry))
+
+    def test_first_comment_never_counts_as_a_reply(self):
+        entry = {"comments": [("c1", "me", gr.marked_body("finding"))]}
+        self.assertFalse(gr.has_delivered_reply("me", entry))
+
+
+class UnifiedDiffTest(unittest.TestCase):
+    DIFF = "\n".join([
+        "diff --git a/a.py b/a.py",
+        "index 1..2 100644",
+        "--- a/a.py",
+        "+++ b/a.py",
+        "@@ -1,2 +1,3 @@",
+        " keep",
+        "+++ b/looks-like-a-header",
+        "+new",
+        "diff --git a/gone.py b/gone.py",
+        "--- a/gone.py",
+        "+++ /dev/null",
+        "@@ -1 +0,0 @@",
+        "-old",
+        "diff --git a/img.png b/img.png",
+        "Binary files a/img.png and b/img.png differ",
+    ])
+
+    def test_patches_by_path(self):
+        patches = gr.parse_unified_diff(self.DIFF)
+        self.assertEqual(patches, {"a.py": "@@ -1,2 +1,3 @@\n keep\n+++ b/looks-like-a-header\n+new"})
+        self.assertEqual(gr.parse_hunk_lines(patches["a.py"])["RIGHT"], {1, 2, 3})
+
+    def test_fill_missing_patches_only_for_commented_files(self):
+        files = {"a.py": None, "img.png": None, "c.py": "@@ -1 +1 @@\n+c"}
+        with mock.patch.object(gr, "run_gh_text", return_value=self.DIFF) as run:
+            filled = gr.fill_missing_patches("o", "r", 7, files, ["a.py", "img.png", "c.py"])
+        run.assert_called_once_with(["gh", "pr", "diff", "7", "--repo", "o/r"])
+        self.assertTrue(filled["a.py"].startswith("@@ -1,2 +1,3 @@"))
+        self.assertIsNone(filled["img.png"])
+
+    def test_fill_missing_patches_skips_the_diff_when_nothing_is_missing(self):
+        with mock.patch.object(gr, "run_gh_text") as run:
+            gr.fill_missing_patches("o", "r", 7, {"c.py": "@@ -1 +1 @@\n+c"}, ["c.py"])
+        run.assert_not_called()
+
+    def test_fill_missing_patches_survives_a_diff_failure(self):
+        with mock.patch.object(gr, "run_gh_text", side_effect=gr.GhError("too large")):
+            self.assertEqual(gr.fill_missing_patches("o", "r", 7, {"a.py": None}, ["a.py"]), {"a.py": None})
+
+
+def completed(returncode, stdout, stderr=""):
+    return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+class RunGhTest(unittest.TestCase):
+    def run_with(self, proc):
+        with mock.patch.object(gr.subprocess, "run", return_value=proc):
+            return gr.run_gh(["gh", "api", "x"])
+
+    def test_success(self):
+        self.assertEqual(self.run_with(completed(0, '{"login": "me"}')), {"login": "me"})
+
+    def test_http_error_body_on_stdout_raises(self):
+        with self.assertRaises(gr.GhError) as ctx:
+            self.run_with(completed(1, '{"message":"Not Found","status":"404"}', "gh: Not Found (HTTP 404)"))
+        self.assertIn("Not Found", ctx.exception.stdout)
+
+    def test_graphql_partial_data_is_returned(self):
+        payload = '{"data":{"r0":null,"r1":{"comment":{"id":"c"}}},"errors":[{"path":["r0"],"message":"bad"}]}'
+        self.assertEqual(self.run_with(completed(1, payload))["data"]["r1"]["comment"]["id"], "c")
+
+    def test_rate_limit_is_an_abuse_block(self):
+        body = '{"message":"You have exceeded a secondary rate limit and have been temporarily blocked"}'
+        with self.assertRaises(gr.GhError) as ctx:
+            self.run_with(completed(1, body, "gh: HTTP 403"))
+        self.assertTrue(ctx.exception.looks_like_abuse_block())
+
+    def test_graphql_errors_without_data_raise(self):
+        with self.assertRaises(gr.GhError):
+            self.run_with(completed(1, '{"data":null,"errors":[{"type":"RATE_LIMITED","message":"API rate limit exceeded"}]}'))
+
+    def test_unparseable_output_raises(self):
+        with self.assertRaises(gr.GhError):
+            self.run_with(completed(1, "", "gh: connection refused"))
+
+
+class LoginTest(unittest.TestCase):
+    def tearDown(self):
+        gr.GH_ENV = None
+
+    def test_resolve_login_rejects_another_identity(self):
+        with mock.patch.object(gr, "run_gh", return_value={"login": "other"}):
+            with self.assertRaises(gr.GhError):
+                gr.resolve_login("me")
+            self.assertEqual(gr.resolve_login(), "other")
+
+    def test_use_login_sets_the_token_for_later_calls(self):
+        with mock.patch.object(gr, "run_gh_text", return_value="tok123\n") as run:
+            gr.use_login("me")
+        run.assert_called_once_with(["gh", "auth", "token", "--user", "me"])
+        self.assertEqual(gr.GH_ENV["GH_TOKEN"], "tok123")
+
+    def test_use_login_without_a_token_fails(self):
+        with mock.patch.object(gr, "run_gh_text", side_effect=gr.GhError("no account")):
+            with self.assertRaises(gr.GhError):
+                gr.use_login("ghost")
+
+
+class SubmitTest(unittest.TestCase):
+    PULL = {"url": "https://github.com/o/r/pull/1"}
+
+    def test_empty_pending_review_is_removed(self):
+        with mock.patch.object(gr, "resolve_login", return_value="me"), \
+             mock.patch.object(gr, "fetch_pr_and_pending_review", side_effect=[(self.PULL, "PRR_1"), (self.PULL, None)]), \
+             mock.patch.object(gr, "fetch_review", return_value=("PENDING", [])), \
+             mock.patch.object(gr, "review_body", return_value=""), \
+             mock.patch.object(gr, "gh_graphql", return_value={"data": {}}) as graphql:
+            result, code = gr.submit("o", "r", 1, False)
+        self.assertEqual(code, 0)
+        self.assertEqual((result["submitted"], result["empty_review_removed"]), (False, True))
+        self.assertIn("deletePullRequestReview", graphql.call_args[0][0])
+
+    def test_empty_review_that_survives_deletion_is_exit_1(self):
+        with mock.patch.object(gr, "resolve_login", return_value="me"), \
+             mock.patch.object(gr, "fetch_pr_and_pending_review", return_value=(self.PULL, "PRR_1")), \
+             mock.patch.object(gr, "fetch_review", return_value=("PENDING", [])), \
+             mock.patch.object(gr, "review_body", return_value=""), \
+             mock.patch.object(gr, "gh_graphql", side_effect=gr.GhError("forbidden")):
+            result, code = gr.submit("o", "r", 1, False)
+        self.assertEqual(code, 1)
+        self.assertFalse(result["empty_review_removed"])
+
+    def test_no_pending_review_is_exit_0(self):
+        with mock.patch.object(gr, "resolve_login", return_value="me"), \
+             mock.patch.object(gr, "fetch_pr_and_pending_review", return_value=(self.PULL, None)):
+            result, code = gr.submit("o", "r", 1, False)
+        self.assertEqual((code, result["submitted"]), (0, False))
+
+
+class DeliverPendingReviewTest(unittest.TestCase):
+    def test_refuses_while_this_identity_holds_a_pending_review(self):
+        config = {"owner": "o", "repo": "r", "pr": 1, "threads": {"t": {"body": "x"}}}
+        with mock.patch.object(gr, "resolve_login", return_value="me"), \
+             mock.patch.object(gr, "fetch_pr_and_pending_review", return_value=({}, "PRR_9")), \
+             mock.patch.object(gr, "fetch_threads") as fetch, \
+             mock.patch.object(gr, "gh_graphql") as graphql:
+            result, code = gr.deliver(config, 10, False)
+        self.assertEqual(code, 2)
+        self.assertEqual(result["pending_review_id"], "PRR_9")
+        fetch.assert_not_called()
+        graphql.assert_not_called()
 
 
 class ValidationTest(unittest.TestCase):
@@ -206,6 +392,13 @@ class ValidationTest(unittest.TestCase):
             self.assertIn("missing 'repo'", out.getvalue())
         finally:
             os.unlink(handle.name)
+
+    def test_main_turns_an_unexpected_response_shape_into_exit_2(self):
+        out = io.StringIO()
+        with mock.patch.object(gr, "submit", side_effect=KeyError("data")), redirect_stdout(out):
+            code = gr.main(["submit", "o", "r", "1"])
+        self.assertEqual(code, 2)
+        self.assertIn("unexpected GitHub response shape", out.getvalue())
 
 
 if __name__ == "__main__":

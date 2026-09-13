@@ -7,6 +7,9 @@ Three subcommands, one set of mechanics:
     submit   <owner> <repo> <pr>   submit this identity's pending review as COMMENT -> confirm state
     deliver  <delivery.json>  thread replies and resolves -> confirm each by re-fetch
 
+Every subcommand accepts `--login <login>`: the script then acts with that account's token
+(`gh auth token --user`) and fails if the authenticated identity differs.
+
 Every number this script reports comes from re-fetching GitHub's own state, never
 from what it sent. It exits non-zero when any intended outcome is unconfirmed, so a
 caller cannot mistake "sent" for "landed" — the failure mode this script exists to
@@ -22,10 +25,12 @@ post.json:
     }
 
     `side` defaults to RIGHT. `line` may be null only for RIGHT with an `anchor`.
-    Anchors are checked against the file at the PR head commit: a line whose anchor
-    text sits elsewhere is corrected, and an anchor found nowhere makes the comment
-    unpostable. A comment outside every diff hunk is re-anchored to the nearest
-    in-hunk line of its file, and one on a file the PR never touched is unpostable.
+    Anchors are checked against the file at the PR head commit, ignoring whitespace
+    runs and a leading diff marker: a line whose anchor text sits elsewhere is
+    corrected; an anchor found nowhere keeps its line and is reported as
+    `anchor_unverified`, unless there is no line to keep, which makes it unpostable.
+    A comment outside every diff hunk is re-anchored to the nearest in-hunk line of
+    its file, and one on a file the PR never touched is unpostable.
 
 delivery.json:
     {
@@ -36,7 +41,11 @@ delivery.json:
 
     `threads` and `skipped` together must account for every in-scope thread on the
     PR (published, not already resolved). Any in-scope thread in neither list is
-    reported as `unaccounted` and exits non-zero.
+    reported as `unaccounted` and exits non-zero. Every reply carries a hidden
+    marker; a thread counts as already replied only when it holds a marked reply
+    from this identity, never merely a comment from it. Delivery refuses to start
+    while this identity holds a pending review on the PR, since a reply could land
+    inside it, invisible to everyone else.
 
 Output JSON goes to stdout; human-readable progress goes to stderr.
 
@@ -49,6 +58,7 @@ Exit codes:
 import argparse
 import base64
 import json
+import os
 import re
 import subprocess
 import sys
@@ -67,6 +77,10 @@ THREAD_PAGE_SIZE = 100
 COMMENT_PAGE_SIZE = 100
 SIDES = ("LEFT", "RIGHT")
 HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+DIFF_FILE_RE = re.compile(r"^\+\+\+ b/(.+)$")
+REPLY_MARKER = "<!-- code-review:deliver -->"
+ABUSE_SIGNALS = ("abuse", "rate limit", "temporarily blocked")
+GH_ENV = None
 
 
 # ---------------------------------------------------------------------------
@@ -84,14 +98,14 @@ class GhError(RuntimeError):
 
     def looks_like_abuse_block(self):
         blob = (self.stdout + self.stderr).lower()
-        return "abuse" in blob or "secondary rate limit" in blob
+        return any(signal in blob for signal in ABUSE_SIGNALS)
 
 
 def log(message):
     print(message, file=sys.stderr, flush=True)
 
 
-def run_gh(args):
+def run_gh_process(args):
     """Invoke gh with an argument array — never a shell string.
 
     Passing argv directly is what keeps this script usable inside a
@@ -99,24 +113,57 @@ def run_gh(args):
     substitution, and no heredoc for a command-shape guard to refuse.
     """
     try:
-        proc = subprocess.run(
-            args, capture_output=True, text=True, timeout=GH_TIMEOUT_S
+        return subprocess.run(
+            args, capture_output=True, text=True, timeout=GH_TIMEOUT_S, env=GH_ENV
         )
     except subprocess.TimeoutExpired as exc:
         raise GhError(f"gh timed out after {GH_TIMEOUT_S}s") from exc
     except FileNotFoundError as exc:
         raise GhError("gh not found on PATH") from exc
 
-    if proc.returncode != 0 and not proc.stdout.strip():
+
+def run_gh(args):
+    """Return gh's JSON output.
+
+    gh exits non-zero on every HTTP error and prints the error body to stdout. The
+    one non-zero payload that is still usable is a GraphQL response carrying `data`
+    alongside per-alias `errors`; anything else is a failed request.
+    """
+    proc = run_gh_process(args)
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise GhError(
+            f"gh exited {proc.returncode} with unparseable output",
+            stdout=proc.stdout,
+            stderr=proc.stderr,
+        ) from exc
+    if proc.returncode != 0 and not (isinstance(payload, dict) and payload.get("data")):
         raise GhError(
             f"gh exited {proc.returncode}", stdout=proc.stdout, stderr=proc.stderr
         )
-    try:
-        return json.loads(proc.stdout)
-    except json.JSONDecodeError as exc:
+    return payload
+
+
+def run_gh_text(args):
+    proc = run_gh_process(args)
+    if proc.returncode != 0:
         raise GhError(
-            "gh returned unparseable output", stdout=proc.stdout, stderr=proc.stderr
-        ) from exc
+            f"gh exited {proc.returncode}", stdout=proc.stdout, stderr=proc.stderr
+        )
+    return proc.stdout
+
+
+def use_login(login):
+    """Act as `login` for every later gh call; the token never leaves this process."""
+    global GH_ENV
+    try:
+        token = run_gh_text(["gh", "auth", "token", "--user", login]).strip()
+    except GhError as exc:
+        raise GhError(f"no gh token for login {login}") from exc
+    if not token:
+        raise GhError(f"no gh token for login {login}")
+    GH_ENV = {**os.environ, "GH_TOKEN": token}
 
 
 def gh_graphql(query, str_vars=None, int_vars=None):
@@ -139,11 +186,13 @@ def graphql_data(payload, what):
     return data
 
 
-def resolve_login():
+def resolve_login(expected=None):
     data = run_gh(["gh", "api", "user"])
     login = data.get("login")
     if not login:
         raise GhError("could not resolve authenticated login from `gh api user`")
+    if expected and login != expected:
+        raise GhError(f"authenticated as {login}, expected {expected}")
     return login
 
 
@@ -314,18 +363,46 @@ def nearest_line(target, candidates):
     return min(candidates, key=lambda n: (abs(n - target), n))
 
 
+def normalize_code(text):
+    return " ".join((text or "").split())
+
+
+def anchor_candidates(anchor):
+    """The anchor as written, then without a leading diff marker copied from a patch."""
+    text = normalize_code(anchor)
+    candidates = [text] if text else []
+    if text[:1] in ("+", "-") and normalize_code(text[1:]):
+        candidates.append(normalize_code(text[1:]))
+    return candidates
+
+
+def locate_anchor(line, anchor, normalized):
+    if line is not None and 1 <= line <= len(normalized) and anchor in normalized[line - 1]:
+        return line
+    matches = [i + 1 for i, text in enumerate(normalized) if text == anchor]
+    if not matches:
+        partial = [i + 1 for i, text in enumerate(normalized) if anchor in text]
+        if len(partial) == 1:
+            matches = partial
+    if not matches:
+        return None
+    return nearest_line(line, matches) if line is not None else matches[0]
+
+
 def resolve_anchor(line, anchor, file_lines):
-    """Return (line, status) where status is ok | corrected | mismatch | not_found | unchecked."""
-    anchor = (anchor or "").strip()
-    if not anchor or file_lines is None:
+    """Return (line, status) where status is ok | corrected | mismatch | not_found | unchecked.
+
+    Comparison ignores whitespace runs. An anchor matches its own line when it is that
+    line's text or part of it; elsewhere it must be a whole line, or part of exactly one.
+    """
+    candidates = anchor_candidates(anchor)
+    if not candidates or file_lines is None:
         return line, "unchecked"
-    if line is not None and 1 <= line <= len(file_lines):
-        if file_lines[line - 1].strip() == anchor:
-            return line, "ok"
-    matches = [i + 1 for i, text in enumerate(file_lines) if text.strip() == anchor]
-    if matches:
-        best = nearest_line(line, matches) if line is not None else matches[0]
-        return best, "corrected"
+    normalized = [normalize_code(text) for text in file_lines]
+    for candidate in candidates:
+        found = locate_anchor(line, candidate, normalized)
+        if found is not None:
+            return found, ("ok" if found == line else "corrected")
     if line is None:
         return None, "not_found"
     return line, "mismatch"
@@ -351,6 +428,7 @@ def plan_post(comments, files, contents, existing):
         "input_duplicates": [],
         "reanchored": [],
         "anchor_corrected": [],
+        "anchor_unverified": [],
         "unpostable": [],
     }
     existing_keys = {(p, l, b) for p, l, b in existing}
@@ -374,9 +452,11 @@ def plan_post(comments, files, contents, existing):
                 plan["anchor_corrected"].append(
                     {"path": path, "from_line": line, "line": resolved}
                 )
-            elif status in ("mismatch", "not_found"):
+            elif status == "mismatch":
+                plan["anchor_unverified"].append({"path": path, "line": line})
+            elif status == "not_found":
                 plan["unpostable"].append(
-                    {"path": path, "line": line, "reason": "anchor text not found at PR head"}
+                    {"path": path, "line": None, "reason": "anchor text not found at PR head"}
                 )
                 continue
             elif status == "unchecked" and line is None:
@@ -387,9 +467,9 @@ def plan_post(comments, files, contents, existing):
             line = resolved
 
         patch = files[path]
-        if patch is None:
+        if not patch:
             plan["unpostable"].append(
-                {"path": path, "line": line, "reason": "no diff hunk data (binary or too large)"}
+                {"path": path, "line": line, "reason": "no diff hunk data (binary or diff unavailable)"}
             )
             continue
 
@@ -512,6 +592,42 @@ def fetch_pr_files(owner, repo, pr):
     return files
 
 
+def parse_unified_diff(text):
+    """Return {path: patch} from a unified diff, patch holding only its hunks."""
+    patches, current, hunks = {}, None, []
+    for raw in (text or "").splitlines():
+        if raw.startswith("diff --git "):
+            if current:
+                patches[current] = "\n".join(hunks)
+            current, hunks = None, []
+            continue
+        match = DIFF_FILE_RE.match(raw)
+        if match and not hunks:
+            current = match.group(1)
+            continue
+        if current and (hunks or raw.startswith("@@")):
+            hunks.append(raw)
+    if current:
+        patches[current] = "\n".join(hunks)
+    return patches
+
+
+def fill_missing_patches(owner, repo, pr, files, paths):
+    """The files API omits `patch` for large diffs; recover those hunks from `gh pr diff`."""
+    wanted = [path for path in paths if path in files and not files[path]]
+    if not wanted:
+        return files
+    try:
+        diff = parse_unified_diff(run_gh_text(["gh", "pr", "diff", str(pr), "--repo", f"{owner}/{repo}"]))
+    except GhError as exc:
+        log(f"gh pr diff unavailable for missing patches: {exc}")
+        return files
+    for path in wanted:
+        if diff.get(path):
+            files[path] = diff[path]
+    return files
+
+
 def fetch_file_lines(owner, repo, path, ref):
     try:
         quoted = urllib.parse.quote(path)
@@ -552,14 +668,16 @@ def post_batches(review_id, items, batch_size, errors):
             abuse_waits = wait_for_abuse_block(abuse_waits)
 
 
-def post(config, batch_size, dry_run):
+def post(config, batch_size, dry_run, expected_login=None):
     owner, repo, pr = config["owner"], config["repo"], int(config["pr"])
-    login = resolve_login()
+    login = resolve_login(expected_login)
     log(f"authenticated as {login}")
 
     pull, review_id = fetch_pr_and_pending_review(owner, repo, pr, login)
     before = fetch_review(review_id)[1] if review_id else []
-    files = fetch_pr_files(owner, repo, pr)
+    files = fill_missing_patches(
+        owner, repo, pr, fetch_pr_files(owner, repo, pr), [c["path"] for c in config["comments"]]
+    )
 
     contents = {}
     for comment in config["comments"]:
@@ -584,6 +702,7 @@ def post(config, batch_size, dry_run):
         "input_duplicates": plan["input_duplicates"],
         "reanchored": plan["reanchored"],
         "anchor_corrected": plan["anchor_corrected"],
+        "anchor_unverified": plan["anchor_unverified"],
         "unpostable": plan["unpostable"],
     }
 
@@ -655,18 +774,63 @@ mutation($reviewId: ID!) {
 """
 
 
-def submit(owner, repo, pr, dry_run):
-    login = resolve_login()
+DELETE_REVIEW_MUTATION = """
+mutation($reviewId: ID!) {
+  deletePullRequestReview(input: { pullRequestReviewId: $reviewId }) { pullRequestReview { id } }
+}
+"""
+
+
+REVIEW_BODY_QUERY = """
+query($id: ID!) {
+  node(id: $id) { ... on PullRequestReview { body } }
+}
+"""
+
+
+def review_body(review_id):
+    node = graphql_data(gh_graphql(REVIEW_BODY_QUERY, str_vars={"id": review_id}), "review body fetch")["node"]
+    return ((node or {}).get("body") or "").strip()
+
+
+def discard_empty_review(owner, repo, pr, login, review_id, result):
+    """An empty pending review cannot be submitted as COMMENT without a body, and left in
+    place it could capture later thread replies invisibly — it holds nothing, so remove it."""
+    error = None
+    try:
+        payload = gh_graphql(DELETE_REVIEW_MUTATION, str_vars={"reviewId": review_id})
+        if payload.get("errors"):
+            error = {"error": "delete returned GraphQL errors", "raw": json.dumps(payload["errors"])[:500]}
+    except GhError as exc:
+        error = {"error": str(exc), "raw": (exc.stderr or exc.stdout)[:500]}
+    _, still_pending = fetch_pr_and_pending_review(owner, repo, pr, login)
+    removed = still_pending != review_id
+    result.update(
+        {
+            "submitted": False,
+            "review_id": review_id,
+            "empty_review_removed": removed,
+            "reason": "pending review had no comments — removed" if removed else "empty pending review could not be removed",
+            "error": None if removed else error,
+            "verified_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    return result, (0 if removed else 1)
+
+
+def submit(owner, repo, pr, dry_run, expected_login=None):
+    login = resolve_login(expected_login)
     pull, review_id = fetch_pr_and_pending_review(owner, repo, pr, login)
     result = {"pr": pr, "repo": f"{owner}/{repo}", "identity": login, "pr_url": pull.get("url")}
 
     if not review_id:
         result.update({"submitted": False, "reason": "no pending review for this identity"})
         return result, 0
-    if not fetch_review(review_id)[1]:
-        result.update({"submitted": False, "review_id": review_id,
-                       "reason": "pending review has no comments — left pending"})
-        return result, 0
+    if not fetch_review(review_id)[1] and not review_body(review_id):
+        if dry_run:
+            result.update({"dry_run": True, "would_remove_empty_review": review_id})
+            return result, 0
+        return discard_empty_review(owner, repo, pr, login, review_id, result)
     if dry_run:
         result.update({"dry_run": True, "would_submit": review_id})
         return result, 0
@@ -708,7 +872,7 @@ query($owner: String!, $repo: String!, $pr: Int!, $after: String) {
           id
           isResolved
           comments(first: %d) {
-            nodes { id author { login } pullRequestReview { state } }
+            nodes { id body author { login } pullRequestReview { state } }
           }
         }
       }
@@ -719,7 +883,7 @@ query($owner: String!, $repo: String!, $pr: Int!, $after: String) {
 
 
 def fetch_threads(owner, repo, pr):
-    """Return {thread_id: {"resolved", "pending", "comments": [(id, author), ...]}}.
+    """Return {thread_id: {"resolved", "pending", "comments": [(id, author, body), ...]}}.
 
     `pending` marks a thread whose every comment belongs to an unsubmitted review —
     not this skill's to act on, and excluded from the coverage reconciliation so it
@@ -748,7 +912,7 @@ def fetch_threads(owner, repo, pr):
                 "resolved": bool(thread.get("isResolved")),
                 "pending": bool(states) and all(s == "PENDING" for s in states),
                 "comments": [
-                    (c["id"], ((c.get("author") or {}).get("login") or ""))
+                    (c["id"], ((c.get("author") or {}).get("login") or ""), c.get("body") or "")
                     for c in comments
                 ],
             }
@@ -805,7 +969,7 @@ def send_batch(kind, batch, errors):
         str_vars = {}
         for i, (thread_id, spec) in enumerate(batch):
             str_vars[f"thread{i}"] = thread_id
-            str_vars[f"body{i}"] = spec["body"]
+            str_vars[f"body{i}"] = marked_body(spec["body"])
     else:
         query = build_resolve_mutation(len(batch))
         str_vars = {f"thread{i}": tid for i, (tid, _) in enumerate(batch)}
@@ -846,12 +1010,24 @@ def send_batch(kind, batch, errors):
     return False
 
 
+def marked_body(body):
+    return body if REPLY_MARKER in body else f"{body.rstrip()}\n\n{REPLY_MARKER}"
+
+
+def is_delivered_reply(login, author, body):
+    return author == login and REPLY_MARKER in body
+
+
+def has_delivered_reply(login, entry):
+    return any(is_delivered_reply(login, author, body) for _, author, body in entry["comments"][1:])
+
+
 def new_comments_by(login, baseline_entry, current_entry):
-    seen = {cid for cid, _ in (baseline_entry or {}).get("comments", [])}
+    seen = {cid for cid, _, _ in (baseline_entry or {}).get("comments", [])}
     return [
         cid
-        for cid, author in current_entry.get("comments", [])
-        if cid not in seen and author == login
+        for cid, author, body in current_entry.get("comments", [])
+        if cid not in seen and is_delivered_reply(login, author, body)
     ]
 
 
@@ -877,15 +1053,23 @@ def validate_delivery_config(config):
     return None
 
 
-def deliver(config, batch_size, dry_run):
+def deliver(config, batch_size, dry_run, expected_login=None):
     owner = config["owner"]
     repo = config["repo"]
     pr = int(config["pr"])
     wanted = config["threads"]
     skipped = config.get("skipped") or {}
 
-    login = resolve_login()
+    login = resolve_login(expected_login)
     log(f"authenticated as {login}")
+
+    _, pending_review = fetch_pr_and_pending_review(owner, repo, pr, login)
+    if pending_review:
+        return {
+            "fatal": f"{login} holds a pending review on PR #{pr}; a reply could land inside it, invisible to others",
+            "pending_review_id": pending_review,
+            "hint": "nothing was written — submit or discard that pending review, then re-run deliver",
+        }, 2
 
     baseline, truncated = fetch_threads(owner, repo, pr)
     scope = in_scope_threads(baseline)
@@ -902,12 +1086,13 @@ def deliver(config, batch_size, dry_run):
     unknown = [tid for tid in wanted if tid not in baseline]
     targets = [(tid, spec) for tid, spec in wanted.items() if tid in baseline]
 
-    # A thread that already carries a reply from us is not re-replied to. This is
-    # what makes a re-run after a partial failure safe rather than duplicating.
+    # A thread that already carries a delivered reply is not re-replied to. This is
+    # what makes a re-run after a partial failure safe rather than duplicating; a
+    # plain comment from the same identity (a human reviewing under it) does not count.
     already_replied = []
     to_reply = []
     for tid, spec in targets:
-        if any(author == login for _, author in baseline[tid]["comments"][1:]):
+        if has_delivered_reply(login, baseline[tid]):
             already_replied.append(tid)
         else:
             to_reply.append((tid, spec))
@@ -1042,6 +1227,9 @@ def build_parser():
     deliver_cmd.add_argument("--dry-run", action="store_true", help="plan only, write nothing")
     deliver_cmd.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
 
+    for cmd in (post_cmd, submit_cmd, deliver_cmd):
+        cmd.add_argument("--login", help="act as this gh account and fail if the identity differs")
+
     return parser
 
 
@@ -1052,7 +1240,7 @@ def main(argv=None):
         return fatal("--batch-size must be at least 1")
 
     if args.command == "submit":
-        runner = lambda: submit(args.owner, args.repo, args.pr, args.dry_run)
+        runner = lambda: submit(args.owner, args.repo, args.pr, args.dry_run, args.login)
     else:
         config, error = read_json_file(args.input_file)
         if error:
@@ -1062,9 +1250,11 @@ def main(argv=None):
         if error:
             return fatal(error)
         action = post if args.command == "post" else deliver
-        runner = lambda: action(config, args.batch_size, args.dry_run)
+        runner = lambda: action(config, args.batch_size, args.dry_run, args.login)
 
     try:
+        if args.login:
+            use_login(args.login)
         result, code = runner()
     except GhError as exc:
         print(
@@ -1072,6 +1262,17 @@ def main(argv=None):
                 {
                     "fatal": str(exc),
                     "raw": (exc.stderr or exc.stdout)[:1000],
+                    "hint": "nothing was confirmed — report this run blocked",
+                }
+            ),
+            flush=True,
+        )
+        return 2
+    except (KeyError, TypeError, IndexError, ValueError) as exc:
+        print(
+            json.dumps(
+                {
+                    "fatal": f"unexpected GitHub response shape: {exc!r}",
                     "hint": "nothing was confirmed — report this run blocked",
                 }
             ),

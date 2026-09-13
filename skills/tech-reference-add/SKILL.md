@@ -76,7 +76,7 @@ Present:
 |-------|-------------|--------|-----------|
 | code-review | `skills/code-review/references/django.code.md` | Append | Affects review correctness |
 | tlc-spec-driven | `extended/tlc-spec-driven/references/coding-guidelines/django-coding-guidelines.md` | Create + append | Style convention |
-| code-review | `skills/code-review/references/django-performance.code.md` | Append (?) | May surface during performance audit — confirm |
+| code-review | `skills/code-review/references/django-performance.code.md` | Append (?) | May surface in the performance dimension — confirm |
 
 Ask: **"Confirm saving to these files? Remove any you don't want or adjust the list."**
 

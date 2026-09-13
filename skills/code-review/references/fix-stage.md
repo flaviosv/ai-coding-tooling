@@ -37,7 +37,7 @@ Stage 3: acting on the findings that remain after the checkpoint. It runs in a f
 
 - **This worker fixes every item itself, inline, in order, and never calls the `Agent` tool.** The test is mechanical: you are a dispatched worker, so you are already the isolated context. Do not reason about whether some other context "already isolated" you. (Two real runs had a dispatched worker decide it was the exception, nest a second and third agent, and drop the reply/resolve steps between them — commits pushed, zero threads answered.)
 - File clusters organize the reading, not the dispatch: items whose fixes touch the same file are grouped so the file is read once, then processed one item at a time in encounter order, all committing to the same checkout.
-- Stage each item's own files by path (`git add <path> …`) — never `git add -A`, which sweeps in unrelated working-tree changes.
+- When committing, stage each item's own files by path (`git add <path> …`) — never `git add -A`, which sweeps in unrelated working-tree changes. When not committing (an uncommitted workspace), stage nothing: the user's index is theirs.
 - **Test impact per item:** add a test when the change isn't covered (follow this project's `tests` skill conventions); update a test whose assertions the fix invalidates; remove a test only when it asserted the very behavior the fix corrects, replacing it with a test of the corrected behavior whenever there is anything left to cover. Coverage moves only as a stated consequence of a fix; a removal with nothing added back needs a one-line reason in the report. Run only that item's directly relevant tests (Test Execution Scope) — never tlc-spec-driven's Verifier.
 - **Never clean up a dirty tree you didn't create.** Never `git stash`, `git restore`, `git checkout --`, or `git clean` anything this run didn't make, and never target a path outside the checkout you were given. `progress.md` belongs to whoever invoked this skill and is being written while you run — leave it as found. (A real run's first two actions were `git stash` in the parent repo and `git restore` of its caller's live `progress.md`.) If uncommitted changes block a commit, name the files and stop.
 - **In a worktree, resolve every path from the worktree root** (`pwd`). The main checkout holds the same relative paths on a different branch, so a read there can return plausible pre-feature content and silently invalidate the judgment at step 5 — one real run read the wrong branch's file this way.
@@ -53,21 +53,27 @@ One `Agent` call: `subagent_type: general-purpose`, `model: sonnet`. Resolve the
 - No checkout has it → `isolation: worktree`; the worker checks it out itself.
 - Local targets → no isolation.
 
+**The branch that receives local fix commits** is resolved by the root before dispatch: a named branch as named; for a commits target, the current branch when every reviewed commit is on it (`git merge-base --is-ancestor <commit> HEAD`), otherwise ask the user which branch — never guess.
+
 Prompt, per the `subagent-dispatch` contract:
 
 - Prefix `[code-review][fix:PR-<N>]` or `[code-review][fix:local]`.
-- The target (PR number, owner/repo, head branch, login, and the worktree path when one already holds the branch) or, for local, the target kind (uncommitted workspace, named branch, or commits) and every remaining finding verbatim (ID, severity, `file:line`, anchor, explanation, recommendation).
+- The target (PR number, owner/repo, head branch, login, and the worktree path when one already holds the branch) or, for local, the target kind (uncommitted workspace, named branch, or commits), the branch that receives commits, and every remaining finding verbatim (ID, severity, `file:line`, anchor, explanation, recommendation).
 - The active tlc-spec-driven feature folder (`.specs/features/<feature>/`) when the caller named one — `build-feature` always does; without it the worker writes no plan file.
-- "Load the `code-review` skill's `references/fix-stage.md` and follow it; you are the fix worker — never call `Agent`." For a PR, also `references/github-writes.md`; with Jira sync requested, `references/jira-sync.md`.
+- The files to load, by absolute path — never a skill-relative name, which one real worker spent ~1.2M tokens searching for: "Read `~/.claude/skills/code-review/references/fix-stage.md` and follow it; you are the fix worker — never call `Agent`." For a PR, also `~/.claude/skills/code-review/references/github-writes.md`; with Jira sync requested, `~/.claude/skills/code-review/references/jira-sync.md`. If `~/.claude/skills/code-review` does not exist, the skill is installed project-locally: give the same files under `.claude/skills/code-review/`, resolved to an absolute path.
+- **Retry note**, only when this dispatch recovers a failed `deliver` or a worker that failed outright: "This is a retry. The PR branch may already hold commits an earlier fix worker pushed<, SHAs: …>. A thread whose fix is already on the branch is **fixed — its reply is still needed**; never reject it as already addressed. `deliver` skips any thread that already carries a delivered reply."
 - Completion condition: every in-scope thread (or local finding) has a fixed / rejected / answered / blocked / unclear / routed outcome, and on a PR `deliver` has confirmed it.
 - Return shape: the Report below — never finding bodies or diffs.
 - Delegation depth: none.
 
-A worker that fails outright (crash, auth failure, PR not found — distinct from items coming back blocked, which needs no retry and doesn't stop the rest of the run) is retried once with a fresh worker, from step 0. A second failure stops the run and is reported; never mark anything fixed or resolved on a failed run. After the report, remove any worktree the dispatch created (`git worktree remove <path>`) unless a blocker left state worth inspecting — then say so and wait for the user.
+A worker that fails outright (crash, auth failure, PR not found — distinct from items coming back blocked, which needs no retry and doesn't stop the rest of the run) is retried once with a fresh worker carrying the retry note, from step 0. A second failure stops the run and is reported; never mark anything fixed or resolved on a failed run. After the report, remove any worktree the dispatch created (`git worktree remove <path>`) unless a blocker left state worth inspecting — then say so and wait for the user.
 
 ## PR Mode
 
-0. **Before starting:** `gh auth status` must succeed — otherwise stop: "No way to reach GitHub — install/authenticate `gh`." In a fresh worktree, `gh pr checkout <N>` if the branch isn't checked out, then install dependencies once (the command in `docs/codebase/STACK.md`/`TESTING.md`, else the package manager's standard install).
+0. **Before starting:** `gh auth status` must succeed — otherwise stop: "No way to reach GitHub — install/authenticate `gh`." Then make sure this run works on the PR's head branch without touching anyone else's checkout:
+   - **Dispatched with `isolation: worktree`:** `gh pr checkout <N>` in that worktree, then install dependencies once (the command in `docs/codebase/STACK.md`/`TESTING.md`, else the package manager's standard install).
+   - **Dispatched without isolation:** work in the checkout or worktree path the prompt names; it already has the branch.
+   - **Run inline by a subagent executing this skill (no root dispatch):** resolve the head branch (`gh pr view <N> --json headRefName --jq .headRefName`). The current branch matches → work here. Another worktree has it checked out (`git worktree list`) → work there, resolving every path from it. Neither → `git fetch origin <headRefName>`, then `git worktree add <tmp-path> <headRefName>`, install dependencies once, and run every step inside it; remove it (`git worktree remove <tmp-path>`) once the run is finished, successful or not, unless a blocker left state worth inspecting — say so instead. Never `gh pr checkout` in a checkout this run was not given.
 1. **Fetch** threads with the query in [GitHub Writes](github-writes.md#fix-stage-fetch-threads). Skip resolved threads and threads on a pending review. At 100 threads, note that more may exist.
 2. **Classify** each remaining thread from its full exchange:
 
@@ -83,7 +89,7 @@ A worker that fails outright (crash, auth failure, PR not found — distinct fro
 3. **Plan:** group auto-fix and apply-as-directed items into file clusters in encounter order; write `fix-code-review.md` when a feature is active (`## Cluster: <file path>` per cluster, each item with thread id, class, `path:line`, one-line direction). Zero threads → report and stop.
 4. **Re-fetch** the same query immediately — no approval gate — and silently drop any item no longer present, resolved, or changed. Drop a cluster that empties.
 5. **Fix, item by item:** read the target file(s), judge whether the finding or direction still holds (Judgment above), then either edit + test-impact + targeted tests + one Conventional Commits commit, or reject / block with reasoning. Compose the answer-only and unclear replies now.
-6. **Validation gate** — if any commits were made: this project's build/typecheck command plus the tests covering every file this run touched (from `docs/codebase/STACK.md`/`TESTING.md`), and `git grep -nE '^(<{7}|={7}|>{7})( |$)' -- <touched files>`. This checks the composite state, which step 5's per-item runs never saw. It means those files' own tests, named explicitly — not `./...`, not an unfiltered suite. A failure is fixed here with its own commit; one that can't be fixed stops the run as blocked.
+6. **Validation gate** — if any file was edited, committed or not: this project's build/typecheck command plus the tests covering every file this run touched (from `docs/codebase/STACK.md`/`TESTING.md`), and `git grep -nE '^(<{7}|={7}|>{7})( |$)' -- <touched files>`. This checks the composite state, which step 5's per-item runs never saw. It means those files' own tests, named explicitly — not `./...`, not an unfiltered suite. A failure is fixed here — with its own commit, or as a further uncommitted edit in an uncommitted workspace; one that can't be fixed stops the run as blocked.
 7. **Push** to the existing PR branch if any commits survived the gate — before any reply claims a fix landed. Never open a new PR.
 8. **Deliver:** compose every reply, then run `deliver` per [GitHub Writes](github-writes.md#fix-stage-deliver).
 
@@ -96,7 +102,7 @@ A worker that fails outright (crash, auth failure, PR not found — distinct fro
    | routed to a person | None — skipped with reason | No |
    | unclear | A specific clarifying question, else skipped with reason | No |
 
-9. **Read the script's JSON.** Non-zero exit → the run is blocked; carry the raw JSON into the report. Non-empty `unaccounted` → return to step 2 for those threads.
+9. **Read the script's JSON.** Non-zero exit → the run is blocked; carry the raw JSON into the report. Non-empty `unaccounted` → return to step 2 for those threads. `pending_review_id` present → nothing was written: this identity holds a pending review on the PR, and a reply could land inside it unseen — report "Submit or discard your pending review on PR #N, then ask me to continue" and stop.
 10. **Report** (below), taking every reply/resolve count from step 9's JSON.
 
 ## Local Mode
@@ -104,8 +110,8 @@ A worker that fails outright (crash, auth failure, PR not found — distinct fro
 No threads, no replies, nothing pushed.
 
 1. The findings are exactly those in the dispatch prompt.
-2. **Uncommitted workspace:** apply fixes to the working tree and **commit nothing** — a commit would sweep in the user's unfinished edits to the same files. **Named branch or commits:** check out the branch if needed — `git status --porcelain` must be clean first; dirty → stop and report the exact output, never stash — then one Conventional Commits commit per fix.
-3. Same Judgment, test impact, targeted tests, and validation gate as PR Mode steps 5–6.
+2. **Uncommitted workspace:** apply fixes to the working tree, **commit nothing, and stage nothing** — a commit would sweep in the user's unfinished edits to the same files. **Named branch or commits:** `git status --porcelain` must be clean before anything else, whether or not a checkout is needed — dirty → stop and report the exact output, never stash; then check out the branch the prompt names if it isn't current, and make one Conventional Commits commit per fix.
+3. Same Judgment, test impact, targeted tests, and validation gate as PR Mode steps 5–6 — the gate runs whenever a file was edited, committed or not.
 4. Never push. Report what is ready to commit or push.
 
 ## Jira Ticket Sync
@@ -119,6 +125,7 @@ Opt-in only — when the user explicitly asks ("and update the Jira ticket"). Fo
 - Commits (SHAs verbatim) and whether they were pushed; for an uncommitted workspace, the files edited.
 - The validation gate's command and outcome.
 - Test additions, updates, and removals, with a reason for each removal.
+- With Jira sync requested: the ticket key synced (or that none could be resolved), and whether the start comment, the transition, and the completion comment landed.
 
 ## Examples
 

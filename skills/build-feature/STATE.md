@@ -106,3 +106,10 @@
 - **Trade-off**: `code-review`'s `SKILL.md` is now loaded into the orchestrator's context. The guarantee that heavy work stays out of it rests on `code-review` honoring its own worker rule; if a future measurement shows review or fix bulk landing in the orchestrator, the fix belongs in `code-review`, not a wrapper here. In-flight runs whose `progress.md` logged Steps 12–15 under the old numbering, or `complete_review`/`fix-review` state, need a manual edit before resuming.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-015
+- **Decision**: Step 11 splits `code-review` failures by what failed: a review or posting failure `code-review` could not recover stops the run; only a `submit` or delivery failure retries the continue-after-checkpoint entry once. Resuming at a paused `code_review` passes the same fields as the first invocation (PR number, owner/repo, `gh_login`, feature folder, `worktree_path`).
+- **Reason**: The previous rule retried every publishing failure through continue-after-checkpoint, which never posts: after a failed post it submitted nothing, found no threads, reported success, and let Step 14 mark the PR ready with every finding lost (post-merge validation of 954ac76, `skills/code-review/STATE.md` AD-011). The resume invocation also omitted the feature folder and worktree, so the fix worker wrote no plan file.
+- **Trade-off**: A posting failure now ends the run instead of limping on, so the user must re-run after the cause (usually a rate-limit block) clears.
+- **Date**: 2026-09-13
+- **Status**: active

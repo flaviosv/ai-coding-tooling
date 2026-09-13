@@ -8,9 +8,10 @@ Every write this skill makes to GitHub — posting a pending review, submitting 
 
 - **Never hand-roll a GitHub write.** No inline `gh api graphql` mutation, no `gh pr review`, no `gh pr comment`, no REST reply endpoint, no top-level PR comment. Each of those has either failed silently on a real run or cannot act on the `PRRT_…` thread ids resolving requires. If the script is missing or exits `2`, the run is **blocked** — report its raw JSON.
 - **The script's JSON is the result.** Every count you report — posted, submitted, replied, resolved, re-anchored, unpostable — is quoted from its stdout, never from what you intended to send. Exit `0` confirmed, `1` partial (report exactly which items), `2` fatal (nothing confirmed).
-- **Never re-run `post` to read its output again.** Re-running is safe against duplicates (it skips comments already on the review), but the first run's JSON is the record — capture it.
+- **Never re-run `post` to read its output again.** Re-running is safe against duplicates (it skips comments already on the review), but the first run's JSON is the record — capture it. The one re-run is Stage 2's recovery after a failed post, from the same `post.json`.
 - **Never create GitHub Issues.** Every finding is an inline review thread.
-- **Never delete** a pending review, a review comment, or a thread this skill created — including a duplicate review comment `post` reports. Report it and let a human remove it. The one exception is a duplicate **thread reply** `deliver` reports in `duplicates_found`: delete each extra reply (`gh api -X DELETE repos/<owner>/<repo>/pulls/comments/<comment id>`, one call each — there is no batch delete), then re-run `deliver`.
+- **Never delete** a pending review, a review comment, or a thread this skill created — including a duplicate review comment `post` reports. Report it and let a human remove it. Two exceptions, both mechanical: `submit` removes this identity's pending review when it holds no comments and no body (nothing is lost, and it could otherwise capture thread replies unseen); and a duplicate **thread reply** `deliver` reports in `duplicates_found` — delete each extra reply (`gh api -X DELETE repos/<owner>/<repo>/pulls/comments/<comment id>`, one call each — there is no batch delete), then re-run `deliver`.
+- **Pass `--login <login>` on every subcommand whenever the caller resolved a `gh` login** (`build-feature` always does; batch mode resolves one in its Step 1). The script then acts with that account's token and fails when the authenticated identity differs, so a run never writes as whichever account `gh` happens to have active. Every call in one run uses the same login.
 - **Never post placeholder, test, or probe content to a real review** — a pending review is visible to anyone with repo access the moment it exists. Use `--dry-run` to check a run before any write.
 - **Never touch another identity's pending review.** The script only reads and extends the authenticated identity's own (`author: $me`).
 - **The review stage never replies to or resolves existing threads**; only the fix stage does, through `deliver`.
@@ -46,34 +47,43 @@ Each finding becomes one comment: `path`, `line`, `side` (omit for `RIGHT`), `bo
 
 ## Review Stage: `post`
 
-1. Write `post.json`:
+1. Write `post.json` at a path that survives the run's recovery step: `<tmp>/code-review/<owner>-<repo>-pr<N>/post.json`, where `<tmp>` is the system temp directory (`python3 -c "import tempfile; print(tempfile.gettempdir())"`). Return that absolute path as `post_json_path`; the root re-runs `post` from it if posting fails, and removes the directory once `post` exits `0` or the run ends.
    ```
    {"owner": "<owner>", "repo": "<repo>", "pr": <N>,
     "comments": [{"path": "src/a.py", "line": 18, "body": "**[Security — S1, High]** ...", "anchor": "..."}]}
    ```
    Every finding left after Step 8's duplicate collapse — unfiltered, never by severity.
-2. `python3 ~/.claude/skills/code-review/scripts/github_review.py post post.json`
+2. `python3 ~/.claude/skills/code-review/scripts/github_review.py post <post_json_path> [--login <login>]`
 
-What it does, in order: resolves the login, the PR, and this identity's existing pending review (`author: $me` — never another identity's); fetches the PR's diff hunks (`gh api repos/{owner}/{repo}/pulls/{N}/files --paginate --slurp`); checks each `anchor` against the file at the head commit, correcting `line` when the text sits elsewhere and marking the comment **unpostable** when the text is found nowhere; re-anchors a comment outside every hunk to the nearest in-hunk line of that file with a first line naming its true location (GitHub silently discards an out-of-hunk thread — `200`, a real id, no comment — which lost 9 of 44 findings on two real runs); marks a comment on a file the PR never touched **unpostable**; skips comments whose exact path, line, and body are already on the review; creates the pending review only if none exists; adds threads in batches of 10, 1 s apart. A per-alias GraphQL error skips only that comment. It then fetches the review again and retries, once, only comments from a request that failed as a whole — never one that returned `200` but didn't persist, and never one with its own alias error — then reconciles.
+What it does, in order: resolves the login, the PR, and this identity's existing pending review (`author: $me` — never another identity's); fetches the PR's diff hunks (`gh api repos/{owner}/{repo}/pulls/{N}/files --paginate --slurp`), and for any commented file whose patch the files API omits (large diffs), parses its hunks from `gh pr diff <N>` instead; checks each `anchor` against the file at the head commit — ignoring whitespace runs and a leading `+`/`-` copied from a patch, and accepting an anchor that is part of its line — correcting `line` when the text sits elsewhere, and posting at the given `line` as **`anchor_unverified`** when the text is found nowhere (only a comment with no `line` to fall back on becomes **unpostable**); re-anchors a comment outside every hunk to the nearest in-hunk line of that file with a first line naming its true location (GitHub silently discards an out-of-hunk thread — `200`, a real id, no comment — which lost 9 of 44 findings on two real runs); marks a comment on a file the PR never touched, or with no hunk data at all, **unpostable**; skips comments whose exact path, line, and body are already on the review; creates the pending review only if none exists; adds threads in batches of 10, 1 s apart. A per-alias GraphQL error skips only that comment. It then fetches the review again and retries, once, only comments from a request that failed as a whole — never one that returned `200` but didn't persist, and never one with its own alias error — then reconciles.
 
 | Output field | Meaning |
 |---|---|
 | `anchor_corrected` | Line changed to where the anchor text actually is |
+| `anchor_unverified` | Posted at the given line, but the anchor text wasn't found in the file — carry into the report so the line can be checked |
 | `carried_over` | Comments already on this identity's pending review before this run |
 | `duplicates_found` | Same comment on the review more than once — report, never delete |
 | `missing` | Intended but not on the review after the retry |
 | `posted_confirmed` | Threads confirmed added by the final fetch |
 | `reanchored` | Moved into a hunk; the body names the real location |
 | `errors` | Per-request or per-alias failures; a `request_failed` entry's comments were retried once |
-| `unpostable` | Not posted (file not in the PR, no hunk data, anchor not found) — carry every one into the report by `path:line` |
+| `unpostable` | Not posted (file not in the PR, no hunk data, no `line` and anchor not found) — carry every one into the report by `path:line` |
 
-`--dry-run` runs everything up to the first write and reports `would_post`.
+`--dry-run` runs everything up to the first write and reports `would_post`. Exit `2`, or a non-empty `missing`, is a posting failure: Stage 2 re-runs `post` once from the same file (SKILL.md Stage 2).
 
 ## Checkpoint: `submit`
 
-`python3 ~/.claude/skills/code-review/scripts/github_review.py submit <owner> <repo> <N>`
+`python3 ~/.claude/skills/code-review/scripts/github_review.py submit <owner> <repo> <N> [--login <login>]`
 
-Submits this identity's pending review as `COMMENT` and confirms the state changed. No pending review (the user already submitted it), or a pending review with no comments left (the user deleted them all) → exit `0` with `"submitted": false` — continue; the fix stage fetches whatever is published.
+Submits this identity's pending review as `COMMENT` and confirms the state changed. Exit `0` always means continue to the fix stage:
+
+| Result | Meaning |
+|---|---|
+| `submitted: false`, `empty_review_removed: true` | The pending review held no comments and no body (the user deleted every comment) — `submit` removed it and confirmed it is gone, since an empty review cannot be submitted as `COMMENT` and could capture later thread replies unseen |
+| `submitted: false`, no pending review | Nothing was pending — the user already submitted it |
+| `submitted: true` | Submitted as `COMMENT`, confirmed by re-fetch |
+
+Exit `1` → the submit or the removal was not confirmed; Stage 2 runs `submit` once more.
 
 ## Fix Stage: Fetch Threads
 
@@ -109,15 +119,16 @@ Skip nodes where `isResolved: true`, and nodes whose comments all have `pullRequ
     "skipped": {"PRRT_yyy": "routed to @alice — awaiting her answer"}}
    ```
    **`threads` and `skipped` together must account for every in-scope thread** (published, not resolved). Every thread you reply to goes in `threads`; every thread you leave alone goes in `skipped` with a real reason.
-2. `python3 ~/.claude/skills/code-review/scripts/github_review.py deliver delivery.json --dry-run` — checks coverage before any write.
+2. `python3 ~/.claude/skills/code-review/scripts/github_review.py deliver <delivery.json> --dry-run [--login <login>]` — checks coverage before any write.
 3. The same command without `--dry-run`.
 
-What it does: fetches a baseline; replies in batches of 10, 5 s apart; fetches again and confirms each reply landed exactly once; resolves only threads whose reply is confirmed, 1 s apart; fetches again to confirm `isResolved`. Re-running after a partial failure is safe — it skips threads that already carry your reply. A failed-looking request (`502`, truncated response, timeout) may have landed, which is why nothing is retried without a fresh fetch: one real run retried two such batches blind and posted 20 duplicate replies.
+What it does: refuses to start — exit `2`, nothing written, `pending_review_id` in its JSON — while this identity holds a pending review on the PR, because a reply could land inside that review, invisible to everyone else; fetches a baseline; replies in batches of 10, 5 s apart, each reply ending in a hidden marker (`<!-- code-review:deliver -->`); fetches again and confirms each reply landed exactly once; resolves only threads whose reply is confirmed, 1 s apart; fetches again to confirm `isResolved`. Re-running after a partial failure is safe — it skips threads that already carry a marked reply from this identity. A plain comment from the same identity (the user typing "yes, fix this" on a thread, under the account the review ran as) is not a reply: that thread still gets its documentation reply before it is resolved. Replies posted before the marker existed carry none, so a re-run on such a PR would reply again. A failed-looking request (`502`, truncated response, timeout) may have landed, which is why nothing is retried without a fresh fetch: one real run retried two such batches blind and posted 20 duplicate replies.
 
 | Output field | Meaning |
 |---|---|
-| `duplicates_found` | A thread carries more than one reply from this run |
+| `duplicates_found` | A thread carries more than one marked reply from this run |
 | `in_scope` | Published, unresolved threads on the PR |
+| `pending_review_id` | Present only when delivery refused to start: this identity's pending review on the PR |
 | `replied_confirmed` / `resolved_confirmed` | Confirmed by re-fetch |
 | `reply_missing` / `resolve_not_confirmed` | Intended but not on GitHub |
 | `thread_page_truncated` | A thread had 100+ comments; say more may exist |

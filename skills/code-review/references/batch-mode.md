@@ -13,7 +13,9 @@ A request that names both, or neither clearly, → ask which sweep. Never guess.
 
 ## Shared Rules
 
-- **The root conversation only selects, dispatches, checkpoints, and reports** — it never reads a diff or a thread itself. Every stage runs in a Sonnet worker it dispatches (`subagent_type: general-purpose`, `model: sonnet`), all of one stage's workers in the **same message**. Workers never dispatch workers.
+- **The root conversation only selects, dispatches, checkpoints, and reports** — it never reads a diff or a thread itself. Every stage runs in a Sonnet worker it dispatches (`subagent_type: general-purpose`, `model: sonnet`), and every worker the root can start at the same moment goes in the **same message**. The one exception is the review sweep with `human_review: false`, where a PR's `submit` and fix worker follow as soon as that PR's review lands rather than waiting for the rest. Workers never dispatch workers.
+- **Failures recover per PR, exactly as in a single run** — a failed review, `post`, `submit`, or `deliver` follows [SKILL.md — Stage 2](../SKILL.md#stage-2-checkpoint) and [Stage 3](../SKILL.md#stage-3-fix) for that PR only, without holding up the others.
+- Pass the login resolved in Step 1 to every worker, for `--login` on every script call.
 - The `Agent` tool has no reasoning-effort parameter, so every worker prompt carries an explicit high-effort instruction (see the `subagent-dispatch` skill).
 - Load the `subagent-dispatch` wait protocol before the first dispatch. This mode's difference from its default: each PR reports independently — post its update **as soon as its notification arrives**, never batched. A duplicate or stale notification for an already-reported PR is skipped silently.
 - A worker that fails outright is reported plainly in its per-PR update and the final table, and retried once; never imply a review posted or a fix landed when it didn't.
@@ -52,7 +54,9 @@ Dispatch one fix worker per qualifying PR with `isolation: worktree`, prompt per
 - **Scope filter:** only unresolved threads containing at least one comment authored by `<login>`. A thread whose comments are entirely from other reviewers is out of scope — skip it and leave it untouched, even when it's a valid finding, and list it in `skipped` with the reason "not authored by <login>".
 - Jira sync only if the user requested it for this run.
 
-Per-PR update: outcomes by class, commits pushed or not, blocked and unclear items. Final table: every PR, outcomes, commits, and a line for any PR where nothing was pushed and why.
+A qualifying PR where you also hold an unsubmitted draft review comes back blocked: `deliver` refuses to reply while that pending review exists. Report it with "submit or discard your pending review on PR #N".
+
+Per-PR update: outcomes by class, commits pushed or not, blocked and unclear items, and the Jira outcome when sync was requested. Final table: every PR, outcomes, commits, and a line for any PR where nothing was pushed and why.
 
 ## Review Sweep
 
@@ -63,7 +67,7 @@ Per-PR update: outcomes by class, commits pushed or not, blocked and unclear ite
 3. **Fix stage:** one fix worker per continued PR with `isolation: worktree`, prompt per [Fix Stage — Dispatch](fix-stage.md#dispatch-root-conversation); all threads in scope, whoever wrote them.
 4. **Per-PR update** after each stage — review: pending-review URL (or failure reason), finding counts by severity, clusters collapsed, re-anchored, unpostable (`0` when none — a re-anchored or unpostable finding's `file:line` can't be trusted without them), the most important finding in one line; fix: outcomes by class and commits pushed. A **final table** after the last fix: PR, findings, collapsed / re-anchored / unpostable, fixed / rejected / blocked, commits pushed.
 
-"Just review" wording stops the sweep after the checkpoint.
+"Just review" wording ends every PR's run after the checkpoint and no fix worker runs: with `human_review: true` each review stays pending for the user to submit; with `false` each PR is `submit`ted as its review lands.
 
 ## New Commits or Comments After Dispatch
 

@@ -10,7 +10,7 @@ A full, real Step 8 output (from a `build-feature` session, Large tier, Parallel
 
 | Skill | Dimension | # | Priority | Title | Metric | Recurrence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `skills/code-review/references/fix-stage.md` | Workflow and orchestration | 1 | P0 | Serial per-cluster git reintegration inflates the fix stage's own orchestration cost | 68% of orchestrator's Bash calls (48/71) = fetch+cherry-pick loop over 16 clusters; 254 turns, 29.5M tokens | Structural | Pending |
+| `skills/example-fixer/SKILL.md` | Workflow and orchestration | 1 | P0 | Serial per-cluster git reintegration inflates the fixer skill's own orchestration cost | 68% of orchestrator's Bash calls (48/71) = fetch+cherry-pick loop over 16 clusters; 254 turns, 29.5M tokens | Structural | Pending |
 | `extended/tlc-spec-driven/` (Execute phase) | Token consumption | 2 | P1 | Frontend source file re-read after edits the harness had already confirmed | 4× identical Read + 4× identical `cd`; ~24-32k avoidable tokens | Incidental | Pending |
 | `~/.claude/CLAUDE.md` | Mistakes and corrections | 3 | P2 | Manual shell backgrounding (`&`/`disown`) stacked with `run_in_background: true` produces a false completion signal | 1 self-corrected mistake; stated fix never actually executed | Structural | Pending |
 | — (built-in `design`/design-sync) | Token consumption | 4 | P3 | Repeated, oversized reads of design-sync bundle/config files | 11×/9× repeated reads; 162.9k tokens = 68% of all Read spend; 2 failed path-guess reads | Structural (inferred) | Informational |
@@ -42,13 +42,13 @@ Both ran inside the `tlc-spec-driven` Execute-phase subagent's Build gate after 
 
 ---
 
-## `skills/code-review/references/fix-stage.md`
+## `skills/example-fixer/SKILL.md`
 
 ### Workflow and orchestration
 
-#### 1. Serial per-cluster git reintegration inflates the fix stage's own orchestration cost — P0
+#### 1. Serial per-cluster git reintegration inflates the fixer skill's own orchestration cost — P0
 
-**Context:** the fix stage's own orchestrator (running on PR #22, 16 fix clusters) reintegrates each isolated-worktree cluster's commits back into the base checkout one cluster at a time — fetch, cherry-pick, remove worktree — with no batching, even though the skill already batches its GitHub GraphQL reply/resolve calls 10-per-request.
+**Context:** the fixer skill's own orchestrator (running on PR #22, 16 fix clusters) reintegrates each isolated-worktree cluster's commits back into the base checkout one cluster at a time — fetch, cherry-pick, remove worktree — with no batching, even though the skill already batches its GitHub GraphQL reply/resolve calls 10-per-request.
 
 **Metrics:** The orchestrating subagent ran 254 turns, 29.5M billed input tokens, 28.4k output, 22m33s. Of its own 71 Bash calls, 21 are `git fetch` and 27 are `git cherry-pick` — 48/71 (68%) is this exact two-command loop repeated per cluster.
 
@@ -56,9 +56,9 @@ Both ran inside the `tlc-spec-driven` Execute-phase subagent's Build gate after 
 
 **Severity:** High — 254 turns is 69% over the ~150-turn runaway-subagent threshold, and 68% of the orchestrator's own tool calls are one repeated shape.
 
-**Recurrence:** Structural — confirmed in the SKILL.md text itself (per-cluster fetch/cherry-pick/remove loop with no batching instruction), unlike the already-batched GraphQL calls a few paragraphs away. Will recur on every fix-stage run with more than a handful of clusters.
+**Recurrence:** Structural — confirmed in the SKILL.md text itself (per-cluster fetch/cherry-pick/remove loop with no batching instruction), unlike the already-batched GraphQL calls a few paragraphs away. Will recur on every fixer run with more than a handful of clusters.
 
-**Root cause:** the fix stage already applies "batch, don't loop one call at a time" to its GitHub-side writes but never extended that principle to the git-side reintegration step.
+**Root cause:** the fixer skill already applies "batch, don't loop one call at a time" to its GitHub-side writes but never extended that principle to the git-side reintegration step.
 
 **Proposed solution:** After the Guardrails sentence describing the per-cluster loop, add: *"Do this as one scripted pass over every surviving cluster, not one Bash call per cluster — write a single shell loop that fetches, cherry-picks, and removes the worktree for each cluster with commits in sequence, then run it once."*
 
