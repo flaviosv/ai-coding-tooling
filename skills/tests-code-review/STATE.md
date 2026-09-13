@@ -8,3 +8,10 @@
 - **Trade-off**: None identified.
 - **Date**: 2026-09-02
 - **Status**: active
+
+### AD-002
+- **Decision**: Delete the "Key Reminders" footer (`C127`–`C131`) entirely rather than compress it.
+- **Reason**: 2026-09-12 harness-eval run (`docs/HARNESS-EVALUATION.md` row #35) flagged the footer as pure software-engineering truisms with zero repo-specific content — dual-judge REDUNDANT and cheaply rediscoverable. Nothing in it added skill-specific guidance beyond what the Reviewer Stance section already establishes.
+- **Trade-off**: None identified — no repo-specific content was lost.
+- **Date**: 2026-09-13
+- **Status**: active
