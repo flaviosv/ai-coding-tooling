@@ -62,3 +62,6 @@ mutating command with `--dry-run` first.
   `hooks` in the global `settings.json` directly.
 - Editing the status line: change `scripts/bin/misc/statusline.sh` first, then
   `fs-harness statusline --force` — never edit the global copy directly.
+- Checking for a stale reference to a removed file: `node scripts/bin/misc/check-no-stale-refs.mjs [pattern]`
+  greps tracked files for `pattern` (default: a removed template's name — see the script header) and
+  exits non-zero if any turn up.

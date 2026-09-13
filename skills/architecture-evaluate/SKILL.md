@@ -91,7 +91,6 @@ These apply to every mode.
 - **Conditional sections** — every section in every output file is conditional. Only include it if the codebase provides evidence for it; omit empty sections entirely.
 - **Respect per-file budgets** (see The Nine Context Files). Summarize aggressively — table rows over paragraphs, bullets over tables, omission over filler. Cap any single file at 500 lines.
 - **Delegate every `.md` write to the `docs-writer` skill** — regardless of mode. This keeps formatting, style, and link integrity consistent. No exceptions.
-- **Follow [Token Efficiency Rules](../../templates/token-efficiency-rules.md)** when generating any `.md` content.
 
 ### Model Pinning
 

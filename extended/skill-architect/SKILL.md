@@ -195,8 +195,6 @@ If the skill will include technology-specific reference files:
 - Step introductions lead with the action, not with context ("Check whether…" not "Before checking…")
 - No filler phrases in any directive
 
-Full rules: [Token Efficiency Rules](../../templates/token-efficiency-rules.md).
-
 ### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
 
 **Token efficiency check**
