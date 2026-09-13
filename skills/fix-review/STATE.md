@@ -85,3 +85,10 @@
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-012
+- **Decision**: Replace the three `templates/agent-wait-protocol.md` links (Before Starting's wait instruction, the Batch Mode per-PR wait, and `references/github-delivery.md`'s abuse-detection clock-wait note) with references to the `subagent-dispatch` skill.
+- **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the content already consolidated there (AD-011).
+- **Trade-off**: Same dependency as AD-011 — these sentences now assume `subagent-dispatch` stays installed.
+- **Date**: 2026-09-13
+- **Status**: active

@@ -446,7 +446,7 @@ Review the diff for changes unrelated to the PR's stated purpose or showing sign
 
 ## Step 7: Await + Fallback
 
-**Read [Agent Wait Protocol](../../templates/agent-wait-protocol.md) in full before the first dispatch, not once the first wait has already started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. Wait for every dispatched dimension agent to report before proceeding to Step 8; the 15-minute default stall ceiling applies as-is (a dimension agent is single-purpose).
+**Load the `subagent-dispatch` skill's wait protocol before the first dispatch, not once the first wait has already started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. Wait for every dispatched dimension agent to report before proceeding to Step 8; the 15-minute default stall ceiling applies as-is (a dimension agent is single-purpose).
 
 For each agent, resolve its outcome:
 

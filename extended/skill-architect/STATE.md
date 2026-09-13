@@ -15,3 +15,10 @@
 - **Trade-off**: If a second skill later needs this same naming rule, it will be duplicated rather than shared until re-extracted into `templates/`.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-003
+- **Decision**: Replace the two `templates/agent-wait-protocol.md` links in Extension 4 (the Phase 2.5 dispatch-check instruction and the Phase 3 wait-instruction wording) with references to the `subagent-dispatch` skill.
+- **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch`'s own SKILL.md body (see `skills/subagent-dispatch/STATE.md` AD-002) rather than remaining a standalone template.
+- **Trade-off**: Extension 4's wording now assumes `subagent-dispatch` stays installed; removing that skill without updating this overlay would leave a stale pointer.
+- **Date**: 2026-09-13
+- **Status**: active

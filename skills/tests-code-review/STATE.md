@@ -22,3 +22,10 @@
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-008
+- **Decision**: Replace the `templates/agent-wait-protocol.md` link (Step 6 wait instruction) with a reference to the `subagent-dispatch` skill.
+- **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the content already consolidated there (AD-007), mirroring `code-review`'s identical change (AD-008).
+- **Trade-off**: Same dependency as AD-007 — this sentence now assumes `subagent-dispatch` stays installed.
+- **Date**: 2026-09-13
+- **Status**: active

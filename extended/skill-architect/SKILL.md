@@ -222,13 +222,13 @@ Inject the following steps into the parent skill's workflow at the phases indica
 
 Ask: "Does this skill dispatch one or more subagents via the `Agent` tool, then need to know when they're done before continuing?" This applies equally to a single dispatched subagent and to several running concurrently — a lone dispatch carries the identical risk (manual polling, false-stall detection) as a fan-out.
 
-If yes: every step that dispatches and waits on one must load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md) rather than the skill inventing its own wording for "wait for it to return." Record which step(s) this applies to — that's what Phase 3 wires in.
+If yes: every step that dispatches and waits on one must load and apply the `subagent-dispatch` skill's wait protocol rather than the skill inventing its own wording for "wait for it to return." Record which step(s) this applies to — that's what Phase 3 wires in.
 
 Out of scope: a subagent invoked via the `Skill` tool (calling another skill by name) rather than a direct `Agent` call — that skill's own dispatch, if it has any, already owns its own wait handling; nothing here overrides it.
 
 ### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
 
-For each step Phase 2 flagged, its wait instruction is exactly: "Load and apply [Agent Wait Protocol](../../templates/agent-wait-protocol.md)" plus only what's genuinely specific to that step — a longer or shorter stall ceiling than the protocol's 15-minute default, and whether results are collected all at once or reported as each one arrives. Never restate the protocol's own rules inline (no manual polling, a finished agent's transcript is indistinguishable from a stalled one, confirm via `TaskOutput` before calling `TaskStop`) — copies of that rule are exactly what drifted out of sync the last time it was written by hand into more than one skill.
+For each step Phase 2 flagged, its wait instruction is exactly: "Load and apply the `subagent-dispatch` skill's wait protocol" plus only what's genuinely specific to that step — a longer or shorter stall ceiling than the protocol's 15-minute default, and whether results are collected all at once or reported as each one arrives. Never restate the protocol's own rules inline (no manual polling, a finished agent's transcript is indistinguishable from a stalled one, confirm via `TaskOutput` before calling `TaskStop`) — copies of that rule are exactly what drifted out of sync the last time it was written by hand into more than one skill.
 
 ### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
 
