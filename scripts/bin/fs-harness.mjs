@@ -731,7 +731,9 @@ function main() {
 
 // Only run the CLI when this file is executed directly — check-references.mjs imports
 // this module's path-resolution helpers without triggering the CLI's own main().
-if (import.meta.url === `file://${process.argv[1]}`) {
+// argv[1] is realpath'd because `npm link` runs this file through a bin symlink.
+const invokedPath = process.argv[1] && fs.realpathSync(process.argv[1]);
+if (invokedPath === fileURLToPath(import.meta.url)) {
   try {
     main();
   } catch (e) {
