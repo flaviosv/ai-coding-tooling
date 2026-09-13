@@ -47,6 +47,11 @@
       "scope": "matt-pocock"
     },
     {
+      "name": "harness-eval",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club"
+    },
+    {
       "name": "jira-assistant",
       "source": "tech-leads-club",
       "scope": "tech-leads-club"
@@ -87,6 +92,11 @@
       "name": "subagent-creator",
       "source": "tech-leads-club",
       "scope": "tech-leads-club"
+    },
+    {
+      "name": "subagent-dispatch",
+      "source": "local",
+      "scope": "built"
     },
     {
       "name": "tech-reference-add",
