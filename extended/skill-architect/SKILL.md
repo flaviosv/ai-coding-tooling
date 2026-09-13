@@ -171,7 +171,6 @@ Inject the following steps into the parent skill's workflow at the phases indica
 
 If the skill will include technology-specific reference files:
 - Follow the naming pattern in [Reference File Naming Convention](../../templates/reference-file-naming-convention.md).
-- Follow the versioning structure in [Version Stratification Guide](../../templates/version-stratification-guide.md).
 
 **Linking a shared template** — count the `../` from the linking file's own depth, not from the skill root. A `SKILL.md` sits at `<skill>/SKILL.md`, so it uses `../../templates/<name>.md`; a file under `<skill>/references/` is one level deeper and needs `../../../templates/<name>.md`. Both resolve because `fs-harness setup` symlinks `templates/` into the agent config directory alongside `skills/` — never copy a template into a skill folder to work around a broken link, since duplicating it is what template extraction exists to prevent. A link that reads as a missing file at runtime means the depth is wrong or `setup` has not been run on that machine.
 
@@ -184,7 +183,6 @@ If the skill will include technology-specific reference files:
 - Every code example must have a `// Good` or `// Bad` marker; trim text after ` — ` when the heading already conveys the intent
 - "Bad" examples: keep signature + problematic line(s) only; remove surrounding scaffolding
 - Max 1 consecutive blank line; no blank lines inside code blocks
-- Version sections with ≤1 code block and <5 prose lines: inline into the parent section with a version annotation (e.g. `# PHP 8.4+`)
 - Never write filler phrases: "It is important to note", "In order to", "As a general rule"
 - Preserve WHY context, disambiguation, and edge-case prose — this is the most valuable content
 

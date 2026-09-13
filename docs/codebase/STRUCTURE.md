@@ -86,7 +86,7 @@ ai-coding-tooling/
 
 ### Templates (`templates/`)
 **Purpose:** Reusable `.md` patterns referenced by skill authoring and CLI scaffold logic.
-**Key files:** 12 files covering naming, loading constraints, formatting, frontmatter, version stratification, and shared runtime protocols (agent waiting, subagent models, test execution scope).
+**Key files:** 9 files covering naming, loading constraints, formatting, frontmatter, and shared runtime protocols (agent waiting, subagent models, test execution scope).
 
 ## Where Things Live
 
