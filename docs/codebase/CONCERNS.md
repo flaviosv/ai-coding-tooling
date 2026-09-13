@@ -29,8 +29,8 @@
 
 **Per-skill `STATE.md` convention has no tooling support:**
 
-- Issue: the new per-skill decision-log convention (`docs/SKILL-ADR.md`; `CLAUDE.md` "Skill Decision Log" section) requires an agent to read a skill's `STATE.md` before modifying it and append an `AD-NNN` entry after each real decision — entirely manual; `fs-harness` does not create, update, validate, or check for `STATE.md` files.
-- Files: `docs/SKILL-ADR.md`, `CLAUDE.md` (Skill Decision Log section)
+- Issue: the new per-skill decision-log convention (`docs/skill-adr.md`; `CLAUDE.md` "Skill Decision Log" section) requires an agent to read a skill's `STATE.md` before modifying it and append an `AD-NNN` entry after each real decision — entirely manual; `fs-harness` does not create, update, validate, or check for `STATE.md` files.
+- Files: `docs/skill-adr.md`, `CLAUDE.md` (Skill Decision Log section)
 - Why: added as a lightweight, tooling-free convention — deliberate, avoids CLI complexity for a documentation practice.
 - Impact: two-sided. **Compliance risk** — nothing enforces the read-before-modify/append-after-decision steps, so it can silently lapse across skills or sessions (already happened once: `skills/session-evaluate/STATE.md` had to be backfilled after an agent session missed the convention entirely, since it landed mid-session after that session's context was already loaded). **Token-consumption risk** — as more skills adopt `STATE.md`, the cumulative cost of reading a skill's `STATE.md` before every edit adds a small but recurring per-edit overhead across the project; currently only `session-evaluate` has one, so the effect is negligible today but worth watching as adoption grows.
 - Fix approach: not urgent at current scale (one skill has a `STATE.md`). If adoption grows, consider a lightweight `fs-harness` check (e.g., `fs-harness list` flags a skill with recent content changes but no matching `STATE.md` entry) rather than relying purely on agent discipline.

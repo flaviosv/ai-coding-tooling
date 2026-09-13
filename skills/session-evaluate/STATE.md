@@ -81,7 +81,7 @@
 
 ### AD-008
 - **Decision**: Three wording fixes to `SKILL.md`. (1) `SKILL.md:12`'s body intro (under "# Session Evaluate") is now a distinct one-line tagline oriented on when to reach for the skill, rather than a paragraph nearly restating the YAML `description`. (2) `SKILL.md:177` (Step 6's attribution table, the `config/skills.json` source check) now points to root `CLAUDE.md`'s Skill Modification Rules section instead of restating its contents. (3) `SKILL.md:308` (Step 10's commit/push line) now points to root `CLAUDE.md`'s Change Request Workflow section instead of restating its contents.
-- **Reason**: 2026-09-12 harness-eval run (`docs/HARNESS-EVALUATION.md` rows #26-#28) flagged all three: row #26 as a near-duplicate of the frontmatter `description`, rows #27/#28 as restating root `CLAUDE.md` sections that are already loaded globally every session, making a pointer sufficient.
+- **Reason**: 2026-09-12 harness-eval run (`docs/harness-evaluation.md` rows #26-#28) flagged all three: row #26 as a near-duplicate of the frontmatter `description`, rows #27/#28 as restating root `CLAUDE.md` sections that are already loaded globally every session, making a pointer sufficient.
 - **Trade-off**: none — the two pointer lines rely on root `CLAUDE.md` being loaded every session (already true, per this repo's own setup), so no coverage is lost; the tagline is pure rewording with no behavior change. Row #29 (re-running Track B/C with `--include-doc` for this skill's two `references/` files) is a separate, still-`Pending` item and was left untouched.
 - **Date**: 2026-09-12
 - **Status**: active

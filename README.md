@@ -43,7 +43,7 @@ fs-harness setup
 
 One command bootstraps everything:
 
-- **Global:** symlinks `CLAUDE.global.md` to Claude Code's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into `settings.json` (`scripts/hooks/` — see `docs/CLI.md`).
+- **Global:** symlinks `CLAUDE.global.md` to Claude Code's global config, installs every skill by source (project skills via symlink; Tech Leads Club / Matt Pocock via `npx`), applies all `extended/` overrides, installs any `personal/` skills, and syncs `config/hooks.json` into `settings.json` (`scripts/hooks/` — see `docs/cli.md`).
 - **Project-local:** this repo's own instructions (`CLAUDE.md`) and project-local skills (`.claude/skills/`) are tracked directly in the repo — no setup step needed to see them.
 
 It refuses to overwrite an existing global config. To reverse everything `setup` did (remove the global config symlink, uninstall the skills it installed), run `fs-harness destroy`.
@@ -86,7 +86,7 @@ To customize without losing changes on the next `--force` run, edit `~/.claude/s
 | `fs-harness override <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
 | `fs-harness update [skills...]` | Update Tech Leads Club / Matt Pocock skills |
 
-Add `--dry-run` to any command to print the actions without changing anything. See [docs/CLI.md](docs/CLI.md) for the full command reference.
+Add `--dry-run` to any command to print the actions without changing anything. See [docs/cli.md](docs/cli.md) for the full command reference.
 
 ## Skills
 

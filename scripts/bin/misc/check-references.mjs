@@ -5,7 +5,7 @@
 // may cross into the other's folder — skills never link references/, CLAUDE.global.md
 // never links templates/. Exit 0 on a clean report, 1 if any check fails.
 //
-// STATE.md files are exempt: they're an append-only decision log (docs/SKILL-ADR.md)
+// STATE.md files are exempt: they're an append-only decision log (docs/skill-adr.md)
 // where a past entry legitimately names a file that has since moved — not a live
 // reference. Same class of exemption as scripts/bin/misc/check-no-stale-refs.mjs.
 //

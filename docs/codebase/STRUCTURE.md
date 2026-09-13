@@ -20,9 +20,9 @@ ai-coding-tooling/
 │   ├── hooks.json           # Hook manifest (flat array, merged into settings.json by `hooks`)
 │   └── skills.json          # Skill registry (20 skills: name, source, scope)
 ├── docs/
-│   ├── CLI.md                # fs-harness command reference
-│   ├── SKILL-ADR.md        # Per-skill STATE.md decision-log format spec
-│   ├── UNINSTALL_SONAR.md    # Historical removal guide for a since-uninstalled SonarQube integration
+│   ├── cli.md                # fs-harness command reference
+│   ├── skill-adr.md        # Per-skill STATE.md decision-log format spec
+│   ├── uninstall_sonar.md    # Historical removal guide for a since-uninstalled SonarQube integration
 │   └── codebase/            # Agent context docs (THIS set — canonical location)
 ├── extended/                # Additive overrides for vendor skills
 │   ├── docs-writer/SKILL.md
@@ -64,7 +64,7 @@ ai-coding-tooling/
 
 ### CLI (`scripts/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, statusline — plus the standalone hook and MCP-wrapper scripts it wires up.
-**Key files:** `scripts/bin/fs-harness.mjs` (single file, 674 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/UNINSTALL_SONAR.md`.
+**Key files:** `scripts/bin/fs-harness.mjs` (single file, 674 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/uninstall_sonar.md`.
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for skill and hook configuration.
