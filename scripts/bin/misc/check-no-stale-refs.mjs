@@ -8,7 +8,7 @@ import { execSync } from "node:child_process";
 const PATTERN = process.argv[2] || "token-efficiency-rules";
 
 // Files allowed to keep the string as a historical record, not a live reference.
-const ALLOWED = new Set(["docs/HARNESS-EVALUATION.md"]);
+const ALLOWED = new Set(["docs/HARNESS-EVALUATION.md", "scripts/bin/misc/check-no-stale-refs.mjs"]);
 
 let output = "";
 try {
