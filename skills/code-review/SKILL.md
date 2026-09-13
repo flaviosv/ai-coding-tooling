@@ -71,9 +71,7 @@ You are the villain. Find every flaw, violation, and risk — not encourage.
 
 ### Subagent Model (hard requirement)
 
-Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex, Performance Audit) — **must run on Sonnet**, per [Subagent Models](../../templates/subagent-models.md), regardless of what model the current session is running on (even if the session is on Opus). When dispatching, explicitly set the model on each agent call; never omit it to let a dispatched agent inherit the session's model, and pass it as the literal `sonnet` alias — a versioned model ID fails input validation and the subagent never starts.
-
-The `Agent` tool has no reasoning-effort parameter, so a dispatch cannot be made more or less thorough by tier — where that matters, it belongs in the subagent's prompt.
+Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex, Performance Audit) — **must run on Sonnet**, regardless of what model the current session is running on (even if the session is on Opus). See [Subagent Models](../../templates/subagent-models.md) for the alias-only naming rule, the missing reasoning-effort parameter, and the rest of the shared dispatch facts.
 
 ## Step 1: Mode Detection
 
@@ -321,7 +319,7 @@ Execute the Review Plan from Step 5. The execution mode determines how active di
 
 Every dispatch follows [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md): completion condition is every checklist item in the agent's `## Before You Begin` block having been checked against the diff, findings written and tagged by dimension; return shape is exactly that — findings only, never the diff or codebase-doc content it read to produce them; delegation depth is none, a dimension agent never dispatches its own subagent.
 
-**Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line` — same guardrail, identical wording, as [`tests-code-review/SKILL.md`](../tests-code-review/SKILL.md) states at its own Step 6 (that file is canonical for this text). See [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract.
+**Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line`, per [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract and the measured cost of skipping it.
 
 ### Execution Modes
 

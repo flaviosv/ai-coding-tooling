@@ -59,9 +59,7 @@ You are the villain. Find every gap, weakness, and lie in the test suite — not
 
 ### Subagent Model (hard requirement)
 
-Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex) — **must run on Sonnet**, per [Subagent Models](../../templates/subagent-models.md), regardless of what model the current session is running on (even if the session is on Opus). When dispatching, explicitly set the model on each agent call; never omit it to let a dispatched agent inherit the session's model, and pass it as the literal `sonnet` alias — a versioned model ID fails input validation and the subagent never starts.
-
-The `Agent` tool has no reasoning-effort parameter, so a dispatch cannot be made more or less thorough by tier — where that matters, it belongs in the subagent's prompt.
+Every subagent dispatched in Step 6 — in every mode and every tier (Medium, Large, Complex) — **must run on Sonnet**, regardless of what model the current session is running on (even if the session is on Opus). See [Subagent Models](../../templates/subagent-models.md) for the alias-only naming rule, the missing reasoning-effort parameter, and the rest of the shared dispatch facts.
 
 ## Step 1: Mode Detection
 
@@ -305,7 +303,7 @@ Execute per the size tier determined in Step 5.
 
 Every dispatch follows [Subagent Dispatch Contract](../../templates/subagent-dispatch-contract.md): completion condition is every checklist item in the agent's `## Before You Begin` block having been checked against the diff, findings written and tagged by dimension; return shape is exactly that — findings only, never the diff or codebase-doc content it read to produce them; delegation depth is none, a dimension agent never dispatches its own subagent.
 
-**Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line` — the exact text of the line the finding points at, one line, trimmed, no ellipsis or paraphrase. The agent has the file open at the moment it writes the finding, so this costs nothing there; captured any later it costs a re-read. And `File:Line` is always the line in the file at the PR head, never an offset into a diff or patch artifact the agent was handed — resolve it back to the source line before returning (the hunk header `@@ -a,b +c,d @@` gives the base). Consumers downstream anchor GitHub comments on these values and confirm them with a `grep` of the anchor text; without it they re-read whole files instead, which measured 13–35% of the merge step's cost across four real runs. See [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract.
+**Every finding a dimension agent returns carries its anchor line verbatim** alongside `File:Line`, per [GitHub PR Mode — B2' Return-Only Variant](../../templates/github-pr-review-mode.md) for the full contract and the measured cost of skipping it.
 
 ### Execution modes
 

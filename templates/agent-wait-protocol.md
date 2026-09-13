@@ -32,4 +32,4 @@ The second failure doesn't look like polling at all: emitting a **no-op tool cal
 
 The third, sharper failure: treating a quiet transcript as evidence of a stall. A **finished** agent's transcript stops growing too — that's indistinguishable from a stalled one by size or elapsed time alone. Acting on that false signal (stopping the agent, retrying, discarding its output) has thrown away already-completed, valid work — twice, on two independent passes, in a real run — and the recovery afterward cost more than either wasted pass.
 
-The rules sit above this section because a run that skipped them cited having only skimmed for what it needed to *act*. The protocol is what you need to act.
+The protocol is what you need to act.

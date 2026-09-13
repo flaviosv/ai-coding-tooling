@@ -34,9 +34,10 @@ Detect the stack from `docs/codebase/STACK.md` (fall back to `.specs/codebase/ST
 `docs/codebase/PROJECT_DETAILS.md` / `docs/PROJECT_DETAILS.md`). Then load **only**
 matching `coding-guidelines/<language>-*.md` / `coding-guidelines/<language>-<framework>-*.md`
 files from this directory (e.g. `php-coding-guidelines.md` for a PHP stack). Skip non-matching
-files. Apply [Reference Loading Constraint](../../../templates/reference-loading-constraint.md).
+files.
 
-If no stack-specific file matches, proceed with the always-load set above.
+If no stack-specific file matches, or if `STACK.md` (and its fallbacks) is missing or has no tech
+stack section, do not load any tech-specific references — proceed with the always-load set above.
 
 ## Security → `security-best-practices` skill
 

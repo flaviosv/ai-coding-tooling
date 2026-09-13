@@ -12,7 +12,6 @@ Apply these rules when generating or editing any `.md` file intended for AI agen
 
 - `## Resources` / `## References` URL sections — agents do not browse links; remove them entirely
 - `---` horizontal rules between sections — keep only the single `---` after the frontmatter scope line
-- Consecutive blank lines — reduce to a single blank line between elements
 - Filler phrases: "It is important to note", "In order to", "As a general rule", "Note that", "Please note"
 - Obvious boilerplate imports in code examples (e.g. `import os`, `import sys` when they are not the focus)
 
