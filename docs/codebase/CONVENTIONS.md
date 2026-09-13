@@ -44,7 +44,7 @@ Throw `UserError` for expected user mistakes; let unexpected errors propagate na
 - `scripts/bin/fs-harness.mjs` uses sparse inline comments at section boundaries only; no multi-line docstrings.
 - `SKILL.md` files use YAML frontmatter (`name`, `description`, `metadata.version`, `metadata.triggers`).
 - `extended/<skill>/SKILL.md` uses the frontmatter from `templates/extension-frontmatter.md` (`name`, `extends`, `description`, `metadata.version`, `metadata.parent_skill`, `metadata.source`).
-- Tech-specific reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.
+- Tech-specific reference files follow `<technology>-<skill-name>.md` (defined in `extended/skill-architect/SKILL.md`).
 - `skills/<name>/reference.md` (no technology prefix, at the skill root) is a workflow/orchestration reference — distinct from tech-specific checklists under `references/<tech>-<skill>.md`.
 - Every skill in `skills/` or `extended/` keeps a `STATE.md` — an append-only per-skill decision log (`## Decisions` section, sequential `AD-NNN` entries with Decision/Reason/Trade-off/Date/Status fields; a superseded entry gets `status: superseded by AD-NNN` rather than being deleted). Full format and write triggers are in `docs/SKILL-ADR.md`. Check a skill's `STATE.md` before modifying it, and append an entry after a change driven by a real decision — not for trivial/cosmetic edits.
 - Markdown tables and enumerated bullet lists follow the user's global `CLAUDE.md` Markdown Formatting rule (alphabetical by primary column) — not restated here to avoid drift.

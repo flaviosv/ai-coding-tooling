@@ -170,7 +170,8 @@ Inject the following steps into the parent skill's workflow at the phases indica
 **2.4 — Reference File Design**
 
 If the skill will include technology-specific reference files:
-- Follow the naming pattern in [Reference File Naming Convention](../../templates/reference-file-naming-convention.md).
+- Name them `<technology>-<skill-name>.md`, where `<technology>` is the kebab-case slug for the language or framework (e.g. `fastapi`, `go-gin`, `ruby-on-rails`) and `<skill-name>` is the exact skill directory name (e.g. `code-review`, `tests`, `tests-code-review`) — e.g. `fastapi-code-review.md`, `go-gin-tests.md`, `ruby-on-rails-tests-code-review.md`.
+- Generic baseline files (non-tech-specific) are exempt from this pattern and keep their existing names (e.g. `review-checklist.md`, `testing-patterns.md`).
 
 **Linking a shared template** — count the `../` from the linking file's own depth, not from the skill root. A `SKILL.md` sits at `<skill>/SKILL.md`, so it uses `../../templates/<name>.md`; a file under `<skill>/references/` is one level deeper and needs `../../../templates/<name>.md`. Both resolve because `fs-harness setup` symlinks `templates/` into the agent config directory alongside `skills/` — never copy a template into a skill folder to work around a broken link, since duplicating it is what template extraction exists to prevent. A link that reads as a missing file at runtime means the depth is wrong or `setup` has not been run on that machine.
 
