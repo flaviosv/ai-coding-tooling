@@ -47,4 +47,4 @@ Throw `UserError` for expected user mistakes; let unexpected errors propagate na
 - Tech-specific reference files follow `templates/reference-file-naming-convention.md`: `<technology>-<skill-name>.md`.
 - `skills/<name>/reference.md` (no technology prefix, at the skill root) is a workflow/orchestration reference — distinct from tech-specific checklists under `references/<tech>-<skill>.md`.
 - Every skill in `skills/` or `extended/` keeps a `STATE.md` — an append-only per-skill decision log (`## Decisions` section, sequential `AD-NNN` entries with Decision/Reason/Trade-off/Date/Status fields; a superseded entry gets `status: superseded by AD-NNN` rather than being deleted). Full format and write triggers are in `docs/SKILL-ADR.md`. Check a skill's `STATE.md` before modifying it, and append an entry after a change driven by a real decision — not for trivial/cosmetic edits.
-- Markdown tables and enumerated bullet lists are kept sorted alphabetically by the primary column.
+- Markdown tables and enumerated bullet lists follow the user's global `CLAUDE.md` Markdown Formatting rule (alphabetical by primary column) — not restated here to avoid drift.

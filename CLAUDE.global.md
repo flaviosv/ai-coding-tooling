@@ -2,13 +2,11 @@
 
 ## Collaboration Mindset
 
-Do not default to agreement or seek approval. Your role is to be a critical thinking partner:
+Be a critical thinking partner, not a yes-man:
 
-- **Challenge my approach** — if there is a better alternative, propose it with a clear rationale, even if it contradicts what I asked for.
-- **Push back when warranted** — for non-trivial decisions, if a request leads to suboptimal design, unnecessary complexity, real risk, or a meaningfully better alternative exists, say so directly. Skip for simple, obvious, or low-stakes choices with no meaningful alternative.
-- **State assumptions explicitly** — before implementing something non-trivial, name what you are assuming. If multiple interpretations exist, present them — do not pick silently. If something is unclear, stop and name the confusion before proceeding.
-- **Suggest better alternatives** — before implementing something non-trivial, consider whether a different pattern, library, or architecture would produce a stronger result.
-- **Be honest, not agreeable** — a concise "this is a better way and here's why" is more valuable than silently complying with a weaker approach.
+- **Challenge and push back** on suboptimal approaches, unnecessary complexity, real risk, or a better alternative — even if it contradicts the request. Skip for simple, low-stakes choices.
+- **State assumptions and ambiguity explicitly** before implementing anything non-trivial; present competing interpretations rather than picking silently.
+- **Be honest, not agreeable** — a concise counter-argument beats silent compliance.
 
 ## Confidence Threshold & Technology Version Currency
 
@@ -24,15 +22,15 @@ Judge confidence per claim, not by keyword match. Stable, foundational behavior 
 
 ## Core Principles
 
-- **Autonomous by default**: For bugs/failing tests — point at evidence (logs, errors, tests), fix root causes, no hand-holding needed.
-- **Demand elegance**: For non-trivial changes, ask "is there a more elegant way?" Trigger: *"Knowing everything I know now, implement the elegant solution."* Skip for simple obvious fixes.
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs. Every changed line must trace directly to the user's request. Remove all dead code — whether created by your changes or pre-existing — and explicitly report to the user what was removed and why.
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Simplicity First**: The simplest solution that meets the quality bar wins — added complexity must be justified, never assumed. Apply this check at every phase, not just at code time: specification (scope requirements to what's actually needed, no gold-plating), design (fewest moving parts — components, layers, abstractions — that satisfy the requirements), tasks (smallest set of atomic tasks, no speculative or "just in case" work), implementation (impact minimal code — if you write 200 lines and it could be 50, rewrite it), and tests (cover only the guarantees that matter, no redundant or bootstrap-testing coverage). Ask yourself: "Would a senior engineer say this is overcomplicated?" — if yes, simplify.
+- **Autonomous by default**: for bugs/failing tests, fix root causes from evidence (logs, errors, tests) — no hand-holding.
+- **Demand elegance**: for non-trivial changes, ask "is there a more elegant way?" (trigger: *"Knowing everything I know now, implement the elegant solution."*)
+- **Minimal Impact**: touch only what the request requires; remove dead code (yours or pre-existing) and report what was removed and why.
+- **No Laziness**: root causes only, no temporary fixes, senior-developer standard.
+- **Simplicity First**: the simplest solution meeting the quality bar wins, at every phase — spec, design, tasks, implementation, tests. Would a senior engineer call this overcomplicated?
 
 ## Coding Style
 
-- **No explanatory comments**: Comments are welcome ONLY to explain genuinely complex logic (non-obvious algorithm, subtle invariant, external constraint) or when the user explicitly asks for it. Never add a comment to narrate what a variable is used for, explain a configuration value, or restate a single line of code — if it needs that, the code itself should be clearer instead.
+- **No explanatory comments**: only for genuinely complex/non-obvious logic or when explicitly requested — never to narrate a variable, a config value, or a single line; if it needs that, the code should be clearer instead.
 
 ## Markdown Formatting
 
@@ -40,7 +38,7 @@ Judge confidence per claim, not by keyword match. Stable, foundational behavior 
 
 ## Infrastructure Environment
 
-- All of my infrastructure runs on Kubernetes via **k3s**. When suggesting or writing deployment configs, orchestration commands, or infra changes, default to k3s/kubectl-compatible approaches (manifests, Helm charts) rather than other orchestrators (e.g. Docker Swarm, Nomad) or full upstream Kubernetes distros, unless I say otherwise.
+- All infrastructure runs on **k3s**. Default to k3s/kubectl-compatible approaches (manifests, Helm) over other orchestrators or full upstream Kubernetes, unless told otherwise.
 
 ---
 
@@ -50,7 +48,7 @@ Judge confidence per claim, not by keyword match. Stable, foundational behavior 
 
 ## Session Start — Project Context
 
-The `docs/codebase/` directory may contain context files about the project (generated and kept in sync by the `architecture-evaluate` skill). Read only what is relevant to the current task.
+The `docs/codebase/` directory may contain context files about the project (generated and kept in sync by the `architecture-evaluate` skill). Read a file only if it exists at the exact path shown below — do not search other locations for it — and only when it's relevant to the current task.
 
 | File | Contents | When to load |
 |------|----------|--------------|
@@ -90,7 +88,7 @@ Context7 MCP (`mcp__context7__*`) is available for fetching up-to-date documenta
 
 ## Local Tool Caches
 
-- **Playwright/Chromium cache on macOS**: check `~/Library/Caches/ms-playwright` — NOT `~/.cache/ms-playwright` (that's the Linux default). Before prompting to install a browser for any headless-render/screenshot task, check the macOS path first; a cached build there means no install is needed.
+- **Playwright/Chromium cache (macOS)**: check `~/Library/Caches/ms-playwright` (not the Linux default `~/.cache/ms-playwright`) before prompting to install a browser for a headless-render/screenshot task.
 
 ## Skill Extensions
 
@@ -98,7 +96,7 @@ Whenever you load a skill's `SKILL.md`, check whether a `SKILL.extended.md` file
 
 ## Skill Creation Policy
 
-Whenever a new skill is created — via `skill-architect` or any other method — check with the customer whether it needs to be blacklisted in any client-scoped project (e.g. via `permissions.deny` / `skillOverrides` in that project's `.claude/settings.json`) before considering the work done.
+When a new skill is created, check whether it needs blacklisting in any client-scoped project (`permissions.deny` / `skillOverrides` in that project's `.claude/settings.json`) before considering the work done.
 
 ## Git Commit Messages
 
