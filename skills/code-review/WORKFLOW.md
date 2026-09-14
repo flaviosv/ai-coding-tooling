@@ -43,19 +43,20 @@ flowchart TD
     Post --> PostOK{post exit 2<br/>or missing?}
     PostOK -- "yes, first time" --> Repost[Root re-runs post<br/>same post.json — no re-review] --> PostOK
     PostOK -- "exit 2 again" --> EndBlocked([Blocked — report, never submit])
-    PostOK -- "no, or exit 1 again" --> CP{Stage 2 — human_review?}
+    PostOK -- "no, or exit 1 again" --> CP{Stage 2 — human_review true,<br/>or comments carried over?}
     Rep --> CP
 
-    CP -- true --> Pause[Show summary, end turn<br/>PR: user edits / deletes / submits on GitHub<br/>Local: user drops finding IDs]
+    CP -- yes --> Pause[Show summary, end turn<br/>PR: user edits / deletes / submits on GitHub<br/>Local: user drops finding IDs]
     Pause -- "user replies" --> JR
-    CP -- false --> JR
+    CP -- no --> JR
 
     JR{just review?} -- "yes, true" --> EndPending([End — PR review stays pending])
     JR -- "yes, false" --> SubOnly[submit on a PR] --> EndR([End])
     JR -- no --> Remain{Findings remain?}
     Remain -- no --> EndR
-    Remain -- "yes, PR" --> Sub[github_review.py submit<br/>COMMENT · removes an empty pending review]
+    Remain -- "yes, PR" --> Sub[github_review.py submit<br/>COMMENT]
     Remain -- "yes, local" --> F
+    Sub -- "empty review — user deleted every comment" --> EndR
     Sub -- "exit 0" --> F[Stage 3: fresh fix worker<br/>fetch → classify → re-fetch → fix item by item]
     Sub -- "non-zero twice" --> EndBlocked
     F --> Gate[Validation gate, whenever a file was edited<br/>build + touched files' tests + conflict markers]
@@ -119,23 +120,22 @@ Wording, not parameters: "just review" ends after Stage 2; "and update the Jira 
 
 | Target | `human_review: true` | `human_review: false` | "Just review" |
 |---|---|---|---|
-| GitHub PR | Pending review; end turn; user edits on GitHub and replies → `submit` → fix | `submit` → fix | `true`: stays pending, run ends · `false`: `submit`, run ends |
-| Any, review failed twice or zero findings | No pause, no `submit`, no fix — report | Same | Same |
+| GitHub PR | Pending review; end turn; user edits on GitHub and replies → `submit` → fix | `submit` → fix; comments carried over from an earlier draft → pause first, as with `true` | `true`: stays pending, run ends · `false`: `submit`, run ends |
+| Any, review failed twice, zero findings, or every finding deleted | No fix — report (a deleted-to-empty review is left pending for the user to discard) | Same | Same |
 | Local / commits | Report shown; end turn; user drops IDs and replies → fix | Fix every finding | Run ends after the report |
 
 ## Recovery
 
-Each failure is retried once, before the pause when it happens before the pause, so the user only ever checks findings that are really on GitHub.
+Each failure is retried once in total — never a retry stacked on a retry — before the pause when it happens before the pause, so the user only ever checks findings that are really on GitHub.
 
 | Failure | Retry | Never |
 |---|---|---|
-| `deliver` failed, or the fix worker failed outright after its own retry | Continue after checkpoint: `submit` (exit `0` either way), then a fresh fix worker told that already-pushed commits are fixes still owed a reply | Reject a thread as "already addressed" because its fix is already on the branch |
-| `deliver` refused: this identity holds a pending review | None — ask the user to submit or discard it | Reply while it exists (a reply could land inside it, unseen) |
+| `deliver` failed, or the fix worker failed outright | Continue after checkpoint: `submit`, then a fresh fix worker told that already-pushed commits are fixes still owed a reply | Reject a thread as "already addressed" because its fix is already on the branch |
 | `post` exit `2` or non-empty `missing` | Root re-runs `post` from the same `post.json` | Re-run the review; `submit` after a second exit `2` |
 | Review failed | Stage 1 again with a fresh review worker | Continue after checkpoint — it never posts, so the findings would be lost |
 | `submit` non-zero | `submit` again | Start the fix stage on an unconfirmed submit |
 
-`build-feature` stops on a review or posting failure `code-review` could not recover, and retries the continue-after-checkpoint entry once for a `submit` or delivery failure.
+`build-feature` stops on any failure `code-review` still reports after its own retry.
 
 ## Workers
 
@@ -146,7 +146,7 @@ Each failure is retried once, before the pause when it happens before the pause,
 | Fix worker (single) | Root | `sonnet` | `worktree` when not on the PR branch; none when on it, or local | Nothing | Outcomes, `deliver` JSON counts, commits, gate |
 | Review worker | Root | `sonnet` | — | Dimension agents | Local: full report · PR: URL, banner, counts, `post` JSON counts, unpostable list |
 
-The root is a live conversation, or `build-feature`'s orchestrator invoking this skill via `Skill`. When a subagent executes this skill outside that structure, it runs the stages inline: `human_review: false` goes straight through; `true` stops after Stage 1 with `awaiting_approval: true`. Running the fix stage inline on a PR, it uses the current checkout when it is on the PR branch, the worktree that has the branch when one does, and otherwise creates its own worktree with `git worktree add` and removes it at the end — never `gh pr checkout` in a checkout it was not given.
+The root is a live conversation, or `build-feature`'s orchestrator invoking this skill via `Skill`. When a subagent executes this skill outside that structure, it runs the stages inline, stopping after Stage 1 with `awaiting_approval: true` wherever Stage 2 would pause. Running the fix stage inline on a PR, it uses the current checkout when it is on the PR branch, the worktree that has the branch when one does, and otherwise creates its own worktree with `git worktree add` and removes it at the end — never `gh pr checkout` in a checkout it was not given.
 
 ## Fix Outcomes on a PR
 
@@ -167,7 +167,7 @@ The root is a live conversation, or `build-feature`'s orchestrator invoking this
 |---|---|---|---|
 | Add review threads to a pending review | `post` | 1 (Step 9) | Re-fetching the review's comments; retries once only comments from a request that failed as a whole |
 | Reply to and resolve threads | `deliver` | 3 | Re-fetching threads after replies and after resolves; a thread counts as replied only with a marked reply from this identity |
-| Submit the pending review as `COMMENT`, or remove it when it holds nothing | `submit` | 2 | Re-fetching the review's state, or confirming it is gone |
+| Submit the pending review as `COMMENT` (an empty one is left in place) | `submit` | 2 | Re-fetching the review's state |
 
 Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5 s, resolve 1 s), 180 s back-off on GitHub's abuse block (at most twice), no blind retry, counts only from re-fetches, exit `0` confirmed / `1` partial / `2` fatal, and `--login` to act as the caller's resolved account. Any non-zero `gh` exit is a failed request unless it is a GraphQL response that still carries `data`; an unexpected response shape is exit `2` with JSON, never a traceback. The only GitHub read the model runs itself is the thread fetch in `github-writes.md`.
 
@@ -197,7 +197,7 @@ Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5
 - **Only the root dispatches stage workers.** Every nesting failure in the old fix skill's history came from a subagent deciding it was an exception (FR-AD-006). The rule is mechanical: workers never start workers.
 - **GitHub is the hand-off.** The fix stage fetches threads fresh, so a comment deleted at the checkpoint is gone, and a human reviewer's comment is picked up the same way as this skill's own.
 - **Every GitHub write is scripted.** Posting as prose silently lost 9 of 44 findings on two runs and duplicated 9 comments on another; replying as prose was reported done five times when nothing landed (CPR-AD-003, FR-AD-007). The script reports only what a re-fetch confirms.
-- **`deliver` is no longer identical to the old `deliver.py`** (AD-011). The checkpoint invites the user to comment under the same account the review runs as, so "any later comment by this login means already replied" turned a routine edit into a thread resolved with no documentation reply. Replies now carry a hidden marker and only a marked reply counts. `deliver` also refuses to start while this identity holds a pending review, since a reply could land inside it unseen.
+- **`deliver` is no longer identical to the old `deliver.py`** (AD-011). The checkpoint invites the user to comment under the same account the review runs as, so "any later comment by this login means already replied" turned a routine edit into a thread resolved with no documentation reply. Replies now carry a hidden marker and only a marked reply counts; threads answered before the marker existed are skipped at classification.
 - **Recover the step that failed, never a later one.** A failed post re-runs `post` from the same file; the continue-after-checkpoint path is only for `submit` and delivery, because it never posts — using it after a posting failure would submit nothing and fix nothing while reporting success.
 - **The verdict is always `COMMENT`.** Approving or requesting changes is a human judgment; `build-feature` already submitted this way.
 - **No separate full-codebase performance mode.** Performance is reviewed as a dimension of every review; the separate full-codebase mode added dispatch exceptions to both merge rules for a report nothing consumed.

@@ -317,46 +317,22 @@ class LoginTest(unittest.TestCase):
 class SubmitTest(unittest.TestCase):
     PULL = {"url": "https://github.com/o/r/pull/1"}
 
-    def test_empty_pending_review_is_removed(self):
-        with mock.patch.object(gr, "resolve_login", return_value="me"), \
-             mock.patch.object(gr, "fetch_pr_and_pending_review", side_effect=[(self.PULL, "PRR_1"), (self.PULL, None)]), \
-             mock.patch.object(gr, "fetch_review", return_value=("PENDING", [])), \
-             mock.patch.object(gr, "review_body", return_value=""), \
-             mock.patch.object(gr, "gh_graphql", return_value={"data": {}}) as graphql:
-            result, code = gr.submit("o", "r", 1, False)
-        self.assertEqual(code, 0)
-        self.assertEqual((result["submitted"], result["empty_review_removed"]), (False, True))
-        self.assertIn("deletePullRequestReview", graphql.call_args[0][0])
-
-    def test_empty_review_that_survives_deletion_is_exit_1(self):
+    def test_empty_pending_review_is_left_in_place(self):
         with mock.patch.object(gr, "resolve_login", return_value="me"), \
              mock.patch.object(gr, "fetch_pr_and_pending_review", return_value=(self.PULL, "PRR_1")), \
              mock.patch.object(gr, "fetch_review", return_value=("PENDING", [])), \
              mock.patch.object(gr, "review_body", return_value=""), \
-             mock.patch.object(gr, "gh_graphql", side_effect=gr.GhError("forbidden")):
+             mock.patch.object(gr, "gh_graphql") as graphql:
             result, code = gr.submit("o", "r", 1, False)
-        self.assertEqual(code, 1)
-        self.assertFalse(result["empty_review_removed"])
+        self.assertEqual(code, 0)
+        self.assertEqual((result["submitted"], result["empty_review"]), (False, True))
+        graphql.assert_not_called()
 
     def test_no_pending_review_is_exit_0(self):
         with mock.patch.object(gr, "resolve_login", return_value="me"), \
              mock.patch.object(gr, "fetch_pr_and_pending_review", return_value=(self.PULL, None)):
             result, code = gr.submit("o", "r", 1, False)
         self.assertEqual((code, result["submitted"]), (0, False))
-
-
-class DeliverPendingReviewTest(unittest.TestCase):
-    def test_refuses_while_this_identity_holds_a_pending_review(self):
-        config = {"owner": "o", "repo": "r", "pr": 1, "threads": {"t": {"body": "x"}}}
-        with mock.patch.object(gr, "resolve_login", return_value="me"), \
-             mock.patch.object(gr, "fetch_pr_and_pending_review", return_value=({}, "PRR_9")), \
-             mock.patch.object(gr, "fetch_threads") as fetch, \
-             mock.patch.object(gr, "gh_graphql") as graphql:
-            result, code = gr.deliver(config, 10, False)
-        self.assertEqual(code, 2)
-        self.assertEqual(result["pending_review_id"], "PRR_9")
-        fetch.assert_not_called()
-        graphql.assert_not_called()
 
 
 class ValidationTest(unittest.TestCase):
@@ -380,6 +356,8 @@ class ValidationTest(unittest.TestCase):
         self.assertIsNone(gr.validate_delivery_config(ok))
         self.assertIn("both replied and skipped", gr.validate_delivery_config({**ok, "skipped": {"t": "why"}}))
         self.assertIn("non-empty reason", gr.validate_delivery_config({**ok, "skipped": {"u": " "}}))
+        self.assertIsNone(gr.validate_delivery_config({**ok, "threads": {}, "skipped": {"t": "routed to @alice"}}))
+        self.assertIn("cannot both be empty", gr.validate_delivery_config({**ok, "threads": {}}))
 
     def test_main_rejects_bad_input_with_exit_2(self):
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:

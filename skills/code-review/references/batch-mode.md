@@ -54,18 +54,16 @@ Dispatch one fix worker per qualifying PR with `isolation: worktree`, prompt per
 - **Scope filter:** only unresolved threads containing at least one comment authored by `<login>`. A thread whose comments are entirely from other reviewers is out of scope — skip it and leave it untouched, even when it's a valid finding, and list it in `skipped` with the reason "not authored by <login>".
 - Jira sync only if the user requested it for this run.
 
-A qualifying PR where you also hold an unsubmitted draft review comes back blocked: `deliver` refuses to reply while that pending review exists. Report it with "submit or discard your pending review on PR #N".
-
 Per-PR update: outcomes by class, commits pushed or not, blocked and unclear items, and the Jira outcome when sync was requested. Final table: every PR, outcomes, commits, and a line for any PR where nothing was pushed and why.
 
 ## Review Sweep
 
 1. **Review stage:** dispatch one review worker per qualifying PR — prompt per [SKILL.md — Stage 1](../SKILL.md#stage-1-review), `[code-review][batch-review:PR-<N>]` prefix, the run's `scope`, and "work at high effort: be thorough, verify every finding against the actual diff before including it, prefer precision over volume". Each posts a pending review and returns its compact result.
 2. **Checkpoint:**
-   - `human_review: true` → wait until every review worker has reported, post one table (PR, URL, finding counts by severity, re-anchored, unpostable), and end the turn. The user reviews on GitHub and replies — "continue" for all, or "continue #12, #14" for a subset. For each PR continued: `submit`, then its fix worker. PRs not continued stay pending and get no fix stage.
+   - `human_review: true` → wait until every review worker has reported, post one table (PR, URL, finding counts by severity, re-anchored, `anchor_unverified`, unpostable), and end the turn. The user reviews on GitHub and replies — "continue" for all, or "continue #12, #14" for a subset. For each PR continued: `submit`, then its fix worker. PRs not continued stay pending and get no fix stage.
    - `human_review: false` → as each review worker reports, `submit` that PR and dispatch its fix worker immediately, without waiting for the others.
 3. **Fix stage:** one fix worker per continued PR with `isolation: worktree`, prompt per [Fix Stage — Dispatch](fix-stage.md#dispatch-root-conversation); all threads in scope, whoever wrote them.
-4. **Per-PR update** after each stage — review: pending-review URL (or failure reason), finding counts by severity, clusters collapsed, re-anchored, unpostable (`0` when none — a re-anchored or unpostable finding's `file:line` can't be trusted without them), the most important finding in one line; fix: outcomes by class and commits pushed. A **final table** after the last fix: PR, findings, collapsed / re-anchored / unpostable, fixed / rejected / blocked, commits pushed.
+4. **Per-PR update** after each stage — review: pending-review URL (or failure reason), finding counts by severity, clusters collapsed, re-anchored, `anchor_unverified` and unpostable by `path:line` (`0` when none — those findings' `file:line` can't be trusted without them), the most important finding in one line; fix: outcomes by class and commits pushed. A **final table** after the last fix: PR, findings, collapsed / re-anchored / `anchor_unverified` / unpostable, fixed / rejected / blocked, commits pushed.
 
 "Just review" wording ends every PR's run after the checkpoint and no fix worker runs: with `human_review: true` each review stays pending for the user to submit; with `false` each PR is `submit`ted as its review lands.
 

@@ -61,12 +61,12 @@ Prompt, per the `subagent-dispatch` contract:
 - The target (PR number, owner/repo, head branch, login, and the worktree path when one already holds the branch) or, for local, the target kind (uncommitted workspace, named branch, or commits), the branch that receives commits, and every remaining finding verbatim (ID, severity, `file:line`, anchor, explanation, recommendation).
 - The active tlc-spec-driven feature folder (`.specs/features/<feature>/`) when the caller named one — `build-feature` always does; without it the worker writes no plan file.
 - The files to load, by absolute path — never a skill-relative name, which one real worker spent ~1.2M tokens searching for: "Read `~/.claude/skills/code-review/references/fix-stage.md` and follow it; you are the fix worker — never call `Agent`." For a PR, also `~/.claude/skills/code-review/references/github-writes.md`; with Jira sync requested, `~/.claude/skills/code-review/references/jira-sync.md`. If `~/.claude/skills/code-review` does not exist, the skill is installed project-locally: give the same files under `.claude/skills/code-review/`, resolved to an absolute path.
-- **Retry note**, only when this dispatch recovers a failed `deliver` or a worker that failed outright: "This is a retry. The PR branch may already hold commits an earlier fix worker pushed<, SHAs: …>. A thread whose fix is already on the branch is **fixed — its reply is still needed**; never reject it as already addressed. `deliver` skips any thread that already carries a delivered reply."
+- **Retry note**, whenever this dispatch comes from the continue-after-checkpoint entry (including `build-feature`'s resume and a user's "continue") or recovers a worker that failed outright — harmless when nothing was pushed: "This may be a retry. The PR branch may already hold commits an earlier fix worker pushed<, SHAs: …>. A thread whose fix is already on the branch is **fixed — its reply is still needed**; never reject it as already addressed. `deliver` skips any thread that already carries a delivered reply."
 - Completion condition: every in-scope thread (or local finding) has a fixed / rejected / answered / blocked / unclear / routed outcome, and on a PR `deliver` has confirmed it.
 - Return shape: the Report below — never finding bodies or diffs.
 - Delegation depth: none.
 
-A worker that fails outright (crash, auth failure, PR not found — distinct from items coming back blocked, which needs no retry and doesn't stop the rest of the run) is retried once with a fresh worker carrying the retry note, from step 0. A second failure stops the run and is reported; never mark anything fixed or resolved on a failed run. After the report, remove any worktree the dispatch created (`git worktree remove <path>`) unless a blocker left state worth inspecting — then say so and wait for the user.
+A worker that fails outright (crash, auth failure, PR not found — distinct from items coming back blocked, which needs no retry and doesn't stop the rest of the run) is retried once with a fresh worker carrying the retry note, from step 0 — on a PR, that retry is SKILL.md Stage 3's delivery recovery, never an additional one. A second failure stops the run and is reported; never mark anything fixed or resolved on a failed run. After the report, remove any worktree the dispatch created (`git worktree remove <path>`) unless a blocker left state worth inspecting — then say so and wait for the user.
 
 ## PR Mode
 
@@ -85,7 +85,7 @@ A worker that fails outright (crash, auth failure, PR not found — distinct fro
    | routed to a person | Addressed to someone by name or handle | Nothing; record for the report |
    | unclear | Still unsure what it asks | Nothing, or a clarifying reply if you have a specific question; record for the report |
 
-   A standalone comment not tied to a finding gets whichever class it resembles.
+   A standalone comment not tied to a finding gets whichever class it resembles. A thread whose last comment is an earlier reply from this identity answering it, with nothing newer from anyone, is already answered: list it in `skipped` ("answered, awaiting reviewer") — replies from before `deliver`'s marker carry no marker, so `deliver` alone would reply again.
 3. **Plan:** group auto-fix and apply-as-directed items into file clusters in encounter order; write `fix-code-review.md` when a feature is active (`## Cluster: <file path>` per cluster, each item with thread id, class, `path:line`, one-line direction). Zero threads → report and stop.
 4. **Re-fetch** the same query immediately — no approval gate — and silently drop any item no longer present, resolved, or changed. Drop a cluster that empties.
 5. **Fix, item by item:** read the target file(s), judge whether the finding or direction still holds (Judgment above), then either edit + test-impact + targeted tests + one Conventional Commits commit, or reject / block with reasoning. Compose the answer-only and unclear replies now.
@@ -102,7 +102,7 @@ A worker that fails outright (crash, auth failure, PR not found — distinct fro
    | routed to a person | None — skipped with reason | No |
    | unclear | A specific clarifying question, else skipped with reason | No |
 
-9. **Read the script's JSON.** Non-zero exit → the run is blocked; carry the raw JSON into the report. Non-empty `unaccounted` → return to step 2 for those threads. `pending_review_id` present → nothing was written: this identity holds a pending review on the PR, and a reply could land inside it unseen — report "Submit or discard your pending review on PR #N, then ask me to continue" and stop.
+9. **Read the script's JSON.** Non-zero exit → the run is blocked; carry the raw JSON into the report. Non-empty `unaccounted` → return to step 2 for those threads.
 10. **Report** (below), taking every reply/resolve count from step 9's JSON.
 
 ## Local Mode

@@ -10,7 +10,7 @@ Every write this skill makes to GitHub — posting a pending review, submitting 
 - **The script's JSON is the result.** Every count you report — posted, submitted, replied, resolved, re-anchored, unpostable — is quoted from its stdout, never from what you intended to send. Exit `0` confirmed, `1` partial (report exactly which items), `2` fatal (nothing confirmed).
 - **Never re-run `post` to read its output again.** Re-running is safe against duplicates (it skips comments already on the review), but the first run's JSON is the record — capture it. The one re-run is Stage 2's recovery after a failed post, from the same `post.json`.
 - **Never create GitHub Issues.** Every finding is an inline review thread.
-- **Never delete** a pending review, a review comment, or a thread this skill created — including a duplicate review comment `post` reports. Report it and let a human remove it. Two exceptions, both mechanical: `submit` removes this identity's pending review when it holds no comments and no body (nothing is lost, and it could otherwise capture thread replies unseen); and a duplicate **thread reply** `deliver` reports in `duplicates_found` — delete each extra reply (`gh api -X DELETE repos/<owner>/<repo>/pulls/comments/<comment id>`, one call each — there is no batch delete), then re-run `deliver`.
+- **Never delete** a pending review, a review comment, or a thread this skill created — including a duplicate review comment `post` reports. Report it and let a human remove it. One exception: a duplicate **thread reply** `deliver` reports in `duplicates_found` — delete each extra reply (`gh api -X DELETE repos/<owner>/<repo>/pulls/comments/<comment id>`, one call each — there is no batch delete), then re-run `deliver`.
 - **Pass `--login <login>` on every subcommand whenever the caller resolved a `gh` login** (`build-feature` always does; batch mode resolves one in its Step 1). The script then acts with that account's token and fails when the authenticated identity differs, so a run never writes as whichever account `gh` happens to have active. Every call in one run uses the same login.
 - **Never post placeholder, test, or probe content to a real review** — a pending review is visible to anyone with repo access the moment it exists. Use `--dry-run` to check a run before any write.
 - **Never touch another identity's pending review.** The script only reads and extends the authenticated identity's own (`author: $me`).
@@ -75,15 +75,15 @@ What it does, in order: resolves the login, the PR, and this identity's existing
 
 `python3 ~/.claude/skills/code-review/scripts/github_review.py submit <owner> <repo> <N> [--login <login>]`
 
-Submits this identity's pending review as `COMMENT` and confirms the state changed. Exit `0` always means continue to the fix stage:
+Submits this identity's pending review as `COMMENT` and confirms the state changed. Exit `0` results (SKILL.md Stage 2 says what follows each):
 
 | Result | Meaning |
 |---|---|
-| `submitted: false`, `empty_review_removed: true` | The pending review held no comments and no body (the user deleted every comment) — `submit` removed it and confirmed it is gone, since an empty review cannot be submitted as `COMMENT` and could capture later thread replies unseen |
+| `submitted: false`, `empty_review: true` | The pending review holds no comments and no body (the user deleted every comment) — left in place, not submitted |
 | `submitted: false`, no pending review | Nothing was pending — the user already submitted it |
 | `submitted: true` | Submitted as `COMMENT`, confirmed by re-fetch |
 
-Exit `1` → the submit or the removal was not confirmed; Stage 2 runs `submit` once more.
+Exit `1` → the submit was not confirmed; Stage 2 runs `submit` once more.
 
 ## Fix Stage: Fetch Threads
 
@@ -118,17 +118,16 @@ Skip nodes where `isResolved: true`, and nodes whose comments all have `pullRequ
     "threads": {"PRRT_xxx": {"body": "<reply text>", "resolve": true}},
     "skipped": {"PRRT_yyy": "routed to @alice — awaiting her answer"}}
    ```
-   **`threads` and `skipped` together must account for every in-scope thread** (published, not resolved). Every thread you reply to goes in `threads`; every thread you leave alone goes in `skipped` with a real reason.
+   **`threads` and `skipped` together must account for every in-scope thread** (published, not resolved). Every thread you reply to goes in `threads`; every thread you leave alone goes in `skipped` with a real reason. `threads` may be `{}` when every in-scope thread is skipped.
 2. `python3 ~/.claude/skills/code-review/scripts/github_review.py deliver <delivery.json> --dry-run [--login <login>]` — checks coverage before any write.
 3. The same command without `--dry-run`.
 
-What it does: refuses to start — exit `2`, nothing written, `pending_review_id` in its JSON — while this identity holds a pending review on the PR, because a reply could land inside that review, invisible to everyone else; fetches a baseline; replies in batches of 10, 5 s apart, each reply ending in a hidden marker (`<!-- code-review:deliver -->`); fetches again and confirms each reply landed exactly once; resolves only threads whose reply is confirmed, 1 s apart; fetches again to confirm `isResolved`. Re-running after a partial failure is safe — it skips threads that already carry a marked reply from this identity. A plain comment from the same identity (the user typing "yes, fix this" on a thread, under the account the review ran as) is not a reply: that thread still gets its documentation reply before it is resolved. Replies posted before the marker existed carry none, so a re-run on such a PR would reply again. A failed-looking request (`502`, truncated response, timeout) may have landed, which is why nothing is retried without a fresh fetch: one real run retried two such batches blind and posted 20 duplicate replies.
+What it does: fetches a baseline; replies in batches of 10, 5 s apart, each reply ending in a hidden marker (`<!-- code-review:deliver -->`); fetches again and confirms each reply landed exactly once; resolves only threads whose reply is confirmed, 1 s apart; fetches again to confirm `isResolved`. Re-running after a partial failure is safe — it skips threads that already carry a marked reply from this identity. A plain comment from the same identity (the user typing "yes, fix this" on a thread, under the account the review ran as) is not a reply: that thread still gets its documentation reply before it is resolved. Replies posted before the marker existed carry none; the fix stage skips those threads at classification ([Fix Stage](fix-stage.md#pr-mode) step 2). A failed-looking request (`502`, truncated response, timeout) may have landed, which is why nothing is retried without a fresh fetch: one real run retried two such batches blind and posted 20 duplicate replies.
 
 | Output field | Meaning |
 |---|---|
 | `duplicates_found` | A thread carries more than one marked reply from this run |
 | `in_scope` | Published, unresolved threads on the PR |
-| `pending_review_id` | Present only when delivery refused to start: this identity's pending review on the PR |
 | `replied_confirmed` / `resolved_confirmed` | Confirmed by re-fetch |
 | `reply_missing` / `resolve_not_confirmed` | Intended but not on GitHub |
 | `thread_page_truncated` | A thread had 100+ comments; say more may exist |

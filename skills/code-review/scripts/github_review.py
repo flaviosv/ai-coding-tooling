@@ -41,11 +41,10 @@ delivery.json:
 
     `threads` and `skipped` together must account for every in-scope thread on the
     PR (published, not already resolved). Any in-scope thread in neither list is
-    reported as `unaccounted` and exits non-zero. Every reply carries a hidden
-    marker; a thread counts as already replied only when it holds a marked reply
-    from this identity, never merely a comment from it. Delivery refuses to start
-    while this identity holds a pending review on the PR, since a reply could land
-    inside it, invisible to everyone else.
+    reported as `unaccounted` and exits non-zero. `threads` may be empty when
+    `skipped` accounts for the scope. Every reply carries a hidden marker; a thread
+    counts as already replied only when it holds a marked reply from this identity,
+    never merely a comment from it.
 
 Output JSON goes to stdout; human-readable progress goes to stderr.
 
@@ -774,13 +773,6 @@ mutation($reviewId: ID!) {
 """
 
 
-DELETE_REVIEW_MUTATION = """
-mutation($reviewId: ID!) {
-  deletePullRequestReview(input: { pullRequestReviewId: $reviewId }) { pullRequestReview { id } }
-}
-"""
-
-
 REVIEW_BODY_QUERY = """
 query($id: ID!) {
   node(id: $id) { ... on PullRequestReview { body } }
@@ -793,31 +785,6 @@ def review_body(review_id):
     return ((node or {}).get("body") or "").strip()
 
 
-def discard_empty_review(owner, repo, pr, login, review_id, result):
-    """An empty pending review cannot be submitted as COMMENT without a body, and left in
-    place it could capture later thread replies invisibly — it holds nothing, so remove it."""
-    error = None
-    try:
-        payload = gh_graphql(DELETE_REVIEW_MUTATION, str_vars={"reviewId": review_id})
-        if payload.get("errors"):
-            error = {"error": "delete returned GraphQL errors", "raw": json.dumps(payload["errors"])[:500]}
-    except GhError as exc:
-        error = {"error": str(exc), "raw": (exc.stderr or exc.stdout)[:500]}
-    _, still_pending = fetch_pr_and_pending_review(owner, repo, pr, login)
-    removed = still_pending != review_id
-    result.update(
-        {
-            "submitted": False,
-            "review_id": review_id,
-            "empty_review_removed": removed,
-            "reason": "pending review had no comments — removed" if removed else "empty pending review could not be removed",
-            "error": None if removed else error,
-            "verified_at": datetime.now(timezone.utc).isoformat(),
-        }
-    )
-    return result, (0 if removed else 1)
-
-
 def submit(owner, repo, pr, dry_run, expected_login=None):
     login = resolve_login(expected_login)
     pull, review_id = fetch_pr_and_pending_review(owner, repo, pr, login)
@@ -827,10 +794,15 @@ def submit(owner, repo, pr, dry_run, expected_login=None):
         result.update({"submitted": False, "reason": "no pending review for this identity"})
         return result, 0
     if not fetch_review(review_id)[1] and not review_body(review_id):
-        if dry_run:
-            result.update({"dry_run": True, "would_remove_empty_review": review_id})
-            return result, 0
-        return discard_empty_review(owner, repo, pr, login, review_id, result)
+        result.update(
+            {
+                "submitted": False,
+                "empty_review": True,
+                "review_id": review_id,
+                "reason": "pending review has no comments and no body — left in place, not submitted",
+            }
+        )
+        return result, 0
     if dry_run:
         result.update({"dry_run": True, "would_submit": review_id})
         return result, 0
@@ -1035,8 +1007,10 @@ def validate_delivery_config(config):
     missing = require_keys(config, ("owner", "repo", "pr", "threads"))
     if missing:
         return missing
-    if not isinstance(config["threads"], dict) or not config["threads"]:
-        return "'threads' must be a non-empty object"
+    if not isinstance(config["threads"], dict):
+        return "'threads' must be an object"
+    if not config["threads"] and not config.get("skipped"):
+        return "'threads' and 'skipped' cannot both be empty"
     for tid, spec in config["threads"].items():
         if not isinstance(spec, dict) or "body" not in spec:
             return f"thread {tid} needs a 'body'"
@@ -1062,14 +1036,6 @@ def deliver(config, batch_size, dry_run, expected_login=None):
 
     login = resolve_login(expected_login)
     log(f"authenticated as {login}")
-
-    _, pending_review = fetch_pr_and_pending_review(owner, repo, pr, login)
-    if pending_review:
-        return {
-            "fatal": f"{login} holds a pending review on PR #{pr}; a reply could land inside it, invisible to others",
-            "pending_review_id": pending_review,
-            "hint": "nothing was written — submit or discard that pending review, then re-run deliver",
-        }, 2
 
     baseline, truncated = fetch_threads(owner, repo, pr)
     scope = in_scope_threads(baseline)

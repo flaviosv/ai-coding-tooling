@@ -195,10 +195,7 @@ Invoke `code-review` via the `Skill` tool **directly in this conversation** — 
 
 When `code-review` returns, record Step 11 done with `code_review: approved` (or `n/a` when it didn't pause) and its final report's counts: findings, fixed / rejected / answered / blocked, and commits pushed.
 
-`code-review` recovers its own failures once each (its Stage 2 and Stage 3): a failed review is re-run, a failed `post` is re-run from the same `post.json` without re-reviewing, and a failed `submit` or `deliver` goes through its continue-after-checkpoint path. If it still reports a failure, what happens here depends on which one:
-
-- **Review or posting failed** → stop and report its raw result. Never invoke the continue-after-checkpoint entry for this: it never posts, so it would submit nothing, find no findings to fix, and let the PR be marked ready with every finding lost.
-- **`submit` or delivery failed** → invoke the continue-after-checkpoint entry once more for the same PR, with the same fields. Its fix worker is told that commits already pushed are fixes whose replies are still needed, never threads to reject as already addressed. If that is blocked too, stop and report its raw result.
+`code-review` recovers its own failures once each (its Stage 2 and Stage 3): a failed review is re-run, a failed `post` is re-run from the same `post.json` without re-reviewing, and a failed `submit` or `deliver` goes through its continue-after-checkpoint path. That is the one retry per failure — if `code-review` still reports a failure, stop and report its raw result; never retry it again from here. Never invoke the continue-after-checkpoint entry for a review or posting failure: it never posts, so it would submit nothing, find no findings to fix, and let the PR be marked ready with every finding lost.
 
 Never take the posting or delivery loop over yourself.
 

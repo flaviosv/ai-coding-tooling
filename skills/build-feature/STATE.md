@@ -112,4 +112,11 @@
 - **Reason**: The previous rule retried every publishing failure through continue-after-checkpoint, which never posts: after a failed post it submitted nothing, found no threads, reported success, and let Step 14 mark the PR ready with every finding lost (post-merge validation of 954ac76, `skills/code-review/STATE.md` AD-011). The resume invocation also omitted the feature folder and worktree, so the fix worker wrote no plan file.
 - **Trade-off**: A posting failure now ends the run instead of limping on, so the user must re-run after the cause (usually a rate-limit block) clears.
 - **Date**: 2026-09-13
+- **Status**: superseded by AD-016
+
+### AD-016
+- **Decision**: Step 11 no longer retries the continue-after-checkpoint entry after a `submit` or delivery failure `code-review` still reports; every failure `code-review` reports after its own retry stops the run. The rule against using the continue entry for a review or posting failure stays.
+- **Reason**: `code-review` already retries each failure once (its AD-012: one retry per failure in total). A second retry from here stacked on it, giving a third attempt the second validation flagged — and pre-merge `build-feature` Step 12 never retried the fix skill beyond that skill's own retry.
+- **Trade-off**: A delivery that fails twice ends the run; the user re-runs once the cause clears, and `code-review`'s continue entry picks up from the posted, submitted review.
+- **Date**: 2026-09-13
 - **Status**: active

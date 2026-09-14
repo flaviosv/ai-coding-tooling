@@ -1,6 +1,6 @@
 # Report Format
 
-The consolidated review report, written at the end of the review stage for every entry except Batch Mode (which reports per PR). One report covers every active scope. On a PR, it is also the source of the comments `post` publishes; the checkpoint shows the user its header and at-a-glance table.
+The consolidated review report, written at the end of the review stage for every entry except Batch Mode (which reports per PR). One report covers every active scope. On a PR, it is also the source of the comments `post` publishes; the PR checkpoint shows only the summary SKILL.md Stage 2 names, while a local checkpoint shows the full report, header and at-a-glance table included.
 
 ---
 
