@@ -14,7 +14,7 @@
 - **Reason**: A run's findings are local working notes for a future run of this skill to grep, not project history; one file per run keeps each self-contained and avoids growing a single file forever.
 - **Trade-off**: No built-in cross-run search beyond `grep` — acceptable since Step 8 only needs to check the same skill/dimension, not do general-purpose querying.
 - **Date**: 2026-09-01
-- **Status**: active
+- **Status**: superseded by AD-016 (location only; one local notes file per run remains active)
 
 ### AD-002
 - **Decision**: A subagent's real governing skill/phase is resolved from its own transcript — a `Skill`-tool call it made itself (confident), falling back to a kebab-case token in its first user message (its dispatch prompt) — rather than correlating each subagent run to its launch call by nearest timestamp.
@@ -56,7 +56,7 @@
 - **Reason**: This skill's own dogfooding of the run it was auditing (a `build-feature` session) is what surfaced the dispatch-contract gap in the first place; retrofitting this skill's already-close-to-compliant shape is part of the same repo-wide pass applied to every other skill in `skills/` that dispatches subagents.
 - **Trade-off**: None identified — the existing return shape already matched the template closely, so this is a pointer plus two short additions, not a restructure.
 - **Date**: 2026-09-02
-- **Status**: active
+- **Status**: superseded by AD-015
 
 ### AD-005
 - **Decision**: Two fixes to `scripts/session_metrics.py`. (1) The full-suite detector's patterns no longer anchor so tightly that real full-suite runs escape them: `go test ./...` now matches whatever flags follow it, test-runner patterns accept flags carrying values (`-m "not integration"`), and `uv`/`poetry`/`pipenv`/`pdm`/`hatch run` prefixes are recognised. Scoped runs still do not match, because a bare flag value may not contain `/` — so `pytest tests/unit/` and `go test ./internal/logger` remain correctly excluded. (2) When `--skill <name>` finds no top-level window, the script now checks the subagent rollup before declaring the skill absent, and when it finds it there, reports that skill's real runs/tokens/turns and points at `<session-dir>/subagents/` instead of saying it never ran.
@@ -91,14 +91,14 @@
 - **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files. This skill still isn't part of `build-feature`'s model matrix (still pinned independently to `opus`), but the skill's shared "two hard facts" section still applies, same as before.
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-015
 
 ### AD-010
 - **Decision**: Replace the `templates/agent-wait-protocol.md` link (Step 6's wait instruction) with a reference to the `subagent-dispatch` skill.
 - **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the content already consolidated there (AD-009).
 - **Trade-off**: Same dependency as AD-009 — this sentence now assumes `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-015
 
 ### AD-011
 - **Decision**: Catalog A2's fix-shape guidance (`references/findings-catalog.md`) no longer claims the user's global `CLAUDE.md` carries a file-deduplication directive; it now just says a repeated-reads fix belongs in the skill that repeats them, stated at the point of use.
@@ -118,5 +118,26 @@
 - **Decision**: Step 6's source check and Step 10's commit line state their behavior inline (only a `local` skill is edited in place, other sources are routed per the attribution table; commit directly to `main` and push to `origin` without waiting to be asked) instead of linking root `CLAUDE.md` Skill Modification Rules and Change Request Workflow.
 - **Reason**: User decision (harness-evaluation #18 scope): a skill must not link or defer its instructions to a file outside its directory. The `../../CLAUDE.md` links also resolve against the installed location, not the repo.
 - **Trade-off**: The two behaviors are duplicated from root `CLAUDE.md` and can drift if that workflow changes.
+- **Date**: 2026-09-14
+- **Status**: superseded by AD-014 (source-check item only; the inline commit/push line remains active, narrowed by AD-014)
+
+### AD-014
+- **Decision**: The skill is project-agnostic. It no longer names `AGENTS.md`, `CLAUDE.md`, `CLAUDE.global.md`, or `docs/codebase/`; a new Guardrail says which skills, references, and instruction files to read is decided by the transcript, never a fixed list. The attribution table sends a fix with no governing skill to "the file that governed that behaviour in the session (identified from the transcript)", Informational when none can be identified. The `config/skills.json` source check becomes an origin check (use the hosting repo's skills registry if it has one, otherwise ask); vendor routing keeps the overlay (e.g. `extended/<name>/`) only where the hosting repo provides one. Step 10 still commits and pushes, except edits inside the analyzed session's own project, which are left uncommitted. The example report's `~/.claude/CLAUDE.md` finding is genericized. Settles harness-evaluation #130 by dropping the AGENTS.md/CLAUDE.md choice instead of disambiguating it.
+- **Reason**: User decision (2026-09-14 harness-eval, Skills rows #127-#145): the skill is used from any project and evaluates sessions from any project, so hardcoded context-file names were wrong wherever those files don't exist and pointed fixes at files the analyzed session never loaded.
+- **Trade-off**: Attribution for general behaviour now needs evidence from the transcript instead of a default target, so some findings that used to get a named target become Informational. Letting a non-skill fix land in an instruction file inside another project is why that edit is left uncommitted.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-015
+- **Decision**: All subagent lifecycle handling is removed: the wait-protocol load instruction and 15-minute stall ceiling, the model-matrix and `subagent-dispatch` references, the dispatch-contract field accounting (completion condition, observability prefix and scale estimate), and the "do not retry a failed dimension" rule. What stays is only what this skill's flow needs: Inline dispatches none, Medium dispatches one agent for every active dimension, Large dispatches one agent per active dimension in a single message, all on `model: opus`, each receiving named inputs and returning a fixed finding shape, and none editing files, touching GitHub, or dispatching agents of its own. Step 7 still marks a dimension that returned nothing usable as `not executed` in the report. The catalog's detection classes for inefficient subagents in an analyzed session (C2 runaway, C3 serial fan-out, C4 nesting) are kept, since they are analysis rather than lifecycle management. Settles harness-evaluation #131, #133 and #141 by removal.
+- **Reason**: User decision: dispatched subagents trigger skills that manage their own lifecycle, so restating it here duplicated another skill and drifted from it (#133 found a false "not in the model matrix" claim, #141 a stale protocol name).
+- **Trade-off**: Waiting and failure handling for this skill's own dimension agents now rely on whatever the calling harness and loaded skills provide. A later session-evaluate run over a session-evaluate run has no observability tag to attribute its dimension agents by and falls back to prompt-text inference.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-016
+- **Decision**: Remaining harness-evaluation fixes. (1) Scoped Mode D1 filtering is mechanical: `session_metrics.py` prints each scoped window's start and end on the `scoped to:` line in transcript timestamp format, and Step 4 gets each match's timestamp with `sed -n 'Np'` plus a `json` one-liner (#127). (2) Dimension E activates only after a bounded input-shape sample, not on a raw 5+ call count (#128). (3) Parallel agents receive their catalog section plus section G and any section theirs points to (#129). (4) Apply reads the target skill's `STATE.md` when it has one and appends an entry in that file's own format, without hardcoding any ADR doc path (#132). (5) Example 5 matches the example report (A, B, C, D, F, 5 agents) and points to Step 8 (#134). (6) Step 3 covers the script's subagent-only branch, and the script now lists those subagents' transcript paths to re-run on (#135). (7) The D1 regex exists only in SKILL.md (#136). (8) The example report was regenerated with the current script on its original session, gained Costs, heuristic, and collapsed-count lines, and was cut to one finding block (#137, #138, #144). (9) Catalog step references use step names (#139). (10) An escalated script finding gets a separate build yes/no in Step 8 and is still never applied (#140). (11) Memory moves to the fixed absolute `~/.claude/session-evaluate/` (#142). (12) History clauses dropped (#143). (13) A4 derives the context window from evidence (auto compaction, or peak above 200k), otherwise a 120k absolute threshold, because transcripts don't record window size (#145).
+- **Reason**: 2026-09-14 harness-eval rows #127-#129, #132, #134-#140, #142-#145. Each was an instruction the agent couldn't carry out from the data it had, a contradiction between files, or stale content.
+- **Trade-off**: Two small script changes (window bounds, transcript paths), and the script has no tests. The regenerated example's test-suite table now shows the detector's false positives (`npm test -- <file>` matches as full-suite), which is kept as a sanity-check lesson and not fixed here. Memory written before this change stays in the old repo-root `.session-evaluate/` and is not migrated. A4 below 200k peak with no auto compaction uses an assumed window and says so.
 - **Date**: 2026-09-14
 - **Status**: active

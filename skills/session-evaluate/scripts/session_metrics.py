@@ -15,7 +15,7 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
@@ -33,6 +33,11 @@ def parse_ts(value):
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def transcript_ts(value):
+    """Format like a transcript record's `timestamp`, so the two compare as plain strings."""
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 def est_tokens(text):
@@ -342,6 +347,7 @@ def subagents(session_path, calls, windows=None):
             runs.append(
                 {
                     "id": file.stem[:8],
+                    "path": str(file),
                     "start": start,
                     "end": end,
                     "billed": totals["input"] + totals["cache_creation"] + totals["cache_read"],
@@ -642,10 +648,13 @@ def render(session_path, records, top, skill_filter=None):
                         f"{entry['turns']} turns "
                         f"(confidence {entry['confident']}/{entry['n']} direct)"
                     )
+                    for run in sub_runs_all:
+                        if run.get("named_skill") == name:
+                            lines.append(f"    transcript: {run['path']}")
                 lines += [
                     "",
                     "Scope to those subagent transcripts directly instead of this session file — "
-                    "they are under <session-dir>/subagents/. The per-skill totals above come from "
+                    "run this script on each transcript listed above. The per-skill totals above come from "
                     "each subagent's own transcript and are trustworthy; this session's windows are not.",
                     f"Skills with a top-level window here: "
                     f"{', '.join(available) if available else 'none detected'}",
@@ -664,7 +673,11 @@ def render(session_path, records, top, skill_filter=None):
                 kept.append(r)
         records = kept
         window_filter = matches
-        scope_note = "scoped to: " + ", ".join(f"{w['name']} #{w['seq']}" for w in matches)
+        scope_note = "scoped to: " + ", ".join(
+            f"{w['name']} #{w['seq']} ({transcript_ts(w['start'])} to "
+            f"{transcript_ts(w['start'] + timedelta(milliseconds=w['ms']))})"
+            for w in matches
+        )
 
     stamps = sorted(s for s in (parse_ts(r.get("timestamp")) for r in records) if s)
     span = (stamps[-1] - stamps[0]).total_seconds() if len(stamps) > 1 else 0

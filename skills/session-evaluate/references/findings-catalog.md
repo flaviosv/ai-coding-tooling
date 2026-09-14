@@ -46,7 +46,7 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 
 ### A4 — Context high-water mark
 
-**Signal:** `peak context` above roughly 60% of the model's window.
+**Signal:** `peak context` above roughly 60% of the session's context window. The transcript does not record the window size (its `model` ids carry no window suffix), so establish it from evidence, in this order: an `auto` row in `Context loss (compaction)` already proves the session hit its window's compaction point — A4 applies, paired with C1; else a `peak context` above 200k proves a window of at least 1M, so the threshold is ~600k; else the window is unknown — report A4 only above 120k absolute (60% of a 200k window), and state in the finding's Metrics that the window was assumed.
 
 **Implies:** The session was running close to the edge, which is what makes compaction (C1) inevitable later.
 
@@ -136,21 +136,19 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 
 ## D. Mistakes and corrections
 
-Unlike A/B/C, this dimension has no digest table — the signal is textual, not numeric. Run the dedicated grep pass from Step 3 every session, not just when a finding needs it; skipping it means this whole dimension goes unchecked.
+Unlike A/B/C, this dimension has no digest table — the signal is textual, not numeric. SKILL.md's mandatory D1 evidence pass runs its grep every session, not just when a finding needs it; skipping it means this whole dimension goes unchecked.
 
 ### D1 — Self-corrected mistake
 
-**Signal:** A bounded grep pass over the transcript for correction language, scanning `text` (assistant/user turns), `prompt`, and `description` (an `Agent`/`Task` tool's own dispatch fields — where an orchestrator names a prior failure when launching a recovery subagent, and `text`-only scanning structurally cannot see it), e.g.:
-```
-grep -inoE '"(text|prompt|description)":"[^"]{0,400}\b(mistake|that.?s wrong|incorrect|should have (used|run|done)|my bad|let me (fix|correct|redo)|actually,? the (right|correct) way|left (the |it |the branch |the codebase )?in an? broken|left .{0,40}broken state|leftover .{0,30}(marker|conflict)|prior .{0,40}(pass|run) left|still (failing|broken)|broken state)\b[^"]{0,400}"' <session.jsonl>
-```
+**Signal:** the matches from SKILL.md's D1 evidence pass (a grep for correction language across `text`, `prompt`, and `description` fields).
+
 Every match is a candidate, not a finding — read the surrounding turn to confirm it names a real wrong action and a specific right one. Discard incidental phrasing (documentation text, a hypothetical, a mistake that was the user's own rather than the agent's command/tool/assumption choice). A `prompt`/`description` hit naming a prior skill's broken output is a *stronger* candidate than most `text` hits: it's not the agent second-guessing itself mid-thought, it's a downstream check (another skill, or a later validation step) catching a real defect the responsible skill's own process missed — usually worth a higher severity for exactly that reason.
 
 **Implies:** The agent (or a skill it ran) took a wrong action — wrong command, wrong tool, wrong file, wrong assumption, or a process step with no final-state validation — and either it, the user, or a later step in the same session caught it. The correction that resolved it is exactly the guideline a future session is currently missing.
 
-**Fix shape:** State the correct approach as an explicit, specific guideline in the responsible skill, placed at the point where the wrong path was taken — name the wrong action and the right one plainly enough that the same wrong turn can't recur. Apply the same duplicate-check as any other fix (Step 7) — sharpen an existing line rather than adding a near-duplicate.
+**Fix shape:** State the correct approach as an explicit, specific guideline in the responsible skill, placed at the point where the wrong path was taken — name the wrong action and the right one plainly enough that the same wrong turn can't recur. Apply the same already-exists check as any other fix (SKILL.md's Classification & Priority Procedure) — sharpen an existing line rather than adding a near-duplicate.
 
-**Affected aspects:** Correctness by default (Rank C in Step 5's priority table). If the wrong action also burned tokens or time to recover from (e.g. it triggered a large re-read or a redone phase), tag the token/runtime aspect too and let the higher rank apply.
+**Affected aspects:** Correctness by default (Rank C in the priority table of SKILL.md's Classification & Priority Procedure). If the wrong action also burned tokens or time to recover from (e.g. it triggered a large re-read or a redone phase), tag the token/runtime aspect too and let the higher rank apply.
 
 ---
 
@@ -158,17 +156,17 @@ Every match is a candidate, not a finding — read the surrounding turn to confi
 
 ### E1 — Scriptable repetition
 
-**Signal:** `Tool spend` / call counts show one tool invoked many times in the session (5+ is a working default) with **varying** labels/targets but the same *shape* — same tool, same kind of input, same kind of transformation each time (N `Edit` calls each making the same one-line change in a different file, N `Bash` calls each fetching a different URL with the same flags, N `Read`+`Edit` pairs walking a fixed file list). Confirm with a bounded grep sample of those calls' inputs (Step 3) — if the sample shows no case-by-case judgment between calls (no branching on content, no different action taken per result), it's mechanical.
+**Signal:** `Tool spend` / call counts show one tool invoked many times in the session (5+ is a working default) with **varying** labels/targets but the same *shape* — same tool, same kind of input, same kind of transformation each time (N `Edit` calls each making the same one-line change in a different file, N `Bash` calls each fetching a different URL with the same flags, N `Read`+`Edit` pairs walking a fixed file list). Confirm with the E shape check's bounded sample of those calls' inputs (SKILL.md's complexity assessment) — if the sample shows no case-by-case judgment between calls (no branching on content, no different action taken per result), it's mechanical.
 
 **Implies:** Work with no per-call decision content is pure round-trip overhead — every one of the N calls paid full prompt/response framing (and a full model turn) for a transformation a short script performs in one call. This is a different waste than A2 (identical repeated work): here every call is legitimately doing *something different*, just following a fixed pattern.
 
-**Fix shape:** Not Markdown guidance — **Informational by default**, per this skill's apply scope (a script is code, not a guideline). Report it in full: the loop's shape, its inputs, a one-line spec of the script that would replace it and where it would live (`skills/<name>/scripts/`), and how many round-trips it collapses into one. Step 7 never writes code, regardless of approval.
+**Fix shape:** Not Markdown guidance — **Informational by default**, per this skill's apply scope (a script is code, not a guideline). Report it in full: the loop's shape, its inputs, a one-line spec of the script that would replace it and where it would live (`skills/<name>/scripts/`), and how many round-trips it collapses into one. The Apply step never writes code, regardless of approval.
 
-**Escalate rather than re-file when the same script keeps being proposed.** Check `.session-evaluate/` for this candidate: if it has been reported before and not built, say so with the date, and raise the priority. If a *prose* fix for the same underlying failure has since been applied and the failure recurred anyway, that combination — a repeatedly-proposed script alongside repeatedly-failing guidance — is the strongest signal in this catalog that the mechanical fix is the correct one, and it should be presented to the user as a decision to make now rather than an observation to file again. Say plainly that the alternative has been tried and measured failing.
+**Escalate rather than re-file when the same script keeps being proposed.** Check this skill's memory (`~/.claude/session-evaluate/`) for this candidate: if it has been reported before and not built, say so with the date, and raise the priority. If a *prose* fix for the same underlying failure has since been applied and the failure recurred anyway, that combination — a repeatedly-proposed script alongside repeatedly-failing guidance — is the strongest signal in this catalog that the mechanical fix is the correct one, and it should be raised through the escalated-script question in SKILL.md's present-and-approve step rather than filed again as an observation. Say plainly that the alternative has been tried and measured failing.
 
 The default exists because a script is a maintenance surface and this skill's remit is guidance. It is not a reason to let a known-correct fix go unbuilt indefinitely: a real skill accumulated six prose decisions against one failure class over four days, with the script-shaped fix filed as Informational the whole time; when it was finally built, the failure stopped.
 
-**Affected aspects:** Tokens and Runtime (Rank A). Severity and Priority still follow the normal Step 5 table by magnitude (N and per-call size) — a large N deserves a high Priority number even though it can never move past Informational — but the at-a-glance `Status` column is set to `Informational` from the start, not `Pending`, since Step 7 cannot act on it.
+**Affected aspects:** Tokens and Runtime (Rank A). Severity and Priority still follow the normal priority table by magnitude (N and per-call size) — a large N deserves a high Priority number even though it can never move past Informational — but the at-a-glance `Status` column is set to `Informational` from the start, not `Pending`, since the Apply step cannot act on it (an escalated one gets the separate build question instead).
 
 ---
 
