@@ -57,3 +57,10 @@
 - **Trade-off**: A base-ref run ignores uncommitted working-tree changes; the report no longer says where loading is configured.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-009
+- **Decision**: Removed the Full-mode analysis-depth budget ("10–15 files for small/medium projects; 25–30 for monorepos, one representative module per layer"); sampling stays guided by "sample representative files — breadth over depth" and Step 3's per-category counts.
+- **Reason**: User decision on harness-evaluation Skills #11: the budget contradicted Step 3's per-category counts, and sizing a project up front isn't reliable — the Full/Incremental split is the only dimensioning the skill needs.
+- **Trade-off**: No overall cap on files read in Full mode; cost is bounded only by the per-category guidance.
+- **Date**: 2026-09-14
+- **Status**: active

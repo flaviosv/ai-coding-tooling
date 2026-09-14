@@ -133,12 +133,9 @@ function buildInstalledMappings() {
     const dest = skillDest(skill);
     if (!lexists(dest)) { skipped.push(skill.name); continue; } // not installed on this machine yet
 
+    // Vendor skills are read-only upstream content, so their own links are not checked.
     if (skill.source === 'local') {
       dirMirrors.push({ repoDir: path.join(ROOT, 'skills', skill.name), installedDir: dest });
-    } else {
-      // Vendor content has no repo-side source subtree — scan it at its real,
-      // already-installed location directly (identity mapping).
-      dirMirrors.push({ repoDir: dest, installedDir: dest });
     }
 
     if (skill.extended) {

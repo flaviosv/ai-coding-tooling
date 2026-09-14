@@ -14,7 +14,7 @@ description: >
   "create project docs", "update project docs", "update docs", "document my changes", "sync
   documentation", "document recent changes", "evaluate package", or "package architecture".
 metadata:
-  version: "5.0.0"
+  version: "5.0.1"
   triggers:
     # Full mode — bootstrap / full refresh of the context files
     - "evaluate architecture"
@@ -184,7 +184,7 @@ Creates or updates the project context files in `docs/codebase/` from a full cod
 
 **High-level approach:** explore the directory structure systematically → identify the stack from dependency manifests → extract patterns from representative code samples → document observed conventions and architecture → catalog external integrations → surface evidence-backed concerns.
 
-**Analysis depth:** sample representative files — focus on consistency and patterns, not exhaustive coverage. Extract actual examples, not assumptions. 10–15 files for small/medium projects; 25–30 for monorepos, one representative module per layer. Prioritize breadth over depth.
+**Analysis depth:** sample representative files — focus on consistency and patterns, not exhaustive coverage. Extract actual examples, not assumptions. Prioritize breadth over depth.
 
 ## Step 1: Confirm File Location
 
