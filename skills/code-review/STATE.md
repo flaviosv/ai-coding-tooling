@@ -79,6 +79,20 @@
 - **Date**: 2026-09-13
 - **Status**: active
 
+### AD-013
+- **Decision**: `references/fix-stage.md`'s per-item test run no longer cites "(Test Execution Scope)"; it now says to run only the tests covering the files that item's fix touched, never tlc-spec-driven's Verifier.
+- **Reason**: By the user's decision, the global Test Execution Scope rule set (the `CLAUDE.global.md` subsection and `references/test-execution-scope.md`) was removed from the harness, so the fix stage must state its test scope itself instead of naming the removed convention (whose links FR-AD-013 had already reduced to a bare name).
+- **Trade-off**: The fix worker no longer inherits the removed rule's stop-when-green and no-widening wording; only this one-line instruction bounds its test runs.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-014
+- **Decision**: Removed the `gh` account resolution: opt-in tag and the Stage 1 dispatch's "gh login to pass as `--login` when the caller resolved one"; `references/github-writes.md` no longer says `build-feature` always passes a login. The `scripts/hooks/resolve-gh-account.sh` hook (SessionStart + CwdChanged, `config/hooks.json`) now scopes the session's `gh` calls, including `github_review.py`'s, to the repo's account through `GH_TOKEN`. `github_review.py --login` is kept unchanged as an optional identity guard, still passed by batch mode.
+- **Reason**: The opt-in tag named no trigger and contradicted the global rule (`docs/harness-evaluation.md` Skills #45); the global prose procedure it pointed at is gone. A live headless test confirmed the hook's token reaches both the main session's and a dispatched subagent's Bash calls, so every worker this skill dispatches inherits the right identity without a login being threaded through.
+- **Trade-off**: Correct identity for a standalone PR run depends on the hook being installed; in a repo the hook cannot resolve, the session is told to ask the user rather than getting an automatic pick.
+- **Date**: 2026-09-14
+- **Status**: active
+
 ## Imported from tests-code-review
 
 > Merged into this skill by AD-009. Entries are verbatim; IDs carry a `TCR-` prefix so they
@@ -151,7 +165,7 @@
 - **Reason**: Same rationale as `build-feature`'s AD-009 — the `gh` multi-account mechanism is a fact about the user's own environment, not this skill, so it belongs in global `CLAUDE.md` (closing the ad-hoc-`gh`-usage gap outside all consuming skills); only the per-skill mandatory/opt-in decision stays local.
 - **Trade-off**: Same as `build-feature`'s AD-009 — this tag depends on the user's global `CLAUDE.md` being loaded wherever this skill runs.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-014
 
 ### CPR-AD-010
 - **Decision**: Replace the three `templates/subagent-models.md` / `templates/subagent-dispatch-contract.md` links (Guardrails Sonnet-pin, dispatch contract, and effort-parameter note) with references to the new `subagent-dispatch` skill.
@@ -242,7 +256,7 @@
 - **Reason**: Same rationale as `build-feature`'s AD-009 and `complete-review`'s AD-005 — the `gh` multi-account mechanism is a fact about the user's own environment, not this skill, so it belongs in global `CLAUDE.md` (closing the ad-hoc-`gh`-usage gap outside all consuming skills); only the per-skill mandatory/opt-in decision stays local.
 - **Trade-off**: Same as the sibling entries above — this tag depends on the user's global `CLAUDE.md` being loaded wherever this skill runs.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-014
 
 ### FR-AD-011
 - **Decision**: Replace the three `templates/subagent-models.md` / `templates/subagent-dispatch-contract.md` links (the fixing-pass dispatch shape, the Sonnet-pin guardrail, and the remaining-dispatch-sites contract) with references to the new `subagent-dispatch` skill.
@@ -263,4 +277,4 @@
 - **Reason**: Same finding as `build-feature`'s AD-013: a direct subagent probe confirmed a dispatched subagent inherits the user's global `CLAUDE.md` in full, including the condensed Test Execution Scope tiers/stop-rule already mirrored there. This skill's three citations only ever needed those tiers/stop-rule — none of them touch the Merges section, the one piece of the full template not already inline — so nothing was lost by cutting the links.
 - **Trade-off**: These three spots no longer name any file for a reader wanting the full rationale (still available at `~/.claude/references/test-execution-scope.md`, just not linked from here); relies on the user's global `CLAUDE.md` staying loaded wherever this skill runs.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-013

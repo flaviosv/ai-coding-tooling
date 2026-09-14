@@ -89,7 +89,6 @@ The fix stage takes the opposite stance toward findings: each one is a claim to 
 - **A stage worker that fails outright** (crash, auth failure, PR not found — distinct from a dimension agent or item failing) is retried once with a fresh worker; a second failure stops the run and is reported. Never claim a review was posted or a fix landed on a failed run.
 - **Every subagent runs on Sonnet** — review workers, fix workers, dimension agents, batch workers — set explicitly on each `Agent` call, whatever model this session runs on. `human_review` never changes the model. Load the `subagent-dispatch` skill for the alias-only `model` rule, the missing reasoning-effort parameter, the dispatch-prompt contract, and the wait protocol.
 - Never print `gh auth token` output or any credential — refer to auth state by status only.
-- `gh` account resolution: opt-in.
 - **Resolving paths.** `references/…` and `scripts/…` resolve inside this skill's directory (`~/.claude/skills/code-review/`, a symlink into the source repo). Read them directly — never `find`: the search surfaces confusing near-matches.
 
 ## Step 1: Entry Detection
@@ -118,7 +117,7 @@ Entry and scope are fixed for the rest of the run.
 **Dispatch (root):** one `Agent` call, `subagent_type: general-purpose`, `model: sonnet`, prompt per the `subagent-dispatch` contract:
 
 - Prefix `[code-review][review:PR-<N>]`, `[code-review][review:commits]`, or `[code-review][review:local]`.
-- The entry, PR number or commits, `scope`, and for a PR owner/repo and the `gh` login to pass as `--login` when the caller resolved one.
+- The entry, PR number or commits, `scope`, and for a PR owner/repo.
 - "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents. Load the `subagent-dispatch` wait protocol before the first dispatch; when waiting on an agent, end your turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll."
 - Completion condition: Step 8's report written and, on a PR, Step 9's `post` exited with its JSON captured.
 - Return shape, **local or commits:** the full Step 8 report plus the banner. **PR:** the PR URL; the banner verbatim (a Complex caveat with its actual wording); finding counts per scope and severity; the most important finding in one line; clusters collapsed; `post`'s exit code, `post_json_path`, and, from its JSON, `posted_confirmed`, `carried_over`, `reanchored`, `anchor_corrected`, `anchor_unverified`, `missing`, `duplicates_found`, any batch that had to be retried, and every `unpostable` entry by `path:line` (report `0` for each count when none — a missing count is indistinguishable from never having looked); dimensions not executed with reasons; `review_failed: true` with every reason when every agent failed. Never the diff, the full report, or comment bodies.

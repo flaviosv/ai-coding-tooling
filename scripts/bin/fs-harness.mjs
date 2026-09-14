@@ -480,6 +480,16 @@ function cmdDoctor() {
     }
   }
 
+  log(`\n${c.bold}Hooks${c.reset}`);
+  const settings = readSettings();
+  for (const entry of loadJson('config/hooks.json')) {
+    const scriptAbsPath = path.join(ROOT, entry.script);
+    for (const event of Object.keys(entry.events)) {
+      if (isHookInstalled(settings, event, scriptAbsPath)) ok(`hook ${entry.id}: installed for ${event}`);
+      else { fail(`hook ${entry.id}: not installed for ${event} — run \`fs-harness hooks\``); failures++; }
+    }
+  }
+
   log(failures
     ? `\n${c.red}${c.bold}${failures} issue(s) found.${c.reset}`
     : `\n${c.green}${c.bold}All checks passed.${c.reset}`);
@@ -619,11 +629,7 @@ function cmdHooks() {
   const entries = loadJson('config/hooks.json');
   if (entries.length === 0) { skip('no hooks registered'); return; }
 
-  let settings = {};
-  if (lexists(SETTINGS_PATH)) {
-    try { settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')); }
-    catch (e) { throw new UserError(`Could not read ${SETTINGS_PATH}: ${e.message}`); }
-  }
+  const settings = readSettings();
   settings.hooks = settings.hooks || {};
 
   let changed = false;
@@ -631,9 +637,7 @@ function cmdHooks() {
     const scriptAbsPath = path.join(ROOT, entry.script);
     for (const [event, cfg] of Object.entries(entry.events)) {
       settings.hooks[event] = settings.hooks[event] || [];
-      const installed = settings.hooks[event].some((g) =>
-        g.hooks && g.hooks.some((h) => h.command === scriptAbsPath));
-      if (installed) { skip(`${entry.id} already installed for ${event}`); continue; }
+      if (isHookInstalled(settings, event, scriptAbsPath)) { skip(`${entry.id} already installed for ${event}`); continue; }
       settings.hooks[event].push({
         matcher: cfg.matcher ?? '',
         hooks: [{ type: 'command', command: scriptAbsPath, timeout: cfg.timeout ?? 10 }],
@@ -647,6 +651,17 @@ function cmdHooks() {
   if (DRY) { log(`${c.dim}[dry-run]${c.reset} update ${SETTINGS_PATH}`); return; }
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + '\n');
   ok(`installed hooks -> ${SETTINGS_PATH}`);
+}
+
+function readSettings() {
+  if (!lexists(SETTINGS_PATH)) return {};
+  try { return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')); }
+  catch (e) { throw new UserError(`Could not read ${SETTINGS_PATH}: ${e.message}`); }
+}
+
+function isHookInstalled(settings, event, scriptAbsPath) {
+  return (settings.hooks?.[event] || []).some((g) =>
+    g.hooks && g.hooks.some((h) => h.command === scriptAbsPath));
 }
 
 // ---------------------------------------------------------------------------

@@ -70,7 +70,7 @@
 - **Reason**: A pointer repeated at every one of the 4 consuming skills was fan-out from one file, not true duplication, but it still meant the *mechanism* lived behind a link that only these 4 skills knew to follow — an ad-hoc `gh` call outside all 4 skills had no trigger to consider account resolution at all. Promoting the mechanism to global `CLAUDE.md` (loaded in every session, including this skill's own subagents) closes that gap without leaking skill-specific knowledge into a user-global file: the mandatory-vs-opt-in *application* decision, which is genuinely skill-local, stays in each skill as a short tag instead.
 - **Trade-off**: This skill's `gh` account resolution mandatory-tag no longer explains the mechanism itself — it depends on the user's global `CLAUDE.md` being loaded in whatever context runs this skill. Accepted since global `CLAUDE.md` load is standard for every Claude Code session and subagent in this environment; if a future execution context ever skips user-global config, this tag alone would not recover the algorithm.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-018
 
 ### AD-010
 - **Decision**: Replace the `templates/subagent-models.md` / `templates/subagent-dispatch-contract.md` links (State ownership's dispatch-contract sentence, the Subagent models section, and `WORKFLOW.md`'s diagram note) with references to the new `subagent-dispatch` skill.
@@ -98,7 +98,7 @@
 - **Reason**: A direct subagent probe confirmed a dispatched subagent inherits the user's global `CLAUDE.md` in full, including the condensed Test Execution Scope tiers/stop-rule already mirrored there. The one piece of the full template not already inline — the Merges-scope-by-content rule this step actually needs — was folded into that global `CLAUDE.md` directly, so nothing this step depended on was lost by cutting the link. This is not a re-litigation of `docs/harness-evaluation.md` row 13's earlier "do not cut" verdict: that review rejected cutting for exactly this gap; closing the gap first is what makes the cut safe now.
 - **Trade-off**: This step's own text no longer names any file for a reader wanting the full rationale behind Test Execution Scope (still available at `~/.claude/references/test-execution-scope.md`, just not linked from here); the guarantee now depends on the user's global `CLAUDE.md` staying loaded and in sync wherever this skill runs.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-017
 
 ### AD-014
 - **Decision**: Step 11 invokes `code-review` via the `Skill` tool directly from the orchestrator — no wrapper subagent — passing `human_review` through (`false` when `code-review` is in `human_review_exclude`); `code-review` runs review, its own checkpoint, submit, and fix. Step 12 (fix-review) is removed along with this skill's own submit-on-behalf GraphQL call, and Steps 13–15 renumber to 12–14 across `SKILL.md`, `WORKFLOW.md`, and `references/progress-schema.md`. Before ending a turn at `code-review`'s checkpoint the orchestrator records `code_review: pending`; resuming with it waits for the user again, then invokes `code-review`'s continue-after-checkpoint entry instead of re-reviewing, and `progress-schema.md`'s Resume Logic checks a pending checkpoint before `last_completed_step`. Step 0's open-PR re-entry uses the fix-existing-findings entry, passing the recorded worktree and feature folder. A blocked publish or delivery is retried once through the continue entry, replacing the old "dispatch a subagent to retry the posting". This reverses the "Steps 11 and 12 never call `Skill` from the orchestrator" rule.
@@ -119,4 +119,18 @@
 - **Reason**: `code-review` already retries each failure once (its AD-012: one retry per failure in total). A second retry from here stacked on it, giving a third attempt the second validation flagged — and pre-merge `build-feature` Step 12 never retried the fix skill beyond that skill's own retry.
 - **Trade-off**: A delivery that fails twice ends the run; the user re-runs once the cause clears, and `code-review`'s continue entry picks up from the posted, submitted review.
 - **Date**: 2026-09-13
+- **Status**: active
+
+### AD-017
+- **Decision**: Step 14's `CONFLICTING` handling no longer verifies "per Test Execution Scope"; the conflict-resolution subagent now verifies with build/typecheck/lint plus the tests covering what the merge brought in, and reports what verification it ran.
+- **Reason**: By the user's decision, the global Test Execution Scope rule set (the `CLAUDE.global.md` subsection and `references/test-execution-scope.md`) was removed from the harness, so this step can no longer name it and must state its own verification.
+- **Trade-off**: The step no longer inherits the removed rule's docs-only merge exemption or its explicit-delegation wording; a merge that brings in only docs still runs build/typecheck/lint.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-018
+- **Decision**: Removed the `### gh account resolution` section, the "(after account resolution above)" prerequisite, and every `gh_login` use (Run State field in `progress.md` and `scripts/progress.mjs --init`, the resume field list, and the login passed to `code-review` in Step 11 and on resume). The `scripts/hooks/resolve-gh-account.sh` hook (SessionStart + CwdChanged, registered in `config/hooks.json`) now scopes every `gh` call in the session to the repo's account by exporting `GH_TOKEN` through `CLAUDE_ENV_FILE`. The never-print-credentials rule stays.
+- **Reason**: The prose procedure could not be followed as written (its `$(...)` scoping is refused in worktree-isolated sessions, exported env does not persist between Bash calls, and its email match had no supplier — `docs/harness-evaluation.md` References #1-#6, Skills #43). The hook resolves the account deterministically from the repo's own data (SSH key identity, remote owner, push access) before the first tool call, and a live headless test confirmed both the main session's and a dispatched subagent's `gh api user` ran as the resolved account while a different account was active.
+- **Trade-off**: The skill now depends on the hook being installed (`fs-harness hooks`, checked by `fs-harness doctor`); when the hook cannot resolve an account it only tells the session to ask the user, and a `progress.md` written before this change still carries a `gh_login` line that nothing reads.
+- **Date**: 2026-09-14
 - **Status**: active

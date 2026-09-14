@@ -39,7 +39,8 @@ ai-coding-tooling/
 │   │   └── misc/
 │   │       └── statusline.sh    # deployment source for the `statusline` command
 │   ├── hooks/
-│   │   └── require-direnv-credential.sh
+│   │   ├── require-direnv-credential.sh
+│   │   └── resolve-gh-account.sh
 │   └── skills/
 │       └── sonar-mcp-wrapper.sh # Docker DNS fix for k3d-hosted SonarQube MCP server
 ├── skills/                  # Project-owned skills (installed globally via fs-harness setup)
@@ -62,7 +63,7 @@ ai-coding-tooling/
 
 ### CLI (`scripts/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, statusline — plus the standalone hook and MCP-wrapper scripts it wires up.
-**Key files:** `scripts/bin/fs-harness.mjs` (single file, 674 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/uninstall_sonar.md`.
+**Key files:** `scripts/bin/fs-harness.mjs` (single file, 674 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to `~/.claude/statusline-command.sh`. `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/hooks/resolve-gh-account.sh` is the SessionStart/CwdChanged hook, registered the same way, that scopes a GitHub repo's `gh` calls to its owning account via `GH_TOKEN` in `CLAUDE_ENV_FILE` when more than one `gh` account is logged in. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/uninstall_sonar.md`.
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for skill and hook configuration.

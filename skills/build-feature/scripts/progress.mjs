@@ -8,7 +8,7 @@
 //   node progress.mjs <progress.md path> --step <id> --label <text> --detail <text> [--set field=value]...
 //   node progress.mjs <progress.md path> --init --task-id <id> --description <text> \
 //     --worktree-path <path> --branch <name> --base-branch <name> --target-branch <name> \
-//     --gh-login <login> --human-review <yes|no> [--human-review-exclude <csv>]
+//     --human-review <yes|no> [--human-review-exclude <csv>]
 //
 // Idempotent: re-running the same --step overwrites that step's own Step Log
 // line in place rather than appending a duplicate, so a resumed run that
@@ -55,7 +55,7 @@ function setStepLogLine(content, stepId, label, detail) {
 }
 
 if (args.init) {
-  for (const req of ['task-id', 'description', 'worktree-path', 'branch', 'base-branch', 'target-branch', 'gh-login', 'human-review']) {
+  for (const req of ['task-id', 'description', 'worktree-path', 'branch', 'base-branch', 'target-branch', 'human-review']) {
     if (!args[req]) fail(`--init requires --${req}`);
   }
   if (existsSync(filePath)) fail(`${filePath} already exists — --init only writes a fresh file`);
@@ -69,7 +69,6 @@ if (args.init) {
 - branch: ${args.branch}
 - base_branch: ${args['base-branch']}
 - target_branch: ${args['target-branch']}
-- gh_login: ${args['gh-login']}
 - human_review: ${args['human-review']}
 - human_review_exclude: ${args['human-review-exclude'] || ''}
 

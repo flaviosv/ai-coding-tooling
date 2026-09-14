@@ -16,7 +16,6 @@ Read this when Step 0 needs to resume a run, or whenever a step is about to writ
 - base_branch: <value>
 - target_branch: <value>
 - pr_number: <N> (once Step 8 has run)
-- gh_login: <resolved account login — never a token>
 - human_review: yes | no
 - human_review_exclude: <comma list, if any>
 - context_docs_copied_from: <main working tree path> (only when Step 1 copied an untracked/ignored `docs/codebase/` in; absent when the path is tracked or the project has none — Step 12's sync-out reads this to know whether to write back, and where)
@@ -51,8 +50,8 @@ One line per completed step, appended as it finishes:
 ## Resume Logic
 
 1. Read `status`. `complete` → route per SKILL.md Step 0's two completed-run branches (merged/closed cleanup, or open-PR re-entry through `code-review`'s fix-existing-findings entry). `in-progress` → continue below.
-2. **Checked before step 3:** if `Checkpoints` shows `pending` for `spec`/`design`/`code_review`, the run is paused at that checkpoint, even though the step that paused is already logged in `last_completed_step`. Resume by re-showing that exact artifact and waiting again — do not auto-approve because time has passed since the pause began. `code_review: pending` differs in mechanism, not in waiting: the review is already posted on GitHub, so show its PR URL (from `pr_number`) and wait for the user's reply, then invoke `code-review`'s continue-after-checkpoint entry instead of re-running the review, passing `pr_number`, `gh_login`, `worktree_path`, and the feature folder path from this file (SKILL.md Step 11).
+2. **Checked before step 3:** if `Checkpoints` shows `pending` for `spec`/`design`/`code_review`, the run is paused at that checkpoint, even though the step that paused is already logged in `last_completed_step`. Resume by re-showing that exact artifact and waiting again — do not auto-approve because time has passed since the pause began. `code_review: pending` differs in mechanism, not in waiting: the review is already posted on GitHub, so show its PR URL (from `pr_number`) and wait for the user's reply, then invoke `code-review`'s continue-after-checkpoint entry instead of re-running the review, passing `pr_number`, `worktree_path`, and the feature folder path from this file (SKILL.md Step 11).
 3. Otherwise read `last_completed_step` and resume at the next step in SKILL.md's sequence — never re-run a step already logged as done.
-4. Pull `worktree_path`, `branch`, `pr_number`, and `gh_login` directly from `Run State` — never re-derive them from scratch on a resume; re-deriving risks landing on a different worktree or PR than the one this run already committed to.
+4. Pull `worktree_path`, `branch`, and `pr_number` directly from `Run State` — never re-derive them from scratch on a resume; re-deriving risks landing on a different worktree or PR than the one this run already committed to.
 5. If `Run State` is missing a field a resumed step needs (a partially-written file from a crash mid-step), treat that step as not-yet-done regardless of what `last_completed_step` claims, and re-run it from its own start — a step is only "done" once its full result, not just a partial one, is logged.
 

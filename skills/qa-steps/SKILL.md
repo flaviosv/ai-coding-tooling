@@ -41,7 +41,7 @@ gh pr diff <number>
 
 Read the actual diff, not just the description — map QA steps to the real changed files, endpoints, and field names instead of guessing from the ticket text alone.
 
-If `gh` fails (PR not found, not authenticated), proceed with a ticket-only plan and note in the output that PR-derived detail was skipped. `gh` account resolution: opt-in — apply it only if this skill starts running somewhere that actually hits the multi-account problem.
+If `gh` fails (PR not found, not authenticated), proceed with a ticket-only plan and note in the output that PR-derived detail was skipped.
 
 ### Step 4: Load project technical context (optional)
 

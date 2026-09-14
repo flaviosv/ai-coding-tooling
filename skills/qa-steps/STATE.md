@@ -14,4 +14,11 @@
 - **Reason**: Same rationale as `build-feature`'s AD-009 and `complete-review`'s AD-005 — the `gh` multi-account mechanism is a fact about the user's own environment, not this skill, so it belongs in global `CLAUDE.md` (closing the ad-hoc-`gh`-usage gap outside all consuming skills); only the per-skill mandatory/opt-in decision stays local.
 - **Trade-off**: Same as the sibling entries above — this tag depends on the user's global `CLAUDE.md` being loaded wherever this skill runs.
 - **Date**: 2026-09-13
+- **Status**: superseded by AD-003
+
+### AD-003
+- **Decision**: Removed the `gh` account resolution: opt-in tag from Step 3. The `scripts/hooks/resolve-gh-account.sh` hook (SessionStart + CwdChanged, `config/hooks.json`) now scopes the session's `gh` calls to the current repo's account through `GH_TOKEN`.
+- **Reason**: The tag's trigger ("actually hits the multi-account problem") was not checkable at runtime and contradicted the global rule it relied on (`docs/harness-evaluation.md` Skills #118); that global prose procedure has been replaced by the hook.
+- **Trade-off**: The hook resolves from the session's current repo, so a `gh pr view` for a PR in an unrelated repo whose access differs by account still runs as that repo's account (or the active one outside a GitHub repo) and falls back to a ticket-only plan when it fails.
+- **Date**: 2026-09-14
 - **Status**: active

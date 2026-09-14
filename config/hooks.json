@@ -6,5 +6,13 @@
       "SessionStart": { "matcher": "", "timeout": 10 },
       "UserPromptSubmit": { "matcher": "*", "timeout": 10 }
     }
+  },
+  {
+    "id": "resolve-gh-account",
+    "script": "scripts/hooks/resolve-gh-account.sh",
+    "events": {
+      "SessionStart": { "matcher": "", "timeout": 10 },
+      "CwdChanged": { "matcher": "", "timeout": 10 }
+    }
   }
 ]

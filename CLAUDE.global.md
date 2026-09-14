@@ -74,10 +74,6 @@ When a new skill is created, ask the user whether any client-scoped project must
 - **No co-authoring credits** — never append `Co-Authored-By:`, `Generated with`, or any tool attribution trailer to commit messages. This applies to Claude Code, any other AI tool, or any automated system.
 - **Conventional Commits** — every commit message must follow the [Conventional Commits](https://www.conventionalcommits.org/) structure: `<type>[optional scope]: <description>` (e.g. `fix(auth): handle expired token refresh`). Use standard types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`) and a scope when the change is localized to a specific module/area.
 
-## GitHub CLI (`gh`) Accounts
-
-Before any `gh` call, if more than one account may be logged in, resolve the correct one first — never trust `gh auth status`'s "active" marker (a parallel process can flip it at any time), and never use `gh auth switch` to fix it (that mutates the same global state, for every process on the machine). Full algorithm: `~/.claude/references/gh-account-resolution.md`.
-
 ## Worktree Scope
 
 When the session is working inside a git worktree, all edits must stay within that worktree. Never modify files in the original repository checkout (or in any sibling worktree) — even when a path there looks like the same file, and even for a quick fix. If a change genuinely belongs outside the worktree, report it and let me decide instead of editing across the boundary.
@@ -87,19 +83,3 @@ The same isolation guard also constrains **how** commands are written, not just 
 ## Verification Before Done
 
 - Never mark a task complete without proving it works — and prove it at the scope of the task, not wider.
-
-### Test Execution Scope
-
-Scope test execution to what the change can actually affect. These rules bind on their own; the full decision procedure — tiers, merges, delegation — is in `~/.claude/references/test-execution-scope.md`, which is worth loading whenever the scope is not obvious from the three rules below.
-
-- **Docs-only changes run no tests.** A change confined to `.md`, `docs/`, `.specs/`, comments, or config with no runtime effect is verified by its content being correct — not by a green suite.
-- **Punctual changes run only their own tests** — the specific test file(s), module, or targeted pattern covering the affected code. Never the full suite (unit + integration + e2e). Fixing review findings from GitHub, and resolving merge conflicts, both normally land here.
-- **Stop when it passes.** Once the targeted run for the change's scope is green, verification is done — do not widen. Widening after green requires naming the specific risk the wider run would catch and why the narrower one could not. "To be thorough", "to be safe", and "while I'm here" are not risks.
-
-Full suite runs are warranted only for genuinely cross-cutting work — shared modules, contracts between components, several subsystems at once — and even then, scope by what the change touches, not by how large the surrounding branch or merge happens to be. When unsure which case applies, take the narrower run and widen only if the blast radius turns out to be broader than expected.
-
-**Merges: scope by what the merge brings in, never by conflict size or commit count.** A merge whose entire merged range is documentation is docs-only, however many commits it spans. A merge that brings in code is at minimum build/typecheck/lint — even when every conflict was in a `.md` file — because auto-merge can produce semantic breakage with no conflict markers at all.
-
-**When delegating, state the scope in the subagent's prompt.** A subagent resolves an unqualified verification instruction to the widest tier it can reach, so never write "run the gate checks", "run the tests", or "verify it works" without naming what to run and what to skip.
-
-**Carve-out:** skills that define their own gate tiers own their scope, and this rule does not override them — specifically `tlc-spec-driven`'s Execute (per-task gate checks, phase-completion Build gate) and Validate (build-level gate plus discrimination sensor). This section governs ad-hoc verification: merges, conflict resolution, review fixes, and one-off changes.

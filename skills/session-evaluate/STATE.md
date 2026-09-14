@@ -106,3 +106,10 @@
 - **Trade-off**: A2 findings can no longer lean on a global baseline; any dedup rule must live in the affected skill.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-012
+- **Decision**: Catalog F1 (`references/findings-catalog.md`) and its Non-findings counterpart no longer cite the Test Execution Scope convention: Implies drops the "pattern the convention exists to prevent" clause, Fix shape now says to tighten a skill's existing scoped-test instruction rather than invoke the convention, and the cross-cutting non-finding says widening is warranted there on its own terms. F1's full-test-suite detection itself is unchanged.
+- **Reason**: By the user's decision, the global Test Execution Scope rule set (the `CLAUDE.global.md` subsection and `references/test-execution-scope.md`) was removed from the harness, so citing it would steer classification toward a rule that no longer exists.
+- **Trade-off**: F1 findings can no longer lean on a global scoping baseline; any test-scoping rule a fix proposes must live in the affected skill.
+- **Date**: 2026-09-14
+- **Status**: active
