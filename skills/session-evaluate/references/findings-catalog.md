@@ -94,7 +94,7 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 - `auto` — the session overflowed. This is a real defect: the governing skill let context grow past the window, and everything after the boundary lost fidelity. Look at `cumulative dropped` for the magnitude.
 - `manual` — the user chose it. Much weaker signal; report only if it happened repeatedly, which suggests the workflow inherently outgrows its context.
 
-**Fix shape:** Make the skill checkpoint durable state to a file (the way `build-feature` uses `progress.md`) so a compaction cannot destroy it, and/or delegate the context-heavy phase to a subagent. A skill that carries long-lived state only in conversation is the root cause.
+**Fix shape:** Make the skill checkpoint durable state to a file (e.g. a `progress.md` it updates after each step) so a compaction cannot destroy it, and/or delegate the context-heavy phase to a subagent. A skill that carries long-lived state only in conversation is the root cause.
 
 ### C2 — Runaway subagent
 
@@ -130,7 +130,7 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 
 **Implies:** A knowable constraint the agent kept rediscovering — a symlink guard, a refused command shape, a missing flag, a permission denial.
 
-**Fix shape:** Encode the constraint as a guideline so it is known up front. Repeated permission denials specifically may instead warrant a settings change — that is outside this skill's apply scope, so report it as Informational with a pointer to `update-config`.
+**Fix shape:** Encode the constraint as a guideline so it is known up front. Repeated permission denials specifically may instead warrant a settings change — that is outside this skill's apply scope, so report it as Informational with a pointer to the permission settings that would allow it.
 
 ---
 
@@ -162,7 +162,7 @@ Every match is a candidate, not a finding — read the surrounding turn to confi
 
 **Fix shape:** Not Markdown guidance — **Informational by default**, per this skill's apply scope (a script is code, not a guideline). Report it in full: the loop's shape, its inputs, a one-line spec of the script that would replace it and where it would live (`skills/<name>/scripts/`), and how many round-trips it collapses into one. The Apply step never writes code, regardless of approval.
 
-**Escalate rather than re-file when the same script keeps being proposed.** Check this skill's memory (`~/.claude/session-evaluate/`) for this candidate: if it has been reported before and not built, say so with the date, and raise the priority. If a *prose* fix for the same underlying failure has since been applied and the failure recurred anyway, that combination — a repeatedly-proposed script alongside repeatedly-failing guidance — is the strongest signal in this catalog that the mechanical fix is the correct one, and it should be raised through the escalated-script question in SKILL.md's present-and-approve step rather than filed again as an observation. Say plainly that the alternative has been tried and measured failing.
+**Escalate rather than re-file when the same script keeps being proposed.** Check this skill's memory (`<project root>/.session-evaluate/`) for this candidate: if it has been reported before and not built, say so with the date, and raise the priority. If a *prose* fix for the same underlying failure has since been applied and the failure recurred anyway, that combination — a repeatedly-proposed script alongside repeatedly-failing guidance — is the strongest signal in this catalog that the mechanical fix is the correct one, and it should be raised through the escalated-script question in SKILL.md's present-and-approve step rather than filed again as an observation. Say plainly that the alternative has been tried and measured failing.
 
 The default exists because a script is a maintenance surface and this skill's remit is guidance. It is not a reason to let a known-correct fix go unbuilt indefinitely: a real skill accumulated six prose decisions against one failure class over four days, with the script-shaped fix filed as Informational the whole time; when it was finally built, the failure stopped.
 

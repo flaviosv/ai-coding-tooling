@@ -404,7 +404,7 @@ def subagent_named_skill(sub_records):
 
     A window in skill_windows() attributes every subagent that *starts* inside its wall-clock
     range to that window's own skill name — which silently breaks the moment an orchestrator
-    (e.g. build-feature) invokes a nested Skill call and then keeps dispatching further work as
+    invokes a nested Skill call and then keeps dispatching further work as
     Agent-tool subagents without ever making another top-level Skill call: nothing closes the
     window, so hours of unrelated downstream work (other skills' whole phases) land under the
     name of whatever was last invoked. This looks inside the subagent's own transcript instead:
@@ -431,8 +431,8 @@ def named_skill_rollup(sub_runs):
     """Session-wide subagent spend grouped by each run's real governing skill/phase.
 
     Independent of skill_windows()'s wall-clock buckets — this is what actually answers "how
-    much did tlc-spec-driven / code-review / build-feature cost", including when they ran
-    nested inside another skill's mis-closed window.
+    much did <skill> cost", including when it ran nested inside another skill's mis-closed
+    window.
     """
     rollup = defaultdict(lambda: {"n": 0, "billed": 0, "output": 0, "turns": 0, "confident": 0})
     unattributed = {"n": 0, "billed": 0}
@@ -472,7 +472,7 @@ def skill_windows(records, calls, sub_runs, session_end):
     records excluded) so they aren't double-counted against the Subagents section — any
     subagent that started inside the window is reported alongside it instead.
 
-    Caveat this can't fix by construction: an orchestrator (e.g. build-feature) that invokes a
+    Caveat this can't fix by construction: an orchestrator skill that invokes a
     nested Skill and then keeps dispatching further Agent-tool work without ever calling Skill
     again never closes its own window — everything after lands under the nested skill's name
     until the *next* top-level Skill call, or session end. Each window's `foreign_skills` flags
@@ -532,12 +532,15 @@ def skill_windows(records, calls, sub_runs, session_end):
     return windows
 
 
-# A flag, optionally carrying a value. The value may be quoted (`-m "not integration"`) or
-# bare, but a bare value may not contain "/" — that keeps a real path argument from being
-# swallowed as if it were a flag's value, which is what separates a full-suite run from a
-# scoped one. `pytest tests/unit/` therefore still does NOT match: `tests/unit/` is neither
-# a flag nor an acceptable flag value.
-_FLAG = r"-{1,2}[\w-]+(?:[= ](?:\"[^\"]*\"|'[^']*'|[^\s/-][^\s/]*))?"
+# A flag, optionally carrying a value. A flag name starts with a letter or digit, so the bare
+# `--` separator is never a flag. A value joined by `=` is always a flag value; a
+# space-separated one must be quoted (`-m "not integration"`) or a bare word with no "/" or
+# ".", so a target (`src/a.test.ts`, `test_x.py`, `AppShell.test`) is never swallowed as a
+# flag's value — any argument that is neither a flag nor a flag value makes the run scoped.
+_QUOTED = r"\"[^\"]*\"|'[^']*'"
+_FLAG = rf"-{{1,2}}\w[\w-]*(?:=(?:{_QUOTED}|\S+)|\s+(?:{_QUOTED}|[^\s/.\"'-][^\s/.]*))?"
+# Name/pattern filters narrow a run to matching tests even with no path argument.
+_TEST_FILTER_RE = re.compile(r"\s(?:-k|-t|--testNamePattern|-run|--filter|--tests|-Dtest)(?:[=\s]|$)")
 # Runner prefixes that wrap a test command without changing its scope.
 _RUNNER = r"(?:(?:uv|poetry|pipenv|pdm|hatch)\s+run\s+)?"
 
@@ -568,12 +571,17 @@ def _core_command(command):
     return command[: match.start()] if match else command
 
 
+def is_full_suite_run(command):
+    core = _core_command(command)
+    return any(pattern.match(core) for pattern in FULL_SUITE_PATTERNS) and not _TEST_FILTER_RE.search(core)
+
+
 def test_suite_runs(calls):
     """Bash calls shaped like a full test-suite run — no path/filter narrowing them.
 
     `calls` must include subagent tool calls, not just the main thread — the actual test/build
-    work in an orchestrated session (tlc-spec-driven's Execute phase, code-review's fix-stage validation,
-    etc.) almost always runs inside a subagent, invisible to this detector otherwise. Callers
+    work in an orchestrated session (a build phase, a fix stage's validation, etc.) almost
+    always runs inside a subagent, invisible to this detector otherwise. Callers
     should pass calls merged from collect_tool_calls() on the main records plus every subagent's
     own records (subagents()' 4th return value), sorted by timestamp.
 
@@ -594,8 +602,7 @@ def test_suite_runs(calls):
             continue
         if call["name"] != "Bash":
             continue
-        command = _core_command(call["label"])
-        if any(pattern.match(command) for pattern in FULL_SUITE_PATTERNS):
+        if is_full_suite_run(call["label"]):
             hits.append(
                 {
                     "ts": call["ts"],

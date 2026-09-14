@@ -1,6 +1,6 @@
 # Example report — target output for Step 8
 
-A Step 8 output for a real `build-feature` session (Large tier, Parallel execution), kept as the concrete target for level of detail and shape. Digest figures were regenerated with the current `session_metrics.py`; the collapsed-duplicates count and the finding block's **Costs** line are illustrative. This is **one report** — the at-a-glance table is the complete finding list, and everything after it references the same row numbers.
+A Step 8 output for a real orchestrator-skill session (Large tier, Parallel execution), kept as the concrete target for level of detail and shape. Digest figures were regenerated with the current `session_metrics.py`; skill names are replaced with `example-*` placeholders, and the collapsed-duplicates count and the finding block's **Costs** line are illustrative. This is **one report** — the at-a-glance table is the complete finding list, and everything after it references the same row numbers.
 
 ---
 
@@ -11,11 +11,11 @@ A Step 8 output for a real `build-feature` session (Large tier, Parallel executi
 | Skill | Dimension | # | Priority | Title | Metric | Recurrence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `skills/example-fixer/SKILL.md` | Workflow and orchestration | 1 | P0 | Serial per-cluster git reintegration inflates the fixer skill's own orchestration cost | 68% of orchestrator's Bash calls (48/71) = fetch+cherry-pick loop over 16 clusters; 100 turns, 12.0M tokens | Structural | Pending |
-| `extended/tlc-spec-driven/` (vendor overlay, Execute phase) | Token consumption | 2 | P1 | Frontend source file re-read after edits the harness had already confirmed | 4× identical Read + 4× identical `cd`; ~24-32k avoidable tokens | Incidental | Pending |
+| `extended/example-planner/` (vendor overlay, Execute phase) | Token consumption | 2 | P1 | Frontend source file re-read after edits the harness had already confirmed | 4× identical Read + 4× identical `cd`; ~24-32k avoidable tokens | Incidental | Pending |
 | Instruction file that governed Bash usage (path from the transcript) | Mistakes and corrections | 3 | P2 | Manual shell backgrounding (`&`/`disown`) stacked with `run_in_background: true` produces a false completion signal | 1 self-corrected mistake; stated fix never actually executed | Structural | Pending |
 | — (built-in `design`/design-sync) | Token consumption | 4 | P3 | Repeated, oversized reads of design-sync bundle/config files | 11×/9× repeated reads; 162.9k tokens = 68% of all Read spend; 2 failed path-guess reads | Structural (inferred) | Informational |
 | — (built-in `DesignSync` tool) | Runtime | 5 | P3 | Independent screenshot reads issued one-per-turn during design review | 143 tool calls inside one 30m07s turn | Structural (inferred) | Informational |
-| — (execution deviation, `code-review`) | Workflow and orchestration | 6 | P3 | Duplicate review-comment posting required serial deletes after harness blocked the batched delete | 9 serial `deletePullRequestReviewComment` calls | Incidental | Informational |
+| — (execution deviation, `example-reviewer`) | Workflow and orchestration | 6 | P3 | Duplicate review-comment posting required serial deletes after harness blocked the batched delete | 9 serial `deletePullRequestReviewComment` calls | Incidental | Informational |
 
 Collapsed 2 duplicate findings across the 5 dimension agents. Dimension F returned no finding (see Full test-suite runs below).
 
@@ -28,35 +28,29 @@ Collapsed 2 duplicate findings across the 5 dimension agents. Dimension F return
 | resume | 1 | 7m59s | 45.3k | 295 | 0 | - |
 | design ⚠ | 1 | 11m16s | 2.1M | 43.0k | 17 | 1, 794.9k |
 | artifact-capabilities ⚠ | 1 | 7m28s | 4.6M | 19.6k | 22 | 1, 214.9k |
-| build-feature ⚠ | 1 | 5m04s | 7.1M | 11.5k | 30 | 1, 79.7k |
-| grilling ⚠ | 1 | 3h39m | 64.8M | 173.6k | 234 | 41, 150.3M |
+| example-orchestrator ⚠ | 1 | 5m04s | 7.1M | 11.5k | 30 | 1, 79.7k |
+| example-interview ⚠ | 1 | 3h39m | 64.8M | 173.6k | 234 | 41, 150.3M |
 
-- ⚠ **design** #1: also contains subagent work for pixel-perfectly. ⚠ **artifact-capabilities** #1: design. ⚠ **build-feature** #1: architecture-evaluate.
-- ⚠ **grilling** #1: also contains subagent work for `tlc-spec-driven`, `code-review`, `fix-review`, `architecture-evaluate`, and 14 others — this window's own totals are not this skill's real cost.
+- ⚠ **design** #1: also contains subagent work for pixel-perfectly. ⚠ **artifact-capabilities** #1: design. ⚠ **example-orchestrator** #1: example-docs.
+- ⚠ **example-interview** #1: also contains subagent work for `example-planner`, `example-reviewer`, `fix-review`, `example-docs`, and 14 others — this window's own totals are not this skill's real cost.
 
 **Subagent spend by named skill/phase** (relayed in full in the real report; top rows shown):
 
 | skill/phase | runs | billed input | output | turns | confidence |
 | --- | --- | --- | --- | --- | --- |
 | phase-batch | 3 | 42.3M | 4.0k | 230 | 0/3 direct |
-| tlc-spec-driven | 5 | 23.5M | 1.6k | 175 | 4/5 direct |
+| example-planner | 5 | 23.5M | 1.6k | 175 | 4/5 direct |
 | fix-review | 2 | 12.6M | 657 | 115 | 1/2 direct |
-| code-review | 1 | 11.7M | 1.4k | 74 | 1/1 direct |
+| example-reviewer | 1 | 11.7M | 1.4k | 74 | 1/1 direct |
 
 **Full test-suite runs** (heuristic pattern match — not exhaustive, and it can mis-match):
 
 | # | time | command | failed | files touched since last run |
 | --- | --- | --- | --- | --- |
-| 1 | 22:06:18 | `npm test -- AppShell.test 2>&1 \| head -100` | no | 15 |
-| 2 | 22:06:41 | `npm test -- MiniCalendarWidget.test 2>&1 \| head -100` | no | 9 |
-| 3 | 22:06:48 | `npm test -- layoutOverlaps.test 2>&1` | yes | 2 |
-| 4 | 22:07:15 | `npm test -- CalendarPage.test` | yes | 6 |
-| 5 | 22:07:42 | `npm test -- WeekView.test.tsx 2>&1 \| head -100` | no | 4 |
-| 6 | 22:07:50 | `npm test -- WeekView.test` | yes | 1 |
-| 7 | 22:33:04 | `npm run test -- --run 2>&1 \| tail -40` | no | 5 |
-| 8 | 22:33:42 | `go test ./... 2>&1 \| tail -40` | no | 0 |
+| 1 | 22:33:04 | `npm run test -- --run 2>&1 \| tail -40` | no | 22 |
+| 2 | 22:33:42 | `go test ./... 2>&1 \| tail -40` | no | 0 |
 
-Rows 1-6 each name one test file after `--`, so they are scoped runs the heuristic mis-matched, not full-suite runs; because every detected row resets the files-touched count, rows 7-8's counts are understated too. Rows 7-8 ran inside the `tlc-spec-driven` Execute-phase subagent's Build gate after a cross-cutting frontend+backend change — proportionate, not an F1 finding.
+Both runs happened inside the `example-planner` Execute-phase subagent's Build gate after a cross-cutting frontend+backend change (22 files) — proportionate, not an F1 finding.
 
 ---
 
@@ -92,7 +86,7 @@ Rows 1-6 each name one test file after `--`, so they are scoped runs the heurist
 
 **5. Independent screenshot reads issued one-per-turn during design review** (Runtime, P3) — same attribution, built-in `DesignSync` tool.
 
-**6. Duplicate review-comment posting required serial deletes after the harness blocked a batched delete** (Workflow and orchestration, P3) — execution deviation from already-correct guidance in `code-review`, compounded by a harness permission-classifier block; not a documentation gap.
+**6. Duplicate review-comment posting required serial deletes after the harness blocked a batched delete** (Workflow and orchestration, P3) — execution deviation from already-correct guidance in `example-reviewer`, compounded by a harness permission-classifier block; not a documentation gap.
 
 ---
 

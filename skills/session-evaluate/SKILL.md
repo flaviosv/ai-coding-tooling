@@ -1,10 +1,10 @@
 ---
 name: session-evaluate
-description: Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents, self-corrected mistakes (wrong commands/tools/assumptions caught mid-session), mechanical repetition that could become a script in the affected skill, and full test-suite runs disproportionate to the change's actual scope — either across the whole session by default or scoped to one or more named skills within it on request — then reports every finding grouped by fix-target skill and dimension, ranked by a priority that weighs token/runtime gain over correctness fixes, plus a verification section (time and tokens spent per skill invocation, and every full test-suite run detected with its timing and files touched), asks for approval, and applies the approved fixes as guideline edits to the responsible skill or to the instruction file that governed the behaviour in the session (script-shaped findings are reported only, never auto-applied). Metrics come from a deterministic script so the transcript itself never floods the context; a large session's classification work fans out to one Opus subagent per finding dimension, mirroring how code-review parallelizes across review dimensions. Use when the user says "evaluate session", "analyze this session", "session postmortem", "why did that session burn so many tokens", "why was that session slow", "optimize my agent workflow", "evaluate how <skill> did in that session", or invokes /session-evaluate. Do NOT use for reviewing application code (use code-review) or for authoring a new skill from scratch (use skill-architect).
+description: Analyzes a completed agent session transcript for performance and workflow inefficiencies — token waste, oversized tool results, cache thrash, slow turns, missed tool parallelism, context lost to compaction, runaway or serially-launched subagents, self-corrected mistakes (wrong commands/tools/assumptions caught mid-session), mechanical repetition that could become a script in the affected skill, and full test-suite runs disproportionate to the change's actual scope — either across the whole session by default or scoped to one or more named skills within it on request — then reports every finding grouped by fix-target skill and dimension, ranked by a priority that weighs token/runtime gain over correctness fixes, plus a verification section (time and tokens spent per skill invocation, and every full test-suite run detected with its timing and files touched), asks for approval, and applies the approved fixes as guideline edits to the responsible skill or to the instruction file that governed the behaviour in the session (script-shaped findings are reported only, never auto-applied). Metrics come from a deterministic script so the transcript itself never floods the context; a large session's classification work fans out to one Opus subagent per finding dimension. Use when the user says "evaluate session", "analyze this session", "session postmortem", "why did that session burn so many tokens", "why was that session slow", "optimize my agent workflow", "evaluate how <skill> did in that session", or invokes /session-evaluate. Do NOT use for reviewing application code or for authoring a new skill from scratch.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.13.0
+  version: 1.14.0
 ---
 
 # Session Evaluate
@@ -33,7 +33,7 @@ Adopt this persona for the entire skill: *"I'm an engineer doing a performance p
 
 ## Memory
 
-This skill keeps a lightweight, append-only memory of past runs at `~/.claude/session-evaluate/` — one fixed absolute path, never resolved against the current directory, so every run finds the same history whichever project it is invoked from, and nothing is ever written into an analyzed project. These are local working notes, not tracked content. A completed run (one that reached Step 10) writes one file: `~/.claude/session-evaluate/<YYYYMMDD-HHMM>_<session-name>.md`, where `<session-name>` is the evaluated session's custom title if it has one (sanitized to `[A-Za-z0-9_-]`), else the first 8 characters of its session id. Keep the format terse — a future instance of this skill reads it, not a person:
+This skill keeps a lightweight, append-only memory of past runs in `<project root>/.session-evaluate/`, where `<project root>` is the top level of the git repository this skill is run from (`git rev-parse --show-toplevel`), or the current working directory when that is not a git repository. The project it is run from is not necessarily the analyzed session's project. These are local working notes, not tracked content. A completed run (one that reached Step 10) writes one file: `<project root>/.session-evaluate/<YYYYMMDD-HHMM>_<session-name>.md`, where `<session-name>` is the evaluated session's custom title if it has one (sanitized to `[A-Za-z0-9_-]`), else the first 8 characters of its session id. Keep the format terse — a future instance of this skill reads it, not a person:
 
 ```
 # <session-name> — <YYYY-MM-DD>
@@ -44,13 +44,13 @@ Project: <path>   Session: <id>   Mode: <Full|Scoped(<skills>)>   Tier: <Small|M
 - [<dimension letter>][<priority>] <title> → <fix target> — <Applied|Skipped|Informational|Pending>: <one-line outcome or reason>
 ```
 
-Step 8 reads this directory (if it exists) to surface repeat offenders when presenting findings; Step 11 writes to it once a run is fully resolved. Skip the read silently if `~/.claude/session-evaluate/` doesn't exist yet — create it on first write, don't pre-create it on read.
+Step 8 reads this directory (if it exists) to surface repeat offenders when presenting findings; Step 11 writes to it once a run is fully resolved. Skip the read silently if `<project root>/.session-evaluate/` doesn't exist yet — create it on first write, don't pre-create it on read.
 
 ## Instructions
 
 ### Step 1: Mode Detection
 
-1. If the invocation names one or more specific skills to evaluate within the session (e.g. "evaluate how `code-review` did in that session", "/session-evaluate this session for code-review and build-feature") — **Scoped Mode**: restrict the entire evaluation to those skills' invocation window(s) only. Every other skill invoked in the session is out of scope, not just deprioritized.
+1. If the invocation names one or more specific skills to evaluate within the session (e.g. "evaluate how `<skill>` did in that session", "/session-evaluate this session for `<skill-a>` and `<skill-b>`") — **Scoped Mode**: restrict the entire evaluation to those skills' invocation window(s) only. Every other skill invoked in the session is out of scope, not just deprioritized.
 2. Otherwise — **Full Session Mode** (default): evaluate the whole session and every skill it invoked.
 
 Scoped Mode changes what's measured, not how it's judged — the catalog, the priority formula, and the apply scope all apply identically in both modes.
@@ -83,7 +83,7 @@ python3 <skill-dir>/scripts/session_metrics.py <path-to-session.jsonl> --top 10
 In **Scoped Mode**, add `--skill <name>` once per named skill (repeatable):
 
 ```bash
-python3 <skill-dir>/scripts/session_metrics.py <path-to-session.jsonl> --top 10 --skill code-review --skill build-feature
+python3 <skill-dir>/scripts/session_metrics.py <path-to-session.jsonl> --top 10 --skill <skill-a> --skill <skill-b>
 ```
 
 The scoped digest's `scoped to:` line gives each window's start and end timestamp — Step 4 filters by them.
@@ -126,7 +126,7 @@ Keep every excerpt small and purposeful. If you find yourself pulling repeatedly
 
 ### Step 5: Complexity assessment
 
-Using the (possibly scoped) digest's `records` line — specifically the **total** (main + subagent records, already summed on that line) — and whether each catalog dimension shows any candidate signal at all, decide how Step 6 executes. This mirrors `code-review`'s own complexity assessment — the same two axes, adapted to a transcript instead of a diff.
+Using the (possibly scoped) digest's `records` line — specifically the **total** (main + subagent records, already summed on that line) — and whether each catalog dimension shows any candidate signal at all, decide how Step 6 executes.
 
 **Size tier → execution mode:**
 
@@ -136,11 +136,11 @@ Using the (possibly scoped) digest's `records` line — specifically the **total
 | Medium | 1,500-5,000 total records | **Single agent** — 1 subagent covers every active dimension |
 | Large | >5,000 total records | **Parallel** — 1 subagent per active dimension, dispatched together |
 
-Use the **total** figure, not the bare main-thread `records` count — a heavily-delegated session (e.g. `build-feature`) can look small at the top level while its subagents did most of the actual work; the total is what the digest's own line already adds up.
+Use the **total** figure, not the bare main-thread `records` count — a heavily-delegated session (e.g. an orchestrator skill's run) can look small at the top level while its subagents did most of the actual work; the total is what the digest's own line already adds up.
 
 **Calibrated against two real sessions** (2026-09-01), not guessed from first principles:
 
-- **Large anchor:** a `build-feature` run (2,905 main records + 4,871 subagent records = 7,776 total; 319 API calls; 44 subagent transcripts; max concurrency 15; 5 skills invoked over 4h10m). Unambiguously Large — the Large cutoff sits ~2,800 total records of bandwidth below this anchor so sessions meaningfully smaller than this one extreme case still route correctly, rather than the boundary sitting exactly on the one sample available.
+- **Large anchor:** an orchestrator skill's run (2,905 main records + 4,871 subagent records = 7,776 total; 319 API calls; 44 subagent transcripts; max concurrency 15; 5 skills invoked over 4h10m). Unambiguously Large — the Large cutoff sits ~2,800 total records of bandwidth below this anchor so sessions meaningfully smaller than this one extreme case still route correctly, rather than the boundary sitting exactly on the one sample available.
 - **Small anchor:** a long single-thread session with no subagent delegation at all (858 total records over 1h44m). Unambiguously Small/Inline despite its length — record volume, not wall-clock time, is what drives the tier.
 - **Medium is not yet confirmed by a real sample** — it's the gap between the two anchors, not derived from an observed medium session. If a session lands there, treat the tier assignment as a hypothesis and note in the report whether Single-agent execution actually matched the evidence-gathering cost Step 6 needed; adjust the boundary if it consistently doesn't.
 
@@ -163,7 +163,7 @@ grep -oE '"name":"<tool>","input":\{[^}]{0,120}' <session.jsonl> | head -15
 
 E is active only if the sample shows the same kind of input and transformation repeated across different targets (not one identical target — that is A2). Keep the sample: it is the E1 confirmation evidence Step 6 cites.
 
-Print a one-line banner before Step 6 begins, the same way `code-review` does:
+Print a one-line banner before Step 6 begins:
 
 ```
 📊 Session evaluate — Complexity: **<Tier>** (<N> total records, <span>) · Active: <dimension letters> · <execution description>
@@ -208,7 +208,7 @@ Before proposing an edit to a skill, establish its origin from where its base di
 
 If the attributed skill keeps a `STATE.md` decision log, count how many times the same failure class already appears in it. **Three or more prior decisions on one failure class is itself the finding** — report it as such, priority P0, and propose a structural fix rather than a seventh guideline. A real audit found six prior decisions on one skill's fabrication failures, each adding prose, with the failure recurring after every one; the fix that finally held was moving the step into a script.
 
-*Verify any claim about how a skill is designed against that skill's own file.* Behaviour observed across a handful of runs is evidence about those runs, not about the design. If you intend to write "skill X does not do Y", open X's `SKILL.md` and confirm it. A real audit reported that `code-review` "does not tier its fan-out" on the strength of seeing five agents in every sampled session — it does tier, but two of its four tiers share an execution mode and every sampled PR happened to land in those two. The claim shaped a recommendation that turned out to be for work already done.
+*Verify any claim about how a skill is designed against that skill's own file.* Behaviour observed across a handful of runs is evidence about those runs, not about the design. If you intend to write "skill X does not do Y", open X's `SKILL.md` and confirm it. A real audit reported that a review skill "does not tier its fan-out" on the strength of seeing five agents in every sampled session — it does tier, but two of its four tiers share an execution mode and every sampled PR happened to land in those two. The claim shaped a recommendation that turned out to be for work already done.
 
 *Judge recurrence.* The target file is already open for attribution — while it's in front of you, judge whether the wasteful call sits on the skill's unconditional flow (**Structural** — it fires on every invocation, not just this session) or was triggered by this session's particular input, branch, or edge case (**Incidental** — may not recur). This costs no extra tool calls.
 
@@ -259,7 +259,7 @@ For Single-agent and Parallel modes: merge every returned finding into one list.
 
 ### Step 8: Present the findings and ask for approval
 
-**Check memory for related past findings first.** If `~/.claude/session-evaluate/` exists, grep its files (`grep -li` for each finding's fix-target skill name and dimension letter — cheap, bounded, no need to read a whole file unless a name matches) for prior runs that touched the same skill/dimension. A match is worth surfacing inline in that finding's block as `**Seen before:** <file>, <date> — <one-line prior outcome>` — a fix that was applied before and the same waste shows up again is a stronger signal (recurring despite a fix = the guideline didn't stick, or a new code path hit the same root cause) than a first occurrence, and is worth saying so explicitly. No match is not worth mentioning — don't pad a finding with "no prior occurrences found."
+**Check memory for related past findings first.** If `<project root>/.session-evaluate/` exists, grep its files (`grep -li` for each finding's fix-target skill name and dimension letter — cheap, bounded, no need to read a whole file unless a name matches) for prior runs that touched the same skill/dimension. A match is worth surfacing inline in that finding's block as `**Seen before:** <file>, <date> — <one-line prior outcome>` — a fix that was applied before and the same waste shows up again is a stronger signal (recurring despite a fix = the guideline didn't stick, or a new code path hit the same root cause) than a first occurrence, and is worth saying so explicitly. No match is not worth mentioning — don't pad a finding with "no prior occurrences found."
 
 Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E/F sections, rendered as "Token consumption" / "Runtime" / "Workflow and orchestration" / "Mistakes and corrections" / "Automation candidates" / "Test-scope violations" — sorted by Priority within each dimension. Use this exact shape. For a complete worked example (at-a-glance table, collapsed-duplicates line, verification section, a finding block, the Informational list, closing approval question) — the target output quality for this step — see `references/example-report.md`.
 
@@ -269,8 +269,8 @@ Group by fix target (skill), then by dimension — the catalog's A/B/C/D/E/F sec
 
 | Skill | Dimension | # | Priority | Title | Metric | Recurrence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `skills/code-review/SKILL.md` | Token consumption | 1 | P0 | 3 whole-file reads of the same 13k-token SKILL.md | 39k tok/session | Structural | Pending |
-| `skills/code-review/SKILL.md` | Runtime | 2 | P1 | 50 consecutive single-call turns during the edit phase | ~6 min added latency | Incidental | Pending |
+| `skills/example-reviewer/SKILL.md` | Token consumption | 1 | P0 | 3 whole-file reads of the same 13k-token SKILL.md | 39k tok/session | Structural | Pending |
+| `skills/example-reviewer/SKILL.md` | Runtime | 2 | P1 | 50 consecutive single-call turns during the edit phase | ~6 min added latency | Incidental | Pending |
 | — (user-triggered) | Workflow and orchestration | 3 | P3 | 2 manual compactions, 394k tokens dropped | 394k tok dropped | Incidental | Pending |
 
 For Single-agent and Parallel modes, follow the table with Step 7's collapsed-duplicates count on one line (`Collapsed N duplicate findings`, `0` included).
@@ -336,7 +336,7 @@ Commit the applied changes directly to `main` and push them to `origin` without 
 
 Always run this step, whether the answer to Step 8 was "all", "none", or a partial list — the point is a durable record of what was found and decided, not just of what was applied. Write it after Step 10, once every decision and edit is final; never write a partial file mid-flow.
 
-`mkdir -p ~/.claude/session-evaluate` if it doesn't already exist, then write `~/.claude/session-evaluate/<YYYYMMDD-HHMM>_<session-name>.md` per the [Memory](#memory) format — one line per finding (Pending/Informational findings included, not just Applied ones), each carrying its dimension letter, priority, title, fix target, and final status with a one-line reason. Do not narrate the investigation or repeat the digest — this file is a lookup table for Step 8's future memory search, not a second report.
+`mkdir -p <project root>/.session-evaluate` if it doesn't already exist, then write `<project root>/.session-evaluate/<YYYYMMDD-HHMM>_<session-name>.md` per the [Memory](#memory) format — one line per finding (Pending/Informational findings included, not just Applied ones), each carrying its dimension letter, priority, title, fix target, and final status with a one-line reason. Do not narrate the investigation or repeat the digest — this file is a lookup table for Step 8's future memory search, not a second report.
 
 ## Examples
 
@@ -348,7 +348,7 @@ Always run this step, whether the answer to Step 8 was "all", "none", or a parti
 2. Resolve `~/.claude/projects/-Users-me-Projects-foo/3921ef51-....jsonl`.
 3. Run the extractor; digest shows 4 reads of the same 13.2k-token file, a 50-turn single-call run, 340 total records — Small tier, Inline.
 4. Classify: A2 (repeated identical work), B1 (missed parallelism).
-5. Attribute both to `skills/code-review/SKILL.md` (a skill the user authors — edited in place).
+5. Attribute both to `skills/example-reviewer/SKILL.md` (a skill the user authors — edited in place).
 6. Present 2 findings; user approves both.
 7. Add a bounded-read guideline and a batching guideline to that skill; bump version; append its `STATE.md` entry; commit.
 
@@ -363,22 +363,22 @@ Always run this step, whether the answer to Step 8 was "all", "none", or a parti
 
 ### Example 3: Finding outside the apply scope
 
-Digest shows 9 permission denials for the same `gh` command shape. This is a settings problem, not a guideline problem — report it as **Informational**, point at the `update-config` skill and `fewer-permission-prompts`, and apply nothing.
+Digest shows 9 permission denials for the same `gh` command shape. This is a settings problem, not a guideline problem — report it as **Informational**, name the permission settings that would allow that command shape as the place to fix it, and apply nothing.
 
 ### Example 4: Scoped Mode, one skill named
 
-**User:** "evaluate how code-review did in the last session in applyr"
+**User:** "evaluate how example-reviewer did in the last session in applyr"
 
-1. Step 1: `code-review` named — Scoped Mode.
+1. Step 1: `example-reviewer` named — Scoped Mode.
 2. Resolve the most recent session in the `applyr` project.
-3. Run the extractor with `--skill code-review`. It finds two `code-review` invocations and returns a digest confined to those windows (612 records total) — Small tier, Inline.
+3. Run the extractor with `--skill example-reviewer`. It finds two `example-reviewer` invocations and returns a digest confined to those windows (612 records total) — Small tier, Inline.
 4. Run the D1 grep and keep only matches whose record timestamp falls inside the `scoped to:` windows.
-5. Classify and attribute within that scope only — a large repeated-read pattern elsewhere in the session, outside `code-review`'s windows, is invisible to this run by design.
-6. Present findings scoped to `code-review`; proceed as normal.
+5. Classify and attribute within that scope only — a large repeated-read pattern elsewhere in the session, outside `example-reviewer`'s windows, is invisible to this run by design.
+6. Present findings scoped to `example-reviewer`; proceed as normal.
 
 ### Example 5: Large session, Parallel tier
 
-**User:** "evaluate that build-feature session, it felt slow"
+**User:** "evaluate that example-orchestrator session, it felt slow"
 
 1. Step 1: no skill named — Full Session Mode.
 2. Digest: 2,905 main + 4,871 subagent = 7,776 total records, 4h10m span — Large tier (Step 5's Large calibration anchor). Active dimensions: A, B, C, D, F — F because `Full test-suite runs` is non-empty, even though its agent may conclude every run was proportionate.
@@ -390,7 +390,7 @@ Digest shows 9 permission denials for the same `gh` command shape. This is a set
 
 **`Not a file` / no transcripts found.** The encoded directory name is the project's absolute path with `/` → `-`, including the leading `/` (so it starts with `-`). Run `--list` without `--project` to see every project, and confirm the session was run from the path you assumed.
 
-**Digest shows `transcripts found` far above `Agent/Task launches`.** Subagents launched their own subagents. Expected for orchestration skills like `build-feature`; see C4 in the catalog before calling it a defect.
+**Digest shows `transcripts found` far above `Agent/Task launches`.** Subagents launched their own subagents. Expected for orchestration skills; see C4 in the catalog before calling it a defect.
 
 **`Skills invoked: none detected`.** Skills entered via injected context rather than the `Skill` tool are not always recorded. Fall back to attributing via the subagent launch descriptions and the file paths in the heaviest calls — do not conclude that no skill was involved. In Scoped Mode, `--skill <name>` may then report no top-level match even though the skill clearly ran: if the script names subagent transcripts, follow Step 3's subagent-only branch; otherwise say so rather than guessing, and fall back to Full Session Mode only if the user agrees.
 
@@ -400,8 +400,8 @@ Digest shows 9 permission denials for the same `gh` command shape. This is a set
 
 **A skill invocation's window looks too long or too short.** `Time & tokens by skill invocation` windows run from one `Skill`/slash-command call to the next (or session end) — a skill that launches a `run_in_background: true` subagent and keeps working shows the subagent's time inside its own window, but if that subagent is still running when the *next* skill is invoked, its remaining time lands in the next skill's window instead. Note this rather than treating either number as exact when a background subagent spans a boundary.
 
-**A window's total is wildly implausible (e.g. one skill's window claims hours and tens of millions of tokens that clearly belong to unrelated work).** This is the sharper version of the case above, confirmed on a real `build-feature` session: an orchestrator invokes a nested skill (e.g. `grilling`, for its scope-check step) via the `Skill` tool, then keeps dispatching its *own* remaining orchestration — further phases, review, fixes — as `Agent`-tool subagents, never calling `Skill` again itself. Nothing closes the nested skill's window, so every one of those unrelated downstream phases lands inside it until the next top-level `Skill` call or session end. The digest flags this for you — a window whose row carries a `⚠` has a `foreign_skills` note beneath the table naming what actually happened inside it — **do not report that window's own numbers as that skill's cost when the row is marked.** Use the `Subagent spend by named skill/phase` table instead: it resolves each subagent's *real* governing skill from its own transcript (a `Skill` call it made itself, or a name in its own dispatch prompt), independent of any window boundary. A row there with low `confidence` (e.g. `0/3 direct`, meaning purely inferred from prompt text, no actual `Skill` call found) is a lower-confidence candidate, not a fact — say so if you cite it. This same boundary logic also limits Scoped Mode: scoping to an orchestrator skill that internally invokes a nested skill without re-invoking `Skill` itself will only capture the orchestrator's *pre*-nested-invocation window, undercounting its own total cost — cross-check against the named-skill rollup there too.
+**A window's total is wildly implausible (e.g. one skill's window claims hours and tens of millions of tokens that clearly belong to unrelated work).** This is the sharper version of the case above, confirmed on a real orchestrator session: an orchestrator invokes a nested skill (e.g. for a scope-check step) via the `Skill` tool, then keeps dispatching its *own* remaining orchestration — further phases, review, fixes — as `Agent`-tool subagents, never calling `Skill` again itself. Nothing closes the nested skill's window, so every one of those unrelated downstream phases lands inside it until the next top-level `Skill` call or session end. The digest flags this for you — a window whose row carries a `⚠` has a `foreign_skills` note beneath the table naming what actually happened inside it — **do not report that window's own numbers as that skill's cost when the row is marked.** Use the `Subagent spend by named skill/phase` table instead: it resolves each subagent's *real* governing skill from its own transcript (a `Skill` call it made itself, or a name in its own dispatch prompt), independent of any window boundary. A row there with low `confidence` (e.g. `0/3 direct`, meaning purely inferred from prompt text, no actual `Skill` call found) is a lower-confidence candidate, not a fact — say so if you cite it. This same boundary logic also limits Scoped Mode: scoping to an orchestrator skill that internally invokes a nested skill without re-invoking `Skill` itself will only capture the orchestrator's *pre*-nested-invocation window, undercounting its own total cost — cross-check against the named-skill rollup there too.
 
-**`Full test-suite runs` missed a command, or flagged one that wasn't full-suite.** The detector scans the main thread **and** every subagent transcript (fixed after a real session showed two genuine full-suite runs — `npm run test -- --run` with no path, and `go test ./...` — sitting invisibly inside a `tlc-spec-driven` Execute-phase subagent), and it strips a trailing pipe/redirect (`| tail -40`, `2>&1`) before matching, since almost no real command is typed bare. What's still a real gap: it's a fixed pattern list matched against `call['label']`, which truncates Bash commands at 100 characters — an unusual test runner, a wrapped script, or a long command line past that cutoff won't match. Treat the table as a candidate list to sanity-check against the actual command, not an exhaustive or infallible count.
+**`Full test-suite runs` missed a command, or flagged one that wasn't full-suite.** The detector scans the main thread **and** every subagent transcript (fixed after a real session showed two genuine full-suite runs — `npm run test -- --run` with no path, and `go test ./...` — sitting invisibly inside an orchestrator's build-phase subagent), and it strips a trailing pipe/redirect (`| tail -40`, `2>&1`) before matching, since almost no real command is typed bare. What's still a real gap: it's a fixed pattern list matched against `call['label']`, which truncates Bash commands at 100 characters — an unusual test runner, a wrapped script, or a long command line past that cutoff won't match. Treat the table as a candidate list to sanity-check against the actual command, not an exhaustive or infallible count.
 
 **A Parallel-tier dimension agent comes back empty or off-topic.** It was likely given the wrong catalog sections (its own section, section G, and any section its text points to — not more, not less), or the digest wasn't included in its prompt. Re-check the dispatch prompt against Step 6's Parallel description before assuming the dimension genuinely had nothing.
