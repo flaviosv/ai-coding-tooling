@@ -1,14 +1,11 @@
 # Coding Principles — ai-coding-tooling Augmentation
 
-Read this **after** the parent `references/coding-principles.md`. It augments the parent's
-behavioral bias with concrete style references and routes security/UI work to dedicated skills.
-It does not replace the parent — the parent's Before/During/After rules stay in force.
-
-Apply these **before every implementation**, alongside the parent file.
+Patches the parent's `## During Implementation` and `## After Each Change` with comment, design, observability, stack-style, and security rules.
 
 ## Code Comments (always apply)
 
-Write a comment only for genuinely complex or non-obvious logic, or when explicitly requested —
+Write a comment only for genuinely complex or non-obvious logic, when explicitly requested, or
+when the language or framework mandates a doc comment (e.g. Go `godoc` on exported identifiers) —
 never to narrate a variable, a config value, or a single line; if code needs that, make the code
 clearer instead. This overrides any comment guidance from the parent skill, which has no rule on
 when to write comments (its Surgical Changes bullet against "improving" adjacent comments still
@@ -17,13 +14,11 @@ applies).
 ## Software Design Principles (always load)
 
 Load `coding-guidelines/best-practices-coding-guidelines.md` from this directory whenever you
-write or review code. It covers SOLID, DRY, KISS, YAGNI, Separation of Concerns, Low
-Coupling/High Cohesion, Composition over Inheritance, Law of Demeter, Fail Fast, Convention over
-Configuration, Readability over Cleverness, and the Boy Scout Rule.
+write or review code.
 
 Treat violations as **design defects, not style suggestions**. Run its pre-completion checklist
-(end of the file) before marking any task complete — this folds into the parent's post-gate
-"would a senior engineer flag this?" check.
+(end of the file) before marking any task complete — this folds into the parent's
+`## After Each Change` check.
 
 ## Observability (always load)
 
@@ -32,14 +27,12 @@ logging at write time, per its rules — not as an afterthought.
 
 ## Stack-Specific Style (conditional)
 
-Detect the stack from `docs/codebase/STACK.md` (fall back to `.specs/codebase/STACK.md`, then legacy
-`docs/codebase/PROJECT_DETAILS.md` / `docs/PROJECT_DETAILS.md`). Then load **only**
-matching `coding-guidelines/<language>-*.md` / `coding-guidelines/<language>-<framework>-*.md`
-files from this directory (e.g. `php-coding-guidelines.md` for a PHP stack). Skip non-matching
-files.
+Detect the project's stack. Then load **only** the `coding-guidelines/<technology>-coding-guidelines.md`
+files from this directory whose `<technology>` — a language or framework slug from the detected
+stack (e.g. `php`, `django`, `go-gin`) — matches. Skip non-matching files.
 
-If no stack-specific file matches, or if `STACK.md` (and its fallbacks) is missing or has no tech
-stack section, do not load any tech-specific references — proceed with the always-load set above.
+If no stack-specific file matches, or the stack cannot be determined, do not load any
+tech-specific references — proceed with the always-load set above.
 
 ## Security → `security-best-practices` skill
 

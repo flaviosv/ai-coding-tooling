@@ -10,17 +10,13 @@ Rules for instrumenting code with logging at write time.
 
 3. Every `catch` block must either: (a) re-raise the exception with added context, or (b) log it at ERROR with message + stack trace + all IDs needed to trace the event. Silent `catch {}` is always wrong.
 
-4. Calibrate log levels precisely:
-   - `DEBUG`: internal diagnostic detail, off in production
-   - `INFO`: business milestone (user registered, payment confirmed)
-   - `WARN`: recoverable unexpected condition (retry, fallback, deprecation)
-   - `ERROR`: failure requiring operator attention
+4. Calibrate log levels precisely — INFO only for business milestones, WARN for recovered anomalies, ERROR only when an operator must act.
 
 5. Write actionable log messages. Include: operation name, outcome, and any IDs needed to reproduce or trace the event. Avoid messages like "failed" or "error occurred" with no context.
 
 6. Use structured logging (key-value fields or JSON) over string interpolation — log aggregators parse fields, not sentences.
 
-7. Never log sensitive data (PII, passwords, tokens, card numbers, session IDs) at INFO or above. DEBUG-level logging of sensitive data is acceptable for development diagnostics, but ensure DEBUG is off by default in production.
+7. Never log passwords, tokens, session IDs, or card numbers at any level; redact or hash PII even at DEBUG.
 
 8. Never emit INFO or above inside tight loops or hot paths. Use DEBUG or a counter/metric instead — per-iteration INFO logging at scale is a throughput and storage killer.
 

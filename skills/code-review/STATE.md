@@ -93,6 +93,13 @@
 - **Date**: 2026-09-14
 - **Status**: active
 
+### AD-015
+- **Decision**: `references/observability.code.md`'s Security & privacy item now flags passwords, tokens, session IDs, and card numbers in logs at any level, and unredacted PII even at DEBUG, replacing its "DEBUG-level PII is acceptable for development diagnostics" allowance.
+- **Reason**: By the user's decision, DEBUG is not a safe level for sensitive data: it is often enabled in staging or during incidents, and log stores keep data for a long time. The allowance also contradicted `review-checklist.code.md`'s no-level-exception rule (`docs/harness-evaluation.md` Skills #49), and matches the same fix in the `tlc-spec-driven` overlay's observability guidelines.
+- **Trade-off**: Reviews now flag DEBUG statements that log raw PII for development diagnostics, which previously passed, so code relying on that for local debugging gets new findings.
+- **Date**: 2026-09-14
+- **Status**: active
+
 ## Imported from tests-code-review
 
 > Merged into this skill by AD-009. Entries are verbatim; IDs carry a `TCR-` prefix so they

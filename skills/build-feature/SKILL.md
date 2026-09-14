@@ -3,7 +3,7 @@ name: build-feature
 description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs code-review (review, optional checkpoint, and fixes), syncs architecture docs, then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling and code-review, the two that run live in this conversation (code-review keeps its own work in its own workers) — and, when the project uses Claude Design, closes by handing design-sync back to the user as a required follow-up it cannot run itself, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/code-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use code-review's fix-existing-findings entry directly).
 metadata:
   author: Flavio Studart
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Build Feature
@@ -83,7 +83,7 @@ Step 4 (grilling) is not a subagent dispatch and the wait protocol does not appl
 
 ### PR
 
-- Opened as a draft once the branch has its first real commit — right after Step 8 pushes the spec/design/tasks artifacts — with a body sourced from what's already on disk at that point (`spec.md`'s problem statement, plus `tasks.md`'s checklist). GitHub refuses `gh pr create` against a branch with zero commits ahead of `base_branch` (`No commits between <base> and <head>`), which is why this doesn't happen any earlier and why it's never an empty placeholder commit seeded just to open the PR sooner. Rewritten in full (Step 10) once tlc-spec-driven's Execute phase completes, sourced from `spec.md`/`tasks.md`/`commits.md`/`validation.md` — invent nothing new.
+- Opened as a draft once the branch has its first real commit — right after Step 8 pushes the spec/design/tasks artifacts — with a body sourced from what's already on disk at that point (`spec.md`'s problem statement, plus `tasks.md`'s checklist). GitHub refuses `gh pr create` against a branch with zero commits ahead of `base_branch` (`No commits between <base> and <head>`), which is why this doesn't happen any earlier and why it's never an empty placeholder commit seeded just to open the PR sooner. Rewritten in full (Step 10) once tlc-spec-driven's Execute phase completes, sourced from `spec.md`/`tasks.md`/`validation.md` and the branch's own commits — invent nothing new.
 - Never merged, by this skill, under any circumstance.
 - Marked ready (`gh pr ready <PR>`) only as the very last successful step (Step 14) — after every other step, including any `human_review` pause, has actually completed.
 - Never marked ready while GitHub reports it unmergeable. "Ready for review" is a claim about the PR's state, and a PR nobody can merge doesn't meet it — asserting readiness without checking is a false completion, which a real run produced: the PR was announced ready and delivered, and the user came back hours later asking for the merge conflicts to be fixed. Step 14 checks, and resolves, before it marks.
@@ -179,7 +179,7 @@ Spawn a Sonnet subagent to run tlc-spec-driven's Execute phase for every task in
 
 `git push` — Step 9's commits are local-only until this point; push them now so the PR (and `code-review`, next) reflect what Execute actually did, not a stale remote branch.
 
-Then rewrite the PR description, sourced from existing artifacts, invent nothing new: **Problem** ← `spec.md`; **What was done** ← `tasks.md`'s completed checklist and `commits.md`; **Test results** ← `validation.md` (the Verifier's report). `gh pr edit <PR> --body "..."`.
+Then rewrite the PR description, sourced from existing artifacts, invent nothing new: **Problem** ← `spec.md`; **What was done** ← `tasks.md`'s completed checklist and the branch's commits (`git log --oneline origin/<target_branch>..HEAD`); **Test results** ← `validation.md` (the Verifier's report). `gh pr edit <PR> --body "..."`.
 
 ## Step 11: code-review (review → checkpoint → fix)
 

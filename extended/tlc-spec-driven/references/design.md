@@ -1,9 +1,6 @@
 # Design — ai-coding-tooling Augmentation
 
-Read this **after** the parent `references/design.md`. It augments the parent's `## Components`
-and `## Tech Decisions` sections with a sequential ID for cross-referencing. It does not replace
-the parent — every component still needs Purpose/Location/Interfaces/Dependencies/Reuses, and
-every tech decision still needs Choice/Rationale.
+Patches the parent's `## Components` and `## Tech Decisions` with a `DC-N` id.
 
 ## Design Component & Decision IDs: `DC-N`
 

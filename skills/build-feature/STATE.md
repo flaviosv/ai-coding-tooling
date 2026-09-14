@@ -134,3 +134,10 @@
 - **Trade-off**: The skill now depends on the hook being installed (`fs-harness hooks`, checked by `fs-harness doctor`); when the hook cannot resolve an account it only tells the session to ask the user, and a `progress.md` written before this change still carries a `gh_login` line that nothing reads.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-019
+- **Decision**: The Step 10 PR description sources **What was done** from `tasks.md`'s completed checklist plus the branch's commits (`git log --oneline origin/<target_branch>..HEAD`), and the PR section's sourcing list drops `commits.md` in favor of the branch's own commits.
+- **Reason**: By the user's decision, the `tlc-spec-driven` overlay no longer maintains a per-feature `commits.md`; what was pushed can be read from the repository itself, which also removes the log's uncommitted-file and drift problems.
+- **Trade-off**: The commit list covers every commit on the branch ahead of the target, including Step 8's spec/design/tasks commit, not only commits traced to a task.
+- **Date**: 2026-09-14
+- **Status**: active

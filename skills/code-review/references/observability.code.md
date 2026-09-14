@@ -26,7 +26,7 @@ Checklist for logging quality during code review.
 
 ## Security & privacy
 
-- [ ] No PII, passwords, tokens, card numbers, or session identifiers in logs at INFO or above — DEBUG-level PII is acceptable for development diagnostics
+- [ ] No passwords, tokens, session IDs, or card numbers in logs at any level; PII is redacted or hashed even at DEBUG
 - [ ] No full request/response bodies at INFO or above when they may carry sensitive data — log metadata (status codes, sizes, IDs) instead
 
 ## Performance
