@@ -6,10 +6,10 @@ description: >
   tlc-spec-driven SKILL.md. The parent governs spec-driven planning. This extension
   (1) declares how reference-level overlays load, (2) names feature artifacts `<TASK-ID>-<slug>`,
   (3) numbers phase artifacts (`US-N`, `DC-N`, `T`), and (4) augments coding-principles with
-  software-design/observability/stack-style references and security routing, and passes them
+  software-design/observability/stack-style references, and passes them
   to batch workers.
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
   parent_skill: tlc-spec-driven
   source: "ai-coding-tooling (extended/)"
 ---

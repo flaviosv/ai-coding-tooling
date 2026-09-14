@@ -85,3 +85,10 @@
 - **Trade-off**: Story-to-task links live in free text rather than a structured field.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-013
+- **Decision**: Removed `references/coding-principles.md`'s `## Security` section, which routed security-sensitive tasks to the `security-best-practices` skill, and its mentions in the preamble and the `SKILL.md` description.
+- **Reason**: User decision: the overlay names no other skill, since a skill loads on its own from its description when its work comes up.
+- **Trade-off**: Security review during Execute now depends on that skill triggering by description; the overlay no longer forces it before the gate check and commit.
+- **Date**: 2026-09-14
+- **Status**: active

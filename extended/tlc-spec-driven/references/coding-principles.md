@@ -1,6 +1,6 @@
 # Coding Principles — ai-coding-tooling Augmentation
 
-Patches the parent's `## During Implementation` and `## After Each Change` with comment, design, observability, stack-style, and security rules.
+Patches the parent's `## During Implementation` and `## After Each Change` with comment, design, observability, and stack-style rules.
 
 ## Code Comments (always apply)
 
@@ -33,10 +33,3 @@ stack (e.g. `php`, `django`, `go-gin`) — matches. Skip non-matching files.
 
 If no stack-specific file matches, or the stack cannot be determined, do not load any
 tech-specific references — proceed with the always-load set above.
-
-## Security → `security-best-practices` skill
-
-For any task touching authentication/authorization, input handling, secrets, serialization/
-deserialization, file or network I/O, or other external trust boundaries: invoke the
-`security-best-practices` skill and apply its stack-matched references **before** the gate check
-and commit. Security is not covered by the style references above — it is delegated to that skill.
