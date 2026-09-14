@@ -24,10 +24,9 @@
 //   node render-c4-fixed.mjs --input diagram.mmd --output diagram.png [--screen-width 3000] [--scale 3]
 //
 // When to reach for this instead of the parent skill's scripts/render.mjs:
-// the diagram is C4 (C4Container/C4Context/C4Component/C4Dynamic/C4Deployment),
-// it sets `UpdateLayoutConfig($c4ShapeInRow=N)` or `$c4BoundaryInRow=N` with
-// N > 1, and mmdc's output shows shapes stacked one-per-row instead of the
-// configured grid.
+// a C4 diagram (C4Context/C4Container/C4Component/C4Dynamic/C4Deployment)
+// whose `UpdateLayoutConfig` sets `$c4ShapeInRow` or `$c4BoundaryInRow`
+// above 1. Output is PNG only.
 
 import { readFileSync } from "fs";
 import { homedir } from "os";
