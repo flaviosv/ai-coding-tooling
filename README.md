@@ -143,6 +143,7 @@ Installed globally by `fs-harness setup`. Treated as read-only — do not edit t
 
 | Skill | Description |
 |---|---|
+| **codenavi** | Pathfinder for navigating unknown codebases: investigates before acting, implements surgically, and keeps a `.notebook/` knowledge base that grows across sessions. |
 | **docs-writer** | Writing, reviewing, and editing documentation and `.md` files. |
 | **harness-eval** | Audits a repo's agent harness (AGENTS.md, rules, skills, skill references) for broken paths/commands, redundant instructions, and usefulness, using a dual-judge protocol with planted traps. |
 | **jira-assistant** | Manages Jira issues via the Atlassian MCP — search, create, update, transition status, and handle sprint tasks. |

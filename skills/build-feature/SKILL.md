@@ -3,7 +3,7 @@ name: build-feature
 description: Delivers a brand-new feature end-to-end with no planning already done — creates a worktree and branch from base_branch, opens a draft PR against target_branch, optionally grills the user on scope, runs tlc-spec-driven's full Specify→Design→Tasks→Execute cycle, updates the PR description, runs code-review (review, optional checkpoint, and fixes), syncs architecture docs, then confirms the PR actually merges before marking it ready — through isolated subagents for every step but grilling and code-review, the two that run live in this conversation (code-review keeps its own work in its own workers) — and, when the project uses Claude Design, closes by handing design-sync back to the user as a required follow-up it cannot run itself, resumable from any interrupted step via progress.md, self-routing a later re-invocation straight to fresh PR comments once delivered. Requires base_branch, target_branch (defaults to base_branch), task_id, and description; human_review (default yes) gates spec/design/code-review pauses. Use when the user says "build feature", "start a new feature end to end", "deliver this feature autonomously", or invokes /build-feature. Do NOT use to fix PR comments outside this flow (use code-review's fix-existing-findings entry directly).
 metadata:
   author: Flavio Studart
-  version: "2.0.1"
+  version: "2.1.0"
 ---
 
 # Build Feature
@@ -128,12 +128,15 @@ Then run the context sync-in described under Architecture context in the worktre
 
 ## Step 3: Architecture-Evaluate Gate (Background, decision only)
 
-Dispatch a Haiku subagent to **decide only**: read `architecture-evaluate`'s own "Keeping Docs Up to Date" trigger table plus the recent commit history on `base_branch`, and return `full`, `incremental`, or `none` with its reasoning. It does not invoke `architecture-evaluate`, write any file, or touch the worktree.
+Dispatch a Haiku subagent to **decide only**: read `architecture-evaluate`'s own "Keeping Docs Up to Date" trigger table plus the recent commit history on `base_branch`, and return `full`, `incremental`, or `none` with its reasoning and the table row that triggered it. It does not invoke `architecture-evaluate`, write any file, or touch the worktree.
 
 Judge the trigger against what the worktree actually holds after Step 1's context sync — by this point an absent `docs/codebase/` means the project genuinely has none, not that a fresh worktree failed to carry them.
 
 - `none` or `incremental` → record it. Step 12's Incremental run is the sync; nothing else happens here.
-- `full` → the project has no context docs at all. That is a brownfield mapping job, not a gate: report it and continue the feature without it. Never run Full mode inside a feature delivery — it takes tens of minutes, writes into the live worktree while later steps are working in it, and Step 12 re-scans the same files afterward regardless.
+- `full` because of the table's "No `docs/codebase/` baseline exists" row → the project has no context docs at all. That is a brownfield mapping job, not a gate: report it and continue the feature without it.
+- `full` from any other row → report "the gate recommends a Full refresh (<trigger>)" and continue the feature without it.
+
+Never run Full mode inside a feature delivery — it takes tens of minutes, writes into the live worktree while later steps are working in it, and Step 12 re-scans the same files afterward regardless.
 
 Dispatch it and move straight to Step 4 without waiting — it only touches `docs/codebase/`, never git the feature branch is on, and nothing until Step 6a depends on its result. Collect that result (per the Agent Wait Protocol) once Step 4 concludes, before Step 6a starts.
 
@@ -197,7 +200,7 @@ Never take the posting or delivery loop over yourself.
 
 ## Step 12: architecture-evaluate (Incremental, Sonnet)
 
-Spawn a Sonnet subagent to run `architecture-evaluate` in Incremental mode against everything pushed to this branch this run — this is a code-changes-want-docs-reflected sync, not a brownfield re-scan. **Incremental always, never Full**, regardless of how much this run changed or how stale the docs look; Step 3's gate is the only place in this skill that may conclude Full is warranted, and its answer there is to report it, not to run it. If Incremental genuinely looks insufficient, say so in the final report and let the user trigger `architecture-evaluate` Full separately.
+Spawn a Sonnet subagent to run `architecture-evaluate` in Incremental mode against everything pushed to this branch this run, passing `origin/<target_branch>` explicitly as its base ref so it syncs the commit range `origin/<target_branch>...HEAD` rather than the (by now clean) working tree — this is a code-changes-want-docs-reflected sync, not a brownfield re-scan. **Incremental always, never Full**, regardless of how much this run changed or how stale the docs look; Step 3's gate is the only place in this skill that may conclude Full is warranted, and its answer there is to report it, not to run it. If Incremental genuinely looks insufficient, say so in the final report and let the user trigger `architecture-evaluate` Full separately.
 
 Classify touched `docs/codebase/` files as new vs. existing (`git status --porcelain -- docs/codebase/`): if every touched file is new, leave them uncommitted for manual review; otherwise commit as one Conventional Commits commit and push. If the path is untracked or ignored, nothing here can commit it — run the context sync-out described under Architecture context in the worktree instead, immediately, so the update survives this worktree.
 

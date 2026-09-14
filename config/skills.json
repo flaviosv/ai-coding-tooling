@@ -16,6 +16,11 @@
       "scope": "built"
     },
     {
+      "name": "codenavi",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club"
+    },
+    {
       "name": "disk-evaluate",
       "source": "local",
       "scope": "built"

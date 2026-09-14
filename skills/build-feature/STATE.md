@@ -141,3 +141,17 @@
 - **Trade-off**: The commit list covers every commit on the branch ahead of the target, including Step 8's spec/design/tasks commit, not only commits traced to a task.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-020
+- **Decision**: Step 12 passes `origin/<target_branch>` explicitly to `architecture-evaluate` as its base ref, so Incremental mode syncs the commit range `origin/<target_branch>...HEAD`.
+- **Reason**: harness-evaluation Skills #1: by Step 12 everything is committed and pushed, so an Incremental run that reads only the working tree finds nothing and stops; `architecture-evaluate` now accepts a caller-supplied base ref (its AD-008).
+- **Trade-off**: The sync covers every commit on the branch ahead of the target, including Step 8's spec commit, not only this run's code changes.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-021
+- **Decision**: Step 3's `full` result means "the project has no context docs at all" only when the gate cites the "No `docs/codebase/` baseline exists" row; any other `full` trigger is reported as "the gate recommends a Full refresh (<trigger>)". The gate subagent returns the triggering row with its answer. Full mode still never runs inside a delivery.
+- **Reason**: harness-evaluation Skills #17: the trigger table also maps new dependencies, CI changes, and onboarding to Full, so a branch touching those made this step misreport a missing baseline.
+- **Trade-off**: None identified.
+- **Date**: 2026-09-14
+- **Status**: active

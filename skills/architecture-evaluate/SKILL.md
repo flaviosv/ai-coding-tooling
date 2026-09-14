@@ -2,20 +2,21 @@
 name: architecture-evaluate
 description: >
   Creates, updates, and incrementally syncs the project context documentation that agents load at
-  session start. Three modes. Full mode deep-scans the codebase (brownfield mapping) and writes nine
+  session start. Three modes. Full mode deep-scans the codebase (brownfield mapping) and writes the
   context files to docs/codebase/ — PROJECT.md (overview, vision, goals), STACK.md, STRUCTURE.md,
-  ARCHITECTURE.md, CONVENTIONS.md, INTEGRATIONS.md, TESTING.md, CONCERNS.md, and PIPELINE.md.
-  Incremental mode inspects the git workspace and syncs only what changed — inline API docs in source
-  files, root context files (README.md, CLAUDE.md, AGENTS.md), and the context files in docs/codebase/ —
-  and detects new packages. Package mode generates a scoped CLAUDE.md for an individual package/module.
+  ARCHITECTURE.md, CONVENTIONS.md, INTEGRATIONS.md, TESTING.md, and CONCERNS.md, plus PIPELINE.md when
+  the project has CI/CD or pipeline config. Incremental mode inspects the git workspace or a
+  caller-supplied commit range and syncs only what changed — inline API docs in source files, root
+  context files, and the context files in docs/codebase/ — and detects new packages. Package mode
+  generates a scoped CLAUDE.md for an individual package/module.
   Use when the user says "evaluate architecture", "map codebase", "analyze existing code", "document
   current architecture", "update architecture docs", "refresh project context", "onboard project",
   "create project docs", "update project docs", "update docs", "document my changes", "sync
   documentation", "document recent changes", "evaluate package", or "package architecture".
 metadata:
-  version: "4.2.0"
+  version: "5.0.0"
   triggers:
-    # Full mode — bootstrap / full refresh of the nine context files
+    # Full mode — bootstrap / full refresh of the context files
     - "evaluate architecture"
     - "map codebase"
     - "analyze existing code"
@@ -44,23 +45,40 @@ metadata:
 
 # Architecture Evaluate
 
-Keep a project's agent-facing context documentation accurate through three modes, selected by the user's intent below. Full mode performs **brownfield codebase mapping** — a systematic scan that produces nine context files in `docs/codebase/`.
+Keep a project's agent-facing context documentation accurate through three modes, selected by the user's intent below. Full mode performs **brownfield codebase mapping** — a systematic scan that produces the context files in `docs/codebase/`.
 
-## The Nine Context Files
+## The Context Files
 
-Full mode generates these in `docs/codebase/`. Every file is conditional and budget-bound; include only sections with codebase evidence. Total combined budget ≈ 30,000 tokens — load on-demand per task, not all at once.
+The canonical set lives in `docs/codebase/`. Full mode always writes eight of these files and writes `PIPELINE.md` only when the project has CI/CD or pipeline config (see Mode A — Full). Every section within a file is conditional and budget-bound; include only sections with codebase evidence. Total combined budget ≈ 30,000 tokens — load on-demand per task, not all at once.
 
 | File | Purpose | Budget |
 |------|---------|--------|
+| `ARCHITECTURE.md` | Layers, data flow, patterns, system-level concerns (state, auth, observability) | ~4,000 |
+| `CONCERNS.md` | Tech debt, bugs, security, performance, fragile areas, risks — evidence-backed | ~5,000 |
+| `CONVENTIONS.md` | Naming, code style, error handling, documentation pattern | ~3,000 |
+| `INTEGRATIONS.md` | External services, APIs, webhooks, background jobs | ~5,000 |
+| `PIPELINE.md` | CI/CD, deployment, environment promotion, release management | ~3,000 |
 | `PROJECT.md` | Overview, vision, goals, target users, scope — what the project is and who it's for | ~1,500 |
 | `STACK.md` | Tech stack, key libraries, commands, environment config, local dev setup | ~2,000 |
 | `STRUCTURE.md` | Directory layout, module organization, monorepo package map | ~2,000 |
-| `ARCHITECTURE.md` | Layers, data flow, patterns, system-level concerns (state, auth, observability) | ~4,000 |
-| `CONVENTIONS.md` | Naming, code style, error handling, documentation pattern | ~3,000 |
-| `INTEGRATIONS.md` | External services, APIs, webhooks, background jobs | ~5,000 |
 | `TESTING.md` | Test frameworks, coverage matrix, parallelism, gate-check commands | ~4,000 |
-| `CONCERNS.md` | Tech debt, bugs, security, performance, fragile areas, risks — evidence-backed | ~5,000 |
-| `PIPELINE.md` | CI/CD, deployment, environment promotion, release management | ~3,000 |
+
+## Context Scan
+
+`scripts/context_scan.py` (Python 3, standard library only) gathers the facts that mode selection, the baseline check, misplaced-file detection, and change detection depend on. Run it from the project root and act on its JSON rather than re-deriving these facts with ad hoc `ls`, `find`, or `git diff` commands:
+
+```bash
+python3 <skill-dir>/scripts/context_scan.py                # changes from the working tree
+python3 <skill-dir>/scripts/context_scan.py --base <ref>   # changes from <ref>...HEAD
+```
+
+| Key | Meaning |
+|-----|---------|
+| `baseline` | Which canonical files exist in `docs/codebase/` (`present` / `missing`), whether any baseline exists (`exists`), and every other `.md` in the folder, nested ones included (`extra`) |
+| `changes` | Changed (`changed`) and newly added (`added`) files — from the working tree including untracked files, or from `<base>...HEAD` with `--base`; `error` when git could not answer |
+| `deliverables` | Full mode's expected files: the eight always-required ones, plus `docs/codebase/PIPELINE.md` when `pipeline.exists` is true |
+| `misplaced` | Canonical file names found anywhere outside `docs/codebase/`, including `docs/` subfolders and `.specs/codebase/` (`.git`, `node_modules`, vendor and build directories excluded) |
+| `pipeline` | Whether CI/CD or pipeline config exists (`exists`) and the config paths found (`paths`) |
 
 ## Mode Selection
 
@@ -69,43 +87,41 @@ Pick the mode from the user's intent:
 | Mode | Choose when the request is… | Examples |
 |------|------------------------------|----------|
 | **Full** (default) | Bootstrap or full refresh of project context — map the codebase, no specific change in mind | "evaluate architecture", "map codebase", "analyze existing code", "onboard project", "create project docs", "refresh project context", "update project docs" |
-| **Incremental** | Sync docs to recent code changes in the workspace | "update docs", "document my changes", "sync documentation", "document recent changes", "generate docs", "keep docs in sync", "api documentation" |
+| **Incremental** | Sync docs to recent code changes in the workspace or a caller-supplied commit range | "update docs", "document my changes", "sync documentation", "document recent changes", "generate docs", "keep docs in sync", "api documentation" |
 | **Package** | Document one specific package/module, or invoked internally by Incremental mode for a confirmed new package | "evaluate package", "package architecture", "evaluate architecture for `packages/auth`" |
 
-When ambiguous, default to **Full** mode. **If Incremental mode runs but the context files are absent from `docs/codebase/`:** if they exist elsewhere in the project, suggest migrating them to `docs/codebase/` first (see Detecting & Migrating Misplaced Context Files); if they exist nowhere, suggest running Full mode first — there is no baseline to sync against.
+When the intent is ambiguous, run the context scan and decide from its facts: pick **Incremental** if `changes.changed` is non-empty and `baseline.exists` is true; otherwise pick **Full**. If it is still unclear, ask the user which mode to run.
 
 ## Shared Guardrails
 
 These apply to every mode.
 
-- **This skill runs on Sonnet, in every mode**, per the `subagent-dispatch` skill — doc generation is a long, read-heavy, write-heavy job whose tier shouldn't depend on which model the user happened to be in when they asked for it. See Model Pinning below for how that's enforced when the session is on something else.
+- **This skill runs on Sonnet, in every mode** — doc generation is a long, read-heavy, write-heavy job whose tier shouldn't depend on which model the user happened to be in when they asked for it. See Model Pinning below for how that's enforced when the session is on something else.
 - **Default document location is `docs/codebase/`.** Every context file this skill writes lives in `docs/codebase/`. Create the directory if it does not exist. (Package mode is the exception: it writes a `CLAUDE.md` inside the target package directory, not under `docs/codebase/`.)
 - **Reading existing context for input** — when this skill loads a context file to inform its own work (not to write it), read it from `docs/codebase/<file>`.
 - **The folder is the source of truth.** Treat the actual contents of `docs/codebase/` as authoritative. Sweep the real directory and preserve every `.md` present, including files added by hand beyond the canonical nine. Never regenerate or sync only the fixed list while ignoring what's on disk.
-- **Out of scope — owned by `tlc-spec-driven`.** Never create or modify `.specs/STATE.md` (the decisions/handoff memory) or feature specs under `.specs/features/`. This skill documents the codebase; those are other skills' artifacts. `CONCERNS.md` is the living risk snapshot.
+- **Out of scope.** Never create or modify `.specs/STATE.md` (the decisions/handoff memory) or feature specs under `.specs/features/`. This skill documents the codebase; those are another workflow's artifacts. `CONCERNS.md` is the living risk snapshot.
 - **No code samples** unless strictly necessary. Use prose, tables, bullets. Code blocks only for directory trees, ASCII or Mermaid diagrams, and exact runnable commands. No method signatures, SQL queries, or implementation examples.
 - **CI/CD belongs in `PIPELINE.md` only.** Other files may reference it but must not contain pipeline specifics.
-- **Diagrams** — author data flows, layer relationships, component interactions, and pipeline stages as **Mermaid** diagrams when the `mermaid-studio` skill is available — delegate creation through it. Fall back to simple box-and-arrow **ASCII** diagrams when `mermaid-studio` is not available. Converting existing ASCII diagrams to Mermaid is always permitted when `mermaid-studio` is present.
+- **Diagrams** — author data flows, layer relationships, component interactions, and pipeline stages as **Mermaid** diagrams. Converting existing ASCII diagrams to Mermaid is always permitted.
 - **Factual only** — document what exists in the codebase. Never invent or speculate. Omit any section with no evidence.
 - **Never write secret values** into any document. Reference secrets by name and describe only how they are managed (provider, injection mechanism) — everywhere, not just `PIPELINE.md`.
 - **Conditional sections** — every section in every output file is conditional. Only include it if the codebase provides evidence for it; omit empty sections entirely.
-- **Respect per-file budgets** (see The Nine Context Files). Summarize aggressively — table rows over paragraphs, bullets over tables, omission over filler. Cap any single file at 500 lines.
-- **Delegate every `.md` write to the `docs-writer` skill** — regardless of mode. This keeps formatting, style, and link integrity consistent. No exceptions.
+- **Respect per-file budgets** (see The Context Files). Summarize aggressively — table rows over paragraphs, bullets over tables, omission over filler. Cap any single file at 500 lines.
 
 ### Model Pinning
 
 Check the session's own model before doing any scanning work.
 
-- **Already on Sonnet** (including when a caller such as `build-feature`'s Step 13 already dispatched this skill into a Sonnet subagent) → run inline, exactly as documented below. Never dispatch a subagent from within an already-Sonnet run; that nests one isolation layer inside another for nothing.
-- **On any other model** → run the pre-flight below, then dispatch one `Agent` (`agentType: general-purpose`, `model: 'sonnet'` — the literal alias, never a versioned model ID) to carry out the selected mode in its own context, and report back what it wrote. The work is entirely file-out — nine context files on disk — so nothing is lost by moving it into a subagent. Follow the `subagent-dispatch` skill's contract: completion condition is every context file the selected mode writes existing on disk (nine for Full, the changed subset for Incremental, the one scoped `CLAUDE.md` for Package); return shape is the file paths written plus a short summary, never their content inlined back; delegation depth is none.
+- **Already on Sonnet** (including when a caller already dispatched this skill into a Sonnet subagent) → run inline, exactly as documented below. Never dispatch a subagent from within an already-Sonnet run; that nests one isolation layer inside another for nothing.
+- **On any other model** → run the pre-flight below, then dispatch one `Agent` (`subagent_type: general-purpose`, `model: sonnet`) to carry out the selected mode in its own context, passing the mode, the caller-supplied base ref if any, and the pre-flight answers.
+  - **Completion condition:** Full — every path in the context scan's `deliverables` exists on disk, with `PIPELINE.md` reported as skipped when it is not a deliverable; Incremental — every impacted file from Steps 4–6 is updated; Package — the package's `CLAUDE.md` exists.
+  - **Return shape:** `status` (`ok` / `blocked` / `question`), the file paths written (never their content), and `questions` — one item per user decision the subagent could not make.
 
-**Pre-flight, required before any such dispatch.** A dispatched subagent cannot wait for the user, and two points in this skill do exactly that: the misplaced-context-file migration confirmation (see Detecting & Migrating Misplaced Context Files) and the session-start-context pointer confirmation (see Additional Context Files & Registration). Resolve both *here*, in the conversation with the user, before dispatching:
+**Pre-flight, required before any such dispatch.** A dispatched subagent cannot wait for the user, so split this skill's user decisions by when they can be made:
 
-1. Run the misplaced-file scan yourself and, if it finds anything, ask the migration question and get an answer.
-2. Pass the resolved answers to the subagent as explicit instructions ("migrate these paths" / "leave them in place, read them as source material").
-3. If the subagent hits any *other* question it can't answer, it returns it unanswered rather than guessing — surface it to the user here and re-dispatch with the answer.
-
-Never dispatch with either question unresolved. A subagent that silently picks a migration is worse than a slower run.
+1. **Before dispatch — the misplaced-file migration.** Run the context scan yourself. If `misplaced` is non-empty, ask the migration question (see Detecting & Migrating Misplaced Context Files) and pass the answer as an explicit instruction ("migrate these paths" / "leave them in place, read them as source material"). Never dispatch with it unresolved — a subagent that silently picks a migration is worse than a slower run.
+2. **After the subagent returns — decisions that depend on what it found.** Pointer registration (see Additional Context Files & Registration), new-package scaffolding (Incremental Steps 2–3), and refreshes of extra docs beyond the canonical set come back as `questions` items; the subagent skips those actions instead of guessing. Ask the user, then apply the approved actions or re-dispatch with the answers.
 
 ### Holistic Updates (Full and Incremental modes)
 
@@ -113,35 +129,26 @@ Whenever this skill updates the `docs/codebase/` context set — in Full or Incr
 
 ### Additional Context Files & Registration
 
-The `docs/codebase/` set is **open-ended**. Beyond the canonical nine, a project may keep other context documents there. Treat **every** `.md` in `docs/codebase/` as part of the context set for Holistic Updates — discover them, don't assume only the canonical nine exist. For each `.md` not in the canonical set (e.g. a hand-added `SECURITY.md`, or nested docs under `docs/codebase/adr/`), do not silently overwrite or drop it. Investigate it against the current code; if impacted or stale, flag it and offer to refresh it rather than rewriting silently.
+The `docs/codebase/` set is **open-ended**. Beyond the canonical nine, a project may keep other context documents there. Treat **every** `.md` in `docs/codebase/` as part of the context set for Holistic Updates — the context scan lists the non-canonical ones as `baseline.extra`; don't assume only the canonical nine exist. For each such file (e.g. a hand-added `SECURITY.md`, or nested docs under `docs/codebase/adr/`), do not silently overwrite or drop it. Investigate it against the current code; if impacted or stale, flag it and offer to refresh it rather than rewriting silently.
 
-When a context file in `docs/codebase/` is **not** referenced by the project's session-start context list — the context-files table in the global `CLAUDE.global.md` or the project root `CLAUDE.md`/`AGENTS.md` — **suggest adding a pointer to it** as a new table row (file path + a one-line "when to read it"), matching the existing rows, so agents auto-load it. Confirm before editing the root file.
+When a context file in `docs/codebase/` is **not** referenced by the project's session-start context list, **suggest adding a pointer to it** as a new row (file path + a one-line "when to read it"), matching the existing rows, so agents auto-load it. Identify which of the project's root context files holds that list from what actually exists. Confirm before editing it.
 
 ### Detecting & Migrating Misplaced Context Files
 
-The canonical location is `docs/codebase/`. The nine context files are `ARCHITECTURE.md`, `CONCERNS.md`, `CONVENTIONS.md`, `INTEGRATIONS.md`, `PIPELINE.md`, `PROJECT.md`, `STACK.md`, `STRUCTURE.md`, `TESTING.md` (plus any extra context docs the project keeps in the set).
+The canonical location is `docs/codebase/`. The nine canonical file names are `ARCHITECTURE.md`, `CONCERNS.md`, `CONVENTIONS.md`, `INTEGRATIONS.md`, `PIPELINE.md`, `PROJECT.md`, `STACK.md`, `STRUCTURE.md`, `TESTING.md`.
 
-**Before generating or syncing (Full and Incremental modes), scan the whole project for any of these files living outside `docs/codebase/`:**
+**Before generating or syncing (Full Step 1, Incremental Step 0), check the context scan's `misplaced` list** — every canonical file name found outside `docs/codebase/`.
 
-```bash
-ls docs/codebase/*.md 2>/dev/null      # canonical (correct) location
-# anywhere else in the project
-find . -type f \( -name ARCHITECTURE.md -o -name CONCERNS.md -o -name CONVENTIONS.md \
-  -o -name INTEGRATIONS.md -o -name PIPELINE.md -o -name PROJECT.md -o -name STACK.md \
-  -o -name STRUCTURE.md -o -name TESTING.md \) \
-  -not -path './docs/codebase/*' -not -path './node_modules/*' -not -path './.git/*' 2>/dev/null
-```
-
-**If any context file is found outside `docs/codebase/`:** do **not** move or overwrite it silently. Present what was found and where (e.g. "`STACK.md`, `ARCHITECTURE.md` in `docs/`; `PROJECT.md` in `docs/architecture/`"), **suggest migrating the set to `docs/codebase/`**, and **wait for the user's confirmation** before relocating anything.
+**If it is non-empty:** do **not** move or overwrite anything silently. Present what was found and where (e.g. "`STACK.md`, `ARCHITECTURE.md` in `docs/`; `PROJECT.md` in `docs/architecture/`"), **suggest migrating the set to `docs/codebase/`**, and **wait for the user's confirmation** before relocating anything.
 
 **Found files are valuable input — use them, don't discard them.** Any misplaced file that is (or becomes) a context doc is read as **source material for the corresponding `docs/codebase/` file being created or refreshed**: carry its still-accurate content forward and merge it per the Update Merge Strategy rather than regenerating from scratch. This applies whether the user opts to physically move the file or to leave it in place and regenerate — either way its content seeds the new doc.
 
 Once the user confirms a migration:
 - Move/merge the files into `docs/codebase/` (never blind-overwrite a same-named file already there — merge per the Update Merge Strategy).
-- Update references to the old paths (consumers, root `CLAUDE.md`/`AGENTS.md`, `CLAUDE.global.md`).
+- Find the files that reference the old paths (consumers, root context files) and update those references.
 - Treat it as a structural change → suggest a Full-mode re-evaluation (see Re-evaluate on Structural Change).
 
-Use judgment on the project-wide `find`: a same-named file inside a package or an unrelated docs tree may not be a context doc — flag ambiguous hits and ask rather than assuming.
+Use judgment on the scan's hits: a same-named file inside a package or an unrelated docs tree may not be a context doc — flag ambiguous hits and ask rather than assuming.
 
 ### Re-evaluate on Structural Change
 
@@ -151,7 +158,7 @@ If the documentation file structure changes — files migrated into `docs/codeba
 
 When updating existing files:
 
-- Read the existing file first. Work section by section.
+- Work section by section.
 - Update sections where codebase evidence changed (new dependencies, renamed dirs, etc.).
 - Preserve sections the user manually added that are not part of the standard template — those represent intentional customization.
 - Never delete a section just because you cannot find evidence for it in this pass — the user may have added it from knowledge outside the codebase.
@@ -166,11 +173,14 @@ When updating existing files:
 ### `docs/` Traversal Guardrail (Incremental mode)
 
 - Context files live in `docs/codebase/` — check files directly there (e.g. `docs/codebase/ARCHITECTURE.md`).
-- **Never descend into other `docs/` subfolders** (`docs/tasks/`, `docs/specs/`, `docs/tech-debts/`, `docs/decisions/`, etc.). Those are owned by other skills or workflows and are out of scope.
+- **Never browse other `docs/` subfolders** (`docs/tasks/`, `docs/specs/`, `docs/tech-debts/`, `docs/decisions/`, etc.). Those belong to other workflows and are out of scope.
+- The context scan is the one sanctioned way to locate canonical context files anywhere else in the project, `docs/` subfolders included. Read only the paths it returns in `misplaced`.
 
 # Mode A — Full
 
-Creates or updates the nine project context files in `docs/codebase/` from a full codebase scan (brownfield mapping).
+Creates or updates the project context files in `docs/codebase/` from a full codebase scan (brownfield mapping).
+
+**Deliverables:** the eight always-required files — `ARCHITECTURE.md`, `CONCERNS.md`, `CONVENTIONS.md`, `INTEGRATIONS.md`, `PROJECT.md`, `STACK.md`, `STRUCTURE.md`, `TESTING.md` — plus `PIPELINE.md` only when CI/CD or pipeline config exists; otherwise `PIPELINE.md` is reported as skipped. The context scan's `deliverables` list is this set for the project at hand; Full mode is complete when every path in it exists on disk.
 
 **High-level approach:** explore the directory structure systematically → identify the stack from dependency manifests → extract patterns from representative code samples → document observed conventions and architecture → catalog external integrations → surface evidence-backed concerns.
 
@@ -180,25 +190,15 @@ Creates or updates the nine project context files in `docs/codebase/` from a ful
 
 Default: `docs/codebase/` at project root. Create it if it doesn't exist. If the user specifies a different location, use that instead.
 
-Run the misplaced-file scan (see **Detecting & Migrating Misplaced Context Files**) — check the canonical location and the wider project:
+Run the context scan (see Context Scan) without `--base`.
 
-```bash
-ls docs/codebase/*.md 2>/dev/null      # canonical (correct) location
-find . -type f \( -name ARCHITECTURE.md -o -name CONCERNS.md -o -name CONVENTIONS.md \
-  -o -name INTEGRATIONS.md -o -name PIPELINE.md -o -name PROJECT.md -o -name STACK.md \
-  -o -name STRUCTURE.md -o -name TESTING.md \) \
-  -not -path './docs/codebase/*' -not -path './node_modules/*' -not -path './.git/*' 2>/dev/null
-```
+- **`baseline.present` is non-empty** → inform the user those files will be **updated**, not replaced — existing content is preserved and refined per the Update Merge Strategy.
+- **`misplaced` is non-empty** → **suggest migrating them to `docs/codebase/` and wait for confirmation before proceeding** — never relocate silently. Whether moved or left in place, **read those files as source material** to seed the corresponding new docs (see Detecting & Migrating Misplaced Context Files).
+- **`deliverables`** is the list Steps 3–11 must produce; `pipeline.exists` decides whether Step 11 writes `PIPELINE.md`.
 
-If any exist in `docs/codebase/`, inform the user they will be **updated**, not replaced — existing content is preserved and refined per the Update Merge Strategy. If any are found **outside** `docs/codebase/`, **suggest migrating them to `docs/codebase/` and wait for confirmation before proceeding** — never relocate silently. Whether moved or left in place, **read those files as source material** to seed the corresponding new docs (see Detecting & Migrating Misplaced Context Files).
+## Step 2: Explore the Codebase
 
-## Step 2: Bootstrap Analysis (Claude Code only)
-
-Run `/init` for an initial codebase perspective. Use output **only as supporting context** — **do not save the generated CLAUDE.md**. If `/init` writes one, discard or revert it. Skip if `/init` is unavailable (other AI tools, non-interactive mode) — the manual exploration in Step 3 is sufficient.
-
-## Step 3: Explore the Codebase
-
-Use Glob and Read to gather context, adapting searches to the actual language, framework, and tooling. If the `codenavi` skill is available, prefer it for discovery and navigation.
+Use Glob and Read to gather context, adapting searches to the actual language, framework, and tooling.
 
 | Area | What to look for |
 |------|-----------------|
@@ -226,9 +226,9 @@ Use Glob and Read to gather context, adapting searches to the actual language, f
 | **Data pipelines** | `dags/`, `pipelines/`, Airflow, dbt, Spark configs |
 | **Monitoring** | Datadog monitors, PagerDuty integrations, alerting configs tied to deploys |
 
-Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writer`.** Each step gives the file's purpose, what to extract, a template skeleton, and instructions. Include only sections with evidence.
+Write the deliverables in Steps 3–11. Each step gives the file's purpose, what to extract, a template skeleton, and instructions. Include only sections with evidence.
 
-## Step 4: Write PROJECT.md
+## Step 3: Write PROJECT.md
 
 **Purpose:** What the project is and who it's for — the human-facing context a codebase scan alone cannot infer.
 **Extract from:** `README.md`, root docs, package metadata `description`, any product/vision docs.
@@ -264,7 +264,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 - Where vision, goals, or scope are not documented anywhere, include what is evident and explicitly flag the gap for the user to fill — do not fabricate.
 - This is the only file whose content is not fully derivable from code; keep it factual and short.
 
-## Step 5: Write STACK.md
+## Step 4: Write STACK.md
 
 **Purpose:** Technology stack, key libraries, and how to run the project.
 **Extract from:** dependency manifests, build configuration, runtime configuration, `.env.example`.
@@ -335,7 +335,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 - **Commands:** test/gate commands here also feed TESTING.md's Gate Check Commands.
 - **Environment Configuration:** variable **names only, never values.**
 
-## Step 6: Write STRUCTURE.md
+## Step 5: Write STRUCTURE.md
 
 **Purpose:** Directory layout and where things live.
 **Extract from:** the actual directory tree, monorepo config.
@@ -383,7 +383,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 - Map capabilities to physical locations so agents know where to add new code.
 - Include the Monorepo Package Map only if the project is actually a monorepo.
 
-## Step 7: Write ARCHITECTURE.md
+## Step 6: Write ARCHITECTURE.md
 
 **Purpose:** How the system is structured — "how is it organized", not "how does X work internally". No method signatures, SQL, or code snippets. Testing strategy lives in TESTING.md, background jobs in INTEGRATIONS.md, CI/CD in PIPELINE.md.
 **Extract from:** directory organization, repeated patterns across files, entry points, config.
@@ -397,7 +397,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 
 ## High-Level Structure
 
-[Mermaid diagram (via mermaid-studio) or ASCII diagram if mermaid-studio is unavailable]
+[Mermaid diagram]
 
 ## Layers
 
@@ -411,7 +411,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 
 ## Request / Data Flow
 
-[Mermaid diagram (via mermaid-studio) or numbered list / ASCII diagram if mermaid-studio is unavailable]
+[Mermaid diagram or numbered list]
 
 ## Communication Patterns
 
@@ -465,7 +465,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 - Identify patterns from actual code, not assumptions; reference concrete examples by path.
 - Keep **infrastructure** dependencies (DBs, caches, queues) here; route **business integrations** (ERPs, payment, CRM, third-party APIs) to INTEGRATIONS.md.
 
-## Step 8: Write CONVENTIONS.md
+## Step 7: Write CONVENTIONS.md
 
 **Purpose:** Code style and naming, extracted from representative files. Document observed conventions, not ideal ones.
 **Extract from:** 5–10 representative source files; identify consistent patterns and note variations.
@@ -510,7 +510,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 - Extract patterns from real samples; include concrete examples from the codebase.
 - Note exceptions or variations where found — don't present an idealized version.
 
-## Step 9: Write INTEGRATIONS.md
+## Step 8: Write INTEGRATIONS.md
 
 **Purpose:** External service integrations.
 **Extract from:** API client dirs, SDK configs, webhook handlers, service wrappers, job definitions, config.
@@ -561,7 +561,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 - Document authentication approaches and data-flow direction for each integration.
 - **Background Jobs** is the single source of truth for jobs/crons — ARCHITECTURE.md may reference but not duplicate it.
 
-## Step 10: Write TESTING.md
+## Step 9: Write TESTING.md
 
 **Purpose:** Testing infrastructure and patterns.
 **Extract from:** test dependencies, 5–10 test files, `package.json`/`Makefile`/CI config for run commands.
@@ -623,7 +623,7 @@ Write the nine files in Steps 4–12. **Delegate every `.md` write to `docs-writ
 - **Parallelism Assessment:** NOT-safe signals — shared DB connection (same URL from config), table-level cleanup in `beforeEach`/`afterAll` (`.del()`, `DELETE FROM`, `TRUNCATE`), shared mock state reset on globals. Safe signals — per-test DB creation (Testcontainers, dynamic schema, in-memory SQLite), data namespacing by unique test ID, no shared mutable state between files, all deps mocked (`jest.fn()`, `vi.fn()`).
 - **Gate Check Commands:** extract from real project commands — do not invent commands.
 
-## Step 11: Write CONCERNS.md
+## Step 10: Write CONCERNS.md
 
 **Purpose:** Actionable, evidence-backed warnings — "what to watch out for when making changes." Living documentation, not a complaint list.
 **Extract from:** TODO/FIXME/HACK comments, duplicated logic, missing error handling, dependency manifests, performance and security patterns observed during the scan.
@@ -682,11 +682,10 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 - **Always include file paths** — concerns without locations are not actionable.
 - Be specific with measurements ("500ms p95", not "slow"); include reproduction steps for bugs; suggest fix approaches, not just problems. Prioritize by risk/impact.
 - **Exclude:** opinions without evidence, complaints without solutions, future feature ideas, normal TODOs, decisions that work fine, minor style issues.
-- **Tone:** professional, solution-oriented, factual.
 
-## Step 12: Write PIPELINE.md
+## Step 11: Write PIPELINE.md
 
-**Purpose:** How code gets from commit to production. **If no CI/CD or pipeline configuration exists, skip this file entirely** and note its absence in the Step 13 report.
+**Purpose:** How code gets from commit to production. **If the context scan's `pipeline.exists` is false, skip this file entirely** — it is not a deliverable — and report it as skipped in Step 12.
 **Extract from:** CI config, deploy/infra dirs, release config, data-pipeline dirs.
 
 ```markdown
@@ -704,7 +703,7 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 
 ## Pipeline Stages
 
-[Mermaid flowchart (via mermaid-studio) or ASCII flow diagram if mermaid-studio is unavailable]
+[Mermaid flowchart]
 
 | Stage | Purpose | Trigger |
 | ----- | ------- | ------- |
@@ -718,7 +717,7 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 
 ## Environment Matrix
 
-[Mermaid diagram (via mermaid-studio) or ASCII promotion flow if mermaid-studio is unavailable — e.g. dev → staging → prod]
+[Mermaid promotion diagram — e.g. dev → staging → prod]
 
 | Environment | Purpose | Promotion Method |
 | ----------- | ------- | ---------------- |
@@ -771,7 +770,7 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 
 - Focus on "how code gets from commit to production" — not internal application implementation.
 
-## Step 13: Report
+## Step 12: Report
 
 ```
 ✓ docs/codebase/PROJECT.md       — [created | updated]
@@ -784,35 +783,33 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 ✓ docs/codebase/CONCERNS.md      — [created | updated]
 ✓ docs/codebase/PIPELINE.md      — [created | updated | skipped (no pipeline config found)]
 
-Agents load these files at session start when the project's session-start
-context list references them.
+Agents load these files on demand, as each task needs them.
 ```
 
 If any file could not be written, report the error and reason.
 
 # Mode B — Incremental
 
-Brings documentation in sync with the **current state of the workspace** — inline API docs, root context files, and the context files in `docs/codebase/`. Updates only what changed in the git diff, and detects new packages to scaffold (handing off to Package mode internally). Use for "update docs", "document my changes", "sync documentation", and similar.
+Brings documentation in sync with the **current state of the workspace**, or with a caller-supplied commit range — inline API docs, root context files, and the context files in `docs/codebase/`. Updates only what changed, and detects new packages to scaffold (handing off to Package mode internally). Use for "update docs", "document my changes", "sync documentation", and similar.
+
+**Scope input:** if the caller supplies a base ref (the commit range `<base>...HEAD`, e.g. everything pushed to a branch since it left its target), pass it to the context scan as `--base <ref>`; otherwise the scan reads the working tree. Committed-and-pushed work shows up only through a base ref.
 
 Per the **Holistic Updates** guardrail, an "update" is never scoped to one file: after determining what changed, open **every** file in `docs/codebase/` and update each whose purpose is touched by the change.
 
+## Step 0: Baseline & Misplaced-File Check
+
+Run the context scan (see Context Scan), with `--base <ref>` when one was supplied.
+
+1. **`baseline.exists` is false** → stop; there is no baseline to sync against. If `misplaced` lists context files, suggest migrating them to `docs/codebase/` first (see Detecting & Migrating Misplaced Context Files); otherwise suggest running Full mode first.
+2. **`misplaced` is non-empty** → handle it per Detecting & Migrating Misplaced Context Files before continuing.
+
 ## Step 1: Identify Modified Files
 
-```bash
-git diff --name-only HEAD                 # staged + unstaged vs HEAD
-git ls-files --others --exclude-standard   # untracked new files
-```
-
-Group into **source files** (may carry inline API docs) and **documentation files**. If nothing changed, inform the user and stop.
+Use the scan's `changes.changed`. If `changes.error` is set, report it and stop. Group the files into **source files** (may carry inline API docs) and **documentation files**. If nothing changed, inform the user and stop.
 
 ## Step 2: Detect New Packages
 
-```bash
-git diff HEAD --name-only --diff-filter=A
-git ls-files --others --exclude-standard
-```
-
-Extract unique parent directories from new files; a directory is "newly created" if ALL its files are new. What counts as a "package" depends on the stack — use project context:
+Take the scan's `changes.added` and extract their unique parent directories; a directory is "newly created" if ALL its files are new. What counts as a "package" depends on the stack — use project context:
 
 1. **Read project context first** — load `docs/codebase/STACK.md` and `ARCHITECTURE.md` to learn the module conventions.
 2. **Compare against sibling packages** at the same level.
@@ -823,7 +820,7 @@ If no new packages are detected (or the user confirms none), skip to Step 4.
 
 ## Step 3: Scaffold New Package Context
 
-**Always confirm before scaffolding** — detection has false positives. For each candidate, ask "I detected what looks like a new package: `<path>`. Generate a `CLAUDE.md` for it?" If yes, **switch to Package mode internally** for that path (writes the package's `CLAUDE.md` via `docs-writer`). If multiple candidates, present them all at once. A confirmed new package is a **structural change** → afterward, suggest a Full-mode re-evaluation.
+**Always confirm before scaffolding** — detection has false positives. For each candidate, ask "I detected what looks like a new package: `<path>`. Generate a `CLAUDE.md` for it?" If yes, **switch to Package mode internally** for that path (writes the package's `CLAUDE.md`). If multiple candidates, present them all at once. A confirmed new package is a **structural change** → afterward, suggest a Full-mode re-evaluation.
 
 ## Step 4: Update Inline API Documentation
 
@@ -831,25 +828,19 @@ For each modified source file: read it, check public/exported symbols (functions
 
 ## Step 5: Review Root Context Files
 
-Check if present and impacted: `README.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, other root `.md`. Read each, decide whether any section is affected, mark impacted/not. If `CLAUDE.md`/`GEMINI.md` are symlinks to `AGENTS.md`, update only `AGENTS.md`.
+Identify which root context files the project actually has (its README and any agent instruction files at the root). Read each, decide whether any section is affected by the change, and mark it impacted or not. If one root file is a symlink to another, update only the target.
 
 ## Step 6: Holistic Sweep of `docs/codebase/`
 
-```bash
-find docs/codebase/ -name '*.md' -type f 2>/dev/null
-```
+Read **every** file in `docs/codebase/` — the scan's `baseline.present` plus `baseline.extra`, which covers nested and manually-added docs — compare each against the change, and mark impacted ones. Files beyond the canonical nine are handled per **Additional Context Files** above: investigate them as input, flag/offer before refreshing rather than silently rewriting. Do **not** modify `.specs/STATE.md`, `.specs/features/*`, or other out-of-scope areas (see Shared Guardrails and the `docs/` Traversal Guardrail).
 
-Read **every** file — the whole tree, not just the top level, so nested and manually-added docs are covered — compare against the change, mark impacted ones. Files beyond the canonical nine are handled per **Additional Context Files** above: investigate them as input, flag/offer before refreshing rather than silently rewriting. Do **not** modify `.specs/STATE.md`, `.specs/features/*`, or other out-of-scope areas (see the `docs/` Traversal Guardrail).
+## Step 7: Apply Updates
 
-## Step 7: Apply Updates via docs-writer
-
-For each impacted `.md` (plus any new-package `CLAUDE.md` from Step 3):
-
-> **Delegate to `docs-writer`** with the target file path, a concise description of what changed in the codebase, and the specific sections to add/remove/revise.
+For each impacted `.md` (plus any new-package `CLAUDE.md` from Step 3), add, remove, or revise the specific sections the change affects, per the Update Merge Strategy.
 
 ## Step 8: Verify and Report
 
-Confirm: modified source files have updated inline docs; new packages have a `CLAUDE.md`; root files reviewed; every `docs/codebase/` file opened and impacted ones updated; all `.md` writes delegated to docs-writer. Then report:
+Confirm: modified source files have updated inline docs; new packages have a `CLAUDE.md`; root context files reviewed; every `docs/codebase/` file opened and impacted ones updated. Then report:
 
 ```
 Documentation sync complete:
@@ -860,7 +851,7 @@ New packages scaffolded (Package mode):
 Inline docs updated:
   ✓ <file> — <what was updated>
 
-Context docs updated (via docs-writer):
+Context docs updated:
   ✓ docs/codebase/<file> — <what was updated>
 
 No changes needed:
@@ -873,12 +864,13 @@ Flag anything that could not be updated and explain what information is needed.
 
 User: "update docs"
 
-1. `git diff --name-only HEAD` → `src/api/auth.go`, `src/api/auth_test.go`; `git diff HEAD --name-only --diff-filter=A` → new files under `app/code/Vendor/Shipping/`
-2. New directory has `registration.php` + `etc/module.xml` → matches this stack's (Magento 2, from `STACK.md`) module pattern → ask to scaffold → user confirms → Package mode internally writes `Shipping/CLAUDE.md` via docs-writer (a decline here would just skip scaffolding and continue at Step 4)
+0. Context scan → `baseline.exists` true, `misplaced` empty
+1. `changes.changed` → `src/api/auth.go`, `src/api/auth_test.go`, plus new files under `app/code/Vendor/Shipping/` (also listed in `changes.added`)
+2. New directory has `registration.php` + `etc/module.xml` → matches this stack's (Magento 2, from `STACK.md`) module pattern → ask to scaffold → user confirms → Package mode internally writes `Shipping/CLAUDE.md` (a decline here would just skip scaffolding and continue at Step 4)
 3. Update inline docs in `src/api/auth.go` (new exported `ValidateToken` undocumented)
-4. Root files: `README.md`, `CLAUDE.md` — not impacted
+4. Root context files: `README.md` — not impacted
 5. Holistic sweep: `ARCHITECTURE.md` and `STRUCTURE.md` impacted (new package); `TESTING.md` impacted (new test file); others opened and evaluated, not impacted
-6. Delegate impacted files to docs-writer
+6. Apply the section updates to the three impacted files
 7. New package = structural change → suggest Full-mode re-evaluation
 8. Report: 1 source file, 1 new package `CLAUDE.md`, 3 context docs updated
 
@@ -891,7 +883,7 @@ Triggered with a specific package/module path (e.g. "evaluate architecture for `
 - Analyze ONLY files within the given package directory.
 - Go deeper than project-level: internal structure, public API surface, dependency graph, integration boundaries.
 - Do NOT create the `docs/codebase/` set — package mode produces only the package's `CLAUDE.md`.
-- Same quality bar (factual, scannable, no code snippets unless strictly necessary, Mermaid diagrams preferred via `mermaid-studio` when available, ASCII diagrams as fallback).
+- Same quality bar (factual, scannable, no code snippets unless strictly necessary, Mermaid diagrams).
 
 ## PM Step 1: Validate Package Path
 
@@ -907,14 +899,12 @@ How the package relates to the parent project; which other packages import it (`
 
 ## PM Step 4: Write `<package-path>/CLAUDE.md`
 
-> **Delegate to `docs-writer`** for the write.
-
 Up to 500 lines; the depth the package warrants (a small utility may need 50; a complex domain module 400+). Same Update Merge Strategy. Sections (conditional):
 
 | Section | Content |
 |---------|---------|
 | **Purpose** | What this package does and why it exists within the larger project |
-| **Architecture** | Internal structure, layers, patterns. Mermaid diagram (via mermaid-studio) or ASCII if unavailable, when multi-layered |
+| **Architecture** | Internal structure, layers, patterns. Mermaid diagram when multi-layered |
 | **Key Components** | Component / Role table |
 | **Public API** | Exported interfaces, functions, types, contracts — the package boundary |
 | **Internal Design** | Non-obvious implementation details: algorithms, state, concurrency, caching |
@@ -942,6 +932,7 @@ If the package could not be fully evaluated, report what was generated and flag 
 
 Re-run this skill when:
 
+- No `docs/codebase/` baseline exists → **Full mode**
 - Major new dependencies are added → **Full mode**
 - The project structure significantly changes → **Full mode** (re-evaluate the set as a whole)
 - A new architectural layer or pattern is introduced → **Full mode**
