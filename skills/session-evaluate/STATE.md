@@ -84,7 +84,7 @@
 - **Reason**: 2026-09-12 harness-eval run (`docs/harness-evaluation.md` rows #26-#28) flagged all three: row #26 as a near-duplicate of the frontmatter `description`, rows #27/#28 as restating root `CLAUDE.md` sections that are already loaded globally every session, making a pointer sufficient.
 - **Trade-off**: none — the two pointer lines rely on root `CLAUDE.md` being loaded every session (already true, per this repo's own setup), so no coverage is lost; the tagline is pure rewording with no behavior change. Row #29 (re-running Track B/C with `--include-doc` for this skill's two `references/` files) is a separate, still-`Pending` item and was left untouched.
 - **Date**: 2026-09-12
-- **Status**: active
+- **Status**: superseded by AD-013 (items 2-3 only; item 1, the tagline, remains active)
 
 ### AD-009
 - **Decision**: Replace the two `templates/subagent-models.md` / `templates/subagent-dispatch-contract.md` links (the "not part of `build-feature`'s pipeline" note and the return-shape justification) with references to the new `subagent-dispatch` skill.
@@ -111,5 +111,12 @@
 - **Decision**: Catalog F1 (`references/findings-catalog.md`) and its Non-findings counterpart no longer cite the Test Execution Scope convention: Implies drops the "pattern the convention exists to prevent" clause, Fix shape now says to tighten a skill's existing scoped-test instruction rather than invoke the convention, and the cross-cutting non-finding says widening is warranted there on its own terms. F1's full-test-suite detection itself is unchanged.
 - **Reason**: By the user's decision, the global Test Execution Scope rule set (the `CLAUDE.global.md` subsection and `references/test-execution-scope.md`) was removed from the harness, so citing it would steer classification toward a rule that no longer exists.
 - **Trade-off**: F1 findings can no longer lean on a global scoping baseline; any test-scoping rule a fix proposes must live in the affected skill.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-013
+- **Decision**: Step 6's source check and Step 10's commit line state their behavior inline (only a `local` skill is edited in place, other sources are routed per the attribution table; commit directly to `main` and push to `origin` without waiting to be asked) instead of linking root `CLAUDE.md` Skill Modification Rules and Change Request Workflow.
+- **Reason**: User decision (harness-evaluation #18 scope): a skill must not link or defer its instructions to a file outside its directory. The `../../CLAUDE.md` links also resolve against the installed location, not the repo.
+- **Trade-off**: The two behaviors are duplicated from root `CLAUDE.md` and can drift if that workflow changes.
 - **Date**: 2026-09-14
 - **Status**: active

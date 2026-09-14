@@ -784,8 +784,8 @@ Each entry needs **what** the problem is, **where** it lives (file paths in back
 ✓ docs/codebase/CONCERNS.md      — [created | updated]
 ✓ docs/codebase/PIPELINE.md      — [created | updated | skipped (no pipeline config found)]
 
-These files are automatically loaded by agents at the start of each session
-via the directive in CLAUDE.global.md.
+Agents load these files at session start when the project's session-start
+context list references them.
 ```
 
 If any file could not be written, report the error and reason.

@@ -22,3 +22,10 @@
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-004
+- **Decision**: Full mode's Step 13 report says agents load the context files when the project's session-start context list references them, instead of claiming they load "via the directive in CLAUDE.global.md".
+- **Reason**: User decision (harness-evaluation #18 scope): naming a file outside the skill as the source of a behavior is a dependency. `CLAUDE.global.md` is this harness repo's file name and does not exist in the projects this skill maps, so the claim was false there; registration is already handled by Additional Context Files & Registration.
+- **Trade-off**: The report no longer names where the loading directive lives.
+- **Date**: 2026-09-14
+- **Status**: active

@@ -28,7 +28,7 @@
 - **Reason**: `code-review` absorbed `tests-code-review` and `complete-review` and now names checklists by scope suffix; an overlay still mandating `<tech>-<skill-name>.md` would steer new skills and `tech-reference-add` toward files that skill never loads.
 - **Trade-off**: Two naming patterns exist repo-wide instead of one; the default still applies to every skill that doesn't declare otherwise.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-012
 
 ### AD-005
 - **Decision**: Phase 2.4's "Linking a shared template" guidance is replaced by "Keep links inside the skill": a skill links only files in its own directory, since the repo's `templates/` folder no longer exists.
@@ -42,7 +42,7 @@
 - **Reason**: A new `doctor` check (`docs/cli.md` "Notes & gotchas") resolves a skill/overlay file's relative `.md` links against its *installed* `~/.claude/` symlink location, not just its repo location — this file installs as `~/.claude/skills/skill-architect/SKILL.extended.md`, one directory shallower than `extended/skill-architect/` is in the repo, so `../../docs/cli.md` resolved to a nonexistent `~/.claude/docs/cli.md` once installed. Confirmed with a direct `readlink`/`ls` check, not just the new check's own report. A live command reference can't drift the same way a linked doc path can.
 - **Trade-off**: None identified — `fs-harness help` is already documented as the CLI's own source of truth for syntax (`docs/cli.md`), so this loses no information the doc link had.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-011
 
 ### AD-007
 - **Decision**: Deleted Extension 4 (Subagent Dispatch — Wait Protocol) entirely — its Phase 2 dispatch check, Phase 3 wait-instruction wording, and Phase 4 wait check — and the overlay no longer mentions `subagent-dispatch`, wait protocols, or dispatch at all.
@@ -56,7 +56,7 @@
 - **Reason**: User decision overriding harness-evaluation #18's fix, which pointed at a `CLAUDE.global.md` section that has since been deleted; the rule stays, but no longer depends on (or explains) repo-level folders.
 - **Trade-off**: None beyond AD-005's: content two skills share is duplicated rather than linked.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-013
 
 ### AD-009
 - **Decision**: Guardrail and step-structure fixes: injected steps use `Na` labels anchored to real base steps (1.2a Guardrail Discovery, 2.2a Design the Guardrail Set, 2.2b Reference File Design) instead of reusing base numbers; the `## Guardrails` template is placed before the workflow steps; risk categories point at the guardrail menu's When to propose column instead of fixed per-tier lists (the Low-risk "Scope only is sufficient" line went with them); Phase 4 guardrail testing is one simulation line.
@@ -69,5 +69,26 @@
 - **Decision**: Token-efficiency trims: dropped the reference-file `// Good` / `// Bad` example-marker rule with no replacement, replaced the Phase 4 token-efficiency checklist with a one-line re-check against the Phase 3.2 output rules, and removed the repeated "Inject the following steps…" intro lines.
 - **Reason**: User decision on harness-evaluation #27 (the marker was C-family-only and its trim clause ambiguous); #19 (checklist duplicated the rules ~20 lines above); #28 (every sub-heading already names its injection point).
 - **Trade-off**: Generated reference files no longer get a uniform Good/Bad labeling convention.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-011
+- **Decision**: Deleted Extension 2 (The `extended/` Pattern for Global Skills) entirely: its Important Boundaries inject, manual steps, when-to-use bullets, frontmatter template, and 200-line / `reference/` overflow rule. The one tooling fact worth keeping (an overlay's `references/` installs as `references.extended/` when the parent already ships `references/`) moved to `docs/cli.md` Gotchas.
+- **Reason**: User decision closing harness-evaluation #12-#16, #25, #26: skill-architect is for creating skills only (the base's Important Boundaries says so), and maintaining vendor skills is already covered by root `CLAUDE.md` Skill Modification Rules, `fs-harness override`/`unoverride`, and `CLAUDE.global.md` Skill Extensions. The extension contradicted the base redirect, pointed at a nonexistent `AGENTS.md`, a `reference/` folder fs-harness never links, and duplicated the `override` scaffold.
+- **Trade-off**: A skill-architect run gets no in-skill guidance on overlaying a vendor skill; that relies on the repo-level docs and CLI. The overlay's frontmatter description and intro blockquote still mention the `extended/` pattern until #31 is decided, and the remaining extension keeps its "Extension 3" number.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-012
+- **Decision**: 2.2b's naming examples now use real files: `<technology>` slugs `php`, `go-gin`, `ruby-on-rails`; `<skill-name>` is the reference folder the skill scans (e.g. `coding-guidelines` in `extended/tlc-spec-driven/references/coding-guidelines/php-coding-guidelines.md`); the scoped-variant exception is `<name>.<scope>.md` (e.g. `code-review`: `php.code.md`, `review-checklist.tests.md`); baseline files are exempt from the `<technology>` prefix (e.g. `review-checklist.code.md`).
+- **Reason**: Harness-evaluation #17: the old examples (`tests`/`coding-guidelines` as skill names, `fastapi.*` files, `review-checklist.md`, `testing-patterns.md`) did not exist and taught the wrong layout; `code-review` applies the scope suffix to topic checklists too, not only to technologies.
+- **Trade-off**: None beyond AD-004's two coexisting naming patterns.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-013
+- **Decision**: "Keep links inside the skill" now says a skill never links, loads, or defers its instructions to anything outside its directory, that naming an outside file as the source of a rule counts (state the rule inline instead), and that files a skill works on as its subject (a target project's `CLAUDE.md`, `docs/codebase/`, a PR) are not dependencies.
+- **Reason**: User decision on harness-evaluation #18's scope: pointer-style mentions ("follow the global CLAUDE.md rule") are dependencies just like links; the subject clause keeps the rule from being over-applied to skills whose job is reading or writing those files. Existing violations in `tlc-spec-driven`, `session-evaluate`, and `architecture-evaluate` were fixed in the same change.
+- **Trade-off**: A rule a skill shares with a repo-level file is duplicated and can drift.
 - **Date**: 2026-09-14
 - **Status**: active

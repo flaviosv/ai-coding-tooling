@@ -48,6 +48,9 @@ mutating command with `--dry-run` first.
 - Don't hand-edit `config/skills.json` — `add`/`delete`/`override`/`unoverride` keep it in sync automatically.
 - A vendor skill is read-only — customize it via `override` instead of editing it directly, and
   re-run `override <skill>` after `update <skill>` to re-attach the overlay to the new version.
+- An overlay's `references/` folder installs as `references.extended/` when the parent skill already
+  ships `references/` (otherwise as `references/`). The overlay's `SKILL.md` must state its own
+  rule for loading it (see `extended/tlc-spec-driven/SKILL.md`).
 - Editing hooks: change `config/hooks.json` first, then run `fs-harness hooks` — never hand-edit
   the installed settings file's `hooks` directly.
 - Editing the status line: change `scripts/bin/misc/statusline.sh` first, then
