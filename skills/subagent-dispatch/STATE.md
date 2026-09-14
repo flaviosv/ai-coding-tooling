@@ -29,3 +29,10 @@
 - **Trade-off**: None identified — no tier changed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-005
+- **Decision**: Model-matrix rows follow `build-feature`'s removal of its Step 3 architecture-evaluate gate: the Step 3 `haiku` row is removed, the remaining rows renumber (6a→5a, 6b→5b, 7→6, 9→8, 12→11, 14→13), the Step 11 row drops "(Incremental)" since `architecture-evaluate` now picks its own mode, and the orchestrator note and pipeline invariant cite grilling as Step 3 and `code-review` as Step 10.
+- **Reason**: `build-feature` deleted the gate and renumbered its steps (`skills/build-feature/STATE.md` AD-023); every surviving dispatch site kept its tier.
+- **Trade-off**: None identified — no tier changed.
+- **Date**: 2026-09-14
+- **Status**: active

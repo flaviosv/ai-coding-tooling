@@ -28,7 +28,7 @@
 - **Reason**: A measured run hit 11 failed tool calls (3.6% of its main-thread calls), two of which were repeating, knowable shapes: a worktree-isolation refusal on an `&&`-chained `cd .../applyr && ...` command, and a relative `cd frontend && ...` that doesn't exist from the worktree root. The user's own global `CLAUDE.md` already documents this guard; this skill's own worktree section didn't restate it at the point the agent needed it.
 - **Trade-off**: None identified.
 - **Date**: 2026-09-02
-- **Status**: active
+- **Status**: superseded by AD-026
 
 ### AD-004
 - **Decision**: Write and update `progress.md` with a dedicated script (`scripts/progress.mjs`) instead of hand-editing it with `Edit`/`Write` calls.
@@ -42,7 +42,7 @@
 - **Reason**: The same session-evaluate run that produced AD-001–AD-004 also found the `complete-review` dispatch (Step 11) ran 156 turns / 23.0M tokens with no completion condition, and four phase subagents couldn't be attributed to their own phase afterward because their prompts didn't self-identify — both symptoms of no shared dispatch shape. The user explicitly rejected a hard tool-call ceiling for this (they monitor long runs themselves), so the template's scale-estimate field is informational only, never a stop condition — this skill inherits that same non-blocking framing at every site.
 - **Trade-off**: None identified — this only adds structure to prompts that were already being written by hand.
 - **Date**: 2026-09-02
-- **Status**: active
+- **Status**: superseded by AD-024
 
 ### AD-006
 - **Decision**: Correct Step 12's own description of `fix-review`'s internal mechanics (and the two other references to it in the dispatch-contract intro and Steps-11/12 cost note) — remove "fix-cluster subagents, cherry-picking, conflict resolution, post-merge repair" and describe what `fix-review` actually does since its own AD-001 (2026-09-02): process every finding inline, in its own context, no further nested dispatch. Also had Step 12 state explicitly, in the dispatch prompt itself, that the subagent is already the isolated context and must not call `Agent`.
@@ -77,14 +77,14 @@
 - **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files.
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-024
 
 ### AD-011
 - **Decision**: Replace the two `templates/agent-wait-protocol.md` links (the shared wait instruction covering Steps 3, 6a, 6b, 7, 9, 11, 12, 13, 15, and the `UNKNOWN`-mergeability clock-wait note) with references to the `subagent-dispatch` skill.
 - **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the content already consolidated there (AD-010).
 - **Trade-off**: Same dependency as AD-010 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-024
 
 ### AD-012
 - **Decision**: Step 11 invokes `code-review` with `post: true` instead of `complete-review` with no `human_review` parameter; the checkpoint name in `human_review_exclude` and `progress.md`'s `Checkpoints` key become `code-review` / `code_review` (written by `scripts/progress.mjs`).
@@ -140,18 +140,53 @@
 - **Reason**: By the user's decision, the `tlc-spec-driven` overlay no longer maintains a per-feature `commits.md`; what was pushed can be read from the repository itself, which also removes the log's uncommitted-file and drift problems.
 - **Trade-off**: The commit list covers every commit on the branch ahead of the target, including Step 8's spec/design/tasks commit, not only commits traced to a task.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-026
 
 ### AD-020
 - **Decision**: Step 12 passes `origin/<target_branch>` explicitly to `architecture-evaluate` as its base ref, so Incremental mode syncs the commit range `origin/<target_branch>...HEAD`.
 - **Reason**: harness-evaluation Skills #1: by Step 12 everything is committed and pushed, so an Incremental run that reads only the working tree finds nothing and stops; `architecture-evaluate` now accepts a caller-supplied base ref (its AD-008).
 - **Trade-off**: The sync covers every commit on the branch ahead of the target, including Step 8's spec commit, not only this run's code changes.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-026
 
 ### AD-021
 - **Decision**: Step 3's `full` result means "the project has no context docs at all" only when the gate cites the "No `docs/codebase/` baseline exists" row; any other `full` trigger is reported as "the gate recommends a Full refresh (<trigger>)". The gate subagent returns the triggering row with its answer. Full mode still never runs inside a delivery.
 - **Reason**: harness-evaluation Skills #17: the trigger table also maps new dependencies, CI changes, and onboarding to Full, so a branch touching those made this step misreport a missing baseline.
 - **Trade-off**: None identified.
+- **Date**: 2026-09-14
+- **Status**: superseded by AD-023
+
+### AD-022
+- **Decision**: Step 0 finds a run by `task_id` alone: it enumerates `git worktree list` and globs `.specs/features/<task_id>-*/progress.md` inside each worktree, and the same enumeration drives the cleanup sweep. `task_id` is always required; `base_branch` and `description` are required only on a fresh run, since a re-invocation reads them from `progress.md`. The sweep removes the worktree of every tracked spec whose PR is `MERGED` or `CLOSED` with `git worktree remove` from the main checkout — `--force` only when the worktree's sole uncommitted file is that run's own `progress.md`, otherwise it leaves the worktree and reports it. `ExitWorktree` is only for leaving a worktree entered in this same session. Examples keep one slug per task.
+- **Reason**: harness-evaluation Skills #20, #24, #31. `progress.md` lives only in the worktree and is never committed, so the old repo-relative lookup never found a run from the main checkout; the slug was a free 2–4 word choice that could not be re-derived; and `ExitWorktree` does nothing to worktrees from an earlier session. A plain `git worktree remove` was confirmed to refuse a worktree holding an untracked `progress.md`, so the removal needs `--force` in exactly that case.
+- **Trade-off**: A worktree with any other uncommitted change is never swept automatically; the user removes it. Removing it also deletes that run's `progress.md`, so a later invocation for the same `task_id` starts fresh (and stops at the branch collision if the branch still exists).
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-023
+- **Decision**: Delete Step 3 (the Haiku architecture-evaluate gate) and renumber: old 4→3, 5→4, 6a→5a, 6b→5b, 7→6, 8→7, 9→8, 10→9, 11→10, 12→11, 13→12, 14→13, across `SKILL.md`, `references/progress-schema.md`, `WORKFLOW.md`, `subagent-dispatch`'s model matrix, and two `code-review` example rows. Step 11 runs `architecture-evaluate` in a Sonnet subagent and lets that skill pick its own mode; the "Incremental always, never Full" rule is gone.
+- **Reason**: harness-evaluation Skills #23. No gate result changed any later step, its `full` reading was wrong, and it contradicted itself about touching files. `architecture-evaluate` already selects its mode from the scan's facts and the caller's range, which the user agreed it should own.
+- **Trade-off**: A `progress.md` written under the old numbering needs a manual edit before resuming. `architecture-evaluate` may now choose Full inside a delivery (for example when no baseline exists), which the old rule forbade.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-024
+- **Decision**: Delete the `### Subagent models` and `### Waiting on dispatched subagents` sections and every `subagent-dispatch` mention. Each step heading keeps its model; the dispatch return shape, completion condition, and delegation depth are stated inline in State ownership without pointing at another skill. Flow facts only those sections held moved to their places: "never invoke via `Skill` a skill that does its heavy work inline" to Step 10, and "`human_review` never changes a step's model" to the `human_review` parameter. Step 10's Skill-not-subagent reason and Step 3's in-conversation grilling were already stated in their steps. History narratives (the PR-ready incident, the design-sync attempts, the `/compact` measurements) were cut to their rule sentences.
+- **Reason**: harness-evaluation Skills #32 and #42, and the user's rule that how to dispatch and wait belongs to the dispatch mechanism, not to this flow, and that the skill mentions only the skills it orchestrates. The narratives are already in this log.
+- **Trade-off**: The skill no longer tells the orchestrator to load a wait protocol before dispatching; waiting behavior depends on whatever dispatch guidance the session otherwise has.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-025
+- **Decision**: `progress.md` is created at Step 1 by `scripts/progress.mjs --init`, which now creates the feature folder, with an absolute `worktree_path`; Step 4 writes `grilling-session.md` into that folder. The spec and design checkpoints record `pending` before pausing and `approved` after, like the code-review checkpoint. Run State gains `design_sync` (`pending-user-action` | `skipped`) and `merge_check` (`clean` | `resolved` | `inconclusive` | `conflicting`); Step 12's log line takes the script's `done — pending-user-action …` form; Step 6 (Tasks) gains a `skipped (Small/Medium scope)` value; the feature folder is the directory holding `progress.md`, not a recorded field.
+- **Reason**: harness-evaluation Skills #22, #25, #26 (schema part), #37. Step 1 wrote to a file whose folder did not exist until Step 5 and `--init` did not create directories; only the code-review checkpoint was detectable on resume; and the schema lacked fields the steps wrote, with a Step 13 line the script could not produce.
+- **Trade-off**: None identified.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-026
+- **Decision**: Remaining harness-evaluation Skills fixes (#21, #26–#30, #34–#36, #38–#41): the Step 9 PR description and the Step 11 docs sync use the commits made on this worktree's branch (`git log --oneline origin/<base_branch>..HEAD` and base ref `origin/<base_branch>`, range `origin/<base_branch>...HEAD`), not `origin/<target_branch>`; when Tasks is skipped, the draft PR body and PR description take their checklist from `spec.md`'s acceptance criteria and the branch's commits; Step 11 commits every file the sync touched under the new-vs-modified rule and returns package candidates and questions as `status: question` items for the final report; Step 13 routes on `mergeable` alone, with `mergeStateStatus` informational; a `question` from a tlc-spec-driven phase is answered from `grilling-session.md`, else asked and re-dispatched (`human_review=no`: recorded as a `spec.md` assumption), and Specify/Design read `grilling-session.md` as their clarification source; Step 8's prompt pre-approves tlc-spec-driven's per-batch workers and the Verifier; Step 10 says `code-review` owns its review, submit, fix and recovery chain, keeping only stop-and-report and never-continue-after-a-review-or-posting-failure; `<desc-kebab>` names the branch; the Resuming section and Examples 2, 3, 5 are deleted; the frontmatter, intro, and allowed-tool list say heavy steps are delegated while the orchestrator runs git/gh plumbing, writes `grilling-session.md`, and copies `docs/codebase/`; the Worktree guardrail drops the command-shape sentences, keeping absolute paths and the `/design-login` rule.
+- **Reason**: The branch is cut from `base_branch`, so a range against `target_branch` is wrong whenever the two differ; the rest are the evaluation's findings as decided by the user.
+- **Trade-off**: The skill no longer states the worktree guard's command-shape limits, so a refused compound command is rediscovered at runtime.
 - **Date**: 2026-09-14
 - **Status**: active

@@ -9,12 +9,14 @@
 //   node progress.mjs <progress.md path> --init --task-id <id> --description <text> \
 //     --worktree-path <path> --branch <name> --base-branch <name> --target-branch <name> \
 //     --human-review <yes|no> [--human-review-exclude <csv>]
+//   --init creates the file's parent directory when it doesn't exist yet.
 //
 // Idempotent: re-running the same --step overwrites that step's own Step Log
 // line in place rather than appending a duplicate, so a resumed run that
 // re-executes a step already logged (a crash mid-step) does not double-log it.
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 function parseArgs(argv) {
   const args = { set: [] };
@@ -81,6 +83,7 @@ if (args.init) {
 ## Step Log
 
 `;
+  mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, content);
   console.log(`Initialized ${filePath}`);
   process.exit(0);

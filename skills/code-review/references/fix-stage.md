@@ -131,7 +131,7 @@ Opt-in only — when the user explicitly asks ("and update the Jira ticket"). Fo
 
 | Situation | Outcome |
 |---|---|
-| `build-feature` Step 11, PR #128, orchestrator already on the branch | Fix worker dispatched without isolation; 6 threads → 3 fixed, 2 rejected (one already handled on the branch, one unsound suggested approach), 1 answered and left open; gate passes on the four touched files' tests; 3 commits pushed; `deliver` exits 0 with `replied_confirmed: 6, resolved_confirmed: 5` |
+| `build-feature` Step 10, PR #128, orchestrator already on the branch | Fix worker dispatched without isolation; 6 threads → 3 fixed, 2 rejected (one already handled on the branch, one unsound suggested approach), 1 answered and left open; gate passes on the four touched files' tests; 3 commits pushed; `deliver` exits 0 with `replied_confirmed: 6, resolved_confirmed: 5` |
 | "fix the review comments on PR #201", checkout on `main` | Worker dispatched with `isolation: worktree`; root removes the worktree after the report; the user's `main` checkout never touched |
 | "fix Q1, H2" after a local review of uncommitted changes | Fix worker gets exactly Q1 and H2; edits left uncommitted; report lists the edited files |
 | Thread "@bob, is this timeout still right?" | Routed to a person — skipped with reason in `delivery.json`, noted in the report |

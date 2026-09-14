@@ -327,7 +327,7 @@ The root combines both stages: the review summary (URL or report, banner, counts
 | "review commits abc123 def456, only the implementation" | Multi-commit · false, `scope: code` | Tiers on combined totals; one local commit per fix, never pushed |
 | "review PR #42" | GitHub PR · false | Review posted, submitted as `COMMENT`, fix worker fixes, pushes, replies, resolves |
 | "review PR #42, just review" | GitHub PR · false | Review posted and submitted; no fix stage |
-| `build-feature` Step 11: PR #128, `human_review: true` | GitHub PR · true | Orchestrator is the root: review worker posts; pause; user edits on GitHub and replies; `submit`; fix worker runs in place on the branch |
+| `build-feature` Step 10: PR #128, `human_review: true` | GitHub PR · true | Orchestrator is the root: review worker posts; pause; user edits on GitHub and replies; `submit`; fix worker runs in place on the branch |
 | PR #310 already has this identity's pending review (6 comments) | GitHub PR · false | `post` appends new findings to it (`carried_over: 6`); the run pauses before `submit`, since submitting publishes those 6 too; on the user's reply, submit and fix |
 | "fix the review comments on PR #201" | Fix existing · — | Stage 3 only; no checkout has the PR branch, so the fix worker gets `isolation: worktree` |
 | `build-feature` resuming with `code_review: pending` | Continue after checkpoint · — | `submit`, then Stage 3; the review is not re-run |
