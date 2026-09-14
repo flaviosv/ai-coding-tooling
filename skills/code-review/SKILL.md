@@ -117,12 +117,12 @@ Entry and scope are fixed for the rest of the run.
 
 - Prefix `[code-review][review:PR-<N>]`, `[code-review][review:commits]`, or `[code-review][review:local]`.
 - The entry, PR number or commits, `scope`, and for a PR owner/repo.
-- "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents. When waiting on an agent, end your turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll."
+- "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents."
 - Completion condition: Step 8's report written and, on a PR, Step 9's `post` exited with its JSON captured.
 - Return shape, **local or commits:** the full Step 8 report plus the banner. **PR:** the PR URL; the banner verbatim (a Complex caveat with its actual wording); finding counts per scope and severity; the most important finding in one line; clusters collapsed; `post`'s exit code, `post_json_path`, and, from its JSON, `posted_confirmed`, `carried_over`, `reanchored`, `anchor_corrected`, `anchor_unverified`, `missing`, `duplicates_found`, any batch that had to be retried, and every `unpostable` entry by `path:line` (report `0` for each count when none — a missing count is indistinguishable from never having looked); dimensions not executed with reasons; `review_failed: true` with every reason when every agent failed. Never the diff, the full report, or comment bodies.
 - Delegation depth: dimension agents only.
 
-Track the review worker's name (and later the fix worker's) against the PR for the rest of the conversation: a later "a new commit landed on PR #N" routes through them per [batch-mode.md — New Commits or Comments](references/batch-mode.md#new-commits-or-comments-after-dispatch), which applies to single-PR runs too. Wait for it the same way — one line of plain text, no tool call, never polling — then go to Stage 2.
+Track the review worker's name (and later the fix worker's) against the PR for the rest of the conversation: a later "a new commit landed on PR #N" routes through them per [batch-mode.md — New Commits or Comments](references/batch-mode.md#new-commits-or-comments-after-dispatch), which applies to single-PR runs too. Then go to Stage 2.
 
 ### Step 2: Context Collection
 
@@ -260,14 +260,12 @@ Issues: <any blockers>
 
 **`line` is the line at the PR head (or working tree), never a diff offset, and `anchor` is that line's exact text, verbatim** — the contract and the measured cost of skipping it are in [GitHub Writes — Comment Shape](references/github-writes.md#comment-shape).
 
-### Step 7: Await + Fallback
-
-**Wait for every agent by ending the turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll.** Improvised waiting is this skill's largest avoidable cost.
+### Step 7: Fallback
 
 | Outcome | Action |
 |---|---|
 | Degraded | Mark `⚠️ degraded — <missing item>` |
-| Failed or timed out | Re-dispatch that one agent once. Fails again → mark its dimension(s) `⚠️ not executed — <reason>` |
+| Failed | Mark its dimension(s) `⚠️ not executed — <reason>` |
 | Returned normally | Parse the structured result |
 | Skipped by rule | As its dimension file says (row omitted, or `⚠️ skipped — <reason>`) |
 
