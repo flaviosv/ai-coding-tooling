@@ -106,3 +106,10 @@
 - **Trade-off**: None identified.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-016
+- **Decision**: 2.2b's reference-file naming examples no longer name other skills or cite repo paths: `php-coding-guidelines.md` in a `coding-guidelines` reference folder illustrates `<technology>-<skill-name>.md`, `php.code.md` / `review-checklist.tests.md` illustrate the scoped `<name>.<scope>.md` variant, and `review-checklist.code.md` illustrates the baseline exemption.
+- **Reason**: User rule that a skill never mentions other skills or depends on anything outside its own directory.
+- **Trade-off**: The examples no longer point at a real skill a reader could open to see the convention in use.
+- **Date**: 2026-09-14
+- **Status**: active

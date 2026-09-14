@@ -8,7 +8,7 @@ description: >
   design, naming, and output rules for reference files and SKILL.md; and (3) an overlay validator
   that replaces the parent's validate_skill.py and adds link-scope and guardrail-placement checks.
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
   parent_skill: skill-architect
   source: "ai-coding-tooling (extended/)"
 ---
@@ -113,9 +113,9 @@ For each guardrail, simulate its failure path (precondition fails, gate declined
 **2.2b — Reference File Design**
 
 If the skill will include technology-specific reference files:
-- Name them `<technology>-<skill-name>.md`, where `<technology>` is the kebab-case slug for the language or framework (e.g. `php`, `go-gin`, `ruby-on-rails`) and `<skill-name>` is the reference folder the skill scans (e.g. `coding-guidelines` in `extended/tlc-spec-driven/references/coding-guidelines/php-coding-guidelines.md`).
-- **Exception — scoped variants.** A skill whose references split by scope declares its own naming in its `SKILL.md` and uses `<name>.<scope>.md` instead (e.g. `code-review`: `php.code.md`, `review-checklist.tests.md`). Follow the skill's declaration over the default pattern.
-- Generic baseline files (non-tech-specific) are exempt from the `<technology>` prefix (e.g. `code-review`'s `review-checklist.code.md`).
+- Name them `<technology>-<skill-name>.md`, where `<technology>` is the kebab-case slug for the language or framework (e.g. `php`, `go-gin`, `ruby-on-rails`) and `<skill-name>` is the reference folder the skill scans (e.g. `php-coding-guidelines.md` in a `coding-guidelines` reference folder).
+- **Exception — scoped variants.** A skill whose references split by scope declares its own naming in its `SKILL.md` and uses `<name>.<scope>.md` instead (e.g. `php.code.md`, `review-checklist.tests.md`). Follow the skill's declaration over the default pattern.
+- Generic baseline files (non-tech-specific) are exempt from the `<technology>` prefix (e.g. `review-checklist.code.md`).
 
 **Keep links inside the skill** — a skill links only files within its own directory (its `references/`, `scripts/`, or `../SKILL.md` from a reference file). It never links, loads, or defers its instructions to anything outside that directory — not `CLAUDE.md`, `CLAUDE.global.md`, the repo's `references/`, `docs/`, or another skill's files — and naming an outside file as the source of a rule counts as depending on it: state the rule inline instead. Files the skill works *on* as its subject (reading or writing a target project's `CLAUDE.md` or `docs/codebase/`, reviewing a PR) are not dependencies.
 
