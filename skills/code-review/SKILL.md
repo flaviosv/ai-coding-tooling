@@ -28,7 +28,7 @@ metadata:
     - "fix the PRs I requested changes on"
     - "full review"
     - "resolve review comments"
-    - "review all PRs assigned to me"
+    - "review all PRs waiting on my review"
     - "review my changes"
     - "review my code"
     - "review my pending PRs"
@@ -97,7 +97,7 @@ While a Stage 2 checkpoint is open in this conversation, the user's next message
 | # | Trigger | Entry | Then |
 |---|---|---|---|
 | 1 | A sweep with fix wording ("fix the PRs I requested changes on", "batch-fix my change requests") | Batch fix sweep | [batch-mode.md](references/batch-mode.md), stop here |
-| 2 | A sweep with review wording ("review my pending PRs", "review pending PRs", "review all PRs assigned to me", "review the PRs I haven't reviewed yet") | Batch review sweep | [batch-mode.md](references/batch-mode.md), stop here |
+| 2 | A sweep with review wording ("review my pending PRs", "review pending PRs", "review all PRs waiting on my review", "review the PRs I haven't reviewed yet") | Batch review sweep | [batch-mode.md](references/batch-mode.md), stop here |
 | 3 | A caller or user continuing a review this skill already posted ("continue the code review on PR #N") | Continue after checkpoint | Stage 2's continue path, then Stage 3 |
 | 4 | Fix wording with no review wording ("fix the review comments on PR #N", "resolve review comments", "fix Q1, H2") | Fix existing findings | Stage 3 only |
 | 5 | "review [test] commits X Y Z", "review [test] commits X..Y", "review last N [test] commits", hashes after "review" | Multi-commit | Stages 1–3 |

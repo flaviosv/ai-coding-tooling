@@ -327,3 +327,10 @@
 - **Trade-off**: These three spots no longer name any file for a reader wanting the full rationale (still available at `~/.claude/references/test-execution-scope.md`, just not linked from here); relies on the user's global `CLAUDE.md` staying loaded wherever this skill runs.
 - **Date**: 2026-09-13
 - **Status**: superseded by AD-013
+
+### AD-022
+- **Decision**: The batch review trigger "review all PRs assigned to me" is reworded to "review all PRs waiting on my review"; the sweep keeps selecting PRs where the session user is a requested reviewer, never assignee.
+- **Reason**: User decision on harness-evaluation Skills #57: keep the current selection; "assigned" named a different GitHub field than the sweep uses.
+- **Trade-off**: A request phrased around assignees no longer matches this trigger by wording.
+- **Date**: 2026-09-14
+- **Status**: active
