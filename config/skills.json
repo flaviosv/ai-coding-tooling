@@ -23,8 +23,7 @@
     {
       "name": "docs-writer",
       "source": "tech-leads-club",
-      "scope": "tech-leads-club",
-      "extended": true
+      "scope": "tech-leads-club"
     },
     {
       "name": "grill-me",

@@ -21,7 +21,7 @@ mutating command with `--dry-run` first.
 | Command | Purpose |
 | ------- | ------- |
 | `add <skill> [--source <s>] [--local]` | Install one skill; registers it in `skills.json` if new |
-| `delete <skill>` | Uninstall + deregister a skill (keeps `extended/<skill>/`) |
+| `delete <skill>` | Uninstall + deregister a skill (keeps `extended/<skill>/`; remove it with `unoverride`) |
 | `destroy` | Undo `setup` — remove config, uninstall skills |
 | `doctor` | Health check: cross-references, installed-location link resolution, symlinks, skill installs, `config/hooks.json` hooks installed |
 | `help` | Show usage |
@@ -30,6 +30,7 @@ mutating command with `--dry-run` first.
 | `override <skill>` | Scaffold `extended/<skill>/` and apply the overlay |
 | `setup` | Bootstrap: global config + all skills + overrides |
 | `statusline [--force]` | Install the Claude Code status line script |
+| `unoverride <skill>` | Undo `override`: unlink the installed overlay, unmark `extended` in `skills.json`, delete `extended/<skill>/` (vendor skill stays installed) |
 | `update <skills\|--all>` | Update vendor skills (Tech Leads Club / Matt Pocock) |
 
 ## Flags
@@ -44,7 +45,7 @@ mutating command with `--dry-run` first.
 
 ## Gotchas
 
-- Don't hand-edit `config/skills.json` — `add`/`delete`/`override` keep it in sync automatically.
+- Don't hand-edit `config/skills.json` — `add`/`delete`/`override`/`unoverride` keep it in sync automatically.
 - A vendor skill is read-only — customize it via `override` instead of editing it directly, and
   re-run `override <skill>` after `update <skill>` to re-attach the overlay to the new version.
 - Editing hooks: change `config/hooks.json` first, then run `fs-harness hooks` — never hand-edit

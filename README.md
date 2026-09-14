@@ -84,6 +84,7 @@ To customize without losing changes on the next `--force` run, edit `~/.claude/s
 | `fs-harness delete <skill>` | Remove one skill: uninstall + deregister from `config/skills.json`; keeps `skills/<skill>` source and `extended/<skill>/` |
 | `fs-harness list` | Show each skill's source and install state |
 | `fs-harness override <skill>` | Scaffold `extended/<skill>/` and apply the overlay onto a vendor skill |
+| `fs-harness unoverride <skill>` | Undo `override`: unlink the overlay, unmark it in `config/skills.json`, delete `extended/<skill>/`; the vendor skill stays installed |
 | `fs-harness update [skills...]` | Update Tech Leads Club / Matt Pocock skills |
 
 Add `--dry-run` to any command to print the actions without changing anything. See [docs/cli.md](docs/cli.md) for the full command reference.

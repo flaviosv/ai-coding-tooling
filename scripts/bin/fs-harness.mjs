@@ -418,6 +418,56 @@ metadata:
 `;
 }
 
+// Undo `override`: unlink the installed overlay symlinks that point into extended/<name>/,
+// clear the extended flag in skills.json, and delete extended/<name>/. The vendor skill
+// stays installed. Re-running is a no-op.
+function cmdUnoverride(skillName) {
+  const registry = loadJson('config/skills.json');
+  const name = validateSkillName(skillName);
+  const skill = registry.skills.find((s) => s.name === name);
+  const extDir = path.join(ROOT, 'extended', name);
+
+  log(`${c.bold}Removing override for ${name}${c.reset}`);
+
+  const targetDir = skillDest(skill || { name, scope: 'tech-leads-club' });
+  let unlinked = 0;
+  for (const destName of ['SKILL.extended.md', 'references.extended', 'references']) {
+    const dest = path.join(targetDir, destName);
+    if (!isSymlink(dest)) continue;
+    const actual = path.resolve(path.dirname(dest), fs.readlinkSync(dest));
+    if (!actual.startsWith(extDir + path.sep)) { warn(`${dest} points elsewhere (${actual}) — leaving it untouched`); continue; }
+    unlinked++;
+    if (DRY) { log(`${c.dim}[dry-run]${c.reset} rm ${dest}`); continue; }
+    fs.unlinkSync(dest);
+    ok(`removed ${dest}`);
+  }
+  if (!unlinked) skip(`no overlay symlinks for ${name} in ${targetDir}`);
+
+  if (!skill) {
+    warn(`${name} is not in skills.json — nothing to unmark.`);
+  } else if (!skill.extended) {
+    skip(`${name} is not marked extended in skills.json`);
+  } else {
+    delete skill.extended;
+    if (DRY) log(`${c.dim}[dry-run]${c.reset} unmark ${name} extended in config/skills.json`);
+    else {
+      fs.writeFileSync(path.join(ROOT, 'config/skills.json'), JSON.stringify(registry, null, 2) + '\n');
+      ok(`unmarked ${name} extended in skills.json`);
+    }
+  }
+
+  if (!isDir(extDir)) {
+    skip(`extended/${name}/ not present`);
+  } else if (DRY) {
+    log(`${c.dim}[dry-run]${c.reset} rm -rf extended/${name}/`);
+  } else {
+    fs.rmSync(extDir, { recursive: true, force: true });
+    ok(`removed extended/${name}/`);
+  }
+
+  log(`\n${c.green}Override removed for ${name}.${c.reset}`);
+}
+
 function cmdList() {
   const { skills } = loadJson('config/skills.json');
 
@@ -680,6 +730,7 @@ ${c.bold}Commands:${c.reset}
   update <skills|--all>          Update vendor skills (Tech Leads Club / Matt Pocock).
                                   Pass a comma- or space-separated list, or --all for every vendor skill.
   override <skill>               Scaffold extended/<skill>/ and apply the overlay
+  unoverride <skill>             Undo override (unlink overlay, unmark extended, delete extended/<skill>/)
   list                           Show each skill's source and install state
   doctor                         Health check: cross-references, symlinks, skill installs
   statusline [--force]           Install the Claude Code status line script
@@ -733,6 +784,11 @@ function main() {
     case 'override': {
       if (!rest[0]) throw new UserError('Usage: fs-harness override <skill>');
       cmdOverride(rest[0]);
+      break;
+    }
+    case 'unoverride': {
+      if (!rest[0]) throw new UserError('Usage: fs-harness unoverride <skill>');
+      cmdUnoverride(rest[0]);
       break;
     }
     case 'list': cmdList(); break;

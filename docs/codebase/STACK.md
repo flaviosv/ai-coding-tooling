@@ -30,6 +30,7 @@ The only implementation file (`scripts/bin/fs-harness.mjs`, 784 lines) uses Node
 | Install status line | `fs-harness statusline [--force]` |
 | List skills + state | `fs-harness list` |
 | Preview without changes | append `--dry-run` to any command |
+| Remove an override | `fs-harness unoverride <skill>` |
 | Remove one skill | `fs-harness delete <skill>` |
 | Scaffold / apply override | `fs-harness override <skill>` |
 | Undo setup | `fs-harness destroy` |

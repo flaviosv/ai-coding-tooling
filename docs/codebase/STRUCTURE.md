@@ -25,7 +25,6 @@ ai-coding-tooling/
 │   ├── uninstall_sonar.md    # Historical removal guide for a since-uninstalled SonarQube integration
 │   └── codebase/            # Agent context docs (THIS set — canonical location)
 ├── extended/                # Additive overrides for vendor skills
-│   ├── docs-writer/SKILL.md
 │   ├── mermaid-studio/scripts/
 │   ├── skill-architect/SKILL.md
 │   └── tlc-spec-driven/
