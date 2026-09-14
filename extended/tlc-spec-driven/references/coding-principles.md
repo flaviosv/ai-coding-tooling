@@ -8,9 +8,9 @@ Apply these **before every implementation**, alongside the parent file.
 
 ## Code Comments (always apply)
 
-Do not add comments to explain what the code does — clear names and structure should already
-convey that. Add a comment only when it is strictly necessary to explain complex business logic
-(a non-obvious rule, invariant, or external constraint the code itself cannot convey).
+Follow the global CLAUDE.md Coding Style rule on comments. It overrides this overlay's previous
+comment rule and any comment guidance from the parent skill, which has no rule on when to write
+comments (its Surgical Changes bullet against "improving" adjacent comments still applies).
 
 ## Software Design Principles (always load)
 

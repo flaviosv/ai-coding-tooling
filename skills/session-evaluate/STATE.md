@@ -99,3 +99,10 @@
 - **Trade-off**: Same dependency as AD-009 — this sentence now assumes `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-011
+- **Decision**: Catalog A2's fix-shape guidance (`references/findings-catalog.md`) no longer claims the user's global `CLAUDE.md` carries a file-deduplication directive; it now just says a repeated-reads fix belongs in the skill that repeats them, stated at the point of use.
+- **Reason**: The global `CLAUDE.md`'s File Deduplication section was deleted (2026-09-13 harness-eval, `docs/harness-evaluation.md` Root Context Files row #6, user decision to delete rather than rewrite), so the claim became false and would steer classification toward a baseline rule that no longer exists.
+- **Trade-off**: A2 findings can no longer lean on a global baseline; any dedup rule must live in the affected skill.
+- **Date**: 2026-09-14
+- **Status**: active

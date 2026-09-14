@@ -104,7 +104,7 @@ function ensureDir(p) {
 // CLAUDE.global.md references shared docs as ~/.claude/references/<name>.md — a plain
 // absolute path, since CLAUDE.md has no "own directory" to resolve relative to.
 // references/ is CLAUDE.md-only; skills keep what they link inside their own directory —
-// see CLAUDE.global.md's "Shared Reference Files" section.
+// see docs/codebase/ARCHITECTURE.md.
 export function referencesLinkPath() {
   return path.join(path.dirname(SKILLS_DIR), 'references');
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Validates the shared-reference rule (see CLAUDE.global.md's "Shared Reference Files"):
+// Validates the shared-reference rule (see docs/codebase/ARCHITECTURE.md):
 // every CLAUDE.global.md -> ~/.claude/references/ link must resolve to a real file in
 // references/, no skill may link references/ (it is CLAUDE.md-only — a skill keeps what
 // it links inside its own directory), and nothing may link the removed templates/ folder.

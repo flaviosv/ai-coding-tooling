@@ -34,7 +34,7 @@ Thresholds are defaults, not laws. A threshold crossed for a defensible reason i
 
 **Implies:** The agent re-derived something it already had. Usually one of: no instruction to reuse an earlier result, a re-read after an edit that the harness already confirmed, or a loop where each pass re-establishes the same context.
 
-**Fix shape:** A file-deduplication rule ("if you already read this file this session, use what is in context"), or an explicit instruction to capture the result once into a variable/scratch file. Note that the user's global `CLAUDE.md` already carries a deduplication directive — if a skill still repeats reads, the fix belongs in that skill, restating the rule at the point of use.
+**Fix shape:** A file-deduplication rule ("if you already read this file this session, use what is in context"), or an explicit instruction to capture the result once into a variable/scratch file. If a skill repeats reads, the fix belongs in that skill, stating the rule at the point of use.
 
 ### A3 — Cache thrash
 

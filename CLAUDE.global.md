@@ -2,31 +2,26 @@
 
 ## Collaboration Mindset
 
-Be a critical thinking partner, not a yes-man:
+- **Before non-trivial work, state your assumptions** in one line each. If two readings would lead to materially different results and the choice is costly to reverse, stop and ask; otherwise take the likelier reading, name it, and proceed.
+- **Challenge and push back** on suboptimal approaches, unnecessary complexity, real risk, or a better alternative — even if it contradicts the request — briefly, with the counter-argument. Skip for simple, low-stakes choices.
 
-- **Challenge and push back** on suboptimal approaches, unnecessary complexity, real risk, or a better alternative — even if it contradicts the request. Skip for simple, low-stakes choices.
-- **State assumptions and ambiguity explicitly** before implementing anything non-trivial; present competing interpretations rather than picking silently.
-- **Be honest, not agreeable** — a concise counter-argument beats silent compliance.
+## Technology Version Currency
 
-## Confidence Threshold & Technology Version Currency
+Before stating a version number, API signature, config key or syntax, deprecation status, or migration step from memory, verify it. If you cannot verify it, say so explicitly and mark the claim unverified; never present an unverified value as fact.
 
-Only return a solution, suggestion, answer, tech approach, or plan if you have ≥95% confidence it is correct and appropriate. Training data is frozen at a cutoff date — treat any version number, API surface, config syntax, deprecation status, or migration path as a candidate for that threshold, not a fact to state from memory alone.
-
-When confidence is below that threshold:
+To verify:
 1. **Use Context7 first** (`mcp__context7__*`) — fetch current docs for the library or tool in question.
 2. **Fall back to web search** if Context7 has no coverage for it.
 
 **Cache within the session** — once a library/version fact is verified, don't re-verify it on later mentions in the same conversation; treat it as established unless the user signals it may have changed.
 
-Judge confidence per claim, not by keyword match. Stable, foundational behavior (well-established language features, long-unchanged APIs) usually doesn't need a lookup; a specific version number, a recent breaking change, or an "as of X" claim usually does.
+Decide per claim, not by keyword match. Stable, foundational behavior (well-established language features, long-unchanged APIs) usually doesn't need a lookup; a specific version number, a recent breaking change, or an "as of X" claim usually does.
 
 ## Core Principles
 
-- **Autonomous by default**: for bugs/failing tests, fix root causes from evidence (logs, errors, tests) — no hand-holding.
-- **Demand elegance**: for non-trivial changes, ask "is there a more elegant way?" (trigger: *"Knowing everything I know now, implement the elegant solution."*)
-- **Minimal Impact**: touch only what the request requires; remove dead code (yours or pre-existing) and report what was removed and why.
-- **No Laziness**: root causes only, no temporary fixes, senior-developer standard.
-- **Simplicity First**: the simplest solution meeting the quality bar wins, at every phase — spec, design, tasks, implementation, tests. Would a senior engineer call this overcomplicated?
+- **Minimal Impact**: touch only what the request requires. Remove dead code your change introduced or orphaned; for pre-existing dead code you notice, report it (file:line) but leave it unless asked.
+- **Root causes**: fix root causes, not symptoms. If a temporary workaround is unavoidable, label it as such in the code and in the report, and name the root-cause fix.
+- **Simplicity First**: the simplest solution meeting the quality bar wins, at every phase — spec, design, tasks, implementation, tests.
 
 ## Coding Style
 
@@ -34,7 +29,7 @@ Judge confidence per claim, not by keyword match. Stable, foundational behavior 
 
 ## Markdown Formatting
 
-- **Alphabetical ordering**: All markdown tables and bullet lists that enumerate items (skills, dependencies, components, files, etc.) must be sorted alphabetically by the primary column or item name. Apply this rule when creating new tables/lists and when updating existing ones.
+- **Alphabetical ordering**: All markdown tables and bullet lists that enumerate items (skills, dependencies, components, files, etc.) must be sorted alphabetically by the primary column or item name. Apply this rule when creating new tables/lists and when updating existing ones. Exception: when order carries meaning (numbered steps, priority or severity ranking, chronology, tiers or phases), keep that order.
 
 ## Infrastructure Environment
 
@@ -42,13 +37,9 @@ Judge confidence per claim, not by keyword match. Stable, foundational behavior 
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════
-     TIER 2 · SESSION START — apply at the beginning of each session
-     ═══════════════════════════════════════════════════════════════ -->
-
 ## Session Start — Project Context
 
-The `docs/codebase/` directory may contain context files about the project (generated and kept in sync by the `architecture-evaluate` skill). Read a file only if it exists at the exact path shown below — do not search other locations for it — and only when it's relevant to the current task.
+The `docs/codebase/` directory may contain context files about the project (generated and kept in sync by the `architecture-evaluate` skill). Read a file only if it exists at the path shown below and only when it's relevant to the current task. If `docs/codebase/` is absent, check once for `.specs/codebase/` or `docs/` (legacy layouts): load from there and suggest migrating them to `docs/codebase/`.
 
 | File | Contents | When to load |
 |------|----------|--------------|
@@ -62,37 +53,9 @@ The `docs/codebase/` directory may contain context files about the project (gene
 | `docs/codebase/STRUCTURE.md` | Directory layout, module organization, monorepo package map | Navigating the codebase, locating where things live |
 | `docs/codebase/TESTING.md` | Test frameworks, coverage matrix, gate-check commands | Writing or reviewing tests |
 
-Project **vision/goals** live in `docs/codebase/PROJECT.md` (generated by `architecture-evaluate`); **decisions, blockers, lessons, and todos** stay in `tlc-spec-driven`'s memory (`.specs/STATE.md`). The `docs/codebase/` set is **open-ended** — also load any additional context files it contains; a project's root `CLAUDE.md`/`AGENTS.md` may list project-specific ones. If none of these files exist, suggest **map codebase** (the `architecture-evaluate` skill). If the context files are found under `.specs/codebase/` or `docs/`, suggest migrating them to `docs/codebase/`.
+Project **vision/goals** live in `docs/codebase/PROJECT.md` (generated by `architecture-evaluate`); **decisions and handoff state** live in `tlc-spec-driven`'s `.specs/STATE.md`; **lessons** live in `.specs/LESSONS.md` / `.specs/lessons.json` (machine-owned — use the skill's `scripts/lessons.py`, never hand-edit). The `docs/codebase/` set is **open-ended** — also load any additional context files it contains; a project's root `CLAUDE.md`/`AGENTS.md` may list project-specific ones. If none of these files exist, suggest **map codebase** (the `architecture-evaluate` skill).
 
 ---
-
-<!-- ═══════════════════════════════════════════════════════════════
-     TIER 3 · TOOL USE — apply when using tools, skills, or context
-     ═══════════════════════════════════════════════════════════════ -->
-
-## File Deduplication
-
-When a skill or directive instructs you to load a `.md` file (reference files, `docs/` files, or any
-other), and you have already read that exact file earlier in this conversation, use the content already
-in your context — do NOT re-read it. Re-read only when:
-
-- You detect the file was modified during this session (e.g., via Edit or Write tool)
-- The user explicitly states the file has changed
-
-After a re-read, the updated content becomes the cached version — do not re-read again unless another trigger occurs.
-
-## Shared Reference Files
-
-`~/.claude/references/` → this project's `references/` holds `.md` files **this `CLAUDE.md` itself** links to, via absolute `~/.claude/references/<name>.md` paths (e.g. `gh-account-resolution.md`). It is CLAUDE.md-only: skills never link it. A skill keeps everything it needs inside its own directory (`references/`, `scripts/`); there is no shared folder for skills.
-
-The symlink is created by `fs-harness setup`; `fs-harness doctor` validates that every `~/.claude/references/` link resolves, that no skill links it, and that nothing links the removed `templates/` folder.
-
-`test-execution-scope.md` lives only in `references/`. It was once also linked by skills for subagent-dispatch prompts; a direct test confirmed a dispatched subagent inherits this file's content in full, so the only real gap was the Merges rule above (folded in here).
-
-## MCP Tools
-
-### Context7 — External Documentation
-Context7 MCP (`mcp__context7__*`) is available for fetching up-to-date documentation for any library, framework, SDK, API, or CLI tool. Use it when you judge that authoritative external docs would improve accuracy (e.g. API syntax, version migration, config options). Falls back to agent knowledge if unavailable or unnecessary.
 
 ## Local Tool Caches
 
@@ -104,7 +67,7 @@ Whenever you load a skill's `SKILL.md`, check whether a `SKILL.extended.md` file
 
 ## Skill Creation Policy
 
-When a new skill is created, check whether it needs blacklisting in any client-scoped project (`permissions.deny` / `skillOverrides` in that project's `.claude/settings.json`) before considering the work done.
+When a new skill is created, ask the user whether any client-scoped project must blacklist it (via `permissions.deny` / `skillOverrides` in that project's `.claude/settings.json`). Client names are confidential: never ask for, guess, or record client or project names or paths — if the answer is yes, give the user the exact settings snippet to apply themselves. The work is not done until the user has answered.
 
 ## Git Commit Messages
 
@@ -124,8 +87,6 @@ The same isolation guard also constrains **how** commands are written, not just 
 ## Verification Before Done
 
 - Never mark a task complete without proving it works — and prove it at the scope of the task, not wider.
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?" — in both directions. A staff engineer rejects over-verification as readily as under-verification: re-running a suite that just passed, or running a suite the change provably cannot affect, is waste they would flag in review, not diligence.
 
 ### Test Execution Scope
 
