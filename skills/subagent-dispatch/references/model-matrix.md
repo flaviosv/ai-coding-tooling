@@ -2,7 +2,7 @@ Model tier for each named `Agent`-dispatch site in this project. Load this file 
 
 | Skill | Dispatch site | Model |
 |-------|---------------|-------|
-| `architecture-evaluate` | its own run, all three modes (self-pinned — see the skill's Model guardrail) | `sonnet` |
+| `architecture-evaluate` | its own run, all three modes (self-pinned — see the skill's Model Pinning section) | `sonnet` |
 | `build-feature` | orchestrator — the invoking conversation, not a dispatch | `sonnet` (recommended) |
 | `build-feature` | Step 3 — architecture-evaluate gate (decision only) | `haiku` |
 | `build-feature` | Step 6a — Specify | `sonnet` |
