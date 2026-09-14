@@ -3,20 +3,19 @@ name: skill-architect-extended
 extends: skill-architect
 description: >
   Extension for the skill-architect skill. This file MUST be read together with the parent
-  skill-architect SKILL.md. Adds two capabilities: (1) guardrail design guidance injected into
-  the existing workflow phases, and (2) the extended/ pattern for modifying globally installed
-  skills without touching the source.
+  skill-architect SKILL.md. Adds (1) guardrail design injected into the parent phases, with the
+  generated skill's risk category recorded in its frontmatter as metadata.risk; (2) reference-file
+  design, naming, and output rules for reference files and SKILL.md; and (3) an overlay validator
+  that replaces the parent's validate_skill.py and adds link-scope and guardrail-placement checks.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   parent_skill: skill-architect
   source: "ai-coding-tooling (extended/)"
 ---
 
 # skill-architect — Extension
 
-> This file extends the **skill-architect** skill. The parent SKILL.md governs the full
-> DISCOVERY → ARCHITECTURE → CRAFT → VALIDATE → DELIVER workflow. This extension injects
-> guardrail design into those phases and adds the `extended/` pattern for global skill modifications.
+> Read after the parent SKILL.md. Each section below names the parent phase and step it injects into.
 
 ## Extension 1: Guardrail Design
 
@@ -37,6 +36,7 @@ Based on the answer, categorize the skill as:
 - **High risk** — irreversible actions, external side effects, or touches credentials
 
 Record the risk category, then → start from the 2.2a menu rows whose When to propose condition matches.
+Write it into the generated skill's frontmatter as `metadata.risk: low|medium|high` (Phase 3.1).
 
 ### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure, before 2.3 Design the Description
 
@@ -106,7 +106,7 @@ Omit sections that don't apply.
 
 For each guardrail, simulate its failure path (precondition fails, gate declined, escalation triggered, secret encountered, collision) and confirm the skill stops or asks cleanly.
 
-## Extension 3: Token Efficiency
+## Extension 2: Token Efficiency
 
 ### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure (following 2.2a), when the skill includes reference files
 
@@ -142,3 +142,21 @@ If the skill will include technology-specific reference files:
 **Token efficiency check**
 
 Before delivering any generated file, re-check it against the Phase 3.2 output rules above (reference files and SKILL.md).
+
+## Extension 3: Overlay Validator
+
+### Inject into Phase 4 (Validate) — replace the script in 4.1 Structural Validation
+
+Run `scripts/validate_skill.py` from this file's own folder instead of the parent's `scripts/validate_skill.py`. It keeps every parent check, flag, and exit code, and adds two error checks:
+
+- `links_inside_skill` — flags markdown links and pointed-to inline-code paths in the skill's `.md` files that escape its folder: `../` outside it, absolute or `~` paths, `CLAUDE.md`/`CLAUDE.global.md`/`AGENTS.md`, or `docs/`/`references/` paths not inside the skill.
+- `guardrails_for_risk` — with `metadata.risk` `medium` or `high`, requires `## Guardrails` before the first Instructions/Workflow/Step/Phase heading; warns when `metadata.risk` is missing.
+
+This file is installed as a symlink at `~/.claude/skills/skill-architect/SKILL.extended.md`. Resolve it to find this file's real directory, then run the script from there:
+
+```bash
+real_dir="$(dirname "$(readlink -f ~/.claude/skills/skill-architect/SKILL.extended.md)")"
+python3 "$real_dir/scripts/validate_skill.py" <path-to-skill-folder>
+```
+
+The `references/quality-checklist.md` run in 4.1 is unchanged.

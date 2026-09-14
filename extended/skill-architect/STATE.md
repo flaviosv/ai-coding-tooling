@@ -92,3 +92,17 @@
 - **Trade-off**: A rule a skill shares with a repo-level file is duplicated and can drift.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-014
+- **Decision**: The overlay ships its own `scripts/validate_skill.py`, a copy of the parent's validator (every check, flag, and exit code unchanged) plus two error checks, `links_inside_skill` and `guardrails_for_risk`; Extension 3 tells Phase 4.1 to run it instead of the parent's script, locating it by resolving the `SKILL.extended.md` symlink. 1.2a now records the risk category as `metadata.risk: low|medium|high` in the generated skill's frontmatter, which `guardrails_for_risk` reads. Closes harness-evaluation #30 without the proposed prose exit-criteria lines.
+- **Reason**: User decision: a deterministic check replaces prose gates the base phases never enforced (#30), and turns 2.2b's "Keep links inside the skill" and the `## Guardrails` placement rule into something Phase 4 actually catches. A copied replacement was chosen over extending the base because the base script is read-only and can't be overridden, and the harness has no overlay-script structure; this follows `extended/mermaid-studio`'s `render-c4-fixed.mjs` pattern, kept simple on purpose. The user plans to revisit it.
+- **Trade-off**: The copy drifts from the parent's `validate_skill.py` on vendor updates and must be re-synced by hand. `links_inside_skill` is a heuristic (markdown links always count; inline-code paths only after a pointer phrase such as see/follow/per, and not on lines with subject cues; `STATE.md` and fenced blocks skipped), so it misses pointers phrased otherwise and can still misread a subject file. Skills without `metadata.risk` only get a warning.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-015
+- **Decision**: Rewrote the frontmatter description and intro blockquote to list what the overlay contains now (guardrail design with `metadata.risk`, reference-file design/naming/output rules, the overlay validator), dropped the restated parent workflow string, renumbered Extension 3 (Token Efficiency) to Extension 2 so the new validator is Extension 3, and bumped `metadata.version` to 1.3.0. Closes harness-evaluation #31 and resolves AD-011's pending description and numbering trade-off.
+- **Reason**: The description still claimed two capabilities including the deleted `extended/` pattern (AD-011), and the blockquote restated the frontmatter and parent workflow, against this overlay's own "do not restate the description" output rule.
+- **Trade-off**: None identified.
+- **Date**: 2026-09-14
+- **Status**: active
