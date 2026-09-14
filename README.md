@@ -106,7 +106,7 @@ Maintained here and installed globally via `fs-harness setup` / `fs-harness add`
 | **not-your-babysitter** | Autonomous senior-operator mode: resolves tasks end to end, verifies every claim against real evidence, and interrupts only for destructive actions, evidence dead-ends, or outcome-changing ambiguity. |
 | **qa-steps** | Generates a step-by-step manual QA test plan for a Jira ticket, optionally enriched with a linked GitHub PR's diff, and posts it to the ticket only after you confirm. |
 | **session-evaluate** | Analyzes a completed agent session transcript for token waste, slow turns, missed parallelism, subagent misuse, self-corrected mistakes, and oversized test runs — whole session or scoped to named skills — then applies the approved fixes to the responsible skill or context file. |
-| **subagent-dispatch** | Reference for dispatching and waiting on subagents via the `Agent` tool: model aliases, the dispatch-prompt contract, the no-polling wait protocol, and this project's model-tier matrix for pipeline sites. |
+| **subagent-dispatch** | Reference for dispatching and waiting on subagents via the `Agent` tool: model aliases, the concurrency cap, `subagent_type` (never `fork`), the dispatch-prompt contract, and the no-polling wait protocol. |
 | **tech-reference-add** ⭐ | Adds technology-specific reference files across all skills and extends qualifying global skills. Run this when adding a new framework or language to a project's stack. |
 
 > Skill installation/update is handled by the `fs-harness` command (`scripts/bin/fs-harness.mjs`), not by a skill. See [Managing skills](#managing-skills).
