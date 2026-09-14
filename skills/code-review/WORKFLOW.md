@@ -25,7 +25,7 @@ flowchart TD
     MC --> S1[Stage 1: review]
     PR --> S1
     LW --> S1
-    BF --> BFW[One fix worker per PR<br/>own threads only]
+    BF --> BFW[One fix worker for every PR<br/>own threads only]
     BR --> BRW[Per PR: review → checkpoint → fix]
 ```
 
@@ -74,31 +74,32 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    B([Batch entry]) --> Repo[Resolve repo + login]
+    B([Batch entry]) --> Repo[Resolve repo]
     Repo --> Cand[Search candidates<br/>fix: reviewed-by · review: review-requested]
     Cand --> Filt[Drop reply-reviews<br/>reply-review-filter.md]
     Filt --> Q{Sweep}
 
     Q -- fix --> FQ[Latest non-reply review is CHANGES_REQUESTED]
-    FQ --> FW[Fix workers in one message<br/>isolation: worktree, own threads only]
-    FW --> FR[Report each PR as it lands<br/>remove its worktree] --> FT([Summary table])
+    FQ --> FW[One fix worker for every PR<br/>it picks the order, own threads only]
+    FW --> FR[One update per PR from its report] --> FT([Summary table])
 
     Q -- review --> RQ[No non-reply review by you]
     RQ --> RW[Review workers in one message<br/>each posts a pending review]
     RW --> HR{human_review?}
     HR -- true --> Tbl[After all report: one table, end turn<br/>user replies continue / continue #12, #14]
-    Tbl --> SubB[submit + fix worker per continued PR]
-    HR -- false --> Each[As each reports:<br/>submit + fix worker immediately]
-    SubB --> RR[Report each PR as it lands] --> RT([Summary table])
-    Each --> RR
+    Tbl --> SubB[submit each continued PR]
+    HR -- false --> Each[As each reports:<br/>submit it immediately]
+    SubB --> FixB[One fix worker for every submitted PR]
+    Each --> FixB
+    FixB --> RR[One update per PR from its report] --> RT([Summary table])
 ```
 
 ## Entries
 
 | Entry | Trigger | Stages | Findings for the fix stage |
 |---|---|---|---|
-| Batch fix sweep | "fix the PRs I requested changes on" | 3, per PR | Unresolved threads with a comment by you |
-| Batch review sweep | "review my pending PRs" | 1 → 2 → 3, per PR | All threads remaining after the checkpoint |
+| Batch fix sweep | "fix the PRs I requested changes on" | 3, one worker for every PR | Unresolved threads with a comment by you |
+| Batch review sweep | "review my pending PRs" | 1 → 2 per PR, then 3 in one worker for every PR | All threads remaining after the checkpoint |
 | Continue after checkpoint | "continue the code review on PR #N" (`build-feature` resume) | `submit` → 3 | Every published unresolved thread |
 | Fix existing findings | "fix the review comments on PR #N", "fix Q1, H2" | 3 | PR with a submitted review: every published unresolved thread · PR with no review, or no PR: the named or all conversation findings |
 | GitHub PR | PR number named in the current request, or passed by the caller — never one only mentioned earlier | 1 → 2 → 3 | Threads remaining after the checkpoint |
@@ -126,13 +127,13 @@ Wording, not parameters: "just review" ends after Stage 2; "and update the Jira 
 
 ## Recovery
 
-Each failure is retried once in total — never a retry stacked on a retry — before the pause when it happens before the pause, so the user only ever checks findings that are really on GitHub.
+Each failure is retried once in total — never a retry stacked on a retry — resuming from where the failed step stopped, never from scratch, and before the pause when it happens before the pause, so the user only ever checks findings that are really on GitHub.
 
 | Failure | Retry | Never |
 |---|---|---|
-| `deliver` failed, or the fix worker failed outright | Continue after checkpoint: `submit`, then a fresh fix worker told that already-pushed commits are fixes still owed a reply | Reject a thread as "already addressed" because its fix is already on the branch |
+| `deliver` failed, or the fix worker failed outright | Continue after checkpoint for each PR not yet delivered: `submit`, then a fresh fix worker told what the failed one already reported, and that already-pushed commits are fixes still owed a reply | Reject a thread as "already addressed" because its fix is already on the branch |
 | `post` exit `2` or non-empty `missing` | Root re-runs `post` from the same `post.json` | Re-run the review; `submit` after a second exit `2` |
-| Review failed | Stage 1 again with a fresh review worker | Continue after checkpoint — it never posts, so the findings would be lost |
+| Review failed | `post.json` already written → as a failed `post`; otherwise Stage 1 again with a fresh review worker | Continue after checkpoint — it never posts, so the findings would be lost |
 | `submit` non-zero | `submit` again | Start the fix stage on an unconfirmed submit |
 
 `build-feature` stops on any failure `code-review` still reports after its own retry.
@@ -142,11 +143,10 @@ Each failure is retried once in total — never a retry stacked on a retry — b
 | Worker | Dispatched by | Model | Isolation | Dispatches | Returns to root |
 |---|---|---|---|---|---|
 | Dimension agent | Review worker | `sonnet` | — | Nothing | Findings with `anchor` |
-| Fix worker (batch) | Root | `sonnet` | `worktree` always | Nothing | Outcomes, `deliver` JSON counts, commits, gate |
-| Fix worker (single) | Root | `sonnet` | `worktree` when not on the PR branch; none when on it, or local | Nothing | Outcomes, `deliver` JSON counts, commits, gate |
+| Fix worker — one per run, covering every PR | Root | `sonnet` | — (a caller-supplied checkout, else its own choice, never switching a checkout with uncommitted changes) | Nothing | Outcomes, `deliver` JSON counts, commits, gate — per PR |
 | Review worker | Root | `sonnet` | — | Dimension agents | Local: full report · PR: URL, banner, counts, `post` JSON counts, unpostable list |
 
-The root is a live conversation, or `build-feature`'s orchestrator invoking this skill via `Skill`. When a subagent executes this skill outside that structure, it runs the stages inline, stopping after Stage 1 with `awaiting_approval: true` wherever Stage 2 would pause. Running the fix stage inline on a PR, it uses the current checkout when it is on the PR branch, the worktree that has the branch when one does, and otherwise creates its own worktree with `git worktree add` and removes it at the end — never `gh pr checkout` in a checkout it was not given.
+The root is a live conversation, or an orchestrator invoking this skill via `Skill`. When a subagent executes this skill outside that structure, it runs the stages inline, stopping after Stage 1 with `awaiting_approval: true` wherever Stage 2 would pause.
 
 ## Fix Outcomes on a PR
 
@@ -169,7 +169,7 @@ The root is a live conversation, or `build-feature`'s orchestrator invoking this
 | Reply to and resolve threads | `deliver` | 3 | Re-fetching threads after replies and after resolves; a thread counts as replied only with a marked reply from this identity |
 | Submit the pending review as `COMMENT` (an empty one is left in place) | `submit` | 2 | Re-fetching the review's state |
 
-Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5 s, resolve 1 s), 180 s back-off on GitHub's abuse block (at most twice), no blind retry, counts only from re-fetches, exit `0` confirmed / `1` partial / `2` fatal, and `--login` to act as the caller's resolved account. Any non-zero `gh` exit is a failed request unless it is a GraphQL response that still carries `data`; an unexpected response shape is exit `2` with JSON, never a traceback. The only GitHub read the model runs itself is the thread fetch in `github-writes.md`.
+Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5 s, resolve 1 s), 180 s back-off on GitHub's abuse block (at most twice), no blind retry, counts only from re-fetches, exit `0` confirmed / `1` partial / `2` fatal. Any non-zero `gh` exit is a failed request unless it is a GraphQL response that still carries `data`; an unexpected response shape is exit `2` with JSON, never a traceback. The only GitHub read the model runs itself is the thread fetch in `github-writes.md`.
 
 ## Files Loaded per Run
 
@@ -193,7 +193,7 @@ Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5
 ## Design Notes
 
 - **Review and fix are one run with an optional pause, not two skills.** The pause copies `build-feature`'s checkpoint: post, show a summary, end the turn, continue on the user's reply. With `human_review: false` nothing waits. See STATE.md AD-010.
-- **Always two stage workers.** The fix stage starts in a fresh context. The old standalone fix skill's delivery failures happened when replying ran last at peak context (STATE.md FR-AD-007); a fresh worker removes that by construction and makes resuming identical with or without a pause.
+- **Always two stage workers, and exactly one fix worker.** The fix stage starts in a fresh context, and one worker fixes every finding — across PRs in a batch sweep — choosing its own order. Parallel fix workers in separate worktrees caused repeated checkout conflicts and were removed (STATE.md AD-017). The old standalone fix skill's delivery failures happened when replying ran last at peak context (STATE.md FR-AD-007); a fresh worker removes that by construction and makes resuming identical with or without a pause.
 - **Only the root dispatches stage workers.** Every nesting failure in the old fix skill's history came from a subagent deciding it was an exception (FR-AD-006). The rule is mechanical: workers never start workers.
 - **GitHub is the hand-off.** The fix stage fetches threads fresh, so a comment deleted at the checkpoint is gone, and a human reviewer's comment is picked up the same way as this skill's own.
 - **Every GitHub write is scripted.** Posting as prose silently lost 9 of 44 findings on two runs and duplicated 9 comments on another; replying as prose was reported done five times when nothing landed (CPR-AD-003, FR-AD-007). The script reports only what a re-fetch confirms.

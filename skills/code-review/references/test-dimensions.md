@@ -15,11 +15,11 @@ The tests scope's dimension set: which agents review test files, what the implem
 | Maintainability | Helpers, data-driven patterns, mock minimalism, update cost |
 | Performance | I/O in unit tests, sleep/polling, suite speed, test separation |
 
-Coverage Gaps is active only when `impl_diff` is non-empty; otherwise its row shows `⚠️ skipped — no implementation changes`. The tests scope still runs when no test file changed but `impl_diff` is non-empty — a change with no tests is exactly what `gap-detector` exists to catch.
+Coverage Gaps is active only when `impl_diff` is non-empty; otherwise its row shows `⚠️ skipped — no implementation changes`. The tests scope itself runs only when test files changed (see SKILL.md Step 4, Scope activation).
 
 ## Agents
 
-**Small tier** — the orchestrator reviews all five test dimensions inline, plus Coverage Gaps when `impl_diff` is non-empty. With no test files at all, only Coverage Gaps runs (see Step 4's scope activation).
+**Small tier** — the review worker reviews all five test dimensions inline, plus Coverage Gaps when `impl_diff` is non-empty.
 
 **Medium tier** — one agent covers every dimension, self-loading `review-checklist.tests.md`, `<stack>.tests.md`, and the full 7-doc set. It receives the test diff **and** `impl_diff` when non-empty (6 dimensions, gap analysis included); with an empty `impl_diff` it receives only the test diff (5 dimensions).
 
@@ -68,4 +68,3 @@ It receives `impl_diff` only and never judges the quality of existing tests — 
 
 - **Priority:** P0 must fix — broken or missing tests on critical paths · P1 should fix — quality, missing coverage · P2 nice to have — style, refactoring opportunities.
 - **Type:** Coverage, Isolation, Maintainability, Pattern, Performance, Quality.
-- Suggest concrete improvements ("add a test case for null input") and point at similar patterns in existing tests where helpful.

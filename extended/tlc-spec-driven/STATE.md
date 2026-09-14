@@ -49,7 +49,7 @@
 - **Reason**: User decision (Overridden Skills #39): DEBUG is often enabled in staging or during incidents and log stores keep data long, so the allowance was a real leak path. The same line in `skills/code-review/references/observability.code.md` was fixed together (code-review AD-015).
 - **Trade-off**: Development diagnostics can no longer log raw PII at DEBUG.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-014
 
 ### AD-008
 - **Decision**: `coding-principles.md` Stack-Specific Style detects the project's stack without naming context-file paths or fallbacks, and loads `coding-guidelines/<technology>-coding-guidelines.md` files whose `<technology>` is a language or framework slug from that stack (e.g. `php`, `django`, `go-gin`).
@@ -90,5 +90,12 @@
 - **Decision**: Removed `references/coding-principles.md`'s `## Security` section, which routed security-sensitive tasks to the `security-best-practices` skill, and its mentions in the preamble and the `SKILL.md` description.
 - **Reason**: User decision: the overlay names no other skill, since a skill loads on its own from its description when its work comes up.
 - **Trade-off**: Security review during Execute now depends on that skill triggering by description; the overlay no longer forces it before the gate check and commit.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-014
+- **Decision**: `observability-coding-guidelines.md` rule 7 names email addresses and first/last names in the never-log list alongside passwords, tokens, session IDs, and card numbers, and requires redacting or hashing other PII even at DEBUG — worded the same as `skills/code-review/references/observability.code.md` (code-review AD-019).
+- **Reason**: User decision (extending Skills #49): the list left the most commonly logged PII to a generic "PII" clause; naming it explicitly keeps it out of logs at every level, and the two files must stay identical.
+- **Trade-off**: Logging a user's email or name for diagnostics is now always a violation, even where a project considered it harmless.
 - **Date**: 2026-09-14
 - **Status**: active

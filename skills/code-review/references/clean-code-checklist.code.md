@@ -6,13 +6,9 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 
 ## Naming
 
-- [ ] Names are intention-revealing — you can understand purpose without reading the implementation
 - [ ] No single-letter variables except conventional loop counters (`i`, `j`) or math formulas
 - [ ] No misleading names — the name accurately reflects what the thing does or holds
 - [ ] No noise words that add no meaning (`data`, `info`, `manager`, `processor`, `handler` without context)
-- [ ] Boolean names read as predicates (`isActive`, `hasPermission`, `canEdit`)
-- [ ] Functions named as verbs or verb phrases (`fetchUser`, `calculateTotal`, `validateInput`)
-- [ ] Classes and types named as nouns (`UserRepository`, `OrderSummary`, not `ProcessOrders`)
 - [ ] No abbreviations unless universally understood in the domain (`url`, `id`, `api`)
 - [ ] No encoding type into names unless required by the language (`strName`, `arrItems`)
 
@@ -30,14 +26,10 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 
 ## Classes & Modules
 
-- [ ] Single Responsibility — each class or module has one reason to change
 - [ ] Classes are small — large classes are a sign of multiple responsibilities
 - [ ] Instance variables are minimal and meaningful — no unused or redundant state
 - [ ] Methods that don't use instance state are candidates for static methods or standalone functions
-- [ ] No "god objects" that know too much or do too much
 - [ ] Dependencies are explicit — no hidden globals or service locators
-- [ ] Interface segregation — no forcing callers to depend on methods they don't use
-- [ ] Law of Demeter respected — avoid deep method chains through unrelated objects (e.g. `obj.getA().getB().doThing()`). Each unit should have limited knowledge of other units
 - [ ] Modules and packages organized by domain or feature, not by technical layer — `models/`, `utils/`, `helpers/` catch-all directories are a structure smell
 - [ ] Value objects and data-transfer types are immutable — no public setters or mutable state on types whose purpose is to carry data
 
@@ -75,22 +67,12 @@ Focused checklist for evaluating clean code principles. Use alongside `review-ch
 
 ## Error Handling
 
-- [ ] Errors are not silently swallowed — all caught exceptions are handled or re-raised with context
 - [ ] Error types are specific — avoid catching broad exceptions unless explicitly justified
 - [ ] No returning `null`/`nil`/`undefined` to signal absence when a typed result or exception is clearer
 - [ ] Error messages are actionable — they tell the caller what went wrong and ideally how to fix it
 - [ ] Error handling is centralized — not duplicated in every handler or caller that could reach the same failure point
 - [ ] Errors are wrapped with context before propagating — callers can identify where in the call chain the error originated
 
-## DRY & Duplication
-
-- [ ] No copy-pasted logic — duplicated code is extracted into a shared function or module
-- [ ] Shared logic is not duplicated across layers (e.g. same validation in controller and service)
-- [ ] Duplication of structure (not logic) is acceptable — don't abstract prematurely
-
 ## Formatting & Consistency
 
-- [ ] Code style is consistent with the rest of the file and project conventions
-- [ ] Blank lines used to group logically related statements, not randomly
 - [ ] Related code is close together — the newspaper rule: code reads top-to-bottom like a newspaper article. High-level abstractions and callers appear at the top; low-level details and callees appear below
-- [ ] No inconsistent levels of indentation or formatting that makes structure hard to scan

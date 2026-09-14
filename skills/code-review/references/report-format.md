@@ -1,6 +1,6 @@
 # Report Format
 
-The consolidated review report, written at the end of the review stage for every entry except Batch Mode (which reports per PR). One report covers every active scope. On a PR, it is also the source of the comments `post` publishes; the PR checkpoint shows only the summary SKILL.md Stage 2 names, while a local checkpoint shows the full report, header and at-a-glance table included.
+The consolidated review report, written at the end of every review stage, including each batch review worker's; Batch Mode's root reports per PR from the workers' compact results. One report covers every active scope. On a PR, it is also the source of the comments `post` publishes; the PR checkpoint shows only the summary SKILL.md Stage 2 names, while a local checkpoint shows the full report, header and at-a-glance table included.
 
 ---
 
@@ -44,12 +44,12 @@ One row per **active** dimension. Inactive dimensions have no row — their abse
 
 ## Findings
 
-**Flat format** — few findings, one dimension:
+**Flat format** — local targets only, with few findings in one dimension. A PR review always uses the zoned format, since every PR comment opens with its zone finding ID:
 
 | # | Severity | Priority | Title | Type | File:Line | Explanation |
 |---|---|---|---|---|---|---|
 
-**Zoned format** — many findings or several dimensions (the default whenever agents were dispatched). One section per zone, `## Zone <Letter> — <Dimension>`:
+**Zoned format** — every PR review, and a local review with many findings or several dimensions (the default whenever agents were dispatched). One section per zone, `## Zone <Letter> — <Dimension>`:
 
 | # | Severity | Priority | Title | Type | File:Line | Status | Explanation |
 |---|---|---|---|---|---|---|---|
@@ -71,13 +71,7 @@ One row per **active** dimension. Inactive dimensions have no row — their abse
 
 Tests Performance is `E`, not `P` — `P` is the code scope's, and IDs must stay unique within one report.
 
-Finding IDs are `<ZoneLetter><N>` (`A1`, `Q3`, `V2`, `E1`). A finding folded in from a collapsed cluster keeps only the surviving instance's ID. All findings start as `Open`.
-
-```
-✓ Fixed | ✓ Resolved (no change needed) | Tracked (moved to tech-debts) | Ignored (user-confirmed) | Pending (awaits decision) | Open (not triaged)
-```
-
-At the very bottom: an open/untriaged summary table of every finding with no disposition.
+Finding IDs are `<ZoneLetter><N>` (`A1`, `Q3`, `V2`, `E1`). A finding folded in from a collapsed cluster keeps only the surviving instance's ID. All findings start as `Open`; the fix stage reports outcomes separately ([Fix Stage — Report](fix-stage.md#report)).
 
 - **Severity:** Critical, High, Medium, Low.
 - **Priority and Type:** per scope — see [Code Dimensions](code-dimensions.md#priority-and-type) and [Test Dimensions](test-dimensions.md#priority-and-type).
@@ -93,11 +87,3 @@ When asked to save the review, always use the zoned format and write it into the
 2. No feature folder → ask where to save it (default: the project root).
 
 Subsequent passes use `code-review_phase2.md`, then `_phase3`, and so on.
-
-## Iterative Review
-
-After fixes:
-
-1. Update the table — mark fixed items with ✓.
-2. Re-review only the changed code and tests.
-3. Continue until every P0/P1 is addressed.

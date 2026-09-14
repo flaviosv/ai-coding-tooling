@@ -42,14 +42,14 @@
 - **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) instead of two linked files — the generic dispatch-contract content matches the shape of self-loading vendor skills like `subagent-creator`/`workflow-authoring`, so callers point at the skill rather than a markdown link.
 - **Trade-off**: This file's Sonnet-pinning and dispatch-contract sentences now depend on `subagent-dispatch` existing and staying installed; removing that skill without updating this file would leave a stale pointer.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ### AD-008
 - **Decision**: Replace the `templates/agent-wait-protocol.md` link (Step 6 wait instruction) with a reference to the `subagent-dispatch` skill.
 - **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the model-matrix/dispatch-contract content already consolidated there (AD-007).
 - **Trade-off**: Same dependency as AD-007 — this sentence now assumes `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ### AD-009
 - **Decision**: Merge `tests-code-review` and `complete-review` into this skill (v3.0.0) and delete both. One pipeline runs Steps 1–4 once for both scopes (one context map, one union EXCLUDE list, one diff classified into `impl_diff`/`test_diff`, one Sonar query), assesses a tier per scope in Step 5, dispatches every scope's agents in one parallel message, and consolidates into one report. New parameters: `scope` (`both` default, `code`, `tests` — narrowed only by explicit wording), `post` (`false` default; `true` publishes one pending review; Batch Mode always posts), and `findings_path` (replaces `complete-review`'s `human_review: true` hold, with Publish Mode unchanged). `SKILL.md` keeps only what every run executes; mode-conditional content moved to `references/` — `batch-mode.md`, `code-dimensions.md`, `performance-audit.md`, `posting-mechanics.md` (which absorbs `templates/github-pr-review-mode.md`, now deleted), `pr-publishing.md`, `report-format.md`, `sonar.md`, `test-dimensions.md`. Checklists are renamed with a scope suffix — `<topic>.code.md` for this skill's own, `<topic>.tests.md` for those from `tests-code-review`, and stack-specific `<stack>.code.md` / `<stack>-performance.code.md` / `<stack>.tests.md`; extracted orchestration references carry no suffix. Behavior changes deliberately taken with the merge: (1) a GitHub PR review reports locally unless `post: true`, and a user's post-report selection publishes through Posting Mechanics' GraphQL batches instead of the old REST bulk POST; (2) same-root-cause duplicate collapsing (CPR-AD-002) runs in Step 8 on every report, not only before posting; (3) the ≥80% confidence rule covers test findings too; (4) a failed dimension agent is re-dispatched once before being marked not executed, replacing `complete-review`'s whole-skill scoped retry; (5) the tests Performance zone letter is `E`, since `P` is the code scope's; (6) `test-review-checklist.md` became `review-checklist.tests.md`; (7) the tests scope still runs `gap-detector` when implementation changed but no test file did; (8) Sonar's low-coverage file list is intersected with implementation files rather than the tests scope's file list, and the coverage block also reaches the Medium-tier tests agent, since that agent performs `gap-detector`'s analysis; (9) a `findings_path` hold from a root conversation runs in the publishing worker, as `human_review: true` did; (10) Performance Audit's standalone `architecture-reviewer` loads the code-quality checklist set (previously unspecified), and its changed-files agents take their file list from the local workspace diff. Imported decision logs keep their entries verbatim under `TCR-`/`CPR-` prefixes so numbering never collides; CPR-AD-001, CPR-AD-002 and CPR-AD-004 are superseded by this entry. AD-004 item (4) is reversed: frontmatter `metadata.triggers` now mixes every target's phrases, so Step 1's table names each target's trigger phrases itself.
@@ -84,19 +84,61 @@
 - **Reason**: By the user's decision, the global Test Execution Scope rule set (the `CLAUDE.global.md` subsection and `references/test-execution-scope.md`) was removed from the harness, so the fix stage must state its test scope itself instead of naming the removed convention (whose links FR-AD-013 had already reduced to a bare name).
 - **Trade-off**: The fix worker no longer inherits the removed rule's stop-when-green and no-widening wording; only this one-line instruction bounds its test runs.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ### AD-014
 - **Decision**: Removed the `gh` account resolution: opt-in tag and the Stage 1 dispatch's "gh login to pass as `--login` when the caller resolved one"; `references/github-writes.md` no longer says `build-feature` always passes a login. The `scripts/hooks/resolve-gh-account.sh` hook (SessionStart + CwdChanged, `config/hooks.json`) now scopes the session's `gh` calls, including `github_review.py`'s, to the repo's account through `GH_TOKEN`. `github_review.py --login` is kept unchanged as an optional identity guard, still passed by batch mode.
 - **Reason**: The opt-in tag named no trigger and contradicted the global rule (`docs/harness-evaluation.md` Skills #45); the global prose procedure it pointed at is gone. A live headless test confirmed the hook's token reaches both the main session's and a dispatched subagent's Bash calls, so every worker this skill dispatches inherits the right identity without a login being threaded through.
 - **Trade-off**: Correct identity for a standalone PR run depends on the hook being installed; in a repo the hook cannot resolve, the session is told to ask the user rather than getting an automatic pick.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-016
 
 ### AD-015
 - **Decision**: `references/observability.code.md`'s Security & privacy item now flags passwords, tokens, session IDs, and card numbers in logs at any level, and unredacted PII even at DEBUG, replacing its "DEBUG-level PII is acceptable for development diagnostics" allowance.
 - **Reason**: By the user's decision, DEBUG is not a safe level for sensitive data: it is often enabled in staging or during incidents, and log stores keep data for a long time. The allowance also contradicted `review-checklist.code.md`'s no-level-exception rule (`docs/harness-evaluation.md` Skills #49), and matches the same fix in the `tlc-spec-driven` overlay's observability guidelines.
 - **Trade-off**: Reviews now flag DEBUG statements that log raw PII for development diagnostics, which previously passed, so code relying on that for local debugging gets new findings.
+- **Date**: 2026-09-14
+- **Status**: superseded by AD-019
+
+### AD-016
+- **Decision**: Removed every `gh` account/login selection path: `github_review.py` loses `--login` (and `use_login`, its `GH_TOKEN` override, and the identity-mismatch check) with its tests; `github-writes.md` no longer tells callers to pass a login; `SKILL.md`'s Stage 2 `post` recovery drops `[--login <login>]`; batch mode no longer resolves a login to hand to workers. Candidate search uses `@me` (`reviewed-by:@me`, `review-requested:@me`, via `gh search prs`). Batch mode still reads the session's own login once, through GraphQL `viewer { login }`, only as a comparison value for the reply-review filter's `author:` argument and the fix sweep's own-threads scope filter.
+- **Reason**: User decision (`docs/harness-evaluation.md` Skills #45): the SessionStart hook that sets `GH_TOKEN` already scopes every `gh` call — including the script's and every dispatched worker's — to the right account, so a login threaded through prompts and flags only duplicated it and could diverge from it. `gh search prs --help` confirms `--review-requested=@me`.
+- **Trade-off**: Without the hook, nothing in this skill picks the account; a machine with several `gh` accounts and no hook writes as whichever one is active. `reviewed-by:@me` is standard GitHub search syntax but only `--review-requested=@me` is shown in `gh`'s own help. The MCP search path resolves `@me` to the MCP server's identity, which can differ from `gh`'s.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-017
+- **Decision**: The fix stage dispatches exactly one fix worker per run, which fixes every remaining finding — a single PR's, a local target's, or every PR of a batch sweep — choosing its own order across PRs and across items. `isolation: worktree` and the per-PR worktree dispatch rules are gone from `SKILL.md`, `fix-stage.md`, `batch-mode.md`, and `WORKFLOW.md`. Checkout rule: work in the checkout or worktree path the caller supplies; otherwise get onto each PR branch however the worker judges safest, never switching branches in a checkout with uncommitted changes. The inline-subagent path has no checkout wording of its own any more. In the review sweep, `human_review: false` submits each PR as its review lands and dispatches the one fix worker once every review has landed; per-PR fix updates come from that worker's single report. The frontmatter description now says the review stage reviews each dimension inline or with agents as size requires, and that the fix subagent replies to every in-scope thread and resolves the ones it fixed or rejected.
+- **Reason**: User decision (Skills #46, #58, #61): parallel fix workers in separate worktrees caused repeated trouble — a worktree cannot be created for a branch already checked out elsewhere, so a sweep PR whose branch sat in another checkout failed, retried, and failed again — and the special-case checkout wording contradicted the dispatched path.
+- **Trade-off**: A batch fix sweep is now sequential, so wall-clock time grows with the number of PRs, and a batch review sweep with `human_review: false` no longer starts fixing a PR before every review has landed. One worker failure affects every PR not yet delivered (bounded by AD-018's resume). This replaces AD-011 item (3)'s inline worktree procedure.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-018
+- **Decision**: A stage worker that fails outright is retried once, resuming from the point where it stopped instead of restarting: the retry uses what the failed worker already reported or published — `post` skips what is already on the review, a review worker that already wrote `post.json` recovers as a posting failure from that file, and a fix worker continues with the items and PRs still open (its retry note carries what the failed worker reported). A second failure stops the run. The rule lives only in `SKILL.md` Guardrails and the Stage 2 recovery table; `fix-stage.md` and `batch-mode.md` point at it and keep only their own detail.
+- **Reason**: User decision (Skills #62): the retry rule was written five times across three files and had already drifted; restarting from scratch re-did work that had landed.
+- **Trade-off**: A resumed worker depends on the failed worker's partial report being accurate; when it reported nothing, resuming falls back to the fresh fetch the fix stage already does, and to a fresh review when no `post.json` exists.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-019
+- **Decision**: Trimmed the code checklists to what both judges kept: `best-practices.code.md` loses SRP, ISP, DRY, Law of Demeter, Readability over Cleverness, and the Boy Scout "improvements near touched code" item, and its layer item now defers to `ARCHITECTURE.md`; `clean-code-checklist.code.md` loses the generic naming bullets, the SRP/god-object/ISP/Law of Demeter bullets, the swallowed-errors bullet, DRY & Duplication, and three formatting bullets (the newspaper rule stays); `review-checklist.code.md` loses its Security and Tests sections, the "explanatory comment" item, and the TLC principles sentence, and its docstring item now requires docs only where the language standard does; `observability.code.md` compresses log levels to one line and drops message quality, performance, and duplication; `performance-checklist.code.md` drops the three profiling-evidence items, General Principles, and the universal typed-serialization claim; `review-checklist.tests.md` compresses its generic sections, keeping the opinionated items, Test Doubles, and the Anti-Patterns table; `test-dimensions.md` drops its closing advice; `code-dimensions.md` flags only TODO/FIXME with no linked ticket; `php.code.md` is labelled a cross-project preference that defers to the repo's formatter or `CONVENTIONS.md`. The observability never-log list now names email addresses and first/last names alongside passwords, tokens, session IDs, and card numbers, and says "redact or hash other PII even at DEBUG" — the same wording as the `tlc-spec-driven` overlay's rule 7.
+- **Reason**: User decisions (Skills #47, #48, #49, #51, #52, #53, #65, #66, #67, #69, #70, #71, #74, #75, #78): the cut items restated model-default practice or each other across checklists the same agent loads, which produced duplicate findings; the Tests and Security sections sat outside the code-quality agents' scope; the docstring, Boy Scout, and TODO items contradicted sibling rules; profiling evidence cannot be checked from a diff; email addresses and names are the PII most often logged by accident.
+- **Trade-off**: Code-quality and regression agents no longer carry a security checklist — security rests on `security-reviewer`'s own knowledge. Agents rely on their defaults for the removed generic items.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-020
+- **Decision**: Step 5's tier table is ordered Complex → Large → Medium → Small with "First match wins, Complex checked first"; Large and Medium are stated as lower bounds (`>15 files OR ≥800 lines`, `>5 files OR ≥200 lines`), so either metric alone lifts a change into the larger tier, and Small is what remains. Scope activation: a scope with no changed files of its own is skipped; the tests scope runs only when test files actually changed, so an implementation-only change gets no Coverage Gaps review; an empty change list skips both. The rename-only example and `code-dimensions.md`'s duplicate empty-list rule are gone. Step 2 now defines an active spec (a feature folder whose TASK-ID matches the branch or changed files) and a stack match (`STACK.md` names it, else the changed files' extension).
+- **Reason**: User decisions (Skills #44, #55, #56): with Small listed first under an OR, a 3-file, 2,000-line change was reviewed inline with no thoroughness directive; the empty-list rule contradicted the skipped-scope rule; the undefined detection rules turned `requirements` on for any repo with an old spec.
+- **Trade-off**: This reverses AD-009 item (7): a change with no test files no longer gets a gap-detector pass, so missing tests on implementation-only changes go unflagged.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-021
+- **Decision**: Remaining fixes: `report-format.md` drops the unused status legend, untriaged table, and Iterative Review, says the report is written by every review stage including batch review workers, and restricts the flat format to local targets (a PR review is always zoned); `batch-mode.md` says the root also loads it for New Commits or Comments after any PR run, and drops the `ListAgents` fallback for unreachable workers; the Reviewer Stance says intent is not a defense but the 80% confidence bar still applies; the no-delete guardrail names the duplicate-thread-reply exception; `model: sonnet` stays only in the dispatch recipes (Stage 1, Step 6, Fix Stage, Batch Mode), with Guardrails' restatement removed; `test-dimensions.md` names the review worker, not an orchestrator; `fix-stage.md` points test conventions at `docs/codebase/TESTING.md` or neighbouring tests. Every mention of another skill in edited text is removed, including every `subagent-dispatch` pointer — dispatch prompts list their fields inline and waiting is stated inline as one line of plain text, never polling.
+- **Reason**: User decisions (Skills #50, #54, #59, #60, #63, #64, #68, #72, #73, #77) and the standing rule that a skill names no other skill and defers nothing outside itself; generic handling of unreachable subagents belongs to the dispatch mechanism, not this skill.
+- **Trade-off**: This skill no longer tells workers to load the dispatch reference, so the alias-only model rule and the stall ceiling it supplied are not restated here; they apply only when that reference loads on its own.
 - **Date**: 2026-09-14
 - **Status**: active
 
@@ -124,14 +166,14 @@
 - **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files, mirroring `code-review`'s identical change (AD-007).
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ### TCR-AD-008
 - **Decision**: Replace the `templates/agent-wait-protocol.md` link (Step 6 wait instruction) with a reference to the `subagent-dispatch` skill.
 - **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the content already consolidated there (AD-007), mirroring `code-review`'s identical change (AD-008).
 - **Trade-off**: Same dependency as AD-007 — this sentence now assumes `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ## Imported from complete-review
 
@@ -179,14 +221,14 @@
 - **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files.
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ### CPR-AD-011
 - **Decision**: Replace the three `templates/agent-wait-protocol.md` links (Step 2's wait instruction, Batch Mode's per-PR wait, and Single PR Mode's Step 2 wait) with references to the `subagent-dispatch` skill.
 - **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the content already consolidated there (AD-010).
 - **Trade-off**: Same dependency as AD-010 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ## Imported from fix-review
 
@@ -270,14 +312,14 @@
 - **Reason**: Both templates were consolidated into one self-triggering skill (see `skills/subagent-dispatch/STATE.md` AD-001) rather than two linked files.
 - **Trade-off**: Same dependency as `code-review`'s AD-007 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ### FR-AD-012
 - **Decision**: Replace the three `templates/agent-wait-protocol.md` links (Before Starting's wait instruction, the Batch Mode per-PR wait, and `references/github-delivery.md`'s abuse-detection clock-wait note) with references to the `subagent-dispatch` skill.
 - **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch` (see `skills/subagent-dispatch/STATE.md` AD-002) alongside the content already consolidated there (AD-011).
 - **Trade-off**: Same dependency as AD-011 — these sentences now assume `subagent-dispatch` stays installed.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-021
 
 ### FR-AD-013
 - **Decision**: Drop the three direct `templates/test-execution-scope.md` links (Guardrails' fix-time note, the per-item test-run note in step 5, and the validation-gate note in step 6) — state "Test Execution Scope" as a named convention, no file path, no mention of `CLAUDE.md` by name.

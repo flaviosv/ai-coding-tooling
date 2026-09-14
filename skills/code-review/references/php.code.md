@@ -1,6 +1,6 @@
 # PHP — code-review insights
 
-Project-specific patterns and conventions.
+Cross-project PHP style preferences — defer to the repo's formatter config or `CONVENTIONS.md` when they differ.
 
 ---
 

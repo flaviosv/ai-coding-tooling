@@ -59,20 +59,10 @@ Technology-specific checklists extend this file.
 
 ## Serialization & Data Transfer
 
-- [ ] Typed, schema-bound structures used for serialization rather than generic maps or dictionaries — typed structures serialize faster and avoid runtime field reflection
+- [ ] Serialization avoids reflection-heavy generic maps on hot paths where the stack makes that costly
 - [ ] Only the fields required by the consumer are included in serialized payloads — no wildcard or select-all patterns when a subset suffices
 - [ ] Large payloads streamed incrementally rather than buffered fully in memory before sending
 
 ## Profiling & Measurement
 
-- [ ] Performance changes are based on profiling data — not on assumptions or intuition
-- [ ] A profiler or benchmark has been used to identify the actual bottleneck before any optimization is attempted
-- [ ] Benchmarks or load tests exist to quantify the before/after impact of performance changes
 - [ ] Profiling endpoints or debug tools are not exposed on public-facing interfaces in production
-
-## General Principles
-
-1. **Measure before optimising** — profile to confirm the bottleneck before changing anything
-2. **Hot path first** — optimise code that runs frequently or handles high-volume requests
-3. **Trade-offs** — consider performance vs readability; do not sacrifice clarity without clear gain
-4. **Scalability** — prefer stateless design, background processing, and circuit breakers for external dependencies

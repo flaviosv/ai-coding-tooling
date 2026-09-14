@@ -7,39 +7,24 @@ Technology-specific guides extend this file.
 
 ## Structure and Clarity
 
-- [ ] Every test has at least one assertion
-- [ ] Test name describes the scenario and the expected outcome
-- [ ] Arrange-Act-Assert structure is clearly visible
-- [ ] Each test covers one concept or behaviour — not multiple unrelated assertions
-- [ ] Test code reads as documentation of intended system behaviour
-- [ ] Tests verify observable behaviour through the public API — not internal state or implementation details
+- [ ] At least one assertion; the name states the scenario and expected outcome; Arrange-Act-Assert is visible
+- [ ] One behaviour per test, verified through the public API — not internal state or implementation details
 
 ## Coverage and Completeness
 
-- [ ] Happy path is tested
-- [ ] Error paths and failure scenarios are tested
-- [ ] Edge cases are covered (null, empty, zero, maximum, invalid input)
-- [ ] Boundary conditions tested where applicable
-- [ ] Integration points tested where the change touches component interactions
+- [ ] Happy path, error paths, edge cases (null, empty, zero, maximum, invalid input), and boundaries covered; integration points tested where the change touches component interactions
 - [ ] Error and exception assertions verify the message or code — not just the type
 - [ ] Response/return value structure is verified — not just status codes or boolean success flags
-- [ ] Access-controlled paths are tested for both the authorized success case and the unauthorized rejection case
+- [ ] Access-controlled paths tested for both the authorized success and the unauthorized rejection
 
 ## Independence and Isolation
 
-- [ ] Tests do not share mutable state across test cases
-- [ ] Each test can run independently and in any order
-- [ ] External dependencies (network, filesystem, external services) are mocked in unit tests
-- [ ] Any side effects (database writes, file creation) are cleaned up or isolated
-- [ ] No test relies on another test having run first
-- [ ] Global or shared configuration mutated during a test is restored in teardown — not left for subsequent tests
+- [ ] No shared mutable state and no ordering dependence — each test runs alone, in any order
+- [ ] External dependencies mocked in unit tests; side effects cleaned up or isolated; global configuration a test mutates is restored in teardown
 
 ## Determinism
 
-- [ ] No time-dependent assertions (fixed timestamps, relative time checks)
-- [ ] No random values used without a fixed seed
-- [ ] No sleeps or polling used to synchronise async behaviour
-- [ ] Tests produce the same result on every run
+- [ ] No time-dependent assertions, unseeded random values, or sleeps/polling to synchronise async behaviour
 
 ## Maintainability
 
@@ -53,9 +38,7 @@ Technology-specific guides extend this file.
 
 ## Performance
 
-- [ ] Unit tests have no I/O and run fast
-- [ ] Slow or I/O-bound tests are clearly separated or marked
-- [ ] No unnecessary delays in test setup or teardown
+- [ ] Unit tests have no I/O; slow or I/O-bound tests are separated or marked; no unnecessary setup or teardown delays
 
 ## Test Doubles Quality
 

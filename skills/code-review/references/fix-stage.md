@@ -1,6 +1,6 @@
 # Fix Stage
 
-Stage 3: acting on the findings that remain after the checkpoint. It runs in a fresh Sonnet worker dispatched by the root conversation — after a review, or directly from the fix-existing-findings entry. Loaded by that worker, and by the root to write its dispatch prompt.
+Stage 3: acting on the findings that remain after the checkpoint. It runs in one fresh fix worker dispatched by the root conversation — after a review, directly from the fix-existing-findings entry, or once for every PR of a batch sweep. Loaded by that worker, and by the root to write its dispatch prompt.
 
 ---
 
@@ -35,45 +35,44 @@ Stage 3: acting on the findings that remain after the checkpoint. It runs in a f
 
 ### Execution
 
-- **This worker fixes every item itself, inline, in order, and never calls the `Agent` tool.** The test is mechanical: you are a dispatched worker, so you are already the isolated context. Do not reason about whether some other context "already isolated" you. (Two real runs had a dispatched worker decide it was the exception, nest a second and third agent, and drop the reply/resolve steps between them — commits pushed, zero threads answered.)
-- File clusters organize the reading, not the dispatch: items whose fixes touch the same file are grouped so the file is read once, then processed one item at a time in encounter order, all committing to the same checkout.
+- **This worker fixes every item itself, inline, one at a time, and never calls the `Agent` tool.** It chooses the sequence — across PRs in a batch sweep, and across items within a PR. The test is mechanical: you are a dispatched worker, so you are already the isolated context. Do not reason about whether some other context "already isolated" you. (Two real runs had a dispatched worker decide it was the exception, nest a second and third agent, and drop the reply/resolve steps between them — commits pushed, zero threads answered.)
+- File clusters organize the reading, not the dispatch: items whose fixes touch the same file are grouped so the file is read once, then processed one item at a time, each PR's items committing to that PR's checkout.
 - When committing, stage each item's own files by path (`git add <path> …`) — never `git add -A`, which sweeps in unrelated working-tree changes. When not committing (an uncommitted workspace), stage nothing: the user's index is theirs.
-- **Test impact per item:** add a test when the change isn't covered (follow this project's `tests` skill conventions); update a test whose assertions the fix invalidates; remove a test only when it asserted the very behavior the fix corrects, replacing it with a test of the corrected behavior whenever there is anything left to cover. Coverage moves only as a stated consequence of a fix; a removal with nothing added back needs a one-line reason in the report. Run only the tests covering the files that item's fix touched — never tlc-spec-driven's Verifier.
-- **Never clean up a dirty tree you didn't create.** Never `git stash`, `git restore`, `git checkout --`, or `git clean` anything this run didn't make, and never target a path outside the checkout you were given. `progress.md` belongs to whoever invoked this skill and is being written while you run — leave it as found. (A real run's first two actions were `git stash` in the parent repo and `git restore` of its caller's live `progress.md`.) If uncommitted changes block a commit, name the files and stop.
+- **Test impact per item:** add a test when the change isn't covered (follow `docs/codebase/TESTING.md` when present, else the conventions of neighbouring tests); update a test whose assertions the fix invalidates; remove a test only when it asserted the very behavior the fix corrects, replacing it with a test of the corrected behavior whenever there is anything left to cover. Coverage moves only as a stated consequence of a fix; a removal with nothing added back needs a one-line reason in the report. Run only the tests covering the files that item's fix touched.
+- **Never clean up a dirty tree you didn't create.** Never `git stash`, `git restore`, `git checkout --`, or `git clean` anything this run didn't make, and never target a path outside the checkout you are working in. `progress.md` belongs to whoever invoked this skill and is being written while you run — leave it as found. (A real run's first two actions were `git stash` in the parent repo and `git restore` of its caller's live `progress.md`.) If uncommitted changes block a commit, name the files and stop.
 - **In a worktree, resolve every path from the worktree root** (`pwd`). The main checkout holds the same relative paths on a different branch, so a read there can return plausible pre-feature content and silently invalidate the judgment at step 5 — one real run read the wrong branch's file this way.
 - If the dispatch prompt names an active tlc-spec-driven feature folder, write the classified plan to `.specs/features/<feature>/fix-code-review.md`. Otherwise keep it in this worker's context only — never create anything under `.specs/`.
 - Cite commit SHAs exactly as a command printed them — the short form from `git log --oneline` or the full form from `git rev-parse`. Never expand a short SHA or write one no tool output contains; a real run reported three invented 40-character SHAs.
 
 ## Dispatch (root conversation)
 
-One `Agent` call: `subagent_type: general-purpose`, `model: sonnet`. Resolve the PR's head branch (`gh pr view <N> --json headRefName`) and `git worktree list`:
+One `Agent` call, `subagent_type: general-purpose`, `model: sonnet`: **one fix worker for every finding in the run** — a single PR's, a local target's, or every PR of a batch sweep. Never one worker per PR. Where it works:
 
-- The current checkout is on it → no isolation; the worker works here.
-- Another worktree already has it checked out (e.g. `build-feature`'s) → no isolation; the prompt names that worktree's absolute path, and the worker resolves every path from it. Git refuses to check out one branch twice, so a new worktree would fail.
-- No checkout has it → `isolation: worktree`; the worker checks it out itself.
-- Local targets → no isolation.
+- **The caller supplied a worktree or checkout path** (as an orchestrator does) → the prompt names that absolute path; the worker works there.
+- **Otherwise** the worker gets onto each PR's head branch however it judges safest ([PR Mode](#pr-mode) step 0), and never switches branches in a checkout that has uncommitted changes. Local targets work in the current checkout ([Local Mode](#local-mode)).
 
 **The branch that receives local fix commits** is resolved by the root before dispatch: a named branch as named; for a commits target, the current branch when every reviewed commit is on it (`git merge-base --is-ancestor <commit> HEAD`), otherwise ask the user which branch — never guess.
 
-Prompt, per the `subagent-dispatch` contract:
+Prompt:
 
-- Prefix `[code-review][fix:PR-<N>]` or `[code-review][fix:local]`.
-- The target (PR number, owner/repo, head branch, login, and the worktree path when one already holds the branch) or, for local, the target kind (uncommitted workspace, named branch, or commits), the branch that receives commits, and every remaining finding verbatim (ID, severity, `file:line`, anchor, explanation, recommendation).
+- Prefix `[code-review][fix:PR-<N>]`, `[code-review][batch-fix]`, or `[code-review][fix:local]`.
+- The target — for each PR: number, owner/repo, head branch, and the checkout path when the caller supplied one — or, for local, the target kind (uncommitted workspace, named branch, or commits), the branch that receives commits, and every remaining finding verbatim (ID, severity, `file:line`, anchor, explanation, recommendation).
 - The active tlc-spec-driven feature folder (`.specs/features/<feature>/`) when the caller named one — `build-feature` always does; without it the worker writes no plan file.
 - The files to load, by absolute path — never a skill-relative name, which one real worker spent ~1.2M tokens searching for: "Read `~/.claude/skills/code-review/references/fix-stage.md` and follow it; you are the fix worker — never call `Agent`." For a PR, also `~/.claude/skills/code-review/references/github-writes.md`; with Jira sync requested, `~/.claude/skills/code-review/references/jira-sync.md`. If `~/.claude/skills/code-review` does not exist, the skill is installed project-locally: give the same files under `.claude/skills/code-review/`, resolved to an absolute path.
-- **Retry note**, whenever this dispatch comes from the continue-after-checkpoint entry (including `build-feature`'s resume and a user's "continue") or recovers a worker that failed outright — harmless when nothing was pushed: "This may be a retry. The PR branch may already hold commits an earlier fix worker pushed<, SHAs: …>. A thread whose fix is already on the branch is **fixed — its reply is still needed**; never reject it as already addressed. `deliver` skips any thread that already carries a delivered reply."
-- Completion condition: every in-scope thread (or local finding) has a fixed / rejected / answered / blocked / unclear / routed outcome, and on a PR `deliver` has confirmed it.
+- **Retry note**, whenever this dispatch comes from the continue-after-checkpoint entry (including a caller's resume and a user's "continue") or recovers a worker that failed outright — harmless when nothing was pushed: "This may be a retry. <What the failed worker already reported — PRs delivered, items done — when it reported anything; continue from there.> The PR branch may already hold commits an earlier fix worker pushed<, SHAs: …>. A thread whose fix is already on the branch is **fixed — its reply is still needed**; never reject it as already addressed. `deliver` skips any thread that already carries a delivered reply."
+- Completion condition: every in-scope thread (or local finding) of every PR has a fixed / rejected / answered / blocked / unclear / routed outcome, and on a PR `deliver` has confirmed it.
 - Return shape: the Report below — never finding bodies or diffs.
 - Delegation depth: none.
 
-A worker that fails outright (crash, auth failure, PR not found — distinct from items coming back blocked, which needs no retry and doesn't stop the rest of the run) is retried once with a fresh worker carrying the retry note, from step 0 — on a PR, that retry is SKILL.md Stage 3's delivery recovery, never an additional one. A second failure stops the run and is reported; never mark anything fixed or resolved on a failed run. After the report, remove any worktree the dispatch created (`git worktree remove <path>`) unless a blocker left state worth inspecting — then say so and wait for the user.
+A worker that fails outright is retried per [SKILL.md — Guardrails](../SKILL.md#guardrails), with the retry note above. Items that come back blocked are not a failure: no retry, and the rest of the run continues.
 
 ## PR Mode
 
-0. **Before starting:** `gh auth status` must succeed — otherwise stop: "No way to reach GitHub — install/authenticate `gh`." Then make sure this run works on the PR's head branch without touching anyone else's checkout:
-   - **Dispatched with `isolation: worktree`:** `gh pr checkout <N>` in that worktree, then install dependencies once (the command in `docs/codebase/STACK.md`/`TESTING.md`, else the package manager's standard install).
-   - **Dispatched without isolation:** work in the checkout or worktree path the prompt names; it already has the branch.
-   - **Run inline by a subagent executing this skill (no root dispatch):** resolve the head branch (`gh pr view <N> --json headRefName --jq .headRefName`). The current branch matches → work here. Another worktree has it checked out (`git worktree list`) → work there, resolving every path from it. Neither → `git fetch origin <headRefName>`, then `git worktree add <tmp-path> <headRefName>`, install dependencies once, and run every step inside it; remove it (`git worktree remove <tmp-path>`) once the run is finished, successful or not, unless a blocker left state worth inspecting — say so instead. Never `gh pr checkout` in a checkout this run was not given.
+With several PRs, run steps 0–10 for one PR at a time, in the order you judge best.
+
+0. **Before starting:** `gh auth status` must succeed — otherwise stop: "No way to reach GitHub — install/authenticate `gh`." Then get onto the PR's head branch (`gh pr view <N> --json headRefName --jq .headRefName`):
+   - **The prompt names a checkout path:** work there; it already has the branch.
+   - **Otherwise:** check the branch out however you judge safest — `git worktree list` shows whether a checkout already has it (git refuses to check one branch out twice); a temporary `git worktree add` you create is removed once that PR is done, unless a blocker left state worth inspecting — say so instead. **Never switch branches in a checkout that has uncommitted changes.** In a checkout you set up, install dependencies once (the command in `docs/codebase/STACK.md`/`TESTING.md`, else the package manager's standard install).
 1. **Fetch** threads with the query in [GitHub Writes](github-writes.md#fix-stage-fetch-threads). Skip resolved threads and threads on a pending review. At 100 threads, note that more may exist.
 2. **Classify** each remaining thread from its full exchange:
 
@@ -86,7 +85,7 @@ A worker that fails outright (crash, auth failure, PR not found — distinct fro
    | unclear | Still unsure what it asks | Nothing, or a clarifying reply if you have a specific question; record for the report |
 
    A standalone comment not tied to a finding gets whichever class it resembles. A thread whose last comment is an earlier reply from this identity answering it, with nothing newer from anyone, is already answered: list it in `skipped` ("answered, awaiting reviewer") — replies from before `deliver`'s marker carry no marker, so `deliver` alone would reply again.
-3. **Plan:** group auto-fix and apply-as-directed items into file clusters in encounter order; write `fix-code-review.md` when a feature is active (`## Cluster: <file path>` per cluster, each item with thread id, class, `path:line`, one-line direction). Zero threads → report and stop.
+3. **Plan:** group auto-fix and apply-as-directed items into file clusters, in the order you will work them; write `fix-code-review.md` when a feature is active (`## Cluster: <file path>` per cluster, each item with thread id, class, `path:line`, one-line direction). Zero threads → report and stop.
 4. **Re-fetch** the same query immediately — no approval gate — and silently drop any item no longer present, resolved, or changed. Drop a cluster that empties.
 5. **Fix, item by item:** read the target file(s), judge whether the finding or direction still holds (Judgment above), then either edit + test-impact + targeted tests + one Conventional Commits commit, or reject / block with reasoning. Compose the answer-only and unclear replies now.
 6. **Validation gate** — if any file was edited, committed or not: this project's build/typecheck command plus the tests covering every file this run touched (from `docs/codebase/STACK.md`/`TESTING.md`), and `git grep -nE '^(<{7}|={7}|>{7})( |$)' -- <touched files>`. This checks the composite state, which step 5's per-item runs never saw. It means those files' own tests, named explicitly — not `./...`, not an unfiltered suite. A failure is fixed here — with its own commit, or as a further uncommitted edit in an uncommitted workspace; one that can't be fixed stops the run as blocked.
@@ -120,6 +119,8 @@ Opt-in only — when the user explicitly asks ("and update the Jira ticket"). Fo
 
 ## Report
 
+One section per PR when the run covered several.
+
 - Outcomes by class: fixed, rejected (with reasons), answered, blocked (with options or reason), unclear, routed to a person (who).
 - On a PR: the `deliver` JSON counts verbatim, and a note if 100+ threads were fetched.
 - Commits (SHAs verbatim) and whether they were pushed; for an uncommitted workspace, the files edited.
@@ -131,8 +132,9 @@ Opt-in only — when the user explicitly asks ("and update the Jira ticket"). Fo
 
 | Situation | Outcome |
 |---|---|
-| `build-feature` Step 10, PR #128, orchestrator already on the branch | Fix worker dispatched without isolation; 6 threads → 3 fixed, 2 rejected (one already handled on the branch, one unsound suggested approach), 1 answered and left open; gate passes on the four touched files' tests; 3 commits pushed; `deliver` exits 0 with `replied_confirmed: 6, resolved_confirmed: 5` |
-| "fix the review comments on PR #201", checkout on `main` | Worker dispatched with `isolation: worktree`; root removes the worktree after the report; the user's `main` checkout never touched |
+| PR #128, the caller supplied the worktree that has the branch | Fix worker works in that worktree; 6 threads → 3 fixed, 2 rejected (one already handled on the branch, one unsound suggested approach), 1 answered and left open; gate passes on the four touched files' tests; 3 commits pushed; `deliver` exits 0 with `replied_confirmed: 6, resolved_confirmed: 5` |
+| "fix the review comments on PR #201", checkout on `main` with uncommitted changes | Worker adds a temporary worktree for the PR branch and removes it after `deliver`; the user's `main` checkout never touched |
+| Batch fix sweep over PRs #12, #9, #15 | One worker; it picks the order, finishes each PR through `deliver` before starting the next, and reports one section per PR |
 | "fix Q1, H2" after a local review of uncommitted changes | Fix worker gets exactly Q1 and H2; edits left uncommitted; report lists the edited files |
 | Thread "@bob, is this timeout still right?" | Routed to a person — skipped with reason in `delivery.json`, noted in the report |
 | A finding asks to change a value the spec requires | Rejected, citing the spec line in the reply |

@@ -7,9 +7,6 @@ Three subcommands, one set of mechanics:
     submit   <owner> <repo> <pr>   submit this identity's pending review as COMMENT -> confirm state
     deliver  <delivery.json>  thread replies and resolves -> confirm each by re-fetch
 
-Every subcommand accepts `--login <login>`: the script then acts with that account's token
-(`gh auth token --user`) and fails if the authenticated identity differs.
-
 Every number this script reports comes from re-fetching GitHub's own state, never
 from what it sent. It exits non-zero when any intended outcome is unconfirmed, so a
 caller cannot mistake "sent" for "landed" — the failure mode this script exists to
@@ -57,7 +54,6 @@ Exit codes:
 import argparse
 import base64
 import json
-import os
 import re
 import subprocess
 import sys
@@ -79,7 +75,6 @@ HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 DIFF_FILE_RE = re.compile(r"^\+\+\+ b/(.+)$")
 REPLY_MARKER = "<!-- code-review:deliver -->"
 ABUSE_SIGNALS = ("abuse", "rate limit", "temporarily blocked")
-GH_ENV = None
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +108,7 @@ def run_gh_process(args):
     """
     try:
         return subprocess.run(
-            args, capture_output=True, text=True, timeout=GH_TIMEOUT_S, env=GH_ENV
+            args, capture_output=True, text=True, timeout=GH_TIMEOUT_S
         )
     except subprocess.TimeoutExpired as exc:
         raise GhError(f"gh timed out after {GH_TIMEOUT_S}s") from exc
@@ -153,18 +148,6 @@ def run_gh_text(args):
     return proc.stdout
 
 
-def use_login(login):
-    """Act as `login` for every later gh call; the token never leaves this process."""
-    global GH_ENV
-    try:
-        token = run_gh_text(["gh", "auth", "token", "--user", login]).strip()
-    except GhError as exc:
-        raise GhError(f"no gh token for login {login}") from exc
-    if not token:
-        raise GhError(f"no gh token for login {login}")
-    GH_ENV = {**os.environ, "GH_TOKEN": token}
-
-
 def gh_graphql(query, str_vars=None, int_vars=None):
     args = ["gh", "api", "graphql", "-f", f"query={query}"]
     for key, value in (str_vars or {}).items():
@@ -185,13 +168,11 @@ def graphql_data(payload, what):
     return data
 
 
-def resolve_login(expected=None):
+def resolve_login():
     data = run_gh(["gh", "api", "user"])
     login = data.get("login")
     if not login:
-        raise GhError("could not resolve authenticated login from `gh api user`")
-    if expected and login != expected:
-        raise GhError(f"authenticated as {login}, expected {expected}")
+        raise GhError("could not resolve the authenticated login")
     return login
 
 
@@ -667,9 +648,9 @@ def post_batches(review_id, items, batch_size, errors):
             abuse_waits = wait_for_abuse_block(abuse_waits)
 
 
-def post(config, batch_size, dry_run, expected_login=None):
+def post(config, batch_size, dry_run):
     owner, repo, pr = config["owner"], config["repo"], int(config["pr"])
-    login = resolve_login(expected_login)
+    login = resolve_login()
     log(f"authenticated as {login}")
 
     pull, review_id = fetch_pr_and_pending_review(owner, repo, pr, login)
@@ -785,8 +766,8 @@ def review_body(review_id):
     return ((node or {}).get("body") or "").strip()
 
 
-def submit(owner, repo, pr, dry_run, expected_login=None):
-    login = resolve_login(expected_login)
+def submit(owner, repo, pr, dry_run):
+    login = resolve_login()
     pull, review_id = fetch_pr_and_pending_review(owner, repo, pr, login)
     result = {"pr": pr, "repo": f"{owner}/{repo}", "identity": login, "pr_url": pull.get("url")}
 
@@ -1027,14 +1008,14 @@ def validate_delivery_config(config):
     return None
 
 
-def deliver(config, batch_size, dry_run, expected_login=None):
+def deliver(config, batch_size, dry_run):
     owner = config["owner"]
     repo = config["repo"]
     pr = int(config["pr"])
     wanted = config["threads"]
     skipped = config.get("skipped") or {}
 
-    login = resolve_login(expected_login)
+    login = resolve_login()
     log(f"authenticated as {login}")
 
     baseline, truncated = fetch_threads(owner, repo, pr)
@@ -1193,9 +1174,6 @@ def build_parser():
     deliver_cmd.add_argument("--dry-run", action="store_true", help="plan only, write nothing")
     deliver_cmd.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
 
-    for cmd in (post_cmd, submit_cmd, deliver_cmd):
-        cmd.add_argument("--login", help="act as this gh account and fail if the identity differs")
-
     return parser
 
 
@@ -1206,7 +1184,7 @@ def main(argv=None):
         return fatal("--batch-size must be at least 1")
 
     if args.command == "submit":
-        runner = lambda: submit(args.owner, args.repo, args.pr, args.dry_run, args.login)
+        runner = lambda: submit(args.owner, args.repo, args.pr, args.dry_run)
     else:
         config, error = read_json_file(args.input_file)
         if error:
@@ -1216,11 +1194,9 @@ def main(argv=None):
         if error:
             return fatal(error)
         action = post if args.command == "post" else deliver
-        runner = lambda: action(config, args.batch_size, args.dry_run, args.login)
+        runner = lambda: action(config, args.batch_size, args.dry_run)
 
     try:
-        if args.login:
-            use_login(args.login)
         result, code = runner()
     except GhError as exc:
         print(

@@ -11,7 +11,6 @@ Every write this skill makes to GitHub — posting a pending review, submitting 
 - **Never re-run `post` to read its output again.** Re-running is safe against duplicates (it skips comments already on the review), but the first run's JSON is the record — capture it. The one re-run is Stage 2's recovery after a failed post, from the same `post.json`.
 - **Never create GitHub Issues.** Every finding is an inline review thread.
 - **Never delete** a pending review, a review comment, or a thread this skill created — including a duplicate review comment `post` reports. Report it and let a human remove it. One exception: a duplicate **thread reply** `deliver` reports in `duplicates_found` — delete each extra reply (`gh api -X DELETE repos/<owner>/<repo>/pulls/comments/<comment id>`, one call each — there is no batch delete), then re-run `deliver`.
-- **Pass `--login <login>` on every subcommand whenever a `gh` login was resolved** (batch mode resolves one in its Step 1). The script then acts with that account's token and fails when the authenticated identity differs, so a run never writes as whichever account `gh` happens to have active. Every call in one run uses the same login.
 - **Never post placeholder, test, or probe content to a real review** — a pending review is visible to anyone with repo access the moment it exists. Use `--dry-run` to check a run before any write.
 - **Never touch another identity's pending review.** The script only reads and extends the authenticated identity's own (`author: $me`).
 - **The review stage never replies to or resolves existing threads**; only the fix stage does, through `deliver`.
@@ -53,9 +52,9 @@ Each finding becomes one comment: `path`, `line`, `side` (omit for `RIGHT`), `bo
     "comments": [{"path": "src/a.py", "line": 18, "body": "**[Security — S1, High]** ...", "anchor": "..."}]}
    ```
    Every finding left after Step 8's duplicate collapse — unfiltered, never by severity.
-2. `python3 ~/.claude/skills/code-review/scripts/github_review.py post <post_json_path> [--login <login>]`
+2. `python3 ~/.claude/skills/code-review/scripts/github_review.py post <post_json_path>`
 
-What it does, in order: resolves the login, the PR, and this identity's existing pending review (`author: $me` — never another identity's); fetches the PR's diff hunks (`gh api repos/{owner}/{repo}/pulls/{N}/files --paginate --slurp`), and for any commented file whose patch the files API omits (large diffs), parses its hunks from `gh pr diff <N>` instead; checks each `anchor` against the file at the head commit — ignoring whitespace runs and a leading `+`/`-` copied from a patch, and accepting an anchor that is part of its line — correcting `line` when the text sits elsewhere, and posting at the given `line` as **`anchor_unverified`** when the text is found nowhere (only a comment with no `line` to fall back on becomes **unpostable**); re-anchors a comment outside every hunk to the nearest in-hunk line of that file with a first line naming its true location (GitHub silently discards an out-of-hunk thread — `200`, a real id, no comment — which lost 9 of 44 findings on two real runs); marks a comment on a file the PR never touched, or with no hunk data at all, **unpostable**; skips comments whose exact path, line, and body are already on the review; creates the pending review only if none exists; adds threads in batches of 10, 1 s apart. A per-alias GraphQL error skips only that comment. It then fetches the review again and retries, once, only comments from a request that failed as a whole — never one that returned `200` but didn't persist, and never one with its own alias error — then reconciles.
+What it does, in order: resolves the authenticated identity, the PR, and this identity's existing pending review (`author: $me` — never another identity's); fetches the PR's diff hunks (`gh api repos/{owner}/{repo}/pulls/{N}/files --paginate --slurp`), and for any commented file whose patch the files API omits (large diffs), parses its hunks from `gh pr diff <N>` instead; checks each `anchor` against the file at the head commit — ignoring whitespace runs and a leading `+`/`-` copied from a patch, and accepting an anchor that is part of its line — correcting `line` when the text sits elsewhere, and posting at the given `line` as **`anchor_unverified`** when the text is found nowhere (only a comment with no `line` to fall back on becomes **unpostable**); re-anchors a comment outside every hunk to the nearest in-hunk line of that file with a first line naming its true location (GitHub silently discards an out-of-hunk thread — `200`, a real id, no comment — which lost 9 of 44 findings on two real runs); marks a comment on a file the PR never touched, or with no hunk data at all, **unpostable**; skips comments whose exact path, line, and body are already on the review; creates the pending review only if none exists; adds threads in batches of 10, 1 s apart. A per-alias GraphQL error skips only that comment. It then fetches the review again and retries, once, only comments from a request that failed as a whole — never one that returned `200` but didn't persist, and never one with its own alias error — then reconciles.
 
 | Output field | Meaning |
 |---|---|
@@ -73,7 +72,7 @@ What it does, in order: resolves the login, the PR, and this identity's existing
 
 ## Checkpoint: `submit`
 
-`python3 ~/.claude/skills/code-review/scripts/github_review.py submit <owner> <repo> <N> [--login <login>]`
+`python3 ~/.claude/skills/code-review/scripts/github_review.py submit <owner> <repo> <N>`
 
 Submits this identity's pending review as `COMMENT` and confirms the state changed. Exit `0` results (SKILL.md Stage 2 says what follows each):
 
@@ -119,7 +118,7 @@ Skip nodes where `isResolved: true`, and nodes whose comments all have `pullRequ
     "skipped": {"PRRT_yyy": "routed to @alice — awaiting her answer"}}
    ```
    **`threads` and `skipped` together must account for every in-scope thread** (published, not resolved). Every thread you reply to goes in `threads`; every thread you leave alone goes in `skipped` with a real reason. `threads` may be `{}` when every in-scope thread is skipped.
-2. `python3 ~/.claude/skills/code-review/scripts/github_review.py deliver <delivery.json> --dry-run [--login <login>]` — checks coverage before any write.
+2. `python3 ~/.claude/skills/code-review/scripts/github_review.py deliver <delivery.json> --dry-run` — checks coverage before any write.
 3. The same command without `--dry-run`.
 
 What it does: fetches a baseline; replies in batches of 10, 5 s apart, each reply ending in a hidden marker (`<!-- code-review:deliver -->`); fetches again and confirms each reply landed exactly once; resolves only threads whose reply is confirmed, 1 s apart; fetches again to confirm `isResolved`. Re-running after a partial failure is safe — it skips threads that already carry a marked reply from this identity. A plain comment from the same identity (the user typing "yes, fix this" on a thread, under the account the review ran as) is not a reply: that thread still gets its documentation reply before it is resolved. Replies posted before the marker existed carry none; the fix stage skips those threads at classification ([Fix Stage](fix-stage.md#pr-mode) step 2). A failed-looking request (`502`, truncated response, timeout) may have landed, which is why nothing is retried without a fresh fetch: one real run retried two such batches blind and posted 20 duplicate replies.

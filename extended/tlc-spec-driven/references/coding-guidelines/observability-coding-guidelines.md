@@ -16,7 +16,7 @@ Rules for instrumenting code with logging at write time.
 
 6. Use structured logging (key-value fields or JSON) over string interpolation — log aggregators parse fields, not sentences.
 
-7. Never log passwords, tokens, session IDs, or card numbers at any level; redact or hash PII even at DEBUG.
+7. Never log passwords, tokens, session IDs, card numbers, email addresses, or first/last names at any level; redact or hash other PII even at DEBUG.
 
 8. Never emit INFO or above inside tight loops or hot paths. Use DEBUG or a counter/metric instead — per-iteration INFO logging at scale is a throughput and storage killer.
 

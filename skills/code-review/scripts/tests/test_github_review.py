@@ -293,25 +293,14 @@ class RunGhTest(unittest.TestCase):
 
 
 class LoginTest(unittest.TestCase):
-    def tearDown(self):
-        gr.GH_ENV = None
-
-    def test_resolve_login_rejects_another_identity(self):
+    def test_resolve_login_returns_the_authenticated_identity(self):
         with mock.patch.object(gr, "run_gh", return_value={"login": "other"}):
-            with self.assertRaises(gr.GhError):
-                gr.resolve_login("me")
             self.assertEqual(gr.resolve_login(), "other")
 
-    def test_use_login_sets_the_token_for_later_calls(self):
-        with mock.patch.object(gr, "run_gh_text", return_value="tok123\n") as run:
-            gr.use_login("me")
-        run.assert_called_once_with(["gh", "auth", "token", "--user", "me"])
-        self.assertEqual(gr.GH_ENV["GH_TOKEN"], "tok123")
-
-    def test_use_login_without_a_token_fails(self):
-        with mock.patch.object(gr, "run_gh_text", side_effect=gr.GhError("no account")):
+    def test_resolve_login_without_a_login_fails(self):
+        with mock.patch.object(gr, "run_gh", return_value={}):
             with self.assertRaises(gr.GhError):
-                gr.use_login("ghost")
+                gr.resolve_login()
 
 
 class SubmitTest(unittest.TestCase):

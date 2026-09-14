@@ -1,19 +1,19 @@
 ---
 name: code-review
 description: >
-  Reviews code and fixes what the review finds, as one run: a review stage dispatches Sonnet
-  agents per dimension (architecture, code quality, performance, regression, security,
-  requirements; test coverage, gaps, isolation, clarity, maintainability) over local changes,
-  commits, or a GitHub PR; an optional human checkpoint (human_review, default false) lets you
-  edit the findings; a fix stage then fixes what remains, runs targeted tests, pushes, and replies
-  to and resolves every PR thread. All GitHub writes go through a verifying script. Also fixes
-  existing review comments on a PR, and batch-sweeps PRs awaiting your review or where you
-  requested changes. Technology agnostic via docs/codebase context. Use when the user says
-  "review my code", "review my tests", "review PR #123", "fix review comments", "fix the PRs I
-  requested changes on", "review my pending PRs", or invokes /code-review. Do NOT use to write new
-  tests or for spec planning (use tlc-spec-driven).
+  Reviews code and fixes what the review finds, as one run: a review stage reviews each dimension
+  (architecture, code quality, performance, regression, security, requirements; test coverage,
+  gaps, isolation, clarity, maintainability) — inline, or with Sonnet agents as size requires —
+  over local changes, commits, or a GitHub PR; an optional human checkpoint (human_review, default
+  false) lets you edit the findings; one fix subagent then fixes everything that remains, runs
+  targeted tests, pushes, replies to every in-scope PR thread, and resolves the ones it fixed or
+  rejected. All GitHub writes go through a verifying script. Also fixes existing review comments
+  on a PR, and batch-sweeps PRs awaiting your review or where you requested changes. Technology
+  agnostic via docs/codebase context. Use when the user says "review my code", "review my tests",
+  "review PR #123", "fix review comments", "fix the PRs I requested changes on", "review my pending
+  PRs", or invokes /code-review. Do NOT use to write new tests or for spec planning.
 metadata:
-  version: "4.0.0"
+  version: "5.0.0"
   triggers:
     - "apply the review fixes"
     - "batch-fix my change requests"
@@ -52,9 +52,9 @@ One run, three stages. `SKILL.md` holds what every run does; `references/` holds
 
 | Stage | Runs in | Does | Reference |
 |---|---|---|---|
-| 1. Review | A Sonnet review worker | Steps 2–9: diff, dimension agents, duplicate collapse, report; on a PR, posts a pending review | [github-writes.md](references/github-writes.md) (PR) |
+| 1. Review | A review worker | Steps 2–9: diff, dimension agents, duplicate collapse, report; on a PR, posts a pending review | [github-writes.md](references/github-writes.md) (PR) |
 | 2. Checkpoint | The root conversation | `human_review: true` → pause for the user; `false` → continue. On a PR, submits the review as `COMMENT` | — |
-| 3. Fix | A fresh Sonnet fix worker | Fixes what remains, tests, validation gate; on a PR, pushes, replies, resolves | [fix-stage.md](references/fix-stage.md) |
+| 3. Fix | One fresh fix worker for every remaining finding | Fixes what remains, tests, validation gate; on a PR, pushes, replies, resolves | [fix-stage.md](references/fix-stage.md) |
 
 ## Parameters
 
@@ -72,7 +72,7 @@ Applies to the review stage. You are the villain. Find every flaw, violation, ga
 - Be relentless. Code is guilty until proven innocent, and weak tests are worse than no tests — they create false confidence.
 - Every violated principle, missing case, flawed assertion, or poorly isolated test is a finding — no "minor" issues.
 - If a test could pass while the code is broken, that IS a broken test.
-- Flag issues even when possibly intentional.
+- Flag issues even when possibly intentional — intent is not a defense, but the ≥ 80% confidence bar on whether it is a violation still applies.
 - State problems directly: file, line number, consequence.
 - Never sign off on a violation because it is small, or on a suite that would fail to catch real bugs.
 - Report a finding only at ≥ 80% confidence. If unsure whether a pattern is a violation, skip it — do not guess.
@@ -84,10 +84,9 @@ The fix stage takes the opposite stance toward findings: each one is a claim to 
 - **Not reviewed:** anything outside the target — a GitHub PR review covers only the PR's diff, never local workspace files; deleted files; noise files (removed at the git level by EXCLUDE, Step 4); files marked "do not review"; third-party test utilities and generated test code; files unchanged in the reviewed diff. **New files are always in scope**, against every loaded checklist. Test files belong to the tests scope only, implementation files to the code scope only.
 - **Never filter or withhold findings** before the checkpoint — every finding is reported and, on a PR, posted. Merging same-root-cause duplicates (Step 8) is merging, not filtering.
 - **Only what remains is a finding.** Whatever the user deletes on GitHub or drops at the checkpoint does not exist for the fix stage.
-- **Every GitHub write goes through `scripts/github_review.py`** per [github-writes.md](references/github-writes.md): a review is pending until Stage 2 submits it, the verdict is always `COMMENT`, never a GitHub Issue, never deleting a review, comment, or thread, never touching another identity's pending review.
-- **Only the root conversation dispatches stage workers.** The root is a live conversation, or `build-feature`'s orchestrator invoking this skill via `Skill`. A review worker dispatches only its dimension agents; a fix worker dispatches nothing. **When this skill is executed by any subagent** (started via the `Agent` tool for any reason, other than as a stage worker this skill dispatched) — the test is mechanical, never a judgment about why you were started: it is already the isolated context and must never call `Agent` for a stage worker. It runs the review stage inline, then `submit` and the fix stage inline, in that same context; wherever Stage 2 would pause, it stops after Stage 1 instead and returns its result with `awaiting_approval: true`. This is the one case where the fix stage does not start in a fresh worker, and the one case where the fix stage makes its own checkout: see [Fix Stage — PR Mode](references/fix-stage.md#pr-mode) step 0.
-- **A stage worker that fails outright** (crash, auth failure, PR not found — distinct from a dimension agent or item failing) is retried once with a fresh worker; a second failure stops the run and is reported. Never claim a review was posted or a fix landed on a failed run.
-- **Every subagent runs on Sonnet** — review workers, fix workers, dimension agents, batch workers — set explicitly on each `Agent` call, whatever model this session runs on. `human_review` never changes the model. Load the `subagent-dispatch` skill for the alias-only `model` rule, the missing reasoning-effort parameter, the dispatch-prompt contract, and the wait protocol.
+- **Every GitHub write goes through `scripts/github_review.py`** per [github-writes.md](references/github-writes.md): a review is pending until Stage 2 submits it, the verdict is always `COMMENT`, never a GitHub Issue, never deleting a review, comment, or thread (except the duplicate thread replies `deliver` reports — [github-writes.md](references/github-writes.md#rules) Rules), never touching another identity's pending review.
+- **Only the root conversation dispatches stage workers.** The root is a live conversation, or an orchestrator invoking this skill via `Skill`. A review worker dispatches only its dimension agents; a fix worker dispatches nothing. **When this skill is executed by any subagent** (started via the `Agent` tool for any reason, other than as a stage worker this skill dispatched) — the test is mechanical, never a judgment about why you were started: it is already the isolated context and must never call `Agent` for a stage worker. It runs the review stage inline, then `submit` and the fix stage inline, in that same context; wherever Stage 2 would pause, it stops after Stage 1 instead and returns its result with `awaiting_approval: true`. This is the one case where the fix stage does not start in a fresh worker.
+- **A stage worker that fails outright** (crash, auth failure, PR not found — distinct from a dimension agent or item failing) is retried once, resuming from the point where it stopped — never restarting from scratch. The retry uses what the failed worker already reported or already published: `post` skips what is already on the review, and a fix worker continues with the items and PRs still open. A second failure stops the run and is reported. Never claim a review was posted or a fix landed on a failed run.
 - Never print `gh auth token` output or any credential — refer to auth state by status only.
 - **Resolving paths.** `references/…` and `scripts/…` resolve inside this skill's directory (`~/.claude/skills/code-review/`, a symlink into the source repo). Read them directly — never `find`: the search surfaces confusing near-matches.
 
@@ -114,16 +113,16 @@ Entry and scope are fixed for the rest of the run.
 
 ## Stage 1: Review
 
-**Dispatch (root):** one `Agent` call, `subagent_type: general-purpose`, `model: sonnet`, prompt per the `subagent-dispatch` contract:
+**Dispatch (root):** one `Agent` call, `subagent_type: general-purpose`, `model: sonnet` (set explicitly, whatever model this session runs on; `human_review` never changes it), with this prompt:
 
 - Prefix `[code-review][review:PR-<N>]`, `[code-review][review:commits]`, or `[code-review][review:local]`.
 - The entry, PR number or commits, `scope`, and for a PR owner/repo.
-- "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents. Load the `subagent-dispatch` wait protocol before the first dispatch; when waiting on an agent, end your turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll."
+- "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents. When waiting on an agent, end your turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll."
 - Completion condition: Step 8's report written and, on a PR, Step 9's `post` exited with its JSON captured.
 - Return shape, **local or commits:** the full Step 8 report plus the banner. **PR:** the PR URL; the banner verbatim (a Complex caveat with its actual wording); finding counts per scope and severity; the most important finding in one line; clusters collapsed; `post`'s exit code, `post_json_path`, and, from its JSON, `posted_confirmed`, `carried_over`, `reanchored`, `anchor_corrected`, `anchor_unverified`, `missing`, `duplicates_found`, any batch that had to be retried, and every `unpostable` entry by `path:line` (report `0` for each count when none — a missing count is indistinguishable from never having looked); dimensions not executed with reasons; `review_failed: true` with every reason when every agent failed. Never the diff, the full report, or comment bodies.
 - Delegation depth: dimension agents only.
 
-Track the review worker's name (and later the fix worker's) against the PR for the rest of the conversation: a later "a new commit landed on PR #N" routes through them per [batch-mode.md — New Commits or Comments](references/batch-mode.md#new-commits-or-comments-after-dispatch), which applies to single-PR runs too. Wait per the `subagent-dispatch` wait protocol, then go to Stage 2.
+Track the review worker's name (and later the fix worker's) against the PR for the rest of the conversation: a later "a new commit landed on PR #N" routes through them per [batch-mode.md — New Commits or Comments](references/batch-mode.md#new-commits-or-comments-after-dispatch), which applies to single-PR runs too. Wait for it the same way — one line of plain text, no tool call, never polling — then go to Stage 2.
 
 ### Step 2: Context Collection
 
@@ -143,10 +142,10 @@ Record whether each item exists — `present` or `absent`. **Do not load content
 | Code checklists: `references/best-practices.code.md`, `clean-code-checklist.code.md`, `observability.code.md`, `performance-checklist.code.md`, `review-checklist.code.md` | one key each (code scope) |
 | `references/<stack>.code.md`, `references/<stack>-performance.code.md` (stack match only) | `checklist_tech_code`, `checklist_tech_perf` (code scope) |
 | `references/review-checklist.tests.md`, `references/<stack>.tests.md` (stack match only) | `checklist_tests`, `checklist_tech_tests` (tests scope) |
-| An active spec (`.specs/features/*/spec.md`) or a JIRA task ID in the branch name, commit message, or PR description | `requirements` (code scope) |
+| An active spec — `.specs/features/<folder>/spec.md` whose folder's TASK-ID matches the branch name or the changed files — or a JIRA task ID in the branch name, commit message, or PR description | `requirements` (code scope) |
 | `sonar.projectKey` from `sonar-project.properties`, else `projectKey` from `.sonarlint/connectedMode.json` | `sonar_project_key` (the key string, or `absent`) |
 
-Reference file naming: checklists carry their scope as a suffix — `<topic>.code.md`, `<topic>.tests.md`, and stack-specific `<stack>.code.md`, `<stack>-performance.code.md`, `<stack>.tests.md`. Orchestration references have no suffix.
+Reference file naming: checklists carry their scope as a suffix — `<topic>.code.md`, `<topic>.tests.md`, and stack-specific `<stack>.code.md`, `<stack>-performance.code.md`, `<stack>.tests.md`. Orchestration references have no suffix. A stack matches when `STACK.md` names it, else when the changed files carry its extension.
 
 ### Step 3: Context Availability Map
 
@@ -182,11 +181,11 @@ Then, once for every scope:
 - **`test_diff`** — the test files' diff, reviewed by the tests scope.
 - `git diff --stat -- $EXCLUDE` (or equivalent) for the header, `excluded_count`, and for multi-commit the resolved hash + subject list.
 
-**Scope activation:**
+**Scope activation** — a scope with no changed files of its own is skipped:
 
-- **Code** runs when `impl_diff` has files. An empty changed list with no test files either (e.g. a rename-only change) still runs the code scope as content type `general`, Small, inline.
-- **Tests** runs when `test_diff` has files. With no test files but a non-empty `impl_diff`, it runs **Coverage Gaps only** — Small tier, inline, banner `Tests: **Small** (0 test files) · Inline — Coverage Gaps only`, and the report carries only the Coverage Gaps row.
-- A requested scope with nothing to review at all is shown as `skipped — no <implementation|test> changes` in the banner, never silently dropped.
+- **Code** runs only when `impl_diff` has files.
+- **Tests** runs only when test files actually changed (`test_diff` has files). An implementation-only change gets no tests scope at all — no Coverage Gaps review either.
+- An empty change list means both scopes are skipped. A requested scope that is skipped is shown as `skipped — no <implementation|test> changes` in the banner, never silently dropped.
 
 ### Step 4.5: Sonar Context
 
@@ -194,14 +193,14 @@ Then, once for every scope:
 
 ### Step 5: Review Complexity Assessment
 
-Assess **each active scope separately**, on its own post-exclusion metrics — implementation files and `impl_diff` lines for code, test files and `test_diff` lines for tests. Multi-commit uses combined totals across commits. First match wins:
+Assess **each active scope separately**, on its own post-exclusion metrics — implementation files and `impl_diff` lines for code, test files and `test_diff` lines for tests. Multi-commit uses combined totals across commits. First match wins, Complex checked first — either metric alone lifts a change into the larger tier:
 
 | Tier | Condition | Execution mode |
 |---|---|---|
-| **Small** | ≤5 files **OR** <200 diff lines | **Inline** — the review worker reviews the scope's active dimensions itself, 0 agents |
-| **Medium** | ≤15 files **AND** <800 diff lines | **Single agent** — 1 subagent covers every active dimension of the scope (1× diff) |
-| **Large** | ≤25 files **AND** <1,500 diff lines | **Parallel** — 1 subagent per active dimension after merge rules (N× diff) |
 | **Complex** | >25 files **OR** ≥1,500 diff lines | **Parallel + completeness handling** — as Large, plus the thoroughness directive and the report caveat |
+| **Large** | >15 files **OR** ≥800 diff lines | **Parallel** — 1 subagent per active dimension after merge rules (N× diff) |
+| **Medium** | >5 files **OR** ≥200 diff lines | **Single agent** — 1 subagent covers every active dimension of the scope (1× diff) |
+| **Small** | ≤5 files **OR** <200 diff lines — reached only when no row above matched, so both hold | **Inline** — the review worker reviews the scope's active dimensions itself, 0 agents |
 
 The code scope also determines its content type ([code-dimensions.md](references/code-dimensions.md)); the tests scope whether Coverage Gaps is active.
 
@@ -231,8 +230,8 @@ The review worker produces no progress narration and no per-agent findings as th
 
 Dispatch **every non-inline agent from every active scope in a single parallel message** — never sequentially — then review the Small-tier scopes inline while they run.
 
-- Every agent is pinned to `model: sonnet`.
-- Every prompt follows the `subagent-dispatch` contract: prefix `[code-review][dimension:<agent>]`; completion condition — every checklist item in its `## Before You Begin` checked against its diff, findings written and tagged by dimension; return shape — findings only, never the diff or doc content it read; delegation depth — none.
+- Every `Agent` call sets `model: sonnet`.
+- Every prompt carries: prefix `[code-review][dimension:<agent>]`; completion condition — every checklist item in its `## Before You Begin` checked against its diff, findings written and tagged by dimension; return shape — findings only, never the diff or doc content it read; delegation depth — none.
 - **Complex tier** adds to each of that scope's agents: *"This is a Complex review (large change set). Review every file in your scope thoroughly. Do not skip or skim any file. Focus on your assigned dimension(s) across all changed files."*
 - Never inline checklist or doc content — `## Before You Begin` is a Read instruction.
 
@@ -263,7 +262,7 @@ Issues: <any blockers>
 
 ### Step 7: Await + Fallback
 
-**Load the `subagent-dispatch` wait protocol before the first dispatch, not once the first wait has started** — improvised waiting is this skill's largest avoidable cost, and the protocol's rules are not guessable from first principles. Wait for every agent; the 15-minute default stall ceiling applies as-is (a dimension agent is single-purpose).
+**Wait for every agent by ending the turn with one line of plain text and no tool call — never `sleep`, `echo`, or poll.** Improvised waiting is this skill's largest avoidable cost.
 
 | Outcome | Action |
 |---|---|
@@ -297,8 +296,8 @@ Recovery happens before the pause, so the user only ever checks findings that ar
 
 | Failure | Recovery — once | Still failing |
 |---|---|---|
-| **Posting failed** — `post` exit `2`, or a non-empty `missing` | Re-run `post` from the root with the same file: `github_review.py post <post_json_path> [--login <login>]`. Never re-run the review — `post` skips everything already on the review | Exit `2` → blocked: report its JSON and stop, never `submit`. Exit `1` → report every `missing`, `duplicates_found`, and error entry explicitly — never rounded to the intended count — and continue; the threads that landed are real |
-| **Review failed** — `review_failed: true`, or the review worker failed outright | Run Stage 1 again with a fresh review worker | No pause, no `submit`, no Stage 3; report every failure reason and stop |
+| **Posting failed** — `post` exit `2`, or a non-empty `missing` | Re-run `post` from the root with the same file: `github_review.py post <post_json_path>`. Never re-run the review — `post` skips everything already on the review | Exit `2` → blocked: report its JSON and stop, never `submit`. Exit `1` → report every `missing`, `duplicates_found`, and error entry explicitly — never rounded to the intended count — and continue; the threads that landed are real |
+| **Review failed** — `review_failed: true`, or the review worker failed outright | Resume from where it stopped: a worker that already wrote `post.json` (at the path [GitHub Writes — `post`](references/github-writes.md#review-stage-post) gives) → recover as **Posting failed**, from that file; otherwise run Stage 1 again with a fresh review worker | No pause, no `submit`, no Stage 3; report every failure reason and stop |
 | **`submit` exit non-zero** | Run `submit` again | Blocked: report its JSON and stop before Stage 3 |
 
 Remove the directory holding `post.json` once `post` exits `0`, or when the run ends.
@@ -310,9 +309,9 @@ Remove the directory holding `post.json` once `post` exits `0`, or when the run 
 
 ## Stage 3: Fix
 
-The root dispatches a fresh fix worker per [Fix Stage — Dispatch](references/fix-stage.md#dispatch-root-conversation), waits per the `subagent-dispatch` wait protocol, and removes any worktree the dispatch created once the worker reports.
+The root dispatches one fresh fix worker for every remaining finding per [Fix Stage — Dispatch](references/fix-stage.md#dispatch-root-conversation) and waits for it the same way as Stage 1.
 
-**Delivery failed** — the fix worker reports a non-zero `deliver` exit, or failed outright → run the continue-after-checkpoint path once for that PR: `submit`, then a fresh fix worker carrying the retry note from [Fix Stage — Dispatch](references/fix-stage.md#dispatch-root-conversation). Never re-run the review or `post`. A result with `unaccounted` threads was already sent back to classification by the worker and is not retried. Blocked again → stop and report its raw result.
+**Delivery failed** — the fix worker reports a non-zero `deliver` exit, or failed outright → the Guardrails' single retry, through the continue-after-checkpoint path for each PR not yet delivered: `submit`, then a fresh fix worker carrying the retry note and what the failed worker already reported, resuming from where it stopped ([Fix Stage — Dispatch](references/fix-stage.md#dispatch-root-conversation)). Never re-run the review or `post`. A result with `unaccounted` threads was already sent back to classification by the worker and is not retried. Blocked again → stop and report its raw result.
 
 ## Final Report
 
@@ -329,9 +328,9 @@ The root combines both stages: the review summary (URL or report, banner, counts
 | "review PR #42, just review" | GitHub PR · false | Review posted and submitted; no fix stage |
 | `build-feature` Step 10: PR #128, `human_review: true` | GitHub PR · true | Orchestrator is the root: review worker posts; pause; user edits on GitHub and replies; `submit`; fix worker runs in place on the branch |
 | PR #310 already has this identity's pending review (6 comments) | GitHub PR · false | `post` appends new findings to it (`carried_over: 6`); the run pauses before `submit`, since submitting publishes those 6 too; on the user's reply, submit and fix |
-| "fix the review comments on PR #201" | Fix existing · — | Stage 3 only; no checkout has the PR branch, so the fix worker gets `isolation: worktree` |
+| "fix the review comments on PR #201" | Fix existing · — | Stage 3 only; one fix worker gets onto the PR branch itself, never switching a checkout that has uncommitted changes |
 | `build-feature` resuming with `code_review: pending` | Continue after checkpoint · — | `submit`, then Stage 3; the review is not re-run |
 | PR #42, `post` exits `2` on a rate-limit block | GitHub PR · false | Root re-runs `post` from `post_json_path` once; it lands → `submit`, fix. The review is never re-run |
 | "fix Q1 and H2" after a "just review" local run | Fix existing · — | Stage 3 with exactly those two findings |
 | "review my pending PRs except #205" | Batch review sweep | #205 dropped for this run only; per-PR review → checkpoint → fix |
-| "fix the PRs I requested changes on" | Batch fix sweep | One worktree fix worker per qualifying PR, scoped to your own threads |
+| "fix the PRs I requested changes on" | Batch fix sweep | One fix worker for every qualifying PR, working them in the order it judges best, scoped to your own threads |

@@ -17,7 +17,6 @@ Evaluated on the implementation file list (after EXCLUDE, test files already rou
 | `mixed` | Several non-source types, no source file | Falls through to `general` |
 
 - Source plus docs → `general`; the source file triggers full scope.
-- Empty changed list (rename-only) → `general`, Small (0 files / 0 lines), inline.
 - `requirements` is active only when the availability map has `requirements` (a spec or JIRA task was found).
 
 ## Agents
@@ -54,7 +53,7 @@ Changes unrelated to the stated purpose, or signs of AI-generated artifacts:
 - **Duplicate logic** — functionality already present in the module, re-implemented.
 - **Weakened assertions** — error handling, validation rules, or test assertions made less strict.
 - **Dead code** — functions or branches introduced but never called.
-- **`TODO`/`FIXME` in production** — leftover markers not resolved before merge.
+- **`TODO`/`FIXME` in production with no linked ticket or issue** — leftover markers not resolved before merge.
 - **Type assertions hiding errors** — `as any` or forced casts masking real type errors.
 
 ## Failure Marking
