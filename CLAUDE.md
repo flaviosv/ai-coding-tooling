@@ -1,17 +1,11 @@
 # Project
 
-See [`docs/codebase/`](docs/codebase/) for the project concept, goals, and full agent context set.
-
 `CLAUDE.global.md` at the repo root is this user's global Claude Code directives, not project-scoped content — `fs-harness setup` symlinks it to `~/.claude/CLAUDE.md`, so it loads for every session on this machine, not just this repo. Other docs in this project (skill `STATE.md` files, `docs/harness-evaluation.md`) refer to it as "the global `CLAUDE.md`" or "the user's global `CLAUDE.md`" — that name always means this file. This root `CLAUDE.md` file, by contrast, is project-scoped and loads only for sessions working in this repo.
 
-## Project Nature
+## Scripts
 
-This is **not an implementation-heavy codebase**. The vast majority of the project consists of `.md` files: skill definitions (`SKILL.md`), reference documents, configuration (`config/*.json`), and documentation. Treat it accordingly:
-
-- Do not apply typical software engineering heuristics (refactoring for abstraction, test coverage, DRY patterns) to `.md` files — clarity and correctness of content is what matters.
 - Repo tooling lives in `scripts/` (`scripts/bin/fs-harness.mjs`). Only modify it when the scope of actions it performs actually changes — not for style, cleanup, or speculative improvements.
 - **A skill may ship its own scripts** under `skills/<name>/scripts/` (e.g. `session-evaluate/scripts/session_metrics.py`). Reach for one when a step is genuinely mechanical — a fixed transformation, or an API delivery sequence with no per-call judgment — and especially when a prose rule governing that step has demonstrably failed to hold across real runs. A script is the right fix there precisely because it removes the step from model judgment instead of warning about it again. Keep judgment in the `.md`; keep determinism in the script.
-- When in doubt about a change, ask: "Is this a content edit to a `.md` file, or a behavioral change to code?" Each requires a very different standard of care.
 
 # Constraints
 
@@ -40,9 +34,7 @@ Debugging a skill often means reading what a run of it actually did in another p
 
 # Skills
 
-Skills are managed by the **`fs-harness`** script (`scripts/bin/fs-harness.mjs`). Its source of truth is structured JSON in `config/` (`skills.json`).
-
-- **Running `fs-harness` yourself:** the command reference is [docs/cli.md](docs/cli.md) — commands (`add`, `delete`, `override`, etc.), flags, and gotchas. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first; there is no per-command `--help`, only `fs-harness help`). `docs/cli.md` is authoritative.
+- **`fs-harness`** (registry: `config/skills.json`) manages skills. Its authoritative command reference is [docs/cli.md](docs/cli.md) — commands (`add`, `delete`, `override`, etc.), flags, and gotchas. **Read it before invoking the CLI**, then run the command directly (preview any mutating command with `--dry-run` first; there is no per-command `--help`, only `fs-harness help`).
 - **README skill tables:** whenever a skill is added or removed — `fs-harness add`/`delete`, or a skill created, merged, renamed, or deleted under `skills/` — update the matching source table in `README.md`'s "Skills" section in the same change.
 - **`fs-harness doctor`** is this harness's general health check, not a single-purpose command — it currently validates the `references/` cross-reference rule (see `docs/codebase/ARCHITECTURE.md`) and that setup's symlinks/skill installs are intact. When a new class of harness invariant needs checking (a new symlink, a new install rule, another cross-reference contract), add it as another `doctor` check rather than a separate one-off script.
 - **`architecture-evaluate`**: when it runs an **incremental documentation sync** ("update docs" / "document my changes") in this project, as part of its standard root-file review, update `README.md` with whatever is relevant: new skills added, new tech references, structural changes to the `skills/` or `extended/` directories, or changes to the global agent setup. Keep the README accurate as a first-stop reference for anyone using or contributing to this project.
@@ -53,4 +45,3 @@ Skills are managed by the **`fs-harness`** script (`scripts/bin/fs-harness.mjs`)
 
 - **Workaround:** force a fresh fetch directly, bypassing `fs-harness`'s own "already installed → skip" check: `npx skills add mattpocock/skills --skill <name> --agent claude-code --global --yes`.
 - **Symptom to watch for:** if a Matt Pocock skill needs an update, don't trust `fs-harness update`'s success message alone for that source — verify content changed, or just run the workaround directly.
-- `to-prd` was confirmed **removed/renamed upstream** in `mattpocock/skills` as of 2026-07-17, reconfirmed 2026-08-05 — it no longer appears in the repo's skill list, so the workaround above will fail for it (`No matching skills found for: to-prd`). It is still registered in `config/skills.json`/installed locally (left untouched). As of 2026-08-05 the upstream list has no direct equivalent; `to-spec` is the closest match by description if a replacement is wanted — verify its behavior before swapping in.
