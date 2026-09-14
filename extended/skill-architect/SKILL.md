@@ -20,11 +20,9 @@ metadata:
 
 ## Extension 1: Guardrail Design
 
-Inject the following steps into the parent skill's workflow at the phases indicated.
+### Inject into Phase 1 (Discovery) — after 1.2 Define Use Cases, before 1.3 Identify the Category
 
-### Inject into Phase 1 (Discovery) — after 1.2 Define Use Cases
-
-**1.3 — Guardrail Discovery**
+**1.2a — Guardrail Discovery**
 
 Ask the user one focused question about risk profile:
 
@@ -34,15 +32,15 @@ Ask the user one focused question about risk profile:
 
 Based on the answer, categorize the skill as:
 
-- **Low risk** — read-only, output is suggestions or text, no side effects → minimal guardrails needed
-- **Medium risk** — writes files or makes local changes, but reversible → precondition + idempotency guardrails
-- **High risk** — irreversible actions, external side effects, or touches credentials → full guardrail set
+- **Low risk** — read-only, output is suggestions or text, no side effects
+- **Medium risk** — writes files or makes local changes, but reversible
+- **High risk** — irreversible actions, external side effects, or touches credentials
 
-Record the risk category. It drives the guardrail set proposed in Phase 2.
+Record the risk category, then → start from the 2.2a menu rows whose When to propose condition matches.
 
-### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure
+### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure, before 2.3 Design the Description
 
-**2.3 — Design the Guardrail Set**
+**2.2a — Design the Guardrail Set**
 
 Based on the risk category from Discovery, propose the appropriate guardrails to the user from
 the menu below. Present only the ones relevant to the skill's risk profile — do not dump the
@@ -71,7 +69,7 @@ This becomes the source material for the `## Guardrails` section in Phase 3.
 **Guardrails section template**
 
 Every skill with a Medium or High risk profile MUST include a `## Guardrails` section in its
-`SKILL.md`. Add it immediately after the workflow steps and before Examples. Use this format:
+`SKILL.md`. Place it near the top, before the workflow steps, so gates are read before any action. Use this format:
 
 ```markdown
 ## Guardrails
@@ -100,21 +98,13 @@ If [resource] already exists: [skip / merge / overwrite with confirmation / erro
 Never include credential values in output. Reference by name only (e.g. `$API_KEY`, not its value).
 ```
 
-Omit sections that don't apply. For Low risk skills, a single `### Scope` with Do-NOT statements is sufficient.
+Omit sections that don't apply.
 
 ### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
 
 **Guardrail testing**
 
-For each guardrail defined in the skill, mentally simulate the failure case:
-
-- Precondition fails → does the skill stop gracefully with a useful message?
-- User declines a destructive action gate → does the skill abort cleanly without partial state?
-- Escalation rule triggers → does the skill ask clearly rather than guessing?
-- Secret encountered → is it never leaked in output?
-- Resource collision → is the collision handling unambiguous?
-
-If any guardrail path is unclear or missing, fix it before delivery.
+For each guardrail, simulate its failure path (precondition fails, gate declined, escalation triggered, secret encountered, collision) and confirm the skill stops or asks cleanly.
 
 ## Extension 2: The `extended/` Pattern for Global Skills
 
@@ -163,18 +153,16 @@ metadata:
 
 ## Extension 3: Token Efficiency
 
-Inject the following steps into the parent skill's workflow at the phases indicated.
+### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure (following 2.2a), when the skill includes reference files
 
-### Inject into Phase 2 (Architecture) — when the skill includes reference files
-
-**2.4 — Reference File Design**
+**2.2b — Reference File Design**
 
 If the skill will include technology-specific reference files:
 - Name them `<technology>-<skill-name>.md`, where `<technology>` is the kebab-case slug for the language or framework (e.g. `fastapi`, `go-gin`, `ruby-on-rails`) and `<skill-name>` is the exact skill directory name (e.g. `tests`, `coding-guidelines`) — e.g. `go-gin-tests.md`, `django-coding-guidelines.md`.
 - **Exception — scoped variants.** A skill whose references split by scope declares its own naming in its `SKILL.md` and uses `<technology>.<variant>.md` instead (e.g. `code-review`: `fastapi.code.md`, `fastapi-performance.code.md`, `fastapi.tests.md`). Follow the skill's declaration over the default pattern.
 - Generic baseline files (non-tech-specific) are exempt from this pattern and keep their existing names (e.g. `review-checklist.md`, `testing-patterns.md`).
 
-**Keep links inside the skill** — a skill links only files in its own directory (`references/…`, `scripts/…`, or `../SKILL.md` from a reference file). There is no shared template folder to link: content one skill needs lives in that skill, and content only `CLAUDE.md` needs lives in the repo's `references/`, which skills never link.
+**Keep links inside the skill** — a skill links only files within its own directory (its `references/`, `scripts/`, or `../SKILL.md` from a reference file). Never link or load anything outside the skill — not `CLAUDE.md`, `CLAUDE.global.md`, the repo's `references/`, `docs/`, or another skill's files.
 
 ### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
 
@@ -182,7 +170,6 @@ If the skill will include technology-specific reference files:
 
 - No `## Resources` or `## References` section — agents do not browse links
 - One `---` only — immediately after the scope line (first 1–2 sentence paragraph); none elsewhere
-- Every code example must have a `// Good` or `// Bad` marker; trim text after ` — ` when the heading already conveys the intent
 - "Bad" examples: keep signature + problematic line(s) only; remove surrounding scaffolding
 - Max 1 consecutive blank line; no blank lines inside code blocks
 - Never write filler phrases: "It is important to note", "In order to", "As a general rule"
@@ -199,40 +186,4 @@ If the skill will include technology-specific reference files:
 
 **Token efficiency check**
 
-Before delivering any generated file, verify:
-
-**Reference files:**
-- [ ] No `## Resources`/`## References` section present
-- [ ] Exactly one `---` in the file (after scope line); none between sections
-- [ ] Every code example has a `// Good` or `// Bad` marker
-- [ ] No consecutive blank lines (max 1); no blank lines inside code blocks
-- [ ] No filler phrases
-
-**SKILL.md files:**
-- [ ] No `---` between sections (only frontmatter close)
-- [ ] Frontmatter `description` not restated in the body
-- [ ] Step introductions lead with the action
-
-## Extension 4: Subagent Dispatch — Wait Protocol
-
-Inject the following steps into the parent skill's workflow at the phases indicated.
-
-### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure
-
-**2.5 — Subagent Dispatch Check**
-
-Ask: "Does this skill dispatch one or more subagents via the `Agent` tool, then need to know when they're done before continuing?" This applies equally to a single dispatched subagent and to several running concurrently — a lone dispatch carries the identical risk (manual polling, false-stall detection) as a fan-out.
-
-If yes: every step that dispatches and waits on one must load and apply the `subagent-dispatch` skill's wait protocol rather than the skill inventing its own wording for "wait for it to return." Record which step(s) this applies to — that's what Phase 3 wires in.
-
-Out of scope: a subagent invoked via the `Skill` tool (calling another skill by name) rather than a direct `Agent` call — that skill's own dispatch, if it has any, already owns its own wait handling; nothing here overrides it.
-
-### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
-
-For each step Phase 2 flagged, its wait instruction is exactly: "Load and apply the `subagent-dispatch` skill's wait protocol" plus only what's genuinely specific to that step — a longer or shorter stall ceiling than the protocol's 15-minute default, and whether results are collected all at once or reported as each one arrives. Never restate the protocol's own rules inline (no manual polling, a finished agent's transcript is indistinguishable from a stalled one, confirm via `TaskOutput` before calling `TaskStop`) — copies of that rule are exactly what drifted out of sync the last time it was written by hand into more than one skill.
-
-### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
-
-**Subagent wait check**
-
-For each subagent-dispatching step: does it reference the Agent Wait Protocol rather than restating wait mechanics in its own words? Wording like "wait for it to return" or "wait for all agents" with no reference to the protocol is exactly what produced a real busy-polling and false-stall-detection bug in a production skill — fix it before delivery, not after.
+Before delivering any generated file, re-check it against the Phase 3.2 output rules above (reference files and SKILL.md).

@@ -21,7 +21,7 @@
 - **Reason**: `templates/agent-wait-protocol.md` was folded into `subagent-dispatch`'s own SKILL.md body (see `skills/subagent-dispatch/STATE.md` AD-002) rather than remaining a standalone template.
 - **Trade-off**: Extension 4's wording now assumes `subagent-dispatch` stays installed; removing that skill without updating this overlay would leave a stale pointer.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-007
 
 ### AD-004
 - **Decision**: Phase 2.4's `<technology>-<skill-name>.md` rule gains an exception: a skill whose references split by scope declares `<technology>.<variant>.md` naming in its own `SKILL.md` (e.g. `code-review`'s `fastapi.code.md`, `fastapi.tests.md`), and the declaration wins. Examples no longer name the removed `tests-code-review`.
@@ -35,11 +35,39 @@
 - **Reason**: Its last file, `reply-review-filter.md`, moved into `code-review` once that skill became its only consumer (`skills/code-review/STATE.md` AD-010), and `fs-harness` no longer creates the `~/.claude/templates` link; guidance to link `../../templates/` would now produce broken links.
 - **Trade-off**: Content two skills genuinely share would have to be duplicated or re-extracted into a new shared mechanism; accepted, since every template this repo ever had ended up with a single consumer.
 - **Date**: 2026-09-13
-- **Status**: active
+- **Status**: superseded by AD-008
 
 ### AD-006
 - **Decision**: Replaced Phase 2.5's `[docs/cli.md](../../docs/cli.md)` link with an instruction to run `fs-harness help` and read the `override` entry.
 - **Reason**: A new `doctor` check (`docs/cli.md` "Notes & gotchas") resolves a skill/overlay file's relative `.md` links against its *installed* `~/.claude/` symlink location, not just its repo location — this file installs as `~/.claude/skills/skill-architect/SKILL.extended.md`, one directory shallower than `extended/skill-architect/` is in the repo, so `../../docs/cli.md` resolved to a nonexistent `~/.claude/docs/cli.md` once installed. Confirmed with a direct `readlink`/`ls` check, not just the new check's own report. A live command reference can't drift the same way a linked doc path can.
 - **Trade-off**: None identified — `fs-harness help` is already documented as the CLI's own source of truth for syntax (`docs/cli.md`), so this loses no information the doc link had.
 - **Date**: 2026-09-13
+- **Status**: active
+
+### AD-007
+- **Decision**: Deleted Extension 4 (Subagent Dispatch — Wait Protocol) entirely — its Phase 2 dispatch check, Phase 3 wait-instruction wording, and Phase 4 wait check — and the overlay no longer mentions `subagent-dispatch`, wait protocols, or dispatch at all.
+- **Reason**: User decision: skill-architect must not define rules for triggering or waiting on subagents. That belongs to `subagent-dispatch`, which loads on its own whenever a subagent is dispatched; the overlay's pointer only covered waiting (harness-evaluation #20) and restated that skill's rules and 15-minute default in drift-prone copies (#21).
+- **Trade-off**: A skill designed through skill-architect gets no design-time prompt about dispatch; correctness relies on `subagent-dispatch` triggering at authoring or run time.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-008
+- **Decision**: Restated "Keep links inside the skill" (in 2.2b Reference File Design) as a self-contained rule: a skill links only files within its own directory (its `references/`, `scripts/`, or `../SKILL.md` from a reference file) and never links or loads anything outside it — not `CLAUDE.md`, `CLAUDE.global.md`, the repo's `references/`, `docs/`, or another skill's files.
+- **Reason**: User decision overriding harness-evaluation #18's fix, which pointed at a `CLAUDE.global.md` section that has since been deleted; the rule stays, but no longer depends on (or explains) repo-level folders.
+- **Trade-off**: None beyond AD-005's: content two skills share is duplicated rather than linked.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-009
+- **Decision**: Guardrail and step-structure fixes: injected steps use `Na` labels anchored to real base steps (1.2a Guardrail Discovery, 2.2a Design the Guardrail Set, 2.2b Reference File Design) instead of reusing base numbers; the `## Guardrails` template is placed before the workflow steps; risk categories point at the guardrail menu's When to propose column instead of fixed per-tier lists (the Low-risk "Scope only is sufficient" line went with them); Phase 4 guardrail testing is one simulation line.
+- **Reason**: Harness-evaluation #22 (base 1.3/2.3/2.4 collided with injected steps), #23 (repo skills and the base put gates at the top), #29 (tier lists and menu gave different guardrail sets for the same skill — the menu is now the single source), #24 (base 4.3/4.4 already cover the rest).
+- **Trade-off**: Earlier entries' "Phase 2.4"/"Phase 2.5" names now refer to 2.2b and Extension 2's step 4; tier alone no longer yields a quick default guardrail list.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-010
+- **Decision**: Token-efficiency trims: dropped the reference-file `// Good` / `// Bad` example-marker rule with no replacement, replaced the Phase 4 token-efficiency checklist with a one-line re-check against the Phase 3.2 output rules, and removed the repeated "Inject the following steps…" intro lines.
+- **Reason**: User decision on harness-evaluation #27 (the marker was C-family-only and its trim clause ambiguous); #19 (checklist duplicated the rules ~20 lines above); #28 (every sub-heading already names its injection point).
+- **Trade-off**: Generated reference files no longer get a uniform Good/Bad labeling convention.
+- **Date**: 2026-09-14
 - **Status**: active
