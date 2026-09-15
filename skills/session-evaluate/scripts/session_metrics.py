@@ -6,12 +6,11 @@ agent never loads raw transcript content into its own context; it reads only the
 
 Usage:
     session_metrics.py --list [--project PATH] [--limit N]
-    session_metrics.py SESSION_JSONL [--top N] [--json]
+    session_metrics.py SESSION_JSONL [--top N]
 """
 
 import argparse
 import json
-import os
 import re
 import sys
 from collections import Counter, defaultdict

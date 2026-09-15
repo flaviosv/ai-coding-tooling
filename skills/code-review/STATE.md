@@ -334,3 +334,10 @@
 - **Trade-off**: A request phrased around assignees no longer matches this trigger by wording.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-023
+- **Decision**: Removed the 28-item `metadata.triggers` YAML array from frontmatter, and reworded two `batch-mode.md` dispatch prompts ("work at high effort: be thorough, verify every finding...") down to their substantive instruction ("verify every finding...").
+- **Reason**: `/claude-api prompt-audit` — `metadata.triggers` traced (via `git log`) to a since-removed "Performance Audit" entry point and is read by no script in this repo (`validate_skill.py` checks trigger phrases in `description`, never `metadata.triggers`); the phrase list it held is already covered by `description`'s own "Use when..." list. The "work at high effort: be thorough" framing in `batch-mode.md` restates a trained default (current models are proactive by default) and existed only on the batch path, not the single-PR path, with no incident tying it to a real failure.
+- **Trade-off**: None identified — the description already carries the canonical trigger phrasing, and the dropped "be thorough" framing carried no instruction the surrounding sentence didn't already state.
+- **Date**: 2026-09-14
+- **Status**: active

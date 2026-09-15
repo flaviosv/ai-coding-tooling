@@ -7,12 +7,6 @@ description: >
   or "log this for [tech]". Do NOT use to generate generic best practices from public documentation.
 metadata:
   version: "3.0.0"
-  triggers:
-    - "save this insight"
-    - "add this to the [tech] reference"
-    - "remember this [tech] pattern"
-    - "capture this convention"
-    - "log this for [tech]"
 ---
 
 # Tech Reference Add

@@ -10,37 +10,13 @@ description: >
   context files, and the context files in docs/codebase/ — and detects new packages. Package mode
   generates a scoped CLAUDE.md for an individual package/module.
   Use when the user says "evaluate architecture", "map codebase", "analyze existing code", "document
-  current architecture", "update architecture docs", "refresh project context", "onboard project",
-  "create project docs", "update project docs", "update docs", "document my changes", "sync
-  documentation", "document recent changes", "evaluate package", or "package architecture".
+  current architecture", "initial architecture", "update architecture docs", "refresh project
+  context", "setup project docs", "run architecture-evaluate", "onboard project", "create project
+  docs", "update project docs", "update docs", "generate docs", "document my changes", "sync
+  documentation", "document recent changes", "keep docs in sync", "api documentation", "evaluate
+  package", "evaluate architecture for package", or "package architecture".
 metadata:
   version: "5.0.1"
-  triggers:
-    # Full mode — bootstrap / full refresh of the context files
-    - "evaluate architecture"
-    - "map codebase"
-    - "analyze existing code"
-    - "document current architecture"
-    - "initial architecture"
-    - "update architecture docs"
-    - "refresh project context"
-    - "setup project docs"
-    - "run architecture-evaluate"
-    - "update project docs"
-    - "create project docs"
-    - "onboard project"
-    # Incremental mode — git-diff-driven sync of changed docs, inline API docs, root files
-    - "update docs"
-    - "generate docs"
-    - "document my changes"
-    - "sync documentation"
-    - "document recent changes"
-    - "keep docs in sync"
-    - "api documentation"
-    # Package mode — scoped CLAUDE.md for one package
-    - "evaluate package"
-    - "evaluate architecture for package"
-    - "package architecture"
 ---
 
 # Architecture Evaluate

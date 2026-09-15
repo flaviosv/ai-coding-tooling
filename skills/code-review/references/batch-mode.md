@@ -47,7 +47,7 @@ Counting reply artifacts breaks both silently: a PR this skill already fixed onc
 
 Dispatch **one** fix worker for every qualifying PR, prompt per [Fix Stage — Dispatch](fix-stage.md#dispatch-root-conversation), plus:
 
-- `[code-review][batch-fix]` prefix; every qualifying PR; "work at high effort: verify every finding against the actual code before acting on it".
+- `[code-review][batch-fix]` prefix; every qualifying PR; "verify every finding against the actual code before acting on it".
 - **Scope filter:** only unresolved threads containing at least one comment authored by `<login>`. A thread whose comments are entirely from other reviewers is out of scope — skip it and leave it untouched, even when it's a valid finding, and list it in `skipped` with the reason "not authored by <login>".
 - Jira sync only if the user requested it for this run.
 
@@ -55,7 +55,7 @@ When the worker reports, one update per PR: outcomes by class, commits pushed or
 
 ## Review Sweep
 
-1. **Review stage:** dispatch one review worker per qualifying PR — prompt per [SKILL.md — Stage 1](../SKILL.md#stage-1-review), `[code-review][batch-review:PR-<N>]` prefix, the run's `scope`, and "work at high effort: be thorough, verify every finding against the actual diff before including it, prefer precision over volume". Each posts a pending review and returns its compact result.
+1. **Review stage:** dispatch one review worker per qualifying PR — prompt per [SKILL.md — Stage 1](../SKILL.md#stage-1-review), `[code-review][batch-review:PR-<N>]` prefix, the run's `scope`, and "verify every finding against the actual diff before including it; prefer precision over volume". Each posts a pending review and returns its compact result.
 2. **Checkpoint:**
    - `human_review: true` → wait until every review worker has reported, post one table (PR, URL, finding counts by severity, re-anchored, `anchor_unverified`, unpostable), and end the turn. The user reviews on GitHub and replies — "continue" for all, or "continue #12, #14" for a subset. `submit` each PR continued. PRs not continued stay pending and get no fix stage.
    - `human_review: false` → as each review worker reports, `submit` that PR without waiting for the others.

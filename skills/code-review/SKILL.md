@@ -14,36 +14,6 @@ description: >
   PRs", or invokes /code-review. Do NOT use to write new tests or for spec planning.
 metadata:
   version: "5.0.0"
-  triggers:
-    - "apply the review fixes"
-    - "batch-fix my change requests"
-    - "check my code"
-    - "check tests"
-    - "code review"
-    - "code review the"
-    - "complete review"
-    - "do a code review"
-    - "fix review comments"
-    - "fix review findings"
-    - "fix the PRs I requested changes on"
-    - "full review"
-    - "resolve review comments"
-    - "review all PRs waiting on my review"
-    - "review my changes"
-    - "review my code"
-    - "review my pending PRs"
-    - "review my tests"
-    - "review pending PRs"
-    - "review PR #123"
-    - "review test coverage"
-    - "review tests"
-    - "review tests on PR #123"
-    - "review the PRs I haven't reviewed yet"
-    - "review this PR"
-    - "run a code review"
-    - "run a complete review"
-    - "test code review"
-    - "triage PR feedback"
 ---
 
 # Code Review

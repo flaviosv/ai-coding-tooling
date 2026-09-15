@@ -64,3 +64,10 @@
 - **Trade-off**: No overall cap on files read in Full mode; cost is bounded only by the per-category guidance.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-010
+- **Decision**: Removed the 25-item `metadata.triggers` YAML array from frontmatter; folded its 7 phrases not already in `description` ("initial architecture", "setup project docs", "run architecture-evaluate", "generate docs", "keep docs in sync", "api documentation") into `description`'s own "Use when..." list.
+- **Reason**: `/claude-api prompt-audit` — `metadata.triggers` is read by no script in this repo (`validate_skill.py` checks trigger phrases in `description`, never `metadata.triggers`); the two lists had drifted apart (7 phrases existed only in `metadata.triggers`), so consolidating into the one list the validator and routing actually use removes a source of disagreement, not just redundancy.
+- **Trade-off**: `description` is now longer (1284/1024 chars per `validate_skill.py`, worsening a pre-existing description_length failure that predates this change) — folding the phrases in kept trigger coverage but did not fix that separate, already-failing check; still open if the user wants it addressed.
+- **Date**: 2026-09-14
+- **Status**: active

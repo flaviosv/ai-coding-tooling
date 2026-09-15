@@ -15,3 +15,10 @@
 - **Trade-off**: Relies on a skill stating its naming in `SKILL.md`; a skill that deviates silently would still get the default pattern.
 - **Date**: 2026-09-13
 - **Status**: active
+
+### AD-010
+- **Decision**: Removed the `metadata.triggers` YAML array from frontmatter — it exactly duplicated the 5 phrases already in `description`'s own "Use when..." list.
+- **Reason**: `/claude-api prompt-audit` — confirmed by repo-wide grep that no script reads `metadata.triggers` (`validate_skill.py` checks trigger phrases in `description`, never this field); an exact duplicate with no reader is pure per-load token cost.
+- **Trade-off**: None — `description` already carried every phrase the array held.
+- **Date**: 2026-09-14
+- **Status**: active
