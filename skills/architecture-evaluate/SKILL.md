@@ -25,7 +25,7 @@ Keep a project's agent-facing context documentation accurate through three modes
 
 ## The Context Files
 
-The canonical set lives in `docs/codebase/`. Full mode always writes eight of these files and writes `PIPELINE.md` only when the project has CI/CD or pipeline config (see Mode A — Full). Every section within a file is conditional and budget-bound; include only sections with codebase evidence. Total combined budget ≈ 30,000 tokens — load on-demand per task, not all at once.
+The canonical set lives in `docs/codebase/`. Full mode always writes eight of these files and writes `PIPELINE.md` only when the project has CI/CD or pipeline config (see Mode A — Full). Every section within a file is conditional and budget-bound; include only sections with codebase evidence.
 
 | File | Purpose | Budget |
 |------|---------|--------|
@@ -82,6 +82,7 @@ These apply to every mode.
 - **Diagrams** — author data flows, layer relationships, component interactions, and pipeline stages as **Mermaid** diagrams. Converting existing ASCII diagrams to Mermaid is always permitted.
 - **Factual only** — document what exists in the codebase. Never invent or speculate. Omit any section with no evidence.
 - **Never write secret values** into any document. Reference secrets by name and describe only how they are managed (provider, injection mechanism) — everywhere, not just `PIPELINE.md`.
+- **Never name `CLAUDE.md`, `CLAUDE.global.md`, or `AGENTS.md`** in any file this skill writes — no `docs/codebase/*.md`, no package `CLAUDE.md`. Describe the underlying convention generically instead (e.g. "the project's root agent-instructions file", "the global agent-instructions file") — even when the codebase being documented is this skill's own repository and its actual mechanism centers on files with those names.
 - **Conditional sections** — every section in every output file is conditional. Only include it if the codebase provides evidence for it; omit empty sections entirely.
 - **Respect per-file budgets** (see The Context Files). Summarize aggressively — table rows over paragraphs, bullets over tables, omission over filler. Cap any single file at 500 lines.
 

@@ -71,3 +71,17 @@
 - **Trade-off**: `description` is now longer (1284/1024 chars per `validate_skill.py`, worsening a pre-existing description_length failure that predates this change) — folding the phrases in kept trigger coverage but did not fix that separate, already-failing check; still open if the user wants it addressed.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-011
+- **Decision**: Removed "Total combined budget ≈ 30,000 tokens — load on-demand per task, not all at once" from The Context Files intro. The per-file `Budget` column in the table (and "budget-bound" per-section sentence) stays — it governs how much this skill writes into each file, which is unrelated to the removed sentence.
+- **Reason**: User decision, following a repo-wide audit of token-efficiency-guideline duplication across skills: generic reader-side loading advice ("load on-demand, not all at once") is `session-evaluate`'s remit, not something every skill should restate on its own.
+- **Trade-off**: No standing reminder in this skill to load `docs/codebase/` files on demand rather than all at once; relies on the consuming agent's own judgment.
+- **Date**: 2026-09-14
+- **Status**: active
+
+### AD-012
+- **Decision**: Added a Shared Guardrail: no file this skill writes (any `docs/codebase/*.md`, a package `CLAUDE.md`) may name `CLAUDE.md`, `CLAUDE.global.md`, or `AGENTS.md` — describe the convention generically ("the project's root agent-instructions file") instead, even when documenting this skill's own repository, whose actual mechanism centers on files with those names.
+- **Reason**: User decision: keeps generated artifacts portable across projects regardless of which agent-instructions filename convention they use, rather than hardcoding this skill's own repo's convention into every output.
+- **Trade-off**: Applied literally, this repo's own `ARCHITECTURE.md`/`STRUCTURE.md` can no longer name the exact files their diagrams describe (`CLAUDE.global.md` → the global agent-instructions file), which is more indirect for a reader of this repo's docs specifically who already knows the real filenames.
+- **Date**: 2026-09-14
+- **Status**: active
