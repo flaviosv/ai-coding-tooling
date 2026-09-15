@@ -13,6 +13,11 @@
 // relative .md link against the file's *installed* directory instead of its repo
 // directory, mirroring how an agent actually reads it after `fs-harness setup`.
 //
+// Also validates that no skill/extended/reference file links this harness's own root
+// config files (CLAUDE.md, CLAUDE.global.md) by name — a skill must not hardcode a
+// dependency on them (prose about a *target* project's CLAUDE.md is unaffected; only an
+// actual markdown link to one of these two files counts).
+//
 // Exit 0 on a clean report, 1 if any check fails.
 //
 // STATE.md files are exempt from every pass: they're an append-only decision log
@@ -195,6 +200,33 @@ const skippedNote = mappings.skipped.length
   ? ` (skipped ${mappings.skipped.length} not-yet-installed skill(s): ${mappings.skipped.join(', ')})`
   : '';
 pass(`${installedLinksChecked} installed-location link(s) checked across ${installedFilesChecked} file(s)${skippedNote}`);
+
+// 5. skills/, extended/, and the root references/ directory must never *link* to this
+// harness's own root config files (CLAUDE.md, CLAUDE.global.md) — a skill assuming those
+// exact filenames is a hardcoded outside dependency (see extended/skill-architect/SKILL.md's
+// "Keep links inside the skill" rule, and skills/architecture-evaluate/STATE.md AD-006, which
+// removed the same hardcoding from architecture-evaluate itself). A skill's own prose about a
+// *target* project's CLAUDE.md (e.g. writing or reading one as its subject, not this harness's)
+// is not a dependency and is not flagged — only an actual markdown link naming one of these
+// two files is.
+const OUTSIDE_ROOT_CONFIG_NAMES = new Set(['CLAUDE.md', 'CLAUDE.global.md']);
+const claudeMentionFiles = [
+  ...skillFiles,
+  ...walkMarkdown(REFERENCES_DIR).filter((f) => !isStateFile(path.relative(ROOT, f))),
+];
+
+let outsideConfigLinksChecked = 0;
+for (const file of claudeMentionFiles) {
+  const rel = path.relative(ROOT, file);
+  const text = fs.readFileSync(file, 'utf8');
+  for (const m of text.matchAll(MD_LINK_RE)) {
+    const base = path.basename(m[1]);
+    if (!OUTSIDE_ROOT_CONFIG_NAMES.has(base)) continue;
+    outsideConfigLinksChecked++;
+    fail(`${rel}: links ${m[1]} — a skill must not depend on this harness's root ${base} by name (see extended/skill-architect/SKILL.md's "Keep links inside the skill" rule)`);
+  }
+}
+pass(`${claudeMentionFiles.length} skill/reference file(s) checked for outside links to CLAUDE.md/CLAUDE.global.md (${outsideConfigLinksChecked} found)`);
 
 for (const p of passes) console.log(`OK    ${p}`);
 for (const f of fails) console.error(`FAIL  ${f}`);

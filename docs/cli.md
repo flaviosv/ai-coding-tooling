@@ -23,7 +23,7 @@ mutating command with `--dry-run` first.
 | `add <skill> [--source <s>] [--local]` | Install one skill; registers it in `skills.json` if new |
 | `delete <skill>` | Uninstall + deregister a skill (keeps `extended/<skill>/`; remove it with `unoverride`) |
 | `destroy` | Undo `setup` — remove config, uninstall skills |
-| `doctor` | Health check: cross-references, installed-location link resolution, symlinks, skill installs, `config/hooks.json` hooks installed |
+| `doctor` | Health check: cross-references, installed-location link resolution, no skill/extended/reference file links root `CLAUDE.md`/`CLAUDE.global.md` by name, symlinks, skill installs, `config/hooks.json` hooks installed |
 | `help` | Show usage |
 | `hooks` | Sync `config/hooks.json` into `settings.json` (run automatically by `setup`) |
 | `list` | Show each skill's source and install state |
