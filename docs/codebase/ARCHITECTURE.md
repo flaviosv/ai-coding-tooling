@@ -2,38 +2,39 @@
 
 ## Overview / Pattern
 
-`ai-coding-tooling` is a **distribution system**, not a runtime application — no server, no build step, no scheduled work. A single repository holds all agent instructions and skills; `fs-harness` links global content (`~/.claude/...`) into the locations Claude Code expects via symlinks, while project-local content (`CLAUDE.md`, `.claude/skills/`) is tracked directly in the repo and needs no linking. The only executable logic is `scripts/bin/fs-harness.mjs`.
+`ai-coding-tooling` is a **distribution system**, not a runtime application — no server, no build step, no scheduled work. A single repository holds all agent instructions and skills; `fs-harness` links global content (skills, the global agent-instructions file) into the locations Claude Code expects via symlinks, while project-local content (the project's root agent-instructions file, `.claude/skills/`) is tracked directly in the repo and needs no linking. The only substantial executable logic is `scripts/bin/fs-harness.mjs`, backed by two smaller standalone consistency-check scripts.
 
 ## High-Level Structure
 
 ```
 Repository (single source of truth)
-  ├── Global (~/.claude/, via fs-harness setup)
-  │     ├── CLAUDE.global.md  ──────────► ~/.claude/CLAUDE.md                       (symlink)
-  │     ├── skills/<name>/  ────────────► ~/.claude/skills/<name>/                  (symlink)
-  │     ├── extended/<skill>/SKILL.md ──► ~/.claude/skills/<skill>/SKILL.extended.md
-  │     └── extended/<skill>/references/ ► ~/.claude/skills/<skill>/references.extended/
+  ├── Global (linked into Claude Code's global config, via fs-harness setup)
+  │     ├── global agent-instructions file  ──► Claude Code's global agent-instructions location   (symlink)
+  │     ├── skills/<name>/  ─────────────────► the global skills directory, <name>/                (symlink)
+  │     ├── extended/<skill>/SKILL.md ───────► an extension file alongside the installed skill
+  │     └── extended/<skill>/references/ ────► an overlay references directory alongside it
   └── Project-local (this repo, tracked directly — no setup step)
-        ├── CLAUDE.md       (real file)
-        └── .claude/skills/ (real dir)
+        ├── project's root agent-instructions file  (real file)
+        └── .claude/skills/                          (real dir)
 ```
 
 ## Layers
 
 | Layer | Responsibility | Key Files or Dirs |
 | ----- | -------------- | ----------------- |
-| Agent config | Global + project-level agent instructions | `CLAUDE.global.md`, `CLAUDE.md` |
+| Agent config | Global + project-level agent instructions | repo root (see naming note in `docs/codebase/STRUCTURE.md`) |
 | CLI | Parse commands, orchestrate all operations | `scripts/bin/fs-harness.mjs` |
+| Consistency checks | Validate cross-references and catch stale mentions | `scripts/bin/misc/check-references.mjs`, `scripts/bin/misc/check-no-stale-refs.mjs` |
 | Overrides | Additive extensions to vendor skills | `extended/<skill>/SKILL.md`, `extended/<skill>/references/` |
 | Registry | Authoritative skill + hook configuration | `config/skills.json`, `config/hooks.json` |
 | Skills (local) | Skill definitions owned by this repo | `skills/`, `.claude/skills/` |
-| Skills (vendor) | Third-party skills, read-only | `~/.claude/skills/<name>/` (installed via npx) |
+| Skills (vendor) | Third-party skills, read-only | the global skills directory (installed via npx) |
 
 ## Dependency Rules
 
 - `scripts/bin/fs-harness.mjs` reads `config/` and `extended/`; it never reads skill content beyond YAML frontmatter (description extraction).
 - `skills/` and `.claude/skills/` contain agent-facing `.md` content only — no imports, no JavaScript.
-- A skill keeps everything it links inside its own directory (`references/`, `scripts/`); there is no shared skill-template folder. `references/` at the repo root is linked only by `CLAUDE.global.md`.
+- A skill keeps everything it links inside its own directory (`references/`, `scripts/`); there is no shared skill-template folder. The repo-root `references/` directory is linked only by the global agent-instructions file.
 - `extended/<skill>/` files must augment, never replace, the parent skill.
 
 ## Communication Patterns
@@ -44,13 +45,14 @@ Repository (single source of truth)
 
 ## State Management
 
-Stateless. All persistent state lives in `config/skills.json` (skill registry) and `config/hooks.json` (hook manifest). Claude Code's own paths (`~/.claude/CLAUDE.md`, `~/.claude/skills`, etc.) are hardcoded constants in `scripts/bin/fs-harness.mjs`. No sessions, no cache, no database.
+Stateless. All persistent state lives in `config/skills.json` (skill registry) and `config/hooks.json` (hook manifest). Claude Code's own global paths are hardcoded constants in `scripts/bin/fs-harness.mjs`. No sessions, no cache, no database.
 
 ## Error Handling Strategy
 
 - `UserError` (custom `Error` subclass) for expected user mistakes: caught at the CLI entry point (`main()`), printed with `fail()`, exits with code 1.
 - Unexpected errors are re-thrown (not caught), producing a stack trace.
 - `runNpx` catches subprocess failures, calls `fail()`, and returns `false` — the caller decides whether to abort or continue.
+- `cmdDoctor` never throws on an individual failed check — it tallies failures across cross-reference validation, symlink checks, per-skill install checks, and hook-install checks, then exits non-zero only at the end if any were found.
 
 ## Observability
 
@@ -58,11 +60,13 @@ No structured logging, no tracing, no metrics. Output is ANSI-colored terminal t
 
 ## Notable Patterns
 
-- **Registry-driven CLI:** every command reads `skills.json` (and `hooks.json` for the `hooks` command) as the sole source of truth for registry data — no filesystem scanning to determine install state. Claude Code's own paths are compile-time constants, not registry-driven.
-- **Command-pattern CLI:** each sub-command maps to a named function (`cmdSetup`, `cmdAdd`, `cmdDelete`, etc.); no class-based dispatch.
+- **Registry-driven CLI:** every command reads `skills.json` (and `hooks.json` for the `hooks` command) as the sole source of truth for registry data — no filesystem scanning to determine install state. Claude Code's own global paths are compile-time constants, not registry-driven.
+- **Command-pattern CLI:** each sub-command maps to a named function (`cmdSetup`, `cmdAdd`, `cmdDelete`, `cmdDoctor`, etc.); no class-based dispatch.
 - **Dry-run support:** a global `DRY` flag is checked before every filesystem operation; any command can be safely previewed.
 - **Safe symlink operations:** `linkSafe` never clobbers existing files; `relinkOverlay` only re-links if the target is already a symlink.
-- **Collision-aware overlays:** `extended/<skill>/references/` installs as `references/` (if the parent has none) or `references.extended/` (when the parent already ships `references/`).
-- **Per-skill decision log:** every skill in `skills/` or `extended/` keeps its own `STATE.md` — an append-only log of `AD-NNN` decision entries, mirroring `tlc-spec-driven`'s project-level `.specs/STATE.md` Decisions log but scoped per skill instead of per project. Format and write triggers are in `docs/skill-adr.md`; referenced from `CLAUDE.md`'s "Skill Decision Log" section. This is a manual convention — `fs-harness` does not create, update, or track it.
+- **Collision-aware overlays:** `extended/<skill>/references/` installs alongside the parent's own `references/`, renamed to avoid collision when the parent already ships one.
+- **Deterministic consistency checks:** `fs-harness doctor` composes symlink/install/hook checks with `check-references.mjs` (shared-reference and skill-internal link resolution, aware of each file's *installed* location, not just its repo location) rather than relying on manual review. `check-no-stale-refs.mjs` is a separate, standalone guard — run by hand or from a git hook — against a removed concept's name silently regaining a reference (`STATE.md` decision logs are exempt, since a past entry legitimately names something since removed).
+- **Per-repo credential scoping:** a SessionStart/CwdChanged hook resolves the right `gh` account for a repo and exports it as `GH_TOKEN`, so every `gh` call in a session — including one made by a dispatched subagent — is scoped without a login being threaded through prompts or flags.
+- **Per-skill decision log:** every skill in `skills/` or `extended/` keeps its own `STATE.md` — an append-only log of `AD-NNN` decision entries. Format and write triggers are in `docs/skill-adr.md`. This is a manual convention — `fs-harness` does not create, update, or track it, though `check-no-stale-refs.mjs` treats every `STATE.md` as an exempt historical record.
 
-**Project-local skills currently unused:** `.claude/skills/` is tracked directly in the repo but holds no skill content at present — `.claude/` contains only `.skill-lock.json`. Any future project-local skill can be added there without further setup.
+**Project-local skills currently unused:** `.claude/skills/` is tracked directly in the repo but holds no skill content at present. Any future project-local skill can be added there without further setup.

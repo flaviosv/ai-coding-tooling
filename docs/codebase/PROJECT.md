@@ -21,13 +21,15 @@ Developers (primarily the maintainer) running Claude Code across several machine
 
 **In scope:**
 
-- Global agent config symlinked from `CLAUDE.global.md` to `~/.claude/CLAUDE.md`.
-- 7 local skills (`skills/`) symlinked globally: `architecture-evaluate`, `build-feature`, `code-review`, `not-your-babysitter`, `qa-steps`, `session-evaluate`, `tech-reference-add`.
-- Project-local skills (`.claude/skills/`), tracked directly in the repo — mechanism supported but currently unused (`.claude/` holds only `.skill-lock.json`, no skill content).
+- Global agent config, tracked at the repo root and symlinked into Claude Code's global config location.
+- 8 local skills (`skills/`) symlinked globally: `architecture-evaluate`, `build-feature`, `code-review`, `disk-evaluate`, `not-your-babysitter`, `session-evaluate`, `subagent-dispatch`, `tech-reference-add`.
+- Project-local skills (`.claude/skills/`), tracked directly in the repo — mechanism supported but currently unused (`.claude/` holds only tracked skill-install metadata, no skill content).
 - Vendor skill integration (Tech Leads Club, Matt Pocock) via `npx`.
-- `extended/` overlay system for customizing vendor skills without forking.
-- `fs-harness` CLI: `setup`, `destroy`, `add`, `delete`, `update`, `override`, `list`, `statusline`.
+- `extended/` overlay system for customizing vendor skills without forking: `mermaid-studio`, `skill-architect`, `tlc-spec-driven`.
+- `fs-harness` CLI: `setup`, `destroy`, `add`, `delete`, `update`, `override`, `unoverride`, `list`, `doctor`, `statusline`, `hooks`.
 - `config/skills.json` as the authoritative skill registry (`config/hooks.json` for hook definitions).
+- A shared, repo-root `references/` directory linked only from the global agent-instructions file.
+- Consistency checks (`scripts/bin/misc/`) that validate cross-references between skills, overlays, and the shared `references/` directory, and guard against a removed concept regaining a stale mention.
 
 **Out of scope:**
 
