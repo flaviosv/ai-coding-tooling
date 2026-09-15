@@ -84,7 +84,7 @@
 - **Reason**: Harness-evaluation #17: the old examples (`tests`/`coding-guidelines` as skill names, `fastapi.*` files, `review-checklist.md`, `testing-patterns.md`) did not exist and taught the wrong layout; `code-review` applies the scope suffix to topic checklists too, not only to technologies.
 - **Trade-off**: None beyond AD-004's two coexisting naming patterns.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-017
 
 ### AD-013
 - **Decision**: "Keep links inside the skill" now says a skill never links, loads, or defers its instructions to anything outside its directory, that naming an outside file as the source of a rule counts (state the rule inline instead), and that files a skill works on as its subject (a target project's `CLAUDE.md`, `docs/codebase/`, a PR) are not dependencies.
@@ -105,11 +105,18 @@
 - **Reason**: The description still claimed two capabilities including the deleted `extended/` pattern (AD-011), and the blockquote restated the frontmatter and parent workflow, against this overlay's own "do not restate the description" output rule.
 - **Trade-off**: None identified.
 - **Date**: 2026-09-14
-- **Status**: active
+- **Status**: superseded by AD-017
 
 ### AD-016
 - **Decision**: 2.2b's reference-file naming examples no longer name other skills or cite repo paths: `php-coding-guidelines.md` in a `coding-guidelines` reference folder illustrates `<technology>-<skill-name>.md`, `php.code.md` / `review-checklist.tests.md` illustrate the scoped `<name>.<scope>.md` variant, and `review-checklist.code.md` illustrates the baseline exemption.
 - **Reason**: User rule that a skill never mentions other skills or depends on anything outside its own directory.
 - **Trade-off**: The examples no longer point at a real skill a reader could open to see the convention in use.
+- **Date**: 2026-09-14
+- **Status**: superseded by AD-017
+
+### AD-017
+- **Decision**: Deleted Extension 2 (Token Efficiency) entirely — the `<technology>-<skill-name>.md` reference-file naming convention (2.2b), the reference-file/SKILL.md output rules (no `## Resources`, one `---`, filler-phrase ban, blank-line limits), and the Phase 4 "Token efficiency check" step. Its "Keep links inside the skill" rule is kept, relocated into what is now Extension 2 (Overlay Validator, renumbered from Extension 3) as the authoring-side note for the `links_inside_skill` check it feeds. Frontmatter description trimmed to two items (guardrail design; the dependency-isolation rule enforced by the overlay validator) and `metadata.version` bumped to 1.4.0.
+- **Reason**: User decision, following a repo-wide audit of token-efficiency-guideline duplication across skills: this overlay is not the skill responsible for token-efficiency guidance (that is `session-evaluate`'s remit), so restating generic efficiency/style rules here duplicated it. "Keep links inside the skill" survives because it is a dependency-isolation invariant that AD-014's `links_inside_skill` validator check enforces, not a token-efficiency guideline — deleting it would have orphaned that check's rationale.
+- **Trade-off**: A generated skill's `references/` files and `SKILL.md` no longer get authored-time guidance on lean formatting (no filler phrases, output structure, naming convention for tech-specific reference files) — only whatever the parent `skill-architect` SKILL.md itself already covers. This overlay's own guardrail-design and validator content is unaffected. AD-012 and AD-016 (2.2b naming-example wording) and AD-015 (the renumbering and frontmatter wording they produced) are superseded by this entry.
 - **Date**: 2026-09-14
 - **Status**: active

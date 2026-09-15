@@ -4,11 +4,12 @@ extends: skill-architect
 description: >
   Extension for the skill-architect skill. This file MUST be read together with the parent
   skill-architect SKILL.md. Adds (1) guardrail design injected into the parent phases, with the
-  generated skill's risk category recorded in its frontmatter as metadata.risk; (2) reference-file
-  design, naming, and output rules for reference files and SKILL.md; and (3) an overlay validator
-  that replaces the parent's validate_skill.py and adds link-scope and guardrail-placement checks.
+  generated skill's risk category recorded in its frontmatter as metadata.risk; and (2) a
+  dependency-isolation rule — a skill links only files within its own directory — enforced by an
+  overlay validator that replaces the parent's validate_skill.py and adds link-scope and
+  guardrail-placement checks.
 metadata:
-  version: "1.3.1"
+  version: "1.4.0"
   parent_skill: skill-architect
   source: "ai-coding-tooling (extended/)"
 ---
@@ -106,44 +107,11 @@ Omit sections that don't apply.
 
 For each guardrail, simulate its failure path (precondition fails, gate declined, escalation triggered, secret encountered, collision) and confirm the skill stops or asks cleanly.
 
-## Extension 2: Token Efficiency
+## Extension 2: Overlay Validator
 
-### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure (following 2.2a), when the skill includes reference files
+### Inject into Phase 2 (Architecture) — after 2.2 Plan the Folder Structure (following 2.2a)
 
-**2.2b — Reference File Design**
-
-If the skill will include technology-specific reference files:
-- Name them `<technology>-<skill-name>.md`, where `<technology>` is the kebab-case slug for the language or framework (e.g. `php`, `go-gin`, `ruby-on-rails`) and `<skill-name>` is the reference folder the skill scans (e.g. `php-coding-guidelines.md` in a `coding-guidelines` reference folder).
-- **Exception — scoped variants.** A skill whose references split by scope declares its own naming in its `SKILL.md` and uses `<name>.<scope>.md` instead (e.g. `php.code.md`, `review-checklist.tests.md`). Follow the skill's declaration over the default pattern.
-- Generic baseline files (non-tech-specific) are exempt from the `<technology>` prefix (e.g. `review-checklist.code.md`).
-
-**Keep links inside the skill** — a skill links only files within its own directory (its `references/`, `scripts/`, or `../SKILL.md` from a reference file). It never links, loads, or defers its instructions to anything outside that directory — not `CLAUDE.md`, `CLAUDE.global.md`, the repo's `references/`, `docs/`, or another skill's files — and naming an outside file as the source of a rule counts as depending on it: state the rule inline instead. Files the skill works *on* as its subject (reading or writing a target project's `CLAUDE.md` or `docs/codebase/`, reviewing a PR) are not dependencies.
-
-### Inject into Phase 3 (Craft) — add to 3.2 Write the Instructions
-
-**Output rules for reference files** (any file under `references/`):
-
-- No `## Resources` or `## References` section — agents do not browse links
-- One `---` only — immediately after the scope line (first 1–2 sentence paragraph); none elsewhere
-- "Bad" examples: keep signature + problematic line(s) only; remove surrounding scaffolding
-- Max 1 consecutive blank line; no blank lines inside code blocks
-- Never write filler phrases: "It is important to note", "In order to", "As a general rule"
-- Preserve WHY context, disambiguation, and edge-case prose — this is the most valuable content
-
-**Output rules for SKILL.md files:**
-
-- No `---` between sections — only the frontmatter closing `---` is kept
-- Do not restate the frontmatter `description` in the skill body
-- Step introductions lead with the action, not with context ("Check whether…" not "Before checking…")
-- No filler phrases in any directive
-
-### Inject into Phase 4 (Validate) — add to 4.3 Instruction Quality Review
-
-**Token efficiency check**
-
-Before delivering any generated file, re-check it against the Phase 3.2 output rules above (reference files and SKILL.md).
-
-## Extension 3: Overlay Validator
+**Keep links inside the skill** — a skill links only files within its own directory (its `references/`, `scripts/`, or `../SKILL.md` from a reference file). It never links, loads, or defers its instructions to anything outside that directory — not `CLAUDE.md`, `CLAUDE.global.md`, the repo's `references/`, `docs/`, or another skill's files — and naming an outside file as the source of a rule counts as depending on it: state the rule inline instead. Files the skill works *on* as its subject (reading or writing a target project's `CLAUDE.md` or `docs/codebase/`, reviewing a PR) are not dependencies. Phase 4's `links_inside_skill` check (below) catches a violation of this rule mechanically.
 
 ### Inject into Phase 4 (Validate) — replace the script in 4.1 Structural Validation
 
