@@ -62,11 +62,6 @@
       "scope": "built"
     },
     {
-      "name": "qa-steps",
-      "source": "local",
-      "scope": "built"
-    },
-    {
       "name": "security-best-practices",
       "source": "tech-leads-club",
       "scope": "tech-leads-club"

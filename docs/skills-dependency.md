@@ -55,7 +55,6 @@ Alphabetical by skill name. "Depends on" and "Depended on by" list only edges ve
 | **jira-assistant** | tech-leads-club | — | — |
 | **mermaid-studio** | tech-leads-club (extended) | — | — |
 | **not-your-babysitter** | local | — | `build-feature` (adopts as mode) |
-| **qa-steps** | local | — | — |
 | **security-best-practices** | tech-leads-club | — | `code-review` (reads/loads) |
 | **session-evaluate** | local | — | `tech-reference-add` (writes into) |
 | **skill-architect** | tech-leads-club (extended) | — | — |
@@ -72,7 +71,7 @@ Alphabetical by skill name. "Depends on" and "Depended on by" list only edges ve
 ## Notes
 
 - **`tlc-spec-driven` does *not* depend on `security-best-practices`.** An earlier version of the `extended/tlc-spec-driven/` overlay routed security-sensitive tasks to it (`## Security` in `coding-principles.md`); this was deliberately removed (`extended/tlc-spec-driven/STATE.md` AD-013) — the user decided the overlay should name no other skill, since a skill loads on its own from its description when its work comes up. **`README.md`'s Tech Leads Club table still describes `tlc-spec-driven` as routing security there — that line is now stale** and should be corrected the next time the README's skills tables are touched.
-- **Shared MCP usage is not a skill dependency.** `qa-steps` and `jira-assistant` both use the Jira/Atlassian MCP; `code-review`'s optional Jira-sync capability (`references/jira-sync.md`) calls the Atlassian MCP directly too. None of these invoke `jira-assistant` itself.
+- **Shared MCP usage is not a skill dependency.** `code-review`'s optional Jira-sync capability (`references/jira-sync.md`) calls the Atlassian MCP directly, same as `jira-assistant`. Neither invokes `jira-assistant` itself.
 - **`session-evaluate` has no fixed dependency edge.** It analyzes whatever skill(s) the user names, or the whole session by default, generically — not a specific set of skills.
 - **`subagent-dispatch` is a cross-cutting convention reference**, not invoked via the `Skill` tool by name. Any skill that dispatches subagents through the `Agent` tool points to it instead of restating the dispatch contract.
-- **Standalone skills** (no in-repo dependency edges either direction): `codenavi`, `disk-evaluate`, `docs-writer`, `harness-eval`, `jira-assistant`*, `mermaid-studio`, `qa-steps`*, `skill-architect`, `subagent-creator`, `technical-design-doc-creator`. (*`jira-assistant` and `qa-steps` share an MCP but neither invokes the other — see above. `qa-steps` previously read `architecture-evaluate`'s output — `skills/qa-steps/STATE.md` AD-004 — and now sources its optional technical spot-check from whatever context is already available instead.)
+- **Standalone skills** (no in-repo dependency edges either direction): `codenavi`, `disk-evaluate`, `docs-writer`, `harness-eval`, `jira-assistant`, `mermaid-studio`, `skill-architect`, `subagent-creator`, `technical-design-doc-creator`.
