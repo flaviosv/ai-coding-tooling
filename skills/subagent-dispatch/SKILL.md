@@ -13,13 +13,13 @@ The calling convention every `Agent`-tool dispatch follows: how to set the model
 
 ## Hard Facts About the `Agent` Tool
 
-**1. `model` takes one of four short aliases, verbatim: `sonnet`, `opus`, `haiku`, `fable`.** Never resolve an alias into a versioned model ID (`claude-haiku-4-5-…`, `claude-sonnet-5`, …) on the way to the call, however confidently the environment advertises one — the param only accepts the four aliases, so a versioned ID fails input validation and the subagent never starts. A launch rejected that way did nothing at all — no worktree, no checkout, no commit — so correct the param and relaunch; it doesn't consume any retry the dispatching skill allows.
+**1. `model` takes one of four short aliases, verbatim: `sonnet`, `opus`, `haiku`, `fable`.** Never resolve an alias into a versioned model ID (`claude-haiku-4-5-…`, `claude-sonnet-5`, …) on the way to the call, the param only accepts the four aliases, anthing different faills input validation and the subagent never starts. A launch rejected that way did nothing at all — no worktree, no checkout, no commit — so correct the param and relaunch; it doesn't consume any retry the dispatching skill allows.
 
 **2. Concurrent subagents are capped.** The default is 20 running at once (`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`); nesting depth is capped separately by `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`. On `Concurrent subagent limit reached`, don't retry immediately: launch the rest once your own running agents report, and never drop the unlaunched work.
 
 **3. The agent type goes in `subagent_type`, never `agentType`.** Use `general-purpose` for skill work, and never `"fork"`: a fork inherits the parent's full context and model and ignores `model`, which floods the subagent's context and defeats the point of dispatching.
 
-Set `model` explicitly on every dispatch, using one of the literal aliases above. Never omit it to let a subagent inherit the calling session's model — a dispatch's tier is a property of the work, not of whoever happened to invoke it. Each dispatching skill states its own tier at its dispatch site; an ad hoc dispatch picks the tier the work actually needs.
+Set `model` explicitly on every dispatch, using one of the literal aliases above. Never omit it to let a subagent inherit the calling session's model — a dispatch's tier is a property of the work, not of whoever happened to invoke it. Each dispatching skill states its own tier at its dispatch site; an ad hoc dispatch picks the tier the work actually needs.what other types 
 
 ## The Dispatch Contract
 
@@ -27,13 +27,11 @@ Every `Agent` dispatch prompt states four things:
 
 **1. Completion condition.** Tied to a concrete, checkable artifact — a file that now exists, a test suite that now passes, an API state that now reflects the intended change — never "when you're done" or "when you feel confident." If the work has a claimed end-state (a build that compiles, a set of GitHub threads marked resolved), the completion condition includes **verifying that end-state directly**, not just having attempted the actions that should produce it: "resolved" is true because a re-fetch shows `isResolved: true`, not because the mutation calls were made.
 
-**2. Observability prefix and scale estimate — informational only, never a stop condition.** Open the prompt with a self-identifying tag (`[<skill>][phase:<name>]` or similar) so the dispatch is attributable after the fact, even when its cost lands inside another skill's wall-clock window. Alongside it, state a rough expected scale ("~1 tool call per finding", "on the order of 20-30 calls for a feature this size") purely so a human monitoring the run has a number to judge against. Never instruct the subagent to stop, truncate, or report partial results because it crossed this number — a human decides if something is taking too long; the subagent's job is to finish the completion condition.
-- Wrong: "Stop at ~80 tool calls and report what remains unfinished."
-- Right: "This is typically ~80 tool calls for a feature this size — if you're running far outside that range, say so in your final report, but keep working toward the completion condition regardless."
+**2. Observability prefix and scale estimate — informational only, never a stop condition.** Open the prompt with a self-identifying tag (`[<skill>][phase:<name>]` or similar) so the dispatch is attributable after the fact, even when its cost lands inside another skill's wall-clock window. 
 
 **3. Return shape.** Structured and bounded, not free prose: a `status` (`ok` / `blocked` / `question`), the artifacts produced (file paths, PR number, commit SHAs), and a `question`/`blocker` field for anything requiring a decision the subagent can't make itself. No inlined file contents, no diff excerpts over a few lines, no restating context the dispatcher already has. A skill that already documents its own return-shape convention should point to that convention rather than duplicate the wording here — the shapes are the same thing.
 
-**4. Delegation depth.** State explicitly whether the dispatched agent may itself dispatch further subagents, and to what depth. Default to **no** unless the work genuinely requires it (e.g. a per-task or per-file fan-out that's already independent and bounded). When nesting is intentional, say so and say how deep, rather than leaving it to be discovered after the fact.
+**4. Delegation depth.** State explicitly whether the dispatched agent may itself dispatch further subagents, and to what depth. Default to **no** unless the work genuinely requires it (e.g. a per-task or per-file fan-out that's already independent and bounded). When nesting is intentional, say so and say how deep, rather than leaving it to be discovered after the fact. 
 
 ## Waiting on a Dispatched Subagent
 
@@ -64,3 +62,10 @@ A skill is about to dispatch one analysis subagent per changed module. Its own s
 ### Example 2: an ad hoc one-off dispatch
 
 A session needs a single subagent to investigate a bug, with no dispatching skill stating a tier. The hard facts and the four-field contract still apply directly: pick `sonnet` or `opus` based on how much reasoning the investigation needs, set it explicitly, and write the prompt with a completion condition ("root cause identified and confirmed by reproducing the failure"), an observability prefix, a bounded return shape (root cause, evidence, affected files — not a transcript), and delegation depth stated as none.
+
+### Validation
+
+Mandatory steps before dispatch the subagent, any invalid item from the checkilist must block the trigger of the subagent and responde with an error
+
+- [ ] The subagent model is `sonnet`, `opus`, `haiuke` or `fable`, versioned model ID nor allowed, like `claude-sonnet-5`
+- [ ] The subagent_type parameter is `general-purpose`
