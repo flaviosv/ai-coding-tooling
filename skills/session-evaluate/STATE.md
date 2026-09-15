@@ -148,3 +148,10 @@
 - **Trade-off**: Placeholder names make the examples less concrete. A bare space-separated flag value without `/` or `.` is still indistinguishable from a positional target (`npm test -v WeekView` counts as full), and a bare value with a `.` (`--timeout 1.5`) now counts as scoped. Only runners the script already knew were changed; vitest and jest invoked directly are still undetected.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-018
+- **Decision**: Step 6's Medium and Large dispatch prompts no longer paste `references/findings-catalog.md` (in full, or per-dimension section) or the Classification & Priority Procedure verbatim into the subagent's prompt. Each dispatch instead sends only the run-specific inputs (digest, D1 grep results) plus a Read instruction naming the catalog section(s) to open and pointing at this file's own `#### Classification & Priority Procedure` section.
+- **Reason**: A harness-wide audit of `Agent`-tool dispatches found this skill was the one dispatcher in the repo still inlining static reference-file content instead of pointing a subagent at it to read itself — `code-review` already treats its own checklists this way ("Never inline checklist or doc content — `## Before You Begin` is a Read instruction"), and `subagent-dispatch`'s contract discourages restating content the subagent can fetch on its own. The catalog is ~17.5KB; the procedure section is ~6KB — both add up across a Large-tier fan-out for no benefit, since every dispatched subagent already has Read access and a known `<skill-dir>`.
+- **Trade-off**: None identified — the digest and D1 grep results stay inlined as before, since they are run-specific computed artifacts (not static files a path can point to) and are already kept compact by design; this decision only moves the two static documents from paste to Read.
+- **Date**: 2026-09-14
+- **Status**: active

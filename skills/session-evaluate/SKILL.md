@@ -4,7 +4,7 @@ description: Analyzes a completed agent session transcript for performance and w
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.14.0
+  version: 1.15.0
 ---
 
 # Session Evaluate
@@ -235,11 +235,11 @@ Perform the procedure above yourself, directly in this conversation, across ever
 
 #### Medium — Single agent (1 agent, all active dimensions)
 
-Dispatch **one** subagent (`Agent` tool, `model: opus`) whose prompt includes: the full digest, `references/findings-catalog.md` in full, the Step 4 D1 grep results, and the Classification & Priority Procedure above verbatim. Its task: apply the procedure across every active dimension and return findings in the return shape below — nothing else.
+Dispatch **one** subagent (`Agent` tool, `model: opus`) whose prompt includes: the full digest, the Step 4 D1 grep results, and a Read instruction pointing it at `<skill-dir>/references/findings-catalog.md` in full and at this file's `#### Classification & Priority Procedure` section (under Step 6). Its task: read both, then apply the procedure across every active dimension and return findings in the return shape below — nothing else.
 
 #### Large — Parallel (one agent per active dimension)
 
-Fire one subagent per active dimension, **in a single message, never sequentially** (`Agent` tool, `model: opus` each). Each receives: the full digest; its assigned dimension's section of `references/findings-catalog.md` plus section G (Non-findings) and any section its own section points to (C3 needs B1); the Step 4 D1 grep results (only if dimension D is its assignment); and the Classification & Priority Procedure above verbatim. Each subagent applies the procedure to its dimension only and returns findings in the return shape below.
+Fire one subagent per active dimension, **in a single message, never sequentially** (`Agent` tool, `model: opus` each). Each receives: the full digest; the Step 4 D1 grep results (only if dimension D is its assignment); and a Read instruction naming its assigned dimension's section of `<skill-dir>/references/findings-catalog.md` plus section G (Non-findings) and any section its own section points to (C3 needs B1), and this file's `#### Classification & Priority Procedure` section (under Step 6). Each subagent reads both, applies the procedure to its dimension only, and returns findings in the return shape below.
 
 **Subagent return shape** (Medium and Large tiers): a list of findings, each carrying dimension, title, context, metrics, affected aspects, severity, recurrence, root cause, proposed solution, and the attributed fix-target skill/file — everything Step 7/8 need, pre-computed. A subagent classifies only: it never edits files, touches GitHub, or dispatches agents of its own — Step 9 (Apply) happens later, in this conversation, after approval.
 
