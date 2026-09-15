@@ -22,3 +22,10 @@
 - **Trade-off**: The hook resolves from the session's current repo, so a `gh pr view` for a PR in an unrelated repo whose access differs by account still runs as that repo's account (or the active one outside a GitHub repo) and falls back to a ticket-only plan when it fails.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-004
+- **Decision**: Removed Step 4 ("Load project technical context"), which explicitly checked for `docs/codebase/STACK.md`/`ARCHITECTURE.md` and told the model not to ask the user to run `architecture-evaluate` first. The optional technical spot-check (Step 4's old surface-priority item 3, and the plan template's optional spot-check line) now sources itself from whatever the ticket, PR diff, or already-available context supports — never invented — instead of from an explicit file check. Steps renumbered 4→6 down to 4→5, downstream cross-references updated.
+- **Reason**: User decision — the user's global `CLAUDE.md` already has this session load `docs/codebase/*` into context when relevant to the task at hand, so this skill's own "check whether X exists, then load it" step restated a convention that lives one layer up.
+- **Trade-off**: The opportunistic spot-check now depends on that global convention (or ambient context) having actually loaded the relevant `docs/codebase/` files — on a session or machine without that directive, nothing else loads them, so the spot-check has nothing to ground itself in and will fire less often, with no explicit fallback check. Accepted knowingly: this harness runs only on machines the user controls.
+- **Date**: 2026-09-14
+- **Status**: active

@@ -30,8 +30,6 @@ graph LR
 
     grill-me -->|invokes| grilling
 
-    qa-steps -.->|reads output of| architecture-evaluate
-
     tech-reference-add -.->|writes into| code-review
     tech-reference-add -.->|writes into| tlc-spec-driven
     tech-reference-add -.->|writes into| build-feature
@@ -45,7 +43,7 @@ Alphabetical by skill name. "Depends on" and "Depended on by" list only edges ve
 
 | Skill | Source | Depends On | Depended On By |
 |---|---|---|---|
-| **architecture-evaluate** | local | — | `build-feature` (invokes + reads output), `qa-steps` (reads output) |
+| **architecture-evaluate** | local | — | `build-feature` (invokes + reads output) |
 | **build-feature** | local | `architecture-evaluate` (invokes, reads output), `code-review` (invokes), `design`* (conditional handoff), `grilling` (invokes), `not-your-babysitter` (adopts as mode), `tlc-spec-driven` (invokes), `update-config`* (advisory) | `tech-reference-add` (writes into) |
 | **code-review** | local | `security-best-practices` (reads/loads, via its `security-reviewer` dimension agent) | `build-feature` (invokes), `tech-reference-add` (writes into) |
 | **codenavi** | tech-leads-club | — | — |
@@ -57,7 +55,7 @@ Alphabetical by skill name. "Depends on" and "Depended on by" list only edges ve
 | **jira-assistant** | tech-leads-club | — | — |
 | **mermaid-studio** | tech-leads-club (extended) | — | — |
 | **not-your-babysitter** | local | — | `build-feature` (adopts as mode) |
-| **qa-steps** | local | `architecture-evaluate` (reads output, optional) | — |
+| **qa-steps** | local | — | — |
 | **security-best-practices** | tech-leads-club | — | `code-review` (reads/loads) |
 | **session-evaluate** | local | — | `tech-reference-add` (writes into) |
 | **skill-architect** | tech-leads-club (extended) | — | — |
@@ -77,4 +75,4 @@ Alphabetical by skill name. "Depends on" and "Depended on by" list only edges ve
 - **Shared MCP usage is not a skill dependency.** `qa-steps` and `jira-assistant` both use the Jira/Atlassian MCP; `code-review`'s optional Jira-sync capability (`references/jira-sync.md`) calls the Atlassian MCP directly too. None of these invoke `jira-assistant` itself.
 - **`session-evaluate` has no fixed dependency edge.** It analyzes whatever skill(s) the user names, or the whole session by default, generically — not a specific set of skills.
 - **`subagent-dispatch` is a cross-cutting convention reference**, not invoked via the `Skill` tool by name. Any skill that dispatches subagents through the `Agent` tool points to it instead of restating the dispatch contract.
-- **Standalone skills** (no in-repo dependency edges either direction): `codenavi`, `disk-evaluate`, `docs-writer`, `harness-eval`, `jira-assistant`*, `mermaid-studio`, `skill-architect`, `subagent-creator`, `technical-design-doc-creator`. (*`jira-assistant` shares an MCP with two skills but isn't invoked by either — see above.)
+- **Standalone skills** (no in-repo dependency edges either direction): `codenavi`, `disk-evaluate`, `docs-writer`, `harness-eval`, `jira-assistant`*, `mermaid-studio`, `qa-steps`*, `skill-architect`, `subagent-creator`, `technical-design-doc-creator`. (*`jira-assistant` and `qa-steps` share an MCP but neither invokes the other — see above. `qa-steps` previously read `architecture-evaluate`'s output — `skills/qa-steps/STATE.md` AD-004 — and now sources its optional technical spot-check from whatever context is already available instead.)
