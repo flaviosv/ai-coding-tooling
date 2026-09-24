@@ -4,16 +4,16 @@ description: >
   Reviews code and fixes what the review finds, as one run: a review stage reviews each dimension
   (architecture, code quality, performance, regression, security, requirements; test coverage,
   gaps, isolation, clarity, maintainability) — inline, or with Sonnet agents as size requires —
-  over local changes, commits, or a GitHub PR; an optional human checkpoint (human_review, default
-  false) lets you edit the findings; one fix subagent then fixes everything that remains, runs
-  targeted tests, pushes, replies to every in-scope PR thread, and resolves the ones it fixed or
-  rejected. All GitHub writes go through a verifying script. Also fixes existing review comments
+  over local changes, commits, or a GitHub or Azure DevOps PR; an optional human checkpoint
+  (human_review, default false) lets you edit the findings; one fix subagent then fixes everything
+  that remains, runs targeted tests, pushes, replies to every in-scope PR thread, and resolves the
+  ones it fixed or rejected. All GitHub and Azure DevOps writes go through verifying scripts. Also fixes existing review comments
   on a PR, and batch-sweeps PRs awaiting your review or where you requested changes. Technology
   agnostic via docs/codebase context. Use when the user says "review my code", "review my tests",
   "review PR #123", "fix review comments", "fix the PRs I requested changes on", "review my pending
   PRs", or invokes /code-review. Do NOT use to write new tests or for spec planning.
 metadata:
-  version: "5.0.0"
+  version: "5.1.0"
 ---
 
 # Code Review
@@ -25,6 +25,8 @@ One run, three stages. `SKILL.md` holds what every run does; `references/` holds
 | 1. Review | A review worker | Steps 2–9: diff, dimension agents, duplicate collapse, report; on a PR, posts a pending review | [github-writes.md](references/github-writes.md) (PR) |
 | 2. Checkpoint | The root conversation | `human_review: true` → pause for the user; `false` → continue. On a PR, submits the review as `COMMENT` | — |
 | 3. Fix | One fresh fix worker for every remaining finding | Fixes what remains, tests, validation gate; on a PR, pushes, replies, resolves | [fix-stage.md](references/fix-stage.md) |
+
+**Azure DevOps PRs** run the same stages with the substitutions in [ado-writes.md](references/ado-writes.md) (both workers) and [ado-checkpoint.md](references/ado-checkpoint.md) (the root's Stage 2). Azure DevOps has no pending review, so with `human_review: true` the findings are curated on a private page and posted only after the pause.
 
 ## Parameters
 
@@ -57,6 +59,7 @@ The fix stage takes the opposite stance toward findings: each one is a claim to 
 - **Every GitHub write goes through `scripts/github_review.py`** per [github-writes.md](references/github-writes.md): a review is pending until Stage 2 submits it, the verdict is always `COMMENT`, never a GitHub Issue, never deleting a review, comment, or thread (except the duplicate thread replies `deliver` reports — [github-writes.md](references/github-writes.md#rules) Rules), never touching another identity's pending review.
 - **Only the root conversation dispatches stage workers.** The root is a live conversation, or an orchestrator invoking this skill via `Skill`. A review worker dispatches only its dimension agents; a fix worker dispatches nothing. **When this skill is executed by any subagent** (started via the `Agent` tool for any reason, other than as a stage worker this skill dispatched) — the test is mechanical, never a judgment about why you were started: it is already the isolated context and must never call `Agent` for a stage worker. It runs the review stage inline, then `submit` and the fix stage inline, in that same context; wherever Stage 2 would pause, it stops after Stage 1 instead and returns its result with `awaiting_approval: true`. This is the one case where the fix stage does not start in a fresh worker.
 - **A stage worker that fails outright** (crash, auth failure, PR not found — distinct from a dimension agent or item failing) is retried once, resuming from the point where it stopped — never restarting from scratch. The retry uses what the failed worker already reported or already published: `post` skips what is already on the review, and a fix worker continues with the items and PRs still open. A second failure stops the run and is reported. Never claim a review was posted or a fix landed on a failed run.
+- **Every Azure DevOps read and write goes through `scripts/ado_review.py`** per [ado-writes.md](references/ado-writes.md): nothing is posted to an Azure DevOps PR before its findings are final, never a work item, never a vote, never deleting a thread or comment.
 - Never print `gh auth token` output or any credential — refer to auth state by status only.
 - **Resolving paths.** `references/…` and `scripts/…` resolve inside this skill's directory (`~/.claude/skills/code-review/`, a symlink into the source repo). Read them directly — never `find`: the search surfaces confusing near-matches.
 
@@ -77,6 +80,7 @@ While a Stage 2 checkpoint is open in this conversation, the user's next message
 - **A PR counts only when the current request names it or the caller passes it** (e.g. `build-feature` passing the PR it just opened) — never a PR merely mentioned earlier in the conversation, and never one inferred from git or `gh` state. A PR run posts, submits, pushes, and resolves threads, so "review my code" in a conversation that once discussed PR #N is a local review. A request that refers to a PR without naming it ("review it") → ask which PR, or whether a local review is meant.
 - **Fix existing findings on a PR** needs at least one submitted review with comments (`gh pr view <N> --json reviews`): the only review is still `PENDING` → stop: "Your review is still pending on GitHub — submit it before asking me to fix findings." No review at all → fall through to local fix mode with the findings already in this conversation, on that PR's branch; none in the conversation either → say there is nothing published to fix and offer to review it. **Without a PR**, the findings are the ones already in this conversation (all of them, or the IDs named); none → ask which branch and which findings.
 - **Continue after checkpoint** runs Stage 2's continue path for a PR review this skill posted earlier: `submit`, then Stage 3 per Stage 2's `submit` rules. It never re-runs the review and never re-posts findings — it is the recovery path for a `submit` or `deliver` failure, never for a failed review or post (Stage 2).
+- **PR host.** Before any entry that touches a PR (rows 1–4 and 6), run `python3 ~/.claude/skills/code-review/scripts/detect_remote.py` once (same fallback path rule as the other scripts). `github` → everything as written. `ado` → the same entry, with the Azure DevOps substitutions this file and its references name, and its `org`, `project`, and `repo` in place of owner/repo; an Azure DevOps PR is named as "PR 42" or "!42". Exit `2` → stop and report its JSON — never guess the host.
 - A fix request that is unclear between one PR and a sweep → ask: "Should I fix one specific PR (give me the number), or batch-fix every open PR where you requested changes?"
 
 Entry and scope are fixed for the rest of the run.
@@ -86,7 +90,7 @@ Entry and scope are fixed for the rest of the run.
 **Dispatch (root):** one `Agent` call, `subagent_type: general-purpose`, `model: sonnet` (set explicitly, whatever model this session runs on; `human_review` never changes it), with this prompt:
 
 - Prefix `[code-review][review:PR-<N>]`, `[code-review][review:commits]`, or `[code-review][review:local]`.
-- The entry, PR number or commits, `scope`, and for a PR owner/repo.
+- The entry, PR number or commits, `scope`, and for a PR owner/repo — on Azure DevOps, org/project/repo and `human_review`, which decides whether the worker posts or writes `findings.json` ([ado-writes.md](references/ado-writes.md#review-stage)).
 - "Load the `code-review` skill and run Stage 1 — Steps 2–9 — as its review worker. Dispatch only dimension agents."
 - Completion condition: Step 8's report written and, on a PR, Step 9's `post` exited with its JSON captured.
 - Return shape, **local or commits:** the full Step 8 report plus the banner. **PR:** the PR URL; the banner verbatim (a Complex caveat with its actual wording); finding counts per scope and severity; the most important finding in one line; clusters collapsed; `post`'s exit code, `post_json_path`, and, from its JSON, `posted_confirmed`, `carried_over`, `reanchored`, `anchor_corrected`, `anchor_unverified`, `missing`, `duplicates_found`, any batch that had to be retried, and every `unpostable` entry by `path:line` (report `0` for each count when none — a missing count is indistinguishable from never having looked); dimensions not executed with reasons; `review_failed: true` with every reason when every agent failed. Never the diff, the full report, or comment bodies.
@@ -140,6 +144,7 @@ The one noise list for every entry — never duplicate it.
 | Entry | Commands |
 |---|---|
 | GitHub PR | `gh auth status` must succeed — otherwise stop: "No way to reach GitHub — install/authenticate `gh` (`gh auth status` must succeed) before reviewing a PR." Then `gh pr view <PR> --json title,body,baseRefName,headRefName,files` — PR not found → stop and report, never guess another number — and `gh pr diff <PR>`; drop every path matching EXCLUDE before assembling diffs |
+| Azure DevOps PR | `ado_review.py pr` and the git diff per [ADO Writes — PR and Diff](references/ado-writes.md#pr-and-diff); drop every path matching EXCLUDE |
 | Local workspace | `git diff HEAD -- $EXCLUDE`, `git diff --cached -- $EXCLUDE`, `git ls-files --others --exclude-standard` |
 | Multi-commit (hashes) | `git show <h1> -- $EXCLUDE; git show <h2> -- $EXCLUDE; ...`, concatenated in order |
 | Multi-commit (range) | `git diff <base>..<tip> -- $EXCLUDE` |
@@ -249,6 +254,8 @@ Then write the report per [report-format.md](references/report-format.md).
 
 ### Step 9: Post (GitHub PR only)
 
+**Azure DevOps:** follow [ADO Writes — Review Stage](references/ado-writes.md#review-stage) instead — `post` with `human_review: false`, `findings.json` with `true` — returning `findings_json_path` and `pr_diff_path` in place of `post_json_path` for `true`.
+
 Zero findings → skip `post` entirely and return zero counts; there is nothing to publish and never an empty comments array. Otherwise load [github-writes.md](references/github-writes.md), write `post.json` with every finding from the report (Comment Shape) at the path [GitHub Writes — `post`](references/github-writes.md#review-stage-post) gives, and run `post`. Capture its JSON — it feeds the return shape, with `post_json_path`. Leave `post.json` on disk: Stage 2 re-runs `post` from it if posting failed. `post` never submits; the review stays pending until Stage 2.
 
 ## Stage 2: Checkpoint
@@ -258,6 +265,7 @@ Runs in the root conversation.
 | Target | `human_review: true` | `human_review: false` |
 |---|---|---|
 | GitHub PR | Show the PR URL, banner, counts, and every unpostable and `anchor_unverified` finding by `path:line`, and **end the turn**: "Review posted as pending on PR #N. Edit, delete, or add comments on GitHub (or submit it), then reply to continue." Never invent an approval or continue speculatively. On the user's reply: `submit`, then Stage 3 | `submit`, then Stage 3 — unless `post` reported `carried_over` > 0: then pause as with `true` first, adding "Your pending review already held N comments this run didn't post; submitting publishes them too." |
+| Azure DevOps PR | [ado-checkpoint.md](references/ado-checkpoint.md): findings on a private page, **end the turn**; on the user's reply, ask "post and fix" or "just fix internally", then post (or not) and Stage 3 | Posting failure recovery below, then Stage 3 |
 | Local or commits | Show the report and **end the turn**; the user drops findings by ID ("drop Q2, H1") and replies. Then Stage 3 with what remains | Stage 3 with every finding |
 
 Recovery happens before the pause, so the user only ever checks findings that are really on GitHub:
@@ -302,3 +310,6 @@ The root combines both stages: the review summary (URL or report, banner, counts
 | "fix Q1 and H2" after a "just review" local run | Fix existing · — | Stage 3 with exactly those two findings |
 | "review my pending PRs except #205" | Batch review sweep | #205 dropped for this run only; per-PR review → checkpoint → fix |
 | "fix the PRs I requested changes on" | Batch fix sweep | One fix worker for every qualifying PR, working them in the order it judges best, scoped to your own threads |
+| "review PR 42", origin on `dev.azure.com`, `human_review: false` | Azure DevOps PR · false | `detect_remote.py` → `ado`; review worker posts threads with `ado_review.py post`; fix worker fixes, pushes, replies, sets `fixed` / `wontFix` |
+| "review PR 42, let me check the findings first", Azure DevOps | Azure DevOps PR · true | Findings on a private page, nothing on the PR; user curates, replies "continue", picks "just fix internally" → fixes committed on the source branch, nothing posted or pushed; page deleted |
+| Azure DevOps PR, `human_review: true`, no Artifact tool in the session | Azure DevOps PR · true | Stops after the review: nothing posted, findings path reported |

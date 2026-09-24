@@ -102,6 +102,7 @@ flowchart TD
 | Batch review sweep | "review my pending PRs" | 1 → 2 per PR, then 3 in one worker for every PR | All threads remaining after the checkpoint |
 | Continue after checkpoint | "continue the code review on PR #N" (`build-feature` resume) | `submit` → 3 | Every published unresolved thread |
 | Fix existing findings | "fix the review comments on PR #N", "fix Q1, H2" | 3 | PR with a submitted review: every published unresolved thread · PR with no review, or no PR: the named or all conversation findings |
+| Azure DevOps PR | As GitHub PR, when `detect_remote.py` reports `ado` | 1 → 2 → 3 | Threads posted after the checkpoint page, or the page's remaining findings when fixing without posting |
 | GitHub PR | PR number named in the current request, or passed by the caller — never one only mentioned earlier | 1 → 2 → 3 | Threads remaining after the checkpoint |
 | Local workspace | Default | 1 → 2 → 3 | Report findings not dropped at the checkpoint |
 | Multi-commit | "review commits …" | 1 → 2 → 3 | Report findings not dropped at the checkpoint |
@@ -121,6 +122,7 @@ Wording, not parameters: "just review" ends after Stage 2; "and update the Jira 
 
 | Target | `human_review: true` | `human_review: false` | "Just review" |
 |---|---|---|---|
+| Azure DevOps PR | Private page, nothing posted; end turn; user curates and replies → "post and fix" (`post` → fix) or "just fix internally" (local commits, no post, no push); page deleted | Review worker already posted → fix | `true`: page, then `post`, run ends · `false`: posted, run ends |
 | GitHub PR | Pending review; end turn; user edits on GitHub and replies → `submit` → fix | `submit` → fix; comments carried over from an earlier draft → pause first, as with `true` | `true`: stays pending, run ends · `false`: `submit`, run ends |
 | Any, review failed twice, zero findings, or every finding deleted | No fix — report (a deleted-to-empty review is left pending for the user to discard) | Same | Same |
 | Local / commits | Report shown; end turn; user drops IDs and replies → fix | Fix every finding | Run ends after the report |
@@ -171,6 +173,33 @@ The root is a live conversation, or an orchestrator invoking this skill via `Ski
 
 Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5 s, resolve 1 s), 180 s back-off on GitHub's abuse block (at most twice), no blind retry, counts only from re-fetches, exit `0` confirmed / `1` partial / `2` fatal. Any non-zero `gh` exit is a failed request unless it is a GraphQL response that still carries `data`; an unexpected response shape is exit `2` with JSON, never a traceback. The only GitHub read the model runs itself is the thread fetch in `github-writes.md`.
 
+## Azure DevOps
+
+Azure DevOps has no pending review: a thread is public, and notifies, the moment it exists. So the hand-off moves. With `human_review: false` the review worker posts at Step 9, as on GitHub. With `true` it posts nothing; the root curates on a private page first.
+
+```mermaid
+flowchart TD
+    D[detect_remote.py → ado] --> S1[Stage 1: review worker<br/>ado_review.py pr + git diff]
+    S1 --> HR{human_review?}
+    HR -- false --> P1[ado_review.py post] --> F[Stage 3]
+    HR -- true --> FJ[findings.json + pr.diff]
+    FJ --> AT{Artifact tool?}
+    AT -- no --> Stop([Stop: nothing posted, findings path reported])
+    AT -- yes --> Page[review_page.py render → private artifact with db<br/>end turn]
+    Page -- "user curates, replies continue" --> Q{Ask: post and fix,<br/>or just fix internally?}
+    Q --> Exp[ArtifactData list → review_page.py collect → post.json]
+    Exp -- "post and fix" --> P2[ado_review.py post] --> Del1[Delete page] --> F
+    Exp -- "just fix internally" --> Del2[Delete page] --> FL[Stage 3, Local Mode on the source branch<br/>commits, no push, nothing posted]
+    F --> Push[push] --> Dv[ado_review.py deliver<br/>reply → confirm → status fixed / wontFix → confirm]
+```
+
+| Write | Subcommand | Confirms by |
+|---|---|---|
+| One thread per finding | `post` | Re-fetching the PR's threads; retries once only comments whose request failed |
+| Reply, then set `fixed` / `wontFix` | `deliver` | Re-fetching threads after replies and after status changes; a reply counts only with the hidden marker from this identity |
+
+Design notes: the page stores only the user's decisions (`decisions/f<N>`, `added/<id>`), never the findings, which stay in `findings.json` on disk; `collect` merges the two, so what gets posted comes from files, not from the model retyping the user's edits. Nothing is re-anchored, since Azure DevOps accepts a thread on any line of a changed file. Access rules restrict the page's database to its owner; the page is deleted once its findings are posted or handed to the fix worker.
+
 ## Files Loaded per Run
 
 | File | Loaded when |
@@ -179,6 +208,8 @@ Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5
 | `WORKFLOW.md` | Never at runtime |
 | `references/<topic>.code.md`, `<stack>.code.md`, `<stack>-performance.code.md` | By code dimension agents |
 | `references/<topic>.tests.md`, `<stack>.tests.md` | By test dimension agents |
+| `references/ado-checkpoint.md` | Root, Stage 2 of an Azure DevOps PR run |
+| `references/ado-writes.md` | Review worker and fix worker on an Azure DevOps PR |
 | `references/batch-mode.md` | Batch entries |
 | `references/code-dimensions.md` | By the review worker, code scope requested |
 | `references/fix-stage.md` | Root before Stage 3; fix worker |
@@ -188,7 +219,11 @@ Shared mechanics: argv only (no shell), batches of 10, pacing (post 1 s, reply 5
 | `references/report-format.md` | Review worker |
 | `references/sonar.md` | A Sonar project key exists |
 | `references/test-dimensions.md` | By the review worker, tests scope requested |
+| `assets/review-page.template.html` | Filled by `review_page.py render` |
+| `scripts/ado_review.py` | Every Azure DevOps read and write |
+| `scripts/detect_remote.py` | Step 1, any PR entry |
 | `scripts/github_review.py` | Every GitHub write |
+| `scripts/review_page.py` | Azure DevOps checkpoint page: `render`, then `collect` |
 
 ## Design Notes
 

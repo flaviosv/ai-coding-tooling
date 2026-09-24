@@ -64,6 +64,15 @@ When the worker reports, one update per PR: outcomes by class, commits pushed or
 
 "Just review" wording ends every PR's run after the checkpoint and no fix worker runs: with `human_review: true` each review stays pending for the user to submit; with `false` each PR is `submit`ted as its review lands.
 
+## Azure DevOps
+
+When `detect_remote.py` reports `ado`, Steps 1–3 are replaced by one call, and the rest of the sweep runs as written with the Azure DevOps substitutions ([ADO Writes](ado-writes.md), [ADO Checkpoint](ado-checkpoint.md)):
+
+- **Steps 1–3:** `python3 <scripts>/ado_review.py candidates <org> <project> <repo> review|fix`. It returns your identity and the qualifying active PRs: **fix** — your vote is *waiting for author* (`-5`) or *rejected* (`-10`); **review** — you are a reviewer, have not voted, and have opened no thread. There are no reply reviews on Azure DevOps, so the reply-review filter does not apply. PRs where only a team you belong to is the reviewer are not found; say so when the list is empty.
+- **Fix sweep scope filter:** only threads with at least one comment whose `author_id` is your identity's `id`.
+- **Review sweep checkpoint:** `human_review: true` → each review worker writes `findings.json`; once all have reported, run the page flow's steps 1–3 for each PR (one page per PR), post one table (PR, page link, finding counts by severity, `anchor_unverified`), and end the turn. The user replies "continue" for all, or "continue 12, 14" for a subset; ask the post-and-fix / just-fix-internally question once for the whole sweep, then steps 6–9 per PR. PRs not continued keep their page and get nothing posted. `human_review: false` → each review worker posts as it lands; there is nothing to submit.
+- **New commits:** the review worker finds commits added since its review with `ado_review.py pr` (`source_commit`, `iteration`) instead of `gh pr view`.
+
 ## New Commits or Comments After Dispatch
 
 When told, later in the same conversation, that a commit was pushed or a comment posted on a PR this conversation already ran a stage for:

@@ -9,6 +9,8 @@ Stage 3: acting on the findings that remain after the checkpoint. It runs in one
 | Target | Findings are | Delivered as |
 |---|---|---|
 | GitHub PR | Every published, unresolved review thread fetched fresh at step 1 — from this skill's review, a human reviewer, or both | Commits pushed to the PR branch, then replies and resolves via `deliver` |
+| Azure DevOps PR | Every active or pending text thread, fetched fresh at step 1 — same rule as GitHub | Commits pushed to the PR's source branch, then replies and status changes via `deliver` ([Azure DevOps PR](#azure-devops-pr)) |
+| Azure DevOps PR, fix without posting | The findings in the `post.json` file the dispatch prompt names — what survived the checkpoint page | Local commits on the PR's source branch — never pushed, nothing posted (Local Mode) |
 | Local changes (no PR) | The findings the root passes in the dispatch prompt — the report minus whatever the user dropped at the checkpoint, or the IDs the user named ("fix Q1, H2") | Working-tree edits or local commits (see Local Mode) — never pushed |
 
 **Only what remains is a finding.** A thread a human deleted, or a finding dropped at the checkpoint, does not exist for this stage.
@@ -56,9 +58,9 @@ One `Agent` call, `subagent_type: general-purpose`, `model: sonnet`: **one fix w
 Prompt:
 
 - Prefix `[code-review][fix:PR-<N>]`, `[code-review][batch-fix]`, or `[code-review][fix:local]`.
-- The target — for each PR: number, owner/repo, head branch, and the checkout path when the caller supplied one — or, for local, the target kind (uncommitted workspace, named branch, or commits), the branch that receives commits, and every remaining finding verbatim (ID, severity, `file:line`, anchor, explanation, recommendation).
+- The target — for each PR: number, owner/repo, head branch, and the checkout path when the caller supplied one — or, for local, the target kind (uncommitted workspace, named branch, or commits), the branch that receives commits, and every remaining finding verbatim (ID, severity, `file:line`, anchor, explanation, recommendation). For an Azure DevOps fix without posting: named branch, the PR's source branch, and the absolute path of `post.json` in place of the findings.
 - The active tlc-spec-driven feature folder (`.specs/features/<feature>/`) when the caller named one — `build-feature` always does; without it the worker writes no plan file.
-- The files to load, by absolute path — never a skill-relative name, which one real worker spent ~1.2M tokens searching for: "Read `~/.claude/skills/code-review/references/fix-stage.md` and follow it; you are the fix worker — never call `Agent`." For a PR, also `~/.claude/skills/code-review/references/github-writes.md`; with Jira sync requested, `~/.claude/skills/code-review/references/jira-sync.md`. If `~/.claude/skills/code-review` does not exist, the skill is installed project-locally: give the same files under `.claude/skills/code-review/`, resolved to an absolute path.
+- The files to load, by absolute path — never a skill-relative name, which one real worker spent ~1.2M tokens searching for: "Read `~/.claude/skills/code-review/references/fix-stage.md` and follow it; you are the fix worker — never call `Agent`." For a PR, also `~/.claude/skills/code-review/references/github-writes.md` — for an Azure DevOps PR, `ado-writes.md` in its place, plus the org/project/repo; with Jira sync requested, `~/.claude/skills/code-review/references/jira-sync.md`. If `~/.claude/skills/code-review` does not exist, the skill is installed project-locally: give the same files under `.claude/skills/code-review/`, resolved to an absolute path.
 - **Retry note**, whenever this dispatch comes from the continue-after-checkpoint entry (including a caller's resume and a user's "continue") or recovers a worker that failed outright — harmless when nothing was pushed: "This may be a retry. <What the failed worker already reported — PRs delivered, items done — when it reported anything; continue from there.> The PR branch may already hold commits an earlier fix worker pushed<, SHAs: …>. A thread whose fix is already on the branch is **fixed — its reply is still needed**; never reject it as already addressed. `deliver` skips any thread that already carries a delivered reply."
 - Completion condition: every in-scope thread (or local finding) of every PR has a fixed / rejected / answered / blocked / unclear / routed outcome, and on a PR `deliver` has confirmed it.
 - Return shape: the Report below — never finding bodies or diffs.
@@ -104,11 +106,20 @@ With several PRs, run steps 0–10 for one PR at a time, in the order you judge 
 9. **Read the script's JSON.** Non-zero exit → the run is blocked; carry the raw JSON into the report. Non-empty `unaccounted` → return to step 2 for those threads.
 10. **Report** (below), taking every reply/resolve count from step 9's JSON.
 
+### Azure DevOps PR
+
+Steps 0–10 as written, with these substitutions ([ADO Writes](ado-writes.md)):
+
+- **Step 0:** no `gh` check — `ado_review.py pr` must succeed (it fails fast without `az login` or a PAT). The head branch is its `source_branch`.
+- **Steps 1 and 4:** fetch with `ado_review.py threads`. There is no pending review to skip.
+- **Step 2:** a thread is **routed to a person** when its current comment addresses someone by name or `@mention`.
+- **Step 8:** `resolve` is a status: `fixed` for fixed, `wontFix` for rejected, `false` for every outcome the table leaves unresolved.
+
 ## Local Mode
 
 No threads, no replies, nothing pushed.
 
-1. The findings are exactly those in the dispatch prompt.
+1. The findings are exactly those in the dispatch prompt — or, for an Azure DevOps fix without posting, every comment in the `post.json` it names (`id`, `severity`, `path`, `line`, `anchor`, `body`). Get the PR's source branch with `git fetch origin <branch>` before checking it out.
 2. **Uncommitted workspace:** apply fixes to the working tree, **commit nothing, and stage nothing** — a commit would sweep in the user's unfinished edits to the same files. **Named branch or commits:** `git status --porcelain` must be clean before anything else, whether or not a checkout is needed — dirty → stop and report the exact output, never stash; then check out the branch the prompt names if it isn't current, and make one Conventional Commits commit per fix.
 3. Same Judgment, test impact, targeted tests, and validation gate as PR Mode steps 5–6 — the gate runs whenever a file was edited, committed or not.
 4. Never push. Report what is ready to commit or push.

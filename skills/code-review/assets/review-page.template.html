@@ -1,0 +1,464 @@
+<title>__PAGE_TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --ink: #17202b;
+    --muted: #5a6574;
+    --rule: #d8dee6;
+    --accent: #1f5fa8;
+    --accent-ink: #ffffff;
+    --code-bg: #f7f8fa;
+    --code-hl: #fff3c4;
+    --code-add: #e5f3e8;
+    --code-del: #fbeaea;
+    --sev-critical: #b3261e;
+    --sev-high: #c2410c;
+    --sev-medium: #9a6206;
+    --sev-low: #4b5563;
+    --ok: #1d7a44;
+    --warn: #9a6206;
+    --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0f1319;
+      --surface: #171c24;
+      --ink: #e3e7ed;
+      --muted: #98a2b0;
+      --rule: #2a323d;
+      --accent: #7aa7e6;
+      --accent-ink: #0f1319;
+      --code-bg: #12171e;
+      --code-hl: #3b3319;
+      --code-add: #14291b;
+      --code-del: #331a1c;
+      --sev-critical: #f2877f;
+      --sev-high: #f4a26b;
+      --sev-medium: #e3c25b;
+      --sev-low: #a3acb9;
+      --ok: #6fcf97;
+      --warn: #e3c25b;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1319;
+    --surface: #171c24;
+    --ink: #e3e7ed;
+    --muted: #98a2b0;
+    --rule: #2a323d;
+    --accent: #7aa7e6;
+    --accent-ink: #0f1319;
+    --code-bg: #12171e;
+    --code-hl: #3b3319;
+    --code-add: #14291b;
+    --code-del: #331a1c;
+    --sev-critical: #f2877f;
+    --sev-high: #f4a26b;
+    --sev-medium: #e3c25b;
+    --sev-low: #a3acb9;
+    --ok: #6fcf97;
+    --warn: #e3c25b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 var(--font-ui);
+    padding-inline: 16px;
+    padding-block: 0 48px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 20px; }
+  a { color: var(--accent); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header.bar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 2;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    padding-block: 16px 12px;
+    display: grid;
+    gap: 8px;
+  }
+  .eyebrow { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.25; text-wrap: balance; }
+  .tally { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-variant-numeric: tabular-nums; }
+  .tally span { color: var(--muted); }
+  .tally b { color: var(--ink); font-weight: 600; }
+  .save { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .save.ok { color: var(--ok); }
+  .save.warn { color: var(--warn); }
+  .howto { margin: 0; color: var(--muted); max-width: 70ch; }
+  .howto code { font-family: var(--font-code); font-size: 13px; }
+
+  .file { display: grid; gap: 12px; }
+  .file h2 {
+    margin: 0;
+    font: 500 13px/1.4 var(--font-code);
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .finding.dropped { opacity: .55; }
+  .finding.dropped .detail { display: none; }
+  .head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  .sev {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 1px 7px;
+    border-radius: 3px;
+    border: 1px solid currentColor;
+    color: var(--sev-low);
+  }
+  .sev.critical { color: var(--sev-critical); }
+  .sev.high { color: var(--sev-high); }
+  .sev.medium { color: var(--sev-medium); }
+  .fid { font: 500 13px var(--font-code); color: var(--muted); }
+  .title { font-weight: 600; }
+  .where { font: 12px var(--font-code); color: var(--muted); margin-left: auto; }
+  .tag { font-size: 12px; color: var(--accent); }
+
+  .detail { display: grid; gap: 10px; }
+  .code {
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font: 12.5px/1.6 var(--font-code);
+  }
+  .code table { border-collapse: collapse; min-width: 100%; }
+  .code td { padding: 0 10px; white-space: pre; vertical-align: top; }
+  .code td.n { color: var(--muted); text-align: right; user-select: none; width: 1%; font-variant-numeric: tabular-nums; }
+  .code tr.add { background: var(--code-add); }
+  .code tr.del { background: var(--code-del); }
+  .code tr.hit { background: var(--code-hl); }
+  .body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 75ch; }
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 140px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 8px 10px;
+    resize: vertical;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  button:disabled { cursor: not-allowed; opacity: .5; }
+
+  .add {
+    background: var(--surface);
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+    padding: 14px 16px;
+    display: grid;
+    gap: 10px;
+  }
+  .add h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .row label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .row label.grow { flex: 1 1 240px; }
+  .stack { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  select, input[type="number"] {
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 5px 8px;
+    max-width: 100%;
+  }
+  input[type="number"] { width: 7em; }
+  .hint { font-size: 13px; color: var(--warn); margin: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    .finding { transition: opacity .15s ease; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="bar">
+    <div class="eyebrow" id="repo"></div>
+    <h1 id="heading"></h1>
+    <div class="tally">
+      <span><b id="n-keep">0</b> to post</span>
+      <span><b id="n-drop">0</b> dropped</span>
+      <span><b id="n-edit">0</b> edited</span>
+      <span><b id="n-add">0</b> added</span>
+      <span class="save" id="save">Connecting…</span>
+    </div>
+  </header>
+
+  <p class="howto">Nothing here is on the pull request yet. Drop the findings you disagree with, edit the wording of any comment, and add what the review missed. When you're done, reply <code>continue</code> in Claude.</p>
+
+  <main id="findings" class="wrap"></main>
+
+  <section class="add" aria-labelledby="add-heading">
+    <h2 id="add-heading">Add a finding</h2>
+    <div class="row">
+      <label class="grow" for="add-path">File<select id="add-path"></select></label>
+      <label for="add-line">Line<input id="add-line" type="number" min="1" step="1" value="1"></label>
+    </div>
+    <label for="add-body" class="stack">Comment
+      <textarea id="add-body" placeholder="**[Added]** What's wrong, and the fix to make."></textarea>
+    </label>
+    <div class="actions"><button class="primary" id="add-btn" type="button">Add finding</button></div>
+    <p class="hint" id="add-hint" hidden></p>
+  </section>
+</div>
+
+<script>
+const DATA = /*__REVIEW_DATA__*/null;
+
+const state = { decisions: {}, added: [], db: null, writable: true, pending: 0, editing: null };
+const queues = {};
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (key === "class") node.className = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  for (const child of children) {
+    if (child == null) continue;
+    node.append(typeof child === "string" ? document.createTextNode(child) : child);
+  }
+  return node;
+}
+
+function decisionOf(f) {
+  return state.decisions[f.key] || { state: "keep" };
+}
+
+function bodyOf(f) {
+  const body = decisionOf(f).body;
+  return typeof body === "string" && body.trim() ? body : f.body;
+}
+
+function setSave(text, tone) {
+  const node = document.getElementById("save");
+  node.textContent = text;
+  node.className = "save" + (tone ? " " + tone : "");
+}
+
+function write(docPath, action) {
+  if (!state.db || !state.writable) return;
+  state.pending += 1;
+  setSave("Saving…");
+  const previous = queues[docPath] || Promise.resolve();
+  queues[docPath] = previous.then(() => action(state.db.doc(docPath))).then(
+    () => {
+      state.pending -= 1;
+      if (!state.pending) setSave("All changes saved", "ok");
+    },
+    (err) => {
+      state.pending -= 1;
+      if (err && err.code === "invalid_argument") state.writable = false;
+      setSave("Couldn't save your last change. Reload the page and try again.", "warn");
+    },
+  );
+}
+
+function saveDecision(f, patch) {
+  const next = Object.assign({}, decisionOf(f), patch);
+  state.decisions[f.key] = next;
+  render();
+  write("decisions/" + f.key, (ref) => ref.set(next));
+}
+
+function codeBlock(snippet, line) {
+  if (!snippet.length) return null;
+  const rows = snippet.map((row) => {
+    const cls = row.n === line && row.k !== "-" ? "hit" : row.k === "+" ? "add" : row.k === "-" ? "del" : "";
+    return el("tr", cls ? { class: cls } : {},
+      el("td", { class: "n" }, row.n == null ? "" : String(row.n)),
+      el("td", {}, (row.k === " " ? " " : row.k) + " " + row.t));
+  });
+  return el("div", { class: "code" }, el("table", {}, el("tbody", {}, ...rows)));
+}
+
+function findingCard(f) {
+  const decision = decisionOf(f);
+  const dropped = decision.state === "drop";
+  const edited = bodyOf(f) !== f.body;
+  const editing = state.editing && state.editing.key === f.key;
+  const canWrite = Boolean(state.db && state.writable);
+  const card = el("article", { class: "finding" + (dropped ? " dropped" : "") });
+
+  card.append(el("div", { class: "head" },
+    f.severity ? el("span", { class: "sev " + f.severity.toLowerCase() }, f.severity) : null,
+    el("span", { class: "fid" }, f.id),
+    el("span", { class: "title" }, f.title || ""),
+    edited && !dropped ? el("span", { class: "tag" }, "edited") : null,
+    dropped ? el("span", { class: "tag" }, "dropped") : null,
+    el("span", { class: "where" }, f.line ? "line " + f.line : "line unresolved"),
+  ));
+
+  const detail = el("div", { class: "detail" }, codeBlock(f.snippet, f.line));
+  const actions = el("div", { class: "actions" });
+  if (editing) {
+    const editor = el("textarea", { id: "edit-" + f.key, "aria-label": "Comment for " + f.id });
+    editor.value = state.editing.draft;
+    editor.addEventListener("input", () => { state.editing.draft = editor.value; });
+    const save = el("button", { type: "button", class: "primary" }, "Save");
+    save.addEventListener("click", () => {
+      const text = editor.value.trim();
+      state.editing = null;
+      saveDecision(f, { body: text && text !== f.body ? text : null });
+    });
+    const cancel = el("button", { type: "button" }, "Cancel");
+    cancel.addEventListener("click", () => { state.editing = null; render(); });
+    detail.append(editor);
+    actions.append(save, cancel);
+    queueMicrotask(() => editor.focus());
+  } else {
+    detail.append(el("p", { class: "body" }, bodyOf(f)));
+    const edit = el("button", { type: "button" }, "Edit");
+    edit.disabled = !canWrite;
+    edit.addEventListener("click", () => { state.editing = { key: f.key, draft: bodyOf(f) }; render(); });
+    actions.append(edit);
+    if (edited) {
+      const reset = el("button", { type: "button" }, "Restore original");
+      reset.disabled = !canWrite;
+      reset.addEventListener("click", () => saveDecision(f, { body: null }));
+      actions.append(reset);
+    }
+  }
+  detail.append(actions);
+  card.append(detail);
+
+  const toggle = el("button", { type: "button" }, dropped ? "Keep this finding" : "Drop");
+  toggle.disabled = !canWrite;
+  toggle.addEventListener("click", () => saveDecision(f, { state: dropped ? "keep" : "drop" }));
+  card.append(el("div", { class: "actions" }, toggle));
+  return card;
+}
+
+function addedCard(doc) {
+  const canWrite = state.db && state.writable;
+  const remove = el("button", { type: "button" }, "Remove");
+  remove.disabled = !canWrite;
+  remove.addEventListener("click", () => write("added/" + doc.id, (ref) => ref.delete()));
+  return el("article", { class: "finding" },
+    el("div", { class: "head" },
+      el("span", { class: "tag" }, "added"),
+      el("span", { class: "where" }, "line " + doc.line)),
+    el("p", { class: "body" }, doc.body),
+    el("div", { class: "actions" }, remove));
+}
+
+function render() {
+  const root = document.getElementById("findings");
+  root.replaceChildren();
+  const byFile = new Map();
+  for (const f of DATA.findings) {
+    if (!byFile.has(f.path)) byFile.set(f.path, { findings: [], added: [] });
+    byFile.get(f.path).findings.push(f);
+  }
+  for (const doc of state.added) {
+    if (!byFile.has(doc.path)) byFile.set(doc.path, { findings: [], added: [] });
+    byFile.get(doc.path).added.push(doc);
+  }
+  for (const [path, group] of byFile) {
+    const section = el("section", { class: "file" }, el("h2", {}, path));
+    group.findings.forEach((f) => section.append(findingCard(f)));
+    group.added.forEach((doc) => section.append(addedCard(doc)));
+    root.append(section);
+  }
+
+  const drop = DATA.findings.filter((f) => decisionOf(f).state === "drop").length;
+  const edit = DATA.findings.filter((f) => decisionOf(f).state !== "drop" && bodyOf(f) !== f.body).length;
+  document.getElementById("n-keep").textContent = DATA.findings.length - drop + state.added.length;
+  document.getElementById("n-drop").textContent = drop;
+  document.getElementById("n-edit").textContent = edit;
+  document.getElementById("n-add").textContent = state.added.length;
+  document.getElementById("add-btn").disabled = !(state.db && state.writable);
+}
+
+function setupHeader() {
+  document.getElementById("repo").textContent = DATA.repo;
+  const heading = document.getElementById("heading");
+  const label = "PR " + DATA.pr + (DATA.prTitle ? ": " + DATA.prTitle : "");
+  heading.replaceChildren(DATA.prUrl ? el("a", { href: DATA.prUrl, target: "_blank", rel: "noopener" }, label) : label);
+  const select = document.getElementById("add-path");
+  for (const path of DATA.files) select.append(el("option", { value: path }, path));
+}
+
+function setupAdd() {
+  document.getElementById("add-btn").addEventListener("click", () => {
+    const hint = document.getElementById("add-hint");
+    const path = document.getElementById("add-path").value;
+    const line = parseInt(document.getElementById("add-line").value, 10);
+    const body = document.getElementById("add-body").value.trim();
+    if (!path || !(line > 0) || !body) {
+      hint.textContent = "Pick a file, a line number above 0, and write the comment.";
+      hint.hidden = false;
+      return;
+    }
+    hint.hidden = true;
+    const ref = state.db.collection("added").doc();
+    state.added = state.added.concat([{ id: ref.id, path, line, body }]);
+    document.getElementById("add-body").value = "";
+    render();
+    write("added/" + ref.id, (r) => r.set({ path, line, body }));
+  });
+}
+
+async function connect() {
+  let db = null;
+  try {
+    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+  } catch (err) {
+    db = null;
+  }
+  if (!db) {
+    setSave("Read-only here: open this page from the link Claude gave you to make changes.", "warn");
+    render();
+    return;
+  }
+  state.db = db;
+  setSave("All changes saved", "ok");
+  render();
+  db.collection("decisions").onSnapshot((snap) => {
+    const next = {};
+    for (const doc of snap.docs) if (doc.exists) next[doc.id] = doc.data();
+    state.decisions = next;
+    render();
+  }, () => setSave("Lost the connection. Reload the page to see saved changes.", "warn"));
+  db.collection("added").onSnapshot((snap) => {
+    state.added = snap.docs.filter((d) => d.exists).map((d) => Object.assign({ id: d.id }, d.data()));
+    render();
+  }, () => setSave("Lost the connection. Reload the page to see saved changes.", "warn"));
+}
+
+setupHeader();
+setupAdd();
+render();
+connect();
+</script>
