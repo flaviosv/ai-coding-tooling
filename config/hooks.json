@@ -14,5 +14,17 @@
       "SessionStart": { "matcher": "", "timeout": 10 },
       "CwdChanged": { "matcher": "", "timeout": 10 }
     }
+  },
+  {
+    "id": "speak-pending-input",
+    "script": "scripts/hooks/speak-pending-input.sh",
+    "events": {
+      "Notification": { "matcher": "permission_prompt|elicitation_dialog", "timeout": 5 },
+      "PreToolUse": { "matcher": "AskUserQuestion|ExitPlanMode", "timeout": 5 },
+      "PostToolUse": { "matcher": "*", "timeout": 5 },
+      "PostToolUseFailure": { "matcher": "*", "timeout": 5 },
+      "Stop": { "matcher": "", "timeout": 5 },
+      "UserPromptSubmit": { "matcher": "*", "timeout": 5 }
+    }
   }
 ]
