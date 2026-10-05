@@ -5,7 +5,7 @@ disable-model-invocation: true
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # Disk Evaluate
@@ -29,7 +29,7 @@ Read [references/playbook.md](references/playbook.md) — it has the category br
 
 ### Step 2: Gather live state
 
-Run every read-only command from the playbook's verification section: `df -h`, `docker ps -a`, `docker system df -v`, `kubectl config get-contexts` + `get pods -A` for any local cluster found, a local registry catalog check if one is running on `localhost`, `brew cleanup --dry-run`, and the large-file scan (`find ... -size +500M`). Skip a tool cleanly if it isn't installed or isn't running (no `kubectl` context, Docker daemon not running, no `brew`) — say so in the report, don't fail the whole evaluation over one missing tool.
+Run every read-only command from the playbook's verification section: `df -h`, `docker ps -a`, `docker system df -v`, `kubectl config get-contexts` + `get pods -A` for any local cluster found, a local registry catalog check if one is running on `localhost`, [scripts/k3d_stale_images.sh](scripts/k3d_stale_images.sh) for each k3d cluster (stale builds cached inside the nodes), `brew cleanup --dry-run`, and the large-file scan (`find ... -size +500M`). Skip a tool cleanly if it isn't installed or isn't running (no `kubectl` context, Docker daemon not running, no `brew`) — say so in the report, don't fail the whole evaluation over one missing tool.
 
 ### Step 3: Cross-reference before calling anything reclaimable
 

@@ -36,3 +36,10 @@
 - **Trade-off**: none — pure removal of redundant content; Example 1 still reads correctly as a heading followed directly by its `Result:` line.
 - **Date**: 2026-09-12
 - **Status**: active
+
+### AD-006
+- **Decision**: Stale local-registry builds cached inside k3d nodes (old Tilt tags) are evaluated by a bundled read-only script, `scripts/k3d_stale_images.sh`, and suggested for removal by exact image ID; `crictl rmi --prune` is never suggested.
+- **Reason**: a 2026-10-01 run found ~42.6GB (54GiB actually freed) of old Tilt tags across three k3d nodes, invisible to `docker system df`; computing the set by hand (per-node container refs × workload-spec refs × registry prefix) is mechanical and went wrong twice in-session, so it moved to a script. The blanket prune was ruled out because on k3s the pause image is unpinned and unreferenced by containers, so it would be deleted along with system images and scaled-to-0 workload images.
+- **Trade-off**: the script assumes k3d's container labels (`k3d.cluster`, `k3d.role`) and its `<registry-container>:5000/` image prefix, so kind/minikube clusters are not covered; it needs `jq` on the host.
+- **Date**: 2026-10-01
+- **Status**: active

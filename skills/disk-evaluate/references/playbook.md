@@ -50,6 +50,24 @@ docker volume rm <name>                                                         
 docker rmi $(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^<old-project-name>')
 ```
 
+### Stale builds cached inside k3d nodes (old Tilt tags)
+
+Each k3d node keeps its own containerd image store, and every Tilt rebuild leaves the previous tag behind in it — on a long-lived dev cluster this is commonly the largest reclaimable item on the machine (tens of GB), invisible to `docker system df`. Find them with the bundled read-only script:
+
+```bash
+scripts/k3d_stale_images.sh <k3d-cluster-name> http://localhost:<registry-port>   # TSV per image + per-node summary on stderr
+```
+
+It lists only images whose every tag comes from the cluster's local registry, that no container on that node uses (any state), and that no Deployment/StatefulSet/DaemonSet/Job/CronJob/Pod spec references — workloads scaled to 0 included. A `WARN` line means a currently-referenced tag is missing from the registry; resolve that before suggesting removal. Removing these never touches the registry, so every build stays pullable. Suggest removal by exact image ID, per node:
+
+```bash
+docker exec <node> crictl rmi <image-id> ...
+```
+
+**Never suggest `crictl rmi --prune`** inside a k3d node: on k3s the pause image (`rancher/mirrored-pause`) is not pinned and has no container referencing it, so a blanket prune deletes it along with system images (coredns, traefik, metrics-server) and the images of scaled-to-0 workloads.
+
+**Local registry content** (repos/tags no workload references) is a separate, manual-only item: the k3d registry has deletes disabled, so freeing it means removing repository directories and running `registry garbage-collect` while nothing is pushing — report the unreferenced repos, never a size estimate (layers are shared across repos).
+
 ## 2. Homebrew
 
 `brew cleanup --dry-run` only reports ~2GB by default (it keeps recent installer downloads for reinstall). The full cache is safe to suggest wiping — everything in it is re-downloadable:
