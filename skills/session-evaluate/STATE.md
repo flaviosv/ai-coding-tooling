@@ -155,3 +155,10 @@
 - **Trade-off**: None identified — the digest and D1 grep results stay inlined as before, since they are run-specific computed artifacts (not static files a path can point to) and are already kept compact by design; this decision only moves the two static documents from paste to Read.
 - **Date**: 2026-09-14
 - **Status**: active
+
+### AD-019
+- **Decision**: `SKILL.md` frontmatter sets `disable-model-invocation: true`, so the skill runs only when the user types `/session-evaluate`; it is also symlinked into the second account at `~/.claude-sysmanager/skills/session-evaluate`.
+- **Reason**: User decision: session-evaluate edits other skills and instruction files, so it must never start on the model's own judgement.
+- **Trade-off**: The trigger phrases in `description` no longer auto-load the skill, and its description is removed from model context in every account that links this folder, the main `~/.claude` install included.
+- **Date**: 2026-10-05
+- **Status**: active
