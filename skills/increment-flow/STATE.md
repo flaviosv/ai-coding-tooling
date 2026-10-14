@@ -57,3 +57,17 @@
 - **Trade-off**: The alias is read-only: documents and the table still write `increment NNN`, not `IC`.
 - **Date**: 2026-10-14
 - **Status**: active
+
+### AD-009
+- **Decision**: Adding an item starts with a duplicate check against every item, open or closed (row and section), by goal and scope rather than wording. A duplicate gets no new row or section: its new details go into the existing item's section as a dated paragraph. A closed match is reopened only with the user's say; a partial match splits; an unclear match is asked.
+- **Reason**: User's rule: an item already present is never added again, only enriched with the request's new details.
+- **Trade-off**: Detection stays in model judgment; `pending.py check` does not flag duplicate titles, because a duplicate is a matter of meaning and an exact-title check would catch only the cases the judgment already catches.
+- **Date**: 2026-10-14
+- **Status**: active
+
+### AD-010
+- **Decision**: When adding an item, the agent may fill Depends on with an existing item the user did not name, but only when confident the new item cannot be done or verified until that item is `Done`; topical relation is not enough, and every inferred link is named in the reply.
+- **Reason**: User's rule: a new item can be linked to another one when the link is certainly true.
+- **Trade-off**: A wrong inferred dependency would hide the item from "Where was I"'s ready list; the confidence bar and naming the link in the reply keep that visible and cheap to undo.
+- **Date**: 2026-10-14
+- **Status**: active

@@ -4,7 +4,7 @@ description: Runs a heavy feature or research as small numbered increments under
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # Increment Flow
@@ -77,10 +77,15 @@ Trigger: the user starts work on a topic that has no folder under `docs/research
 
 ### Add an item
 
-1. `pending.py next` gives the number N.
-2. Append the row at the end of the table: Status `Open` (`Aberto`), Depends on and Increment as the user said or `—`, Details as a short summary.
-3. Append the section `## N — <Item>` at the end of the file: first line `Registered on YYYY-MM-DD.` (`Registrado em YYYY-MM-DD.`), then the full request, quoting the user's words when they set scope.
-4. Run `check`.
+1. **Check for a duplicate first.** Compare each item the user asks to add against every item in `pending.md`, open or closed, reading its row and its section. Same goal and scope is a duplicate even when worded differently.
+   - **Already present:** add no row and no section. Append what the request brings that the section does not already say, as a dated paragraph (`YYYY-MM-DD: …`) in that item's section; if it brings nothing new, change nothing. Tell the user it is already item N and what you added. Shorten the Details cell only as in Update an item, then run `check`.
+   - **Present but closed** (Done, Declined, Rejected): tell the user and ask whether to reopen it; never reopen it or register a new item on your own.
+   - **Partly covered:** the covered part goes to the existing item's section as above; only the uncovered rest becomes a new item.
+   - **Unsure whether it is the same item:** ask.
+2. `pending.py next` gives the number N.
+3. Append the row at the end of the table: Status `Open` (`Aberto`), Depends on and Increment as the user said or `—`, Details as a short summary. Beyond what the user said, link the new item to an existing one in Depends on only when you are confident the new item cannot be done or verified until that item is `Done`; being on a related topic is not enough. Name every link you inferred in the reply.
+4. Append the section `## N — <Item>` at the end of the file: first line `Registered on YYYY-MM-DD.` (`Registrado em YYYY-MM-DD.`), then the full request, quoting the user's words when they set scope.
+5. Run `check`.
 
 ### Update an item
 
@@ -131,6 +136,8 @@ Read `pending.md` and report, briefly: items in a working status with their incr
 **Start.** User: "start a new research on the billing retry redesign". Actions: no `docs/research/billing-retry-redesign/`; no pt-BR signal (instructions, docs and the user all in English), so en-US; `git check-ignore` says not ignored, ask whether to push, user says keep local, add `docs/research/` to `.git/info/exclude`; create `pending.md` with item 1 `Initial research: billing retry redesign`, `001-initial-research/`, and `AGENTS.md` with `Versioned: no …`; `check` prints `ok`; offer `tlc-discover`.
 
 **Add with ambiguity.** User: "add a pending item: drop the legacy webhook". Context shows work in both `docs/research/billing-retry-redesign/` and `docs/research/tests-suite/`, and the request names neither. Actions: stop and ask which research. After the answer, `next` gives `item=7`; append row 7 and section `## 7 — Drop the legacy webhook`; `check`.
+
+**Duplicate.** User: "add a pending item: retries must stop after 5 attempts, and log the last error". Item 4 `Cap retries at 5` is `Open` and its section does not mention logging. Actions: no new row or section; append `2026-10-14: log the last error when retries stop.` to section 4; reply that it is already item 4 and the logging detail was added; `check`.
 
 **Existing language wins.** User, writing in English: "add an item to cap retries at 5" in a research whose `pending.md` header is `# | Item | Estado | …`. Actions: write the row and section in pt-BR (`Aberto`, `Registrado em 2026-10-14.`); never translate the file.
 
