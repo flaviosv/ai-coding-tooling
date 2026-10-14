@@ -46,6 +46,11 @@
       "scope": "tech-leads-club"
     },
     {
+      "name": "increment-flow",
+      "source": "local",
+      "scope": "built"
+    },
+    {
       "name": "jira-assistant",
       "source": "tech-leads-club",
       "scope": "tech-leads-club"

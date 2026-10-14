@@ -9,6 +9,7 @@ Keep this file in sync: whenever a skill starts or stops invoking, reading the o
 | Relationship | Meaning |
 |---|---|
 | **adopts as mode** | Layers the other skill's stance/behavior over its own run; not a discrete invoked step |
+| **hands off to** | Tells the user (or the agent) to run the other skill next and where its output goes; does not call it itself |
 | **invokes** | Calls the other skill via the `Skill` tool, or via an `Agent`-dispatched subagent told to run it, during its own run |
 | **reads output of** | Consumes files/artifacts the other skill produces, without invoking it |
 | **writes into** | Appends content into the other skill's own files (e.g. reference files), without invoking it |
@@ -29,6 +30,10 @@ graph LR
     code-review -->|reads/loads| security-best-practices
 
     grill-me -->|invokes| grilling
+
+    increment-flow -.->|hands off to| tlc-discover
+    increment-flow -.->|hands off to| tlc-plan
+    increment-flow -.->|hands off to| tlc-implement
 
     tech-reference-add -.->|writes into| code-review
     tech-reference-add -.->|writes into| tlc-spec-driven
@@ -52,6 +57,7 @@ Alphabetical by skill name. "Depends on" and "Depended on by" list only edges ve
 | **grill-me** | matt-pocock | `grilling` (invokes)** | — |
 | **grilling** | matt-pocock | — | `build-feature` (invokes), `grill-me` (invokes)** |
 | **harness-eval** | tech-leads-club | — | — |
+| **increment-flow** | local | `tlc-discover`*** (hands off to), `tlc-plan`*** (hands off to), `tlc-implement`*** (hands off to) — their start and completion move an item's status; it never invokes them or describes how they work | — |
 | **jira-assistant** | tech-leads-club | — | — |
 | **mermaid-studio** | tech-leads-club (extended) | — | — |
 | **not-your-babysitter** | local | — | `build-feature` (adopts as mode) |
@@ -67,6 +73,8 @@ Alphabetical by skill name. "Depends on" and "Depended on by" list only edges ve
 \* `design` (Claude Design's `DesignSync`) and `update-config` are Claude Code built-in skills, not entries in `config/skills.json`.
 
 \** `grill-me` → `grilling` is documented in `README.md`'s skills table ("delegates to `grilling`"); both are installed globally by the `matt-pocock` source and have no local overlay in this repo, so it isn't grep-verifiable here.
+
+\*** `tlc-discover`, `tlc-plan` and `tlc-implement` are not in `config/skills.json`: they are installed per project (e.g. a repository's `.claude/skills/`), so the edge isn't grep-verifiable here.
 
 ## Notes
 
