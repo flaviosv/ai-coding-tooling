@@ -1,10 +1,10 @@
 ---
 name: increment-flow
-description: Runs a heavy feature or research as small numbered increments under docs/research/TOPIC/ — starts a new research (pending.md with the initial item, folder 001-slug, AGENTS.md), opens the next increment folder in order, and manages pending.md (add, update, close, remove items, keep the single table consistent and validated by script). Use when the user says "start a new research", "new research on X", "add a pending item", "add to pending.md", "mark item N done", "update the status of item N", "open a new increment", "next increment", "where was I in the research", "nova pesquisa", "adiciona no pending", "abre o próximo incremento". Do NOT use to run discovery, planning or implementation themselves, or for TODO lists, backlogs or work items outside a docs/research folder.
+description: Runs a heavy feature or research as small numbered increments under docs/research/TOPIC/ — starts a new research (pending.md with the initial item, folder 001-slug, AGENTS.md), opens the next increment folder in order, and manages pending.md (add, update, close, remove items, keep the single table consistent and validated by script). Use when the user says "start a new research", "new research on X", "add a pending item", "add to pending.md", "mark item N done", "update the status of item N", "open a new increment", "next increment", "IC 3", "where was I in the research", "nova pesquisa", "adiciona no pending", "abre o próximo incremento". Do NOT use to run discovery, planning or implementation themselves, or for TODO lists, backlogs or work items outside a docs/research folder.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # Increment Flow
@@ -29,6 +29,8 @@ docs/research/<topic>/
 ```
 
 Increment folders are `NNN-<slug>`: three digits, then a short ASCII kebab-case slug (no accents) in the research's language. Everything an increment produces lives in its folder. An increment does not need the full RPI flow; a small fix can go straight to work.
+
+**`IC <x>` means increment `<x>`**, in either language and however it is written (`IC 3`, `IC03`, `IC-003`): the folder `003-<slug>/` and the Increment column value `003`. It never means item `<x>`.
 
 ## The table
 

@@ -50,3 +50,10 @@
 - **Trade-off**: none identified.
 - **Date**: 2026-10-14
 - **Status**: active
+
+### AD-008
+- **Decision**: `IC <x>` is the user's shorthand for increment `<x>` (folder `NNN-<slug>/`, Increment column `NNN`), in both languages and any spelling (`IC 3`, `IC03`, `IC-003`); it never means item `<x>`. The skill and the `AGENTS.md` templates both state it.
+- **Reason**: User's convention for referring to increments; item numbers and increment numbers overlap, so the alias must be pinned to increments explicitly.
+- **Trade-off**: The alias is read-only: documents and the table still write `increment NNN`, not `IC`.
+- **Date**: 2026-10-14
+- **Status**: active
