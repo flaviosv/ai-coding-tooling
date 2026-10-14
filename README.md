@@ -55,10 +55,11 @@ fs-harness statusline          # skip if file already exists
 fs-harness statusline --force  # overwrite with the version from this repo
 ```
 
-Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `scripts/bin/misc/statusline.sh`). It shows the active model, effort level, directory, git branch, context-window usage, and the 5-hour rate-limit usage:
+Installs the Claude Code status line to `~/.claude/statusline-command.sh` (copied from `scripts/bin/misc/statusline.sh`). It shows the active model (with a fast-mode badge), effort level, directory, git branch, context-window usage, prompt-cache hit ratio, and session time. It picks one of two layouts from whether `ANTHROPIC_API_KEY` is set:
 
 ```
-[Opus 4.8 (1M context) (high) - 📁 ai-coding-tooling (main)] ctx:6% 5h:3%
+Token mode:         [Model (effort) - dir (branch)] Context:X% | Cost:$X.XX | Monthly:X% (resets in ...) | Cache:X% | Time:H:MM:SS
+Subscription mode:  [Model (effort) - dir (branch)] Context:X% | Usage:X% (resets in ...) | Cache:X% | Weekly:X% (resets in ...) | Time:H:MM:SS
 ```
 
 <img src="assets/images/statusline.png" alt="Status line sample" width="600">
@@ -71,10 +72,20 @@ Colors (rendered in the terminal):
 | 🟪 Effort (`high`) | bold magenta |
 | 🟩 Directory (`my-project`) | green |
 | 🟨 Branch (`main`) | yellow |
-| ⬜ Labels (`ctx:`, `5h:`) | white |
-| 🟩🟨🟥 Percentages | green < 50%, yellow < 80%, red ≥ 80% |
+| ⬜ Labels (`Context:`, `Usage:`) | white |
+| 🟩🟨🟥 Percentages | green < 50%, yellow < 80%, red ≥ 80% (`Cache:` is reversed: green ≥ 75%, yellow ≥ 50%) |
 
 To customize without losing changes on the next `--force` run, edit `~/.claude/statusline-command.sh` directly and omit `--force`.
+
+### 5. Hooks
+
+`fs-harness setup` (or `fs-harness hooks` on its own) syncs `config/hooks.json` into Claude Code's `settings.json`. The hook scripts live in `scripts/hooks/`:
+
+| Hook | What it does |
+|---|---|
+| `require-direnv-credential.sh` | Blocks the session when direnv is missing or has not resolved a credential for the current directory |
+| `resolve-gh-account.sh` | Scopes `gh` calls in a repo to its owning account via `GH_TOKEN` when several `gh` accounts are logged in |
+| `speak-pending-input.sh` | macOS only (`say`): speaks when a session needs input (with one reminder 15 minutes later) or goes idle, and lowers the volume while a microphone is in use (`mic-in-use.swift`, compiled on first use with `swiftc`) |
 
 ## Managing skills
 

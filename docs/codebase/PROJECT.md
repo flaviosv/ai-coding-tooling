@@ -22,12 +22,14 @@ Developers (primarily the maintainer) running Claude Code across several machine
 **In scope:**
 
 - Global agent config, tracked at the repo root and symlinked into Claude Code's global config location.
-- 8 local skills (`skills/`) symlinked globally: `architecture-evaluate`, `build-feature`, `code-review`, `disk-evaluate`, `not-your-babysitter`, `session-evaluate`, `subagent-dispatch`, `tech-reference-add`.
+- 9 local skills (`skills/`) symlinked globally: `architecture-evaluate`, `build-feature`, `code-review`, `disk-evaluate`, `increment-flow`, `not-your-babysitter`, `session-evaluate`, `subagent-dispatch`, `tech-reference-add`.
 - Project-local skills (`.claude/skills/`), tracked directly in the repo — mechanism supported but currently unused (`.claude/` holds only tracked skill-install metadata, no skill content).
 - Vendor skill integration (Tech Leads Club, Matt Pocock) via `npx`.
 - `extended/` overlay system for customizing vendor skills without forking: `mermaid-studio`, `skill-architect`, `tlc-spec-driven`.
 - `fs-harness` CLI: `setup`, `destroy`, `add`, `delete`, `update`, `override`, `unoverride`, `list`, `doctor`, `statusline`, `hooks`.
 - `config/skills.json` as the authoritative skill registry (`config/hooks.json` for hook definitions).
+- Claude Code hooks (`scripts/hooks/`, defined in `config/hooks.json`): per-repo credential scoping and spoken alerts when a session needs input or goes idle.
+- A status line script (`scripts/bin/misc/statusline.sh`) with token-based and subscription display modes.
 - A shared, repo-root `references/` directory linked only from the global agent-instructions file.
 - Consistency checks (`scripts/bin/misc/`) that validate cross-references between skills, overlays, and the shared `references/` directory, and guard against a removed concept regaining a stale mention.
 
@@ -35,7 +37,7 @@ Developers (primarily the maintainer) running Claude Code across several machine
 
 - Supporting AI tools other than Claude Code.
 - Publishing `fs-harness` to npm (currently requires `npm link` from the repo clone).
-- Runtime application logic — no server, no build step, no automated tests.
+- Runtime application logic — no server and no build step. Automated tests exist only for the Python scripts that skills bundle, not for the CLI.
 
 ## Status
 

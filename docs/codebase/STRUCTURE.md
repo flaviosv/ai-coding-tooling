@@ -11,7 +11,7 @@ ai-coding-tooling/
 ├── assets/                  # static assets referenced by skills/docs
 ├── config/
 │   ├── hooks.json           # Hook manifest (flat array, merged into settings by `hooks`)
-│   └── skills.json          # Skill registry (20 skills: name, source, scope)
+│   └── skills.json          # Skill registry (21 skills: name, source, scope)
 ├── docs/
 │   ├── cli.md                # fs-harness command reference
 │   ├── skill-adr.md          # Per-skill STATE.md decision-log format spec
@@ -39,17 +39,20 @@ ai-coding-tooling/
 │   │   └── misc/
 │   │       ├── check-no-stale-refs.mjs  # fails if a removed concept's name reappears in tracked files
 │   │       ├── check-references.mjs     # shared-reference + skill-internal link validation (used by `doctor`)
-│   │       └── statusline.sh            # deployment source for the `statusline` command
+│   │       └── statusline.sh            # deployment source for the `statusline` command (token and subscription modes)
 │   ├── hooks/
+│   │   ├── mic-in-use.swift           # exit 0 while any app records from a microphone (helper for speak-pending-input.sh)
 │   │   ├── require-direnv-credential.sh
-│   │   └── resolve-gh-account.sh
+│   │   ├── resolve-gh-account.sh
+│   │   └── speak-pending-input.sh     # spoken alert when a session needs input or goes idle
 │   └── skills/
 │       └── sonar-mcp-wrapper.sh # Docker DNS fix for k3d-hosted SonarQube MCP server
 ├── skills/                  # Project-owned skills (installed globally via fs-harness setup)
 │   ├── architecture-evaluate/   # codebase-doc owner (Full / Incremental / Package modes)
 │   ├── build-feature/
-│   ├── code-review/             # review → optional checkpoint → fix (see its WORKFLOW.md)
-│   ├── disk-evaluate/
+│   ├── code-review/             # review → optional checkpoint → fix (see its WORKFLOW.md); scripts/ + scripts/tests/, assets/review-page.template.html
+│   ├── disk-evaluate/           # scripts/k3d_stale_images.sh
+│   ├── increment-flow/          # research as numbered increments; scripts/pending.py, assets/ (en-US + pt-BR templates)
 │   ├── not-your-babysitter/
 │   ├── session-evaluate/
 │   ├── subagent-dispatch/
@@ -66,15 +69,15 @@ The project's root agent-instructions file and its global counterpart (symlinked
 
 ### CLI (`scripts/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, doctor, statusline, hooks — plus the standalone hook and MCP-wrapper scripts it wires up, and two consistency-check scripts.
-**Key files:** `scripts/bin/fs-harness.mjs` (single file, 814 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to Claude Code's global status-line script location. `scripts/bin/misc/check-references.mjs` validates the shared-reference rule and skill-internal link resolution (installed-location aware); run standalone or via `fs-harness doctor`. `scripts/bin/misc/check-no-stale-refs.mjs` is a standalone `git grep` guard against a removed concept's name reappearing in tracked files (`STATE.md` files exempt, as an append-only decision log). `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/hooks/resolve-gh-account.sh` is the SessionStart/CwdChanged hook, registered the same way, that scopes a GitHub repo's `gh` calls to its owning account via `GH_TOKEN` when more than one `gh` account is logged in. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/uninstall_sonar.md`.
+**Key files:** `scripts/bin/fs-harness.mjs` (single file, 814 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to Claude Code's global status-line script location. `scripts/bin/misc/check-references.mjs` validates the shared-reference rule and skill-internal link resolution (installed-location aware); run standalone or via `fs-harness doctor`. `scripts/bin/misc/check-no-stale-refs.mjs` is a standalone `git grep` guard against a removed concept's name reappearing in tracked files (`STATE.md` files exempt, as an append-only decision log). `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/hooks/resolve-gh-account.sh` is the SessionStart/CwdChanged hook, registered the same way, that scopes a GitHub repo's `gh` calls to its owning account via `GH_TOKEN` when more than one `gh` account is logged in. `scripts/hooks/speak-pending-input.sh` is a `say`-based (macOS) hook registered for Notification, PreToolUse, PostToolUse, PostToolUseFailure, Stop and UserPromptSubmit; it speaks when a session needs input or goes idle, and `scripts/hooks/mic-in-use.swift` is the helper it compiles on first use to lower speech volume while a microphone is in use. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/uninstall_sonar.md`.
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for skill and hook configuration.
-**Key files:** `skills.json` (20 skills: 8 local, 10 tech-leads-club, 2 matt-pocock), `hooks.json` (flat array of hook entries).
+**Key files:** `skills.json` (21 skills: 9 local, 10 tech-leads-club, 2 matt-pocock), `hooks.json` (flat array of hook entries).
 
 ### Local Skills (`skills/`)
 **Purpose:** Skills owned and maintained by this repo; installed globally via `fs-harness setup`.
-**Key files:** one `SKILL.md` per skill; some have `references/` subdirs with tech-specific files.
+**Key files:** one `SKILL.md` per skill; some have `references/` subdirs with tech-specific files; some bundle deterministic helpers under `scripts/` (`architecture-evaluate`, `build-feature`, `code-review`, `disk-evaluate`, `increment-flow`, `session-evaluate`) and, where tested, `scripts/tests/` (`code-review`, `session-evaluate`).
 
 ### Project-Local Skills (`.claude/skills/`)
 **Purpose:** Skills exposed only to Claude Code within this project. `.claude/` is tracked directly in the repo — no setup step needed to see it.
@@ -95,6 +98,8 @@ The project's root agent-instructions file and its global counterpart (symlinked
 | Add a new local skill | `skills/<name>/SKILL.md` → `fs-harness add <name> --source local` |
 | Add a shared reference (global agent-instructions file only) | `references/` |
 | Add a skill workflow reference | `skills/<name>/reference.md` |
+| Add a skill-bundled script and its tests | `skills/<name>/scripts/`, tests in `skills/<name>/scripts/tests/test_<module>.py` |
+| Add or change a hook | `scripts/hooks/<name>.sh` + an entry in `config/hooks.json`, then `fs-harness hooks` |
 | Add a tech-specific reference | `skills/<name>/references/<tech>-<name>.md` (`code-review`: `<tech>.code.md`, `<tech>-performance.code.md`, `<tech>.tests.md`) |
 | Codebase context docs | `docs/codebase/` (this set) |
 | Override a vendor skill | `extended/<name>/SKILL.md` → `fs-harness override <name>` |

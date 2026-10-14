@@ -1,12 +1,12 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-09-14
+**Analysis Date:** 2026-10-14
 
 ## Tech Debt
 
 **No tests for the only substantial implementation file:**
 
-- Issue: `scripts/bin/fs-harness.mjs` is now 814 lines, still entirely untested — zero unit-test files in the repo. The two `scripts/bin/misc/` consistency scripts (`check-references.mjs`, `check-no-stale-refs.mjs`) are themselves untested, though they exist precisely to catch the class of drift this concern is about (broken cross-references, stale mentions).
+- Issue: `scripts/bin/fs-harness.mjs` is 814 lines and entirely untested — the repo's only test files cover Python scripts bundled with `code-review` and `session-evaluate`, not the CLI. The two `scripts/bin/misc/` consistency scripts (`check-references.mjs`, `check-no-stale-refs.mjs`) are themselves untested, though they exist precisely to catch the class of drift this concern is about (broken cross-references, stale mentions).
 - Files: `scripts/bin/fs-harness.mjs`, `scripts/bin/misc/check-references.mjs`, `scripts/bin/misc/check-no-stale-refs.mjs`
 - Why: project began as `.md`-only tooling; the CLI grew without a test harness.
 - Impact: regressions in CLI commands (setup, destroy, override, symlink logic) go undetected until manual testing catches them; broken commands can reach `main`. Partially mitigated for cross-reference drift specifically by `fs-harness doctor`, which did not exist when this concern was first raised.
@@ -29,11 +29,11 @@
 
 **Per-skill `STATE.md` convention has partial tooling support:**
 
-- Issue: the per-skill decision-log convention (`docs/skill-adr.md`) requires an agent to read a skill's `STATE.md` before modifying it and append an `AD-NNN` entry after each real decision. Adoption has grown to 10 `STATE.md` files across `skills/` and `extended/` (up from one at the last analysis), but nothing mechanically checks that the read-before-modify/append-after-decision steps actually happened — `check-references.mjs` and `check-no-stale-refs.mjs` exempt `STATE.md` from their checks rather than validating its own compliance.
+- Issue: the per-skill decision-log convention (`docs/skill-adr.md`) requires an agent to read a skill's `STATE.md` before modifying it and append an `AD-NNN` entry after each real decision. Adoption has grown to 11 `STATE.md` files across `skills/` and `extended/` (10 at the last analysis), but nothing mechanically checks that the read-before-modify/append-after-decision steps actually happened — `check-references.mjs` and `check-no-stale-refs.mjs` exempt `STATE.md` from their checks rather than validating its own compliance.
 - Files: `docs/skill-adr.md`
 - Why: added as a lightweight, tooling-free convention — deliberate, avoids CLI complexity for a documentation practice.
-- Impact: **Compliance risk** — nothing enforces the convention, so it can silently lapse across skills or sessions (already happened once: `skills/session-evaluate/STATE.md` had to be backfilled after an agent session missed the convention entirely). **Token-consumption risk** — the cumulative cost of reading a skill's `STATE.md` before every edit now applies across 10 skills instead of 1, a real recurring per-edit overhead rather than a negligible one.
-- Fix approach: at current scale (10 of 20 skills), consider a lightweight `fs-harness doctor` check that flags a skill with recent content changes but no matching `STATE.md` entry, rather than relying purely on agent discipline.
+- Impact: **Compliance risk** — nothing enforces the convention, so it can silently lapse across skills or sessions (already happened once: `skills/session-evaluate/STATE.md` had to be backfilled after an agent session missed the convention entirely). **Token-consumption risk** — the cumulative cost of reading a skill's `STATE.md` before every edit now applies across 11 skills instead of 1, a real recurring per-edit overhead rather than a negligible one.
+- Fix approach: at current scale (11 of 21 skills), consider a lightweight `fs-harness doctor` check that flags a skill with recent content changes but no matching `STATE.md` entry, rather than relying purely on agent discipline.
 
 **`fs-harness` requires `npm link` — not portable without cloning:**
 
@@ -62,6 +62,15 @@
 - Measurement: not yet measured in dollars — the pinned model costs materially more per token, and a Large-tier run can dispatch several dimension agents in parallel (one per active dimension, up to 6), so a large/complex session evaluation costs meaningfully more in tokens than a same-tier run would.
 - Improvement path: this is a deliberate quality-over-cost trade-off, not a defect — worth monitoring as evaluation frequency grows. If cost becomes a concern, consider reverting specific dimensions to the lighter model while keeping the stronger one only where it most benefits reasoning, or add a lighter-weight tier boundary.
 
+## Fragile Areas
+
+**Spoken-alert hook depends on undocumented and platform-specific behavior:**
+
+- Issue: `scripts/hooks/speak-pending-input.sh` reads the session title out of the transcript file, whose format Claude Code does not document (its own comment says so); it needs macOS `say`, and its volume lowering needs a Swift helper built in the background on first use with `swiftc` and macOS 14+ Core Audio process objects. Where any of these is missing it degrades silently — no alert text from the title (falls back to the folder name), or normal volume during a call.
+- Files: `scripts/hooks/speak-pending-input.sh`, `scripts/hooks/mic-in-use.swift`
+- Why fragile / impact: a Claude Code release that changes the transcript format loses session titles in alerts without any error; no test covers the hook's marker/reminder logic.
+- Safe-modification notes: if the title lookup breaks, switch it to a documented hook payload field when one exists.
+
 ## Missing Critical Features
 
 **No CI/CD pipeline:**
@@ -75,3 +84,12 @@
 
 - **No `package-lock.json`:** reproducibility relies on `npm link` from the working tree; no lockfile governs `npx` calls to vendor skills, so version drift is possible.
 - **Synchronous `npx` calls:** `execFileSync` blocks for each vendor skill install; no parallel install path (acceptable at the current scale of 12 vendor skills — 10 Tech Leads Club, 2 Matt Pocock).
+
+## Test Coverage Gaps
+
+**Skill-bundled scripts without tests:**
+
+- What's not tested: `skills/increment-flow/scripts/pending.py` (validates `pending.md`), `skills/architecture-evaluate/scripts/context_scan.py`, `skills/build-feature/scripts/progress.mjs`, and `skills/disk-evaluate/scripts/k3d_stale_images.sh`; `code-review`'s `ado_review.py` is covered, but only against an in-memory fake client, never a live Azure DevOps organization.
+- Risk: these scripts exist to take a step out of model judgment, so a silent defect is trusted rather than re-checked.
+- Priority: medium for `pending.py` and `context_scan.py` (both gate other workflows' decisions); low for the read-only k3d script.
+- Difficulty: low — the `unittest` pattern used by `code-review` and `session-evaluate` applies directly to the Python ones.

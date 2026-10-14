@@ -8,6 +8,8 @@
 | CLI flags | kebab-case | `--dry-run`, `--all`, `--force`, `--local` |
 | Constants | UPPER_SNAKE_CASE | `SCRIPT_DIR`, `ROOT`, `SKILL_NAME_RE` |
 | Files (JS) | kebab-case | `fs-harness.mjs` |
+| Files (Python) | snake_case; tests `test_<module>.py` in a `tests/` folder beside the module | `ado_review.py`, `tests/test_ado_review.py` |
+| Files (shell, Swift) | kebab-case | `speak-pending-input.sh`, `mic-in-use.swift` |
 | Files (config) | kebab-case | `skills.json`, `hooks.json` |
 | Functions | camelCase | `cmdSetup`, `installSkill`, `applyOverlay` |
 | Skills (dirs) | kebab-case | `code-review`, `disk-evaluate`, `architecture-evaluate` |
@@ -34,6 +36,8 @@ import { fileURLToPath } from 'node:url';
 
 **File structure within `scripts/bin/fs-harness.mjs`:** constants → utility/logging helpers → filesystem helpers → command functions → doc generation → CLI entry point. The two `scripts/bin/misc/` consistency-check scripts follow the same shape at smaller scale: header comment stating intent → constants → check logic → report/exit.
 
+**Python skill scripts** are standard-library only, start with `#!/usr/bin/env python3` and a module docstring that gives the usage and the JSON shapes they read or write, and have tests under a `tests/` folder using `unittest`. **Shell hooks** start with `#!/usr/bin/env bash` and `set -o pipefail` (`-u` always, `-e` only in `require-direnv-credential.sh`) and read the hook event as JSON on stdin with `jq`; the notification-style hooks (`resolve-gh-account.sh`, `speak-pending-input.sh`) exit 0 on every path, and only `require-direnv-credential.sh` is allowed to block with exit 2.
+
 ## Error Handling
 
 Throw `UserError` for expected user mistakes; let unexpected errors propagate naturally (no swallowing). `runNpx` returns a boolean on subprocess failure — callers check the return value rather than catching exceptions. `cmdDoctor` tallies per-check failures instead of throwing, so one failed check never hides the rest.
@@ -41,7 +45,7 @@ Throw `UserError` for expected user mistakes; let unexpected errors propagate na
 ## Documentation Pattern
 
 - `.md` files are the primary deliverable — clarity and correctness matter over code heuristics.
-- `scripts/bin/fs-harness.mjs` and the `scripts/bin/misc/` scripts use sparse inline comments at section/intent boundaries only; no multi-line docstrings.
+- `scripts/bin/fs-harness.mjs` and the `scripts/bin/misc/` scripts use sparse inline comments at section/intent boundaries only; no multi-line docstrings. Python scripts bundled with skills instead document themselves with a module docstring plus short docstrings on functions; hook scripts open with a header comment stating intent and behavior.
 - Every skill's own `SKILL.md` uses YAML frontmatter (`name`, `description`, `metadata.version`); an overlay in `extended/<skill>/SKILL.md` adds `extends`, `metadata.parent_skill`, and `metadata.source`.
 - Tech-specific reference files follow `<technology>-<skill-name>.md`, unless a skill declares scoped variants in its own `SKILL.md` — `code-review` suffixes every checklist with its scope: `<topic>.code.md` / `<topic>.tests.md`, stack-specific `<tech>.code.md`, `<tech>-performance.code.md`, `<tech>.tests.md`, while its orchestration references carry no suffix.
 - `skills/<name>/reference.md` (no technology prefix, at the skill root) is a workflow/orchestration reference — distinct from tech-specific checklists under `references/<tech>-<skill>.md`.
