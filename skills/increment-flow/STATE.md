@@ -71,3 +71,10 @@
 - **Trade-off**: A wrong inferred dependency would hide the item from "Where was I"'s ready list; the confidence bar and naming the link in the reply keep that visible and cheap to undo.
 - **Date**: 2026-10-14
 - **Status**: active
+
+### AD-011
+- **Decision**: One `progress.md` per research (not per increment), with a `## Increment NNN — <slug>` section per increment and one-line dated entries typed `decision`, `done`, `change`, `customization` or `addition` (text ≤ 200 characters). Two templates (`assets/progress.<lang>.md`) with localized heading and types, but the created file is always plain `progress.md`. It is validated by `pending.py check` beside `pending.md`, written on meaningful events and reviewed when an increment closes. A research already running without the file gets it created at that point, with an origin line saying earlier events are not recorded; history is never reconstructed.
+- **Reason**: User's call: a general research-level summary an agent can locate to understand what was done so far, like `pending.md`. Grouping by increment keeps an increment's entries findable as the file grows; extending `check` keeps one validation command and removes format drift from model judgment.
+- **Trade-off**: The file grows over the whole research, so agents read the relevant increment section rather than all of it. Researches started before this change have a partial `progress.md` by design.
+- **Date**: 2026-10-16
+- **Status**: active

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate an increment-flow pending.md and compute the next free numbers.
+"""Validate an increment-flow pending.md (and the progress.md beside it) and compute the next free numbers.
 
 Usage:
   pending.py check <pending.md>   exit 0 when consistent, 1 with one line per violation
@@ -14,17 +14,25 @@ LANGS = {
         "header": ["#", "Item", "Status", "Depends on", "Increment", "Details"],
         "open": ["Open", "Researching", "Researched", "Planning", "Planned", "Implementing"],
         "closed": {"Done": "done", "Declined": "declined", "Rejected": "rejected"},
+        "progress_heading": "Increment",
+        "progress_types": ["decision", "done", "change", "customization", "addition"],
     },
     "pt-BR": {
         "header": ["#", "Item", "Estado", "Depende de", "Incremento", "Detalhe"],
         "open": ["Aberto", "Em Pesquisa", "Pesquisado", "Em Planejamento", "Planejado", "Desenvolvimento"],
         "closed": {"Feito": "feito", "Recusado": "recusado", "Rejeitado": "rejeitado"},
+        "progress_heading": "Incremento",
+        "progress_types": ["decisão", "feito", "mudança", "customização", "adição"],
     },
 }
 DETAILS_MAX = 200
+ENTRY_MAX = 200
+PROGRESS_FILE = "progress.md"
 NONE = "—"
 SECTION = re.compile(r"^## (\d+) — (.+?)(?: \(([^()]+)\))?\s*$")
 INCREMENT_DIR = re.compile(r"^(\d{3})-[a-z0-9]+(?:-[a-z0-9]+)*$")
+PROGRESS_SECTION = re.compile(r"^## (\S+) (\d{3}) — (.+?)\s*$")
+PROGRESS_ENTRY = re.compile(r"^- (\d{4}-\d{2}-\d{2}) · (\S+) · (.+)$")
 
 
 def cells(line):
@@ -62,6 +70,40 @@ def increments(root):
         if d.is_dir() and m:
             found.setdefault(m.group(1), []).append(d.name)
     return found
+
+
+def check_progress(path, lang, incs):
+    spec = LANGS[lang]
+    errors = []
+    seen = []
+    current = None
+    for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if line.startswith("## "):
+            m = PROGRESS_SECTION.match(line)
+            if not m or m.group(1) != spec["progress_heading"]:
+                errors.append(f"{PROGRESS_FILE} line {n}: section must be '## {spec['progress_heading']} NNN — <slug>'")
+                current = None
+                continue
+            code, slug = m.group(2), m.group(3)
+            current = code
+            if code in seen:
+                errors.append(f"{PROGRESS_FILE} line {n}: more than one section for increment {code}")
+            elif seen and code < seen[-1]:
+                errors.append(f"{PROGRESS_FILE} line {n}: sections must be in ascending increment order")
+            seen.append(code)
+            if code not in incs:
+                errors.append(f"{PROGRESS_FILE} line {n}: increment {code} has no folder '{code}-<slug>/' next to pending.md")
+            elif f"{code}-{slug}" not in incs[code]:
+                errors.append(f"{PROGRESS_FILE} line {n}: slug '{slug}' differs from folder '{incs[code][0]}'")
+        elif current and line.strip():
+            m = PROGRESS_ENTRY.match(line)
+            if not m:
+                errors.append(f"{PROGRESS_FILE} line {n}: entry must be '- YYYY-MM-DD · <type> · <text>'")
+            elif m.group(2) not in spec["progress_types"]:
+                errors.append(f"{PROGRESS_FILE} line {n}: type '{m.group(2)}' is not one of: {', '.join(spec['progress_types'])}")
+            elif len(m.group(3)) > ENTRY_MAX:
+                errors.append(f"{PROGRESS_FILE} line {n}: text has {len(m.group(3))} characters, max {ENTRY_MAX}; shorten it or point to the file")
+    return errors
 
 
 def check(path):
@@ -138,6 +180,10 @@ def check(path):
     for n, found in sections.items():
         if n not in numbers:
             errors.append(f"line {found[0][0]}: section {n} has no row in the table")
+
+    progress = path.parent / PROGRESS_FILE
+    if progress.is_file():
+        errors += check_progress(progress, lang, incs)
     return errors
 
 
