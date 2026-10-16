@@ -24,6 +24,7 @@ Every skill in `skills/` or `extended/` keeps its own `STATE.md` — a per-skill
 ## Change Request Workflow
 
 - Commit directly to `main` — no feature-branch-first workflow for this repository; most of it is `.md` skill/config content, not application code with a release/PR-gated `main`. 
+- Commit and push automatically as soon as a change is done and verified; do not ask first. Stage only the files that belong to the change and leave unrelated pre-existing modifications out.
 
 # Skills
 
