@@ -53,6 +53,7 @@ field() { printf '%s' "$input" | jq -r "$1 // empty" 2>/dev/null; }
 
 event="$(field .hook_event_name)"
 session="$(field .session_id)"
+MONITOR_TURN="/tmp/claude-speak-monitor-turn-$session"
 
 # The session's /rename title, else its auto-generated title, else the folder.
 # Both titles are read from the transcript, whose format is undocumented.
@@ -84,19 +85,26 @@ cancel_own() {
   [ -e "$MARKER" ] && [ "$(head -1 "$MARKER")" = "$session" ] && cancel
 }
 
-# Spoken once, with no reminder, and skipped while an input alert is armed or a
-# Monitor is still running (the session is waiting to be woken, not done).
+# Spoken once, with no reminder, and skipped while an input alert is armed, when
+# the turn was started by a Monitor event, or while background tasks (a Monitor
+# is listed as "shell") are still running: the session is waiting, not done.
 announce_idle() {
+  [ -e "$MONITOR_TURN" ] && { rm -f "$MONITOR_TURN"; return 0; }
   [ -e "$MARKER" ] && return 0
-  local monitors
-  monitors="$(field '[.background_tasks[]? | select(.type == "monitor")] | length')"
-  [ "${monitors:-0}" -gt 0 ] && return 0
+  local tasks
+  tasks="$(field '.background_tasks | length')"
+  [ "${tasks:-0}" -gt 0 ] && return 0
   nohup "$SELF" --speak "Claude Code session $(session_name) got idle." >/dev/null 2>&1 </dev/null &
 }
 
 case "$event" in
   Notification|PreToolUse) arm ;;
-  UserPromptSubmit) [ -e "$MARKER" ] && cancel ;;
+  UserPromptSubmit)
+    [ -e "$MARKER" ] && cancel
+    case "$(field .prompt)" in
+      *"<task-notification>"*"<summary>Monitor"*) : > "$MONITOR_TURN" ;;
+      *) rm -f "$MONITOR_TURN" ;;
+    esac ;;
   PostToolUse|PostToolUseFailure) cancel_own ;;
   Stop) cancel_own; announce_idle ;;
 esac
