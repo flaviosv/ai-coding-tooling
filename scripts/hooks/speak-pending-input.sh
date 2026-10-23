@@ -84,9 +84,13 @@ cancel_own() {
   [ -e "$MARKER" ] && [ "$(head -1 "$MARKER")" = "$session" ] && cancel
 }
 
-# Spoken once, with no reminder, and skipped while an input alert is armed.
+# Spoken once, with no reminder, and skipped while an input alert is armed or a
+# Monitor is still running (the session is waiting to be woken, not done).
 announce_idle() {
   [ -e "$MARKER" ] && return 0
+  local monitors
+  monitors="$(field '[.background_tasks[]? | select(.type == "monitor")] | length')"
+  [ "${monitors:-0}" -gt 0 ] && return 0
   nohup "$SELF" --speak "Claude Code session $(session_name) got idle." >/dev/null 2>&1 </dev/null &
 }
 
