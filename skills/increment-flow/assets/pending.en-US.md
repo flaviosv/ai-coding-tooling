@@ -32,7 +32,7 @@ Increment status:
 |---|---|
 | Open | folder opened, nothing done yet |
 | In Progress | anything done in it: a discovery, a plan, any work |
-| Done | closed, all its items closed |
+| Done | closed: all its items closed and its work committed |
 
 ## Increments
 

@@ -16,6 +16,7 @@ Esta pasta guarda uma pesquisa, tocada em incrementos pequenos e numerados. Carr
 - **Decisão já fechada na pesquisa inicial é entrada, não pauta.** Reabrir exige um motivo nomeado.
 - **Mantenha o `pending.md` em dia.** Atualize o estado do item na hora em que ele avança, sem esperar o incremento fechar.
 - **Um incremento não fecha com lacuna aberta.** Cada lacuna da verificação independente vira correção no próprio incremento, ou vai ao usuário e só entra no `pending.md` com a aceitação dele registrada.
+- **Um incremento só fica `Feito` com o trabalho commitado.** Mudanças sem commit mantêm o incremento `Em Andamento`.
 - **Ao fechar um incremento, devolva o aprendizado** à pesquisa inicial (a decisão, o item ou a evidência que ele mudou), apontando para a pasta do incremento.
 - **Mantenha o `progress.md` em dia.** Quando um incremento decide, conclui, muda, customiza ou adiciona algo que vale saber depois, acrescente uma linha na seção desse incremento. Um resumo, não uma transcrição.
 - **`IC <x>` é o incremento `<x>`** (`IC 3` → `003-<slug>/`), nunca o item `<x>`.

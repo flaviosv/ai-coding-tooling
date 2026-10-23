@@ -4,7 +4,7 @@ description: Runs a heavy feature or research as small numbered increments under
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.5.0
+  version: 1.6.0
 ---
 
 # Increment Flow
@@ -42,7 +42,7 @@ Sits right above the items table, under `## Increments` (pt-BR `## Incrementos`)
 |---|---|
 | Increment Number | the 3-digit number of the folder `NNN-<slug>/` |
 | Title | a short title of what the increment does |
-| Status | `Open` (`Aberto`): the folder exists and nothing has been done in it. `In Progress` (`Em Andamento`): anything has been done in it, such as a discovery, a plan or any work. `Done` (`Feito`): closed, with every item pointing at it closed |
+| Status | `Open` (`Aberto`): the folder exists and nothing has been done in it. `In Progress` (`Em Andamento`): anything has been done in it, such as a discovery, a plan or any work. `Done` (`Feito`): closed, with every item pointing at it closed and its work committed |
 
 `pending.py check` fails when the table is missing, an increment folder has no row, a row has no folder, an `Open` increment has an item past `Open`, or a `Done` increment has an item that is not closed.
 
@@ -148,10 +148,11 @@ Only for an item registered by mistake: no work started, not cited elsewhere. De
 
 ### Close an increment
 
-1. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table.
-2. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
-3. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
-4. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
+1. **Check the work is committed.** `git status --short` must show nothing the increment changed or produced: code, tests, docs outside the research and, when the research is versioned, its folder and files. Anything uncommitted: stop, tell the user what is pending, and leave the increment `In Progress` until it is committed. A research kept out of git is exempt for its own folder; the changes outside it still count.
+2. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table.
+3. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
+4. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
+5. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
 
 ### Log progress
 

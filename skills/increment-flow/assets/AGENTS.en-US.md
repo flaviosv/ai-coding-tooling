@@ -16,6 +16,7 @@ This folder holds one research, worked in small numbered increments. Load the `i
 - **Decisions already closed in the initial research are input, not agenda.** Reopening one needs a named reason.
 - **Keep `pending.md` current.** Update an item's status the moment it moves, not when the increment closes.
 - **An increment never closes with an open gap.** Each gap from the independent verification becomes a fix in the same increment, or goes to the user and enters `pending.md` only with their acceptance recorded.
+- **An increment is `Done` only when its work is committed.** Uncommitted changes keep it `In Progress`.
 - **On closing an increment, feed the learning back** into the initial research (the decision, item or evidence it changed), pointing to the increment folder.
 - **Keep `progress.md` current.** When an increment decides, finishes, changes, customizes or adds something worth knowing later, append one line to that increment's section. A summary, not a transcript.
 - **`IC <x>` means increment `<x>`** (`IC 3` → `003-<slug>/`), never item `<x>`.

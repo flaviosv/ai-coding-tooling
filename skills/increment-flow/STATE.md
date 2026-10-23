@@ -85,3 +85,10 @@
 - **Trade-off**: Every existing `pending.md` fails `check` until it gets the table. The increment status is kept by hand and only cross-checked against item statuses, so an `In Progress` that should be `Done` (or the reverse, with all items closed) is not caught.
 - **Date**: 2026-10-23
 - **Status**: active
+
+### AD-013
+- **Decision**: An increment closes (`Done`) only when its work is committed. Closing starts with `git status --short`; anything the increment changed or produced and is still uncommitted keeps it `In Progress`. A research kept out of git is exempt for its own folder only.
+- **Reason**: User's rule: `Done` has to mean the work is recoverable from history, not only present in a working tree.
+- **Trade-off**: Prose rule in the procedure, not a script check: `pending.py` can't tell which uncommitted files belong to the increment, and the research is often git-excluded.
+- **Date**: 2026-10-23
+- **Status**: active

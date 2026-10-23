@@ -32,7 +32,7 @@ Estado do incremento:
 |---|---|
 | Aberto | pasta aberta, nada feito ainda |
 | Em Andamento | qualquer coisa feita nele: uma discovery, um plan, qualquer trabalho |
-| Feito | fechado, com todos os itens dele fechados |
+| Feito | fechado: todos os itens dele fechados e o trabalho commitado |
 
 ## Incrementos
 
