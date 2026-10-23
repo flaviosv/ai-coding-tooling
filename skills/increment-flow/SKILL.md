@@ -1,21 +1,21 @@
 ---
 name: increment-flow
-description: Runs a heavy feature or research as small numbered increments under docs/research/TOPIC/ — starts a new research (pending.md with the initial item, folder 001-slug, AGENTS.md), opens the next increment folder in order, manages pending.md (add, update, close, remove items, keep the single table consistent and validated by script), and keeps progress.md, a short running summary of each increment's decisions, completed tasks, changes, customizations and additions. Use when the user says "start a new research", "new research on X", "add a pending item", "add to pending.md", "mark item N done", "update the status of item N", "open a new increment", "next increment", "IC 3", "where was I in the research", "log this in progress", "what has been done so far", "nova pesquisa", "adiciona no pending", "abre o próximo incremento", "registra no progresso". Do NOT use to run discovery, planning or implementation themselves, or for TODO lists, backlogs or work items outside a docs/research folder.
+description: Runs a heavy feature or research as small numbered increments under docs/research/TOPIC/ — starts a new research (pending.md with the initial item, folder 001-slug, AGENTS.md), opens the next increment folder in order, manages pending.md (add, update, close, remove items, keep the increments table and the items table consistent and validated by script), and keeps progress.md, a short running summary of each increment's decisions, completed tasks, changes, customizations and additions. Use when the user says "start a new research", "new research on X", "add a pending item", "add to pending.md", "mark item N done", "update the status of item N", "open a new increment", "next increment", "IC 3", "where was I in the research", "log this in progress", "what has been done so far", "nova pesquisa", "adiciona no pending", "abre o próximo incremento", "registra no progresso". Do NOT use to run discovery, planning or implementation themselves, or for TODO lists, backlogs or work items outside a docs/research folder.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.4.0
+  version: 1.5.0
 ---
 
 # Increment Flow
 
-Keeps a heavy piece of work small: one research folder, a `pending.md` that lists everything still to do, a `progress.md` that summarizes what each increment has done so far, and numbered increment folders that each answer one small, verifiable question or delivery.
+Keeps a heavy piece of work small: one research folder, a `pending.md` that tracks the status of each increment and lists everything still to do, a `progress.md` that summarizes what each increment has done so far, and numbered increment folders that each answer one small, verifiable question or delivery.
 
 ## Always, before anything else
 
 1. **Resolve the active research.** It is the `docs/research/<topic>/` folder this conversation is working in. "The pending.md", "add an item", "item 4" always mean that folder's `pending.md`. If the conversation, memory or context points at more than one research folder or `pending.md` and nothing in the current request settles which, stop and ask. Never pick one, and never write to a `pending.md` you found by searching.
 2. **Read the research's `AGENTS.md`** unless it is already in context. Claude Code skips a subfolder's `AGENTS.md` when the repository has a `CLAUDE.md` above it, so do not count on it having loaded.
-3. **Read the active `pending.md` before editing it.** Edit it in place and keep everything you do not change byte-identical.
+3. **Read the active `pending.md` before editing it.** Edit it in place and keep everything you do not change byte-identical. If it has no increments table, create it before anything else (see The increments table).
 4. **Read `progress.md` when resuming or entering an increment you did not start**, to learn what was decided and done so far. A research that has none yet is not an error: see Log progress.
 5. **Validate after every edit to `pending.md` or `progress.md`:** `python3 <this skill>/scripts/pending.py check <pending.md>`, which checks both files. Fix every reported line before replying. Use `pending.py next <pending.md>` for the next item number and the next increment number; never count by eye.
 
@@ -24,7 +24,7 @@ Keeps a heavy piece of work small: one research folder, a `pending.md` that list
 ```text
 docs/research/<topic>/
 ├── AGENTS.md          rules and map for agents (from assets/AGENTS.<lang>.md)
-├── pending.md         one table + one section per item (from assets/pending.<lang>.md)
+├── pending.md         increments table + items table + one section per item (from assets/pending.<lang>.md)
 ├── progress.md        short summary per increment of what was decided and done (from assets/progress.<lang>.md; the file is always named progress.md)
 ├── 001-<slug>/        the initial research
 └── 002-<slug>/ …      one folder per increment, in the order they open
@@ -34,7 +34,26 @@ Increment folders are `NNN-<slug>`: three digits, then a short ASCII kebab-case 
 
 **`IC <x>` means increment `<x>`**, in either language and however it is written (`IC 3`, `IC03`, `IC-003`): the folder `003-<slug>/` and the Increment column value `003`. It never means item `<x>`.
 
-## The table
+## The increments table
+
+Sits right above the items table, under `## Increments` (pt-BR `## Incrementos`). One row per increment folder, in ascending order, columns `Increment Number | Title | Status` (pt-BR: `Número do Incremento | Título | Estado`):
+
+| Column | Holds |
+|---|---|
+| Increment Number | the 3-digit number of the folder `NNN-<slug>/` |
+| Title | a short title of what the increment does |
+| Status | `Open` (`Aberto`): the folder exists and nothing has been done in it. `In Progress` (`Em Andamento`): anything has been done in it, such as a discovery, a plan or any work. `Done` (`Feito`): closed, with every item pointing at it closed |
+
+`pending.py check` fails when the table is missing, an increment folder has no row, a row has no folder, an `Open` increment has an item past `Open`, or a `Done` increment has an item that is not closed.
+
+**A `pending.md` without this table** (a research created before it existed) is evaluated before anything else is done to it: insert `## Increments` and the table right above the items table's heading (`## Items`, pt-BR `## Itens`), one row per increment folder. Title is the title of the one item that carries that increment, else the slug as words. Status comes from the evidence, never from the table's absence:
+- an item with that increment in a working status, or any entry in its `progress.md` section, or documents inside the folder: `In Progress`;
+- every item pointing at it closed and at least one: `Done`;
+- otherwise `Open`.
+
+Name every inferred status in the reply and ask about the ones the evidence does not settle. Then run `check`.
+
+## The items table
 
 One table, columns `# | Item | Status | Depends on | Increment | Details` (pt-BR: `# | Item | Estado | Depende de | Incremento | Detalhe`). Each cell holds only what its column defines, and `pending.py check` enforces it:
 
@@ -68,7 +87,7 @@ Trigger: the user starts work on a topic that has no folder under `docs/research
 1. Agree on the topic name and slug (kebab-case). If `docs/research/<slug>/` already exists, it is not new: stop and ask whether to continue it.
 2. Choose the language (see Language).
 3. Check whether git ignores the folder: `git check-ignore -q docs/research/<slug>/pending.md`. If it is ignored, keep it local and say so. If it is not, ask whether the research should be pushed with the repository. On "no", add `docs/research/` to `.git/info/exclude` (local, changes no versioned file) unless the user prefers `.gitignore`.
-4. Create `pending.md` from `assets/pending.<lang>.md`: `{{TOPIC}}` = topic name, `{{DATE}}` = today, `{{SUMMARY}}` = one line of what the research must answer (200 characters max), `{{QUESTION}}` = the question in the user's words.
+4. Create `pending.md` from `assets/pending.<lang>.md` (it carries the increments table with row `001`): `{{TOPIC}}` = topic name, `{{DATE}}` = today, `{{SUMMARY}}` = one line of what the research must answer (200 characters max), `{{QUESTION}}` = the question in the user's words.
 5. Create `001-<slug>/` (en-US slug `initial-research`, pt-BR `pesquisa-inicial`, unless the user names it).
 6. Create `progress.md` (never `progress.<lang>.md`) from `assets/progress.<lang>.md`, with `{{TOPIC}}`, `{{INCREMENT}}` = `001`, `{{SLUG}}` = the folder slug from step 5 and `{{ORIGIN}}` = `Started with the research.` (pt-BR `Começou junto com a pesquisa.`).
 7. Create `AGENTS.md` from `assets/AGENTS.<lang>.md`, with `{{VERSIONED}}` filled from step 3 (see the next block).
@@ -102,6 +121,8 @@ Move the status the moment the work moves, not when the increment closes:
 | `tlc-plan` completes | Planned / Planejado |
 | `tlc-implement` starts, or work starts on an item without RPI | Implementing / Desenvolvimento |
 
+The first time an item of an increment leaves `Open`, set that increment to `In Progress` in the increments table. It also becomes `In Progress` the moment anything else is done in it, such as a discovery, a plan or any work without an item.
+
 Any new fact (a decision, a blocker, a note from the user) goes into the item's section as a dated paragraph. Only shorten the Details cell when it would otherwise stop describing what is left. Run `check`.
 
 ### Close an item
@@ -119,15 +140,15 @@ Only for an item registered by mistake: no work started, not cited elsewhere. De
 ### Open an increment
 
 1. Read the initial research (`001-*/`) and `pending.md`. Decisions closed in the initial research are input; reopening one needs a named reason.
-2. Prefer one increment at a time. If another increment still has items in a working status (anything other than Open, Done, Declined, Rejected), say so and open the new one only if the user confirms.
-3. `pending.py next` gives the increment number; create `NNN-<slug>/`.
+2. Prefer one increment at a time. If another increment is `In Progress`, say so and open the new one only if the user confirms.
+3. `pending.py next` gives the increment number; create `NNN-<slug>/` and append its row to the increments table: Title, Status `Open` (`Aberto`).
 4. Set the Increment column to `NNN` on every item the increment works, and move their status as the work starts.
 5. Append the section `## Increment NNN — <slug>` (pt-BR `## Incremento NNN — <slug>`) at the end of `progress.md`, with the same slug as the folder; create the file first if the research has none (see Log progress).
 6. When the increment runs RPI, its documents go in `NNN-<slug>/`.
 
 ### Close an increment
 
-1. Close its items (see Close an item).
+1. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table.
 2. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
 3. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
 4. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
@@ -145,7 +166,7 @@ Trigger: inside an increment, a decision is made, a task finishes, something cha
 
 ### Where was I
 
-Read `pending.md` and the section of the latest increment in `progress.md`, and report, briefly: items in a working status with their increment, then `Open` items whose dependencies are all `Done`, then blocked items with what blocks them. Recommend the next one.
+Read `pending.md` and the section of the latest increment in `progress.md`, and report, briefly: the increment `In Progress`, then items in a working status with their increment, then `Open` items whose dependencies are all `Done`, then blocked items with what blocks them. Recommend the next one.
 
 ## Examples
 
@@ -161,10 +182,15 @@ Read `pending.md` and the section of the latest increment in `progress.md`, and 
 
 **Existing language wins.** User, writing in English: "add an item to cap retries at 5" in a research whose `pending.md` header is `# | Item | Estado | …`. Actions: write the row and section in pt-BR (`Aberto`, `Registrado em 2026-10-14.`); never translate the file.
 
+**Table missing.** User: "mark item 3 done" in a research whose `pending.md` has only the items table and folders `001-` and `002-`. Actions: before the edit, insert `## Increments` above `## Items` with rows `001` and `002`; item 1 is `Done`, so `001` is `Done`; item 3 is `Implementing` with Increment `002`, so `002` is `In Progress`; say both were inferred; then close item 3, `check`.
+
 **Close.** User: "item 3 is done, commit a1b2c3d". Actions: Status `Done`; title `## 3 — <title> (done)`; under it `Done in increment 004 (a1b2c3d, 2026-10-14).`; `check`.
 
 ## Troubleshooting
 
+- `no increments table`: the research predates the table, or the header was renamed. Create it as described in The increments table.
+- `increment NNN has a folder but no row in the increments table`: add the row. `no folder … next to pending.md`: create the folder or fix the number.
+- `is Open but item #N is …` / `is Done but item #N is …`: the increment status and its items disagree. Set `In Progress`, or close the item or move it to the increment that works it.
 - `expected exactly one item table, found 0`: the header row differs from the template (renamed column, extra column). Restore the template's header for the file's language.
 - `Item '…' differs from section title '…'`: the row and the section drifted. Make them identical; the section title wins unless the user renamed the item.
 - `Increment NNN has no folder`: create the folder, or fix the number; never point at an increment that does not exist.

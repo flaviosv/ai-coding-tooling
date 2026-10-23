@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate an increment-flow pending.md (and the progress.md beside it) and compute the next free numbers.
+"""Validate an increment-flow pending.md (increments table, items table, and the progress.md beside it) and compute the next free numbers.
 
 Usage:
   pending.py check <pending.md>   exit 0 when consistent, 1 with one line per violation
@@ -12,6 +12,8 @@ from pathlib import Path
 LANGS = {
     "en-US": {
         "header": ["#", "Item", "Status", "Depends on", "Increment", "Details"],
+        "inc_header": ["Increment Number", "Title", "Status"],
+        "inc_statuses": ["Open", "In Progress", "Done"],
         "open": ["Open", "Researching", "Researched", "Planning", "Planned", "Implementing"],
         "closed": {"Done": "done", "Declined": "declined", "Rejected": "rejected"},
         "progress_heading": "Increment",
@@ -19,6 +21,8 @@ LANGS = {
     },
     "pt-BR": {
         "header": ["#", "Item", "Estado", "Depende de", "Incremento", "Detalhe"],
+        "inc_header": ["Número do Incremento", "Título", "Estado"],
+        "inc_statuses": ["Aberto", "Em Andamento", "Feito"],
         "open": ["Aberto", "Em Pesquisa", "Pesquisado", "Em Planejamento", "Planejado", "Desenvolvimento"],
         "closed": {"Feito": "feito", "Recusado": "recusado", "Rejeitado": "rejeitado"},
         "progress_heading": "Incremento",
@@ -39,9 +43,18 @@ def cells(line):
     return [c.strip() for c in line.strip().strip("|").split("|")]
 
 
+def read_rows(lines, start):
+    rows = []
+    for n, line in enumerate(lines[start + 2:], start + 3):
+        if not line.startswith("|"):
+            break
+        rows.append((n, cells(line)))
+    return rows
+
+
 def parse(path):
     lines = path.read_text(encoding="utf-8").splitlines()
-    tables = []
+    tables, inc_tables = [], []
     for i, line in enumerate(lines):
         if not line.startswith("|"):
             continue
@@ -49,18 +62,16 @@ def parse(path):
         for lang, spec in LANGS.items():
             if row == spec["header"]:
                 tables.append((i, lang))
-    rows, sections = [], {}
-    if len(tables) == 1:
-        start, _ = tables[0]
-        for n, line in enumerate(lines[start + 2:], start + 3):
-            if not line.startswith("|"):
-                break
-            rows.append((n, cells(line)))
+            elif row == spec["inc_header"]:
+                inc_tables.append((i, lang))
+    rows = read_rows(lines, tables[0][0]) if len(tables) == 1 else []
+    inc_rows = read_rows(lines, inc_tables[0][0]) if len(inc_tables) == 1 else []
+    sections = {}
     for n, line in enumerate(lines, 1):
         m = SECTION.match(line)
         if m:
             sections.setdefault(int(m.group(1)), []).append((n, m.group(2), m.group(3)))
-    return tables, rows, sections
+    return tables, rows, sections, inc_tables, inc_rows
 
 
 def increments(root):
@@ -106,9 +117,59 @@ def check_progress(path, lang, incs):
     return errors
 
 
+def check_increments(inc_tables, inc_rows, lang, incs, rows):
+    spec = LANGS[lang]
+    if not inc_tables:
+        return [f"no increments table; add '| {' | '.join(spec['inc_header'])} |' above the items table, one row per increment folder"]
+    if len(inc_tables) != 1:
+        return [f"expected exactly one increments table, found {len(inc_tables)}"]
+    if inc_tables[0][1] != lang:
+        return [f"increments table is in {inc_tables[0][1]} but the items table is in {lang}"]
+    open_status, *working = spec["open"]
+    closed = list(spec["closed"])
+    statuses = spec["inc_statuses"]
+    errors = []
+    seen = []
+    for line, row in inc_rows:
+        where = f"line {line}"
+        if len(row) != 3:
+            errors.append(f"{where}: expected 3 cells in the increments table, found {len(row)}")
+            continue
+        code, title, status = row
+        if not re.fullmatch(r"\d{3}", code):
+            errors.append(f"{where}: Increment Number must be 3 digits, found '{code}'")
+            continue
+        where = f"line {line} (increment {code})"
+        if code in seen:
+            errors.append(f"{where}: duplicate increment number")
+        elif seen and code < seen[-1]:
+            errors.append(f"{where}: increments must be in ascending order")
+        seen.append(code)
+        if code not in incs:
+            errors.append(f"{where}: no folder '{code}-<slug>/' next to pending.md")
+        if not title:
+            errors.append(f"{where}: Title is empty")
+        if status not in statuses:
+            errors.append(f"{where}: Status '{status}' is not one of: {', '.join(statuses)}")
+            continue
+        items = [r for _, r in rows if len(r) == 6 and r[4] == code]
+        if status == statuses[0]:
+            for r in items:
+                if r[2] in working:
+                    errors.append(f"{where}: is {status} but item #{r[0]} is {r[2]}; set the increment to {statuses[1]}")
+        elif status == statuses[2]:
+            for r in items:
+                if r[2] not in closed:
+                    errors.append(f"{where}: is {status} but item #{r[0]} is {r[2]}; close the item or move it to another increment")
+    for code in sorted(incs):
+        if code not in seen:
+            errors.append(f"increment {code} has a folder but no row in the increments table")
+    return errors
+
+
 def check(path):
     errors = []
-    tables, rows, sections = parse(path)
+    tables, rows, sections, inc_tables, inc_rows = parse(path)
     if len(tables) != 1:
         return [f"expected exactly one item table, found {len(tables)}"]
     lang = tables[0][1]
@@ -119,6 +180,7 @@ def check(path):
     for code, names in incs.items():
         if len(names) > 1:
             errors.append(f"increment {code} has more than one folder: {', '.join(sorted(names))}")
+    errors += check_increments(inc_tables, inc_rows, lang, incs, rows)
 
     numbers = []
     for line, row in rows:
@@ -188,7 +250,7 @@ def check(path):
 
 
 def next_numbers(path):
-    _, rows, sections = parse(path)
+    _, rows, sections, _, _ = parse(path)
     used = {int(r[0]) for _, r in rows if r and r[0].isdigit()} | set(sections)
     incs = increments(path.parent)
     item = max(used, default=0) + 1

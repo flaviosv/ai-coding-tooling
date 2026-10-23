@@ -78,3 +78,10 @@
 - **Trade-off**: The file grows over the whole research, so agents read the relevant increment section rather than all of it. Researches started before this change have a partial `progress.md` by design.
 - **Date**: 2026-10-16
 - **Status**: active
+
+### AD-012
+- **Decision**: `pending.md` carries an auxiliary increments table (`Increment Number | Title | Status`; `Open`, `In Progress`, `Done`) right above the items table. `In Progress` means anything has been done in the increment (a discovery, a plan, any work), not only that an item is being implemented. `pending.py check` requires the table, one row per increment folder, and consistency with the items (`Open` has no item past `Open`; `Done` has every item closed). A `pending.md` without the table is evaluated and given one before any other edit, statuses inferred from the items, `progress.md` and folder contents and named in the reply.
+- **Reason**: User's call: see each increment's progress at a glance, and have older researches pick the table up. Making `check` fail on a missing table means the evaluation happens on the first edit of an old file, instead of depending on the agent remembering a prose rule.
+- **Trade-off**: Every existing `pending.md` fails `check` until it gets the table. The increment status is kept by hand and only cross-checked against item statuses, so an `In Progress` that should be `Done` (or the reverse, with all items closed) is not caught.
+- **Date**: 2026-10-23
+- **Status**: active

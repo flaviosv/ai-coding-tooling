@@ -8,7 +8,7 @@ This folder holds one research, worked in small numbered increments. Load the `i
 |---|---|---|
 | `001-*/` | The initial research: verdict and decisions for the whole topic | Before opening any increment |
 | `NNN-<slug>/` | One increment and everything it produces | Working on that increment |
-| `pending.md` | Every item of this research, its status and the increment that works it | Before choosing what to do next |
+| `pending.md` | Status of every increment, and every item of this research with its status and the increment that works it | Before choosing what to do next |
 | `progress.md` | Summary of what each increment has decided, done and changed so far | Resuming work, or before touching an increment you did not start |
 
 ## Rules

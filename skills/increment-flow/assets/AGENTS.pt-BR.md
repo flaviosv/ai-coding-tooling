@@ -8,7 +8,7 @@ Esta pasta guarda uma pesquisa, tocada em incrementos pequenos e numerados. Carr
 |---|---|---|
 | `001-*/` | A pesquisa inicial: veredito e decisões do tema inteiro | Antes de abrir qualquer incremento |
 | `NNN-<slug>/` | Um incremento e tudo o que ele produz | Ao trabalhar nesse incremento |
-| `pending.md` | Todos os itens desta pesquisa, o estado de cada um e o incremento que o trabalha | Antes de escolher o que fazer a seguir |
+| `pending.md` | Estado de cada incremento, e todos os itens desta pesquisa com o estado de cada um e o incremento que o trabalha | Antes de escolher o que fazer a seguir |
 | `progress.md` | Resumo do que cada incremento decidiu, fez e mudou até agora | Ao retomar o trabalho, ou antes de mexer num incremento que você não começou |
 
 ## Regras

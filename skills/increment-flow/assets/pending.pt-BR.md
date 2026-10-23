@@ -1,12 +1,12 @@
 # Pendências — {{TOPIC}}
 
-Itens para não esquecer nesta pesquisa. Uma tabela só; cada item tem, abaixo, uma seção com o mesmo número, onde fica o texto completo.
+Itens para não esquecer nesta pesquisa. Uma tabela de incrementos (andamento de cada incremento) e uma tabela de itens; cada item tem, abaixo, uma seção com o mesmo número, onde fica o texto completo.
 
 - O `#` é o número da seção. Ele nunca muda e nunca é reaproveitado: "item N" e "§N" são sempre a seção N.
 - Item novo entra no fim da tabela, com o próximo número livre.
 - Item terminado (`Feito`, `Recusado`, `Rejeitado`) fica na tabela, e o título da seção ganha o estado entre parênteses.
 
-As colunas. Cada célula guarda só o que a coluna diz:
+As colunas dos itens. Cada célula guarda só o que a coluna diz:
 
 - **Item:** título curto, igual ao título da seção.
 - **Estado:** só um valor da tabela de estados abaixo.
@@ -25,6 +25,20 @@ As colunas. Cada célula guarda só o que a coluna diz:
 | Feito | entregue e provado |
 | Recusado | decidido não fazer |
 | Rejeitado | fora do escopo atual, fica para outro momento |
+
+Estado do incremento:
+
+| Estado | Quando usar |
+|---|---|
+| Aberto | pasta aberta, nada feito ainda |
+| Em Andamento | qualquer coisa feita nele: uma discovery, um plan, qualquer trabalho |
+| Feito | fechado, com todos os itens dele fechados |
+
+## Incrementos
+
+| Número do Incremento | Título | Estado |
+|---|---|---|
+| 001 | Pesquisa inicial: {{TOPIC}} | Aberto |
 
 ## Itens
 
