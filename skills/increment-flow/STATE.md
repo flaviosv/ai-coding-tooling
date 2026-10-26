@@ -92,3 +92,10 @@
 - **Trade-off**: Prose rule in the procedure, not a script check: `pending.py` can't tell which uncommitted files belong to the increment, and the research is often git-excluded.
 - **Date**: 2026-10-23
 - **Status**: active
+
+### AD-014
+- **Decision**: `Done` items live in a separate Done table (`## Done Items`, same columns as the items table) right below the items table; the items table holds none. Closing an item as `Done` includes moving its row there, unchanged and keeping its `#`; finding `Done` rows in the items table triggers the same move, creating the table when missing. `Declined` and `Rejected` stay in the items table. `pending.py check` fails on a `Done` row in the items table, on a non-`Done` row in the Done table, and on a number in both tables; a missing Done table is an error only while there is a `Done` item to put in it.
+- **Reason**: User's call: the main table should show only what is still ahead, with finished work kept apart, and a definition of done that includes the move.
+- **Trade-off**: Supersedes AD-001's single table: a closed item now changes tables, and cross-table rules (unique numbers, dependencies, section matching) are checked over both. Same columns keep the move a pure cut and paste, at the cost of a Status column that is always `Done`.
+- **Date**: 2026-10-26
+- **Status**: active
