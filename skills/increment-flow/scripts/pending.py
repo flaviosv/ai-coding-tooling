@@ -15,7 +15,7 @@ LANGS = {
         "inc_header": ["Increment Number", "Title", "Status"],
         "inc_statuses": ["Open", "In Progress", "Done"],
         "open": ["Open", "Researching", "Researched", "Planning", "Planned", "Implementing"],
-        "done": "Done",
+        "moved": ["Done", "Rejected"],
         "closed": {"Done": "done", "Declined": "declined", "Rejected": "rejected"},
         "progress_heading": "Increment",
         "progress_types": ["decision", "done", "change", "customization", "addition"],
@@ -25,7 +25,7 @@ LANGS = {
         "inc_header": ["Número do Incremento", "Título", "Estado"],
         "inc_statuses": ["Aberto", "Em Andamento", "Feito"],
         "open": ["Aberto", "Em Pesquisa", "Pesquisado", "Em Planejamento", "Planejado", "Desenvolvimento"],
-        "done": "Feito",
+        "moved": ["Feito", "Rejeitado"],
         "closed": {"Feito": "feito", "Recusado": "recusado", "Rejeitado": "rejeitado"},
         "progress_heading": "Incremento",
         "progress_types": ["decisão", "feito", "mudança", "customização", "adição"],
@@ -211,10 +211,10 @@ def check(path):
             errors.append(f"{where}: Item is empty")
         if status not in statuses:
             errors.append(f"{where}: Status '{status}' is not one of: {', '.join(statuses)}")
-        elif status == spec["done"] and not in_done:
+        elif status in spec["moved"] and not in_done:
             errors.append(f"{where}: Status is {status}; move the row to the Done table below the items table, creating it if missing")
-        elif status != spec["done"] and in_done:
-            errors.append(f"{where}: only {spec['done']} items belong in the Done table, found '{status}'")
+        elif status not in spec["moved"] and in_done:
+            errors.append(f"{where}: only {' and '.join(spec['moved'])} items belong in the Done table, found '{status}'")
         if depends != NONE:
             deps = [d.strip() for d in depends.split(",")]
             if not all(re.fullmatch(r"[1-9]\d*", d) for d in deps):

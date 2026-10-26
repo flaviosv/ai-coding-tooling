@@ -1,10 +1,10 @@
 # Pending — {{TOPIC}}
 
-Items to keep track of in this research. An increments table (progress of each increment), an items table for what is not done yet, and a Done table for what is; every item has a section below with the same number, where the full text lives.
+Items to keep track of in this research. An increments table (progress of each increment), an items table for what is not done yet, and a Done table for what is finished or out of scope; every item has a section below with the same number, where the full text lives.
 
 - `#` is the section number. It never changes and is never reused: "item N" and "§N" always mean section N.
 - A new item goes at the end of the table with the next free number.
-- A `Done` item moves, row unchanged and keeping its `#`, from the items table to the Done table right below it. A `Declined` or `Rejected` item stays in the items table. Either way, the section title gets the status in parentheses.
+- A `Done` or `Rejected` item moves, row unchanged and keeping its `#`, from the items table to the Done table right below it. A `Declined` item stays in the items table. Either way, the section title gets the status in parentheses.
 
 Item columns. Each cell holds only what its column says:
 
@@ -24,7 +24,7 @@ Item columns. Each cell holds only what its column says:
 | Implementing | implementation (`tlc-implement`) in progress |
 | Done | delivered and proven, and its row moved to the Done table |
 | Declined | decided not to do |
-| Rejected | out of the current scope, left for another time |
+| Rejected | out of the current scope, left for another time; its row moved to the Done table |
 
 Increment status:
 

@@ -15,7 +15,7 @@ Keeps a heavy piece of work small: one research folder, a `pending.md` that trac
 
 1. **Resolve the active research.** It is the `docs/research/<topic>/` folder this conversation is working in. "The pending.md", "add an item", "item 4" always mean that folder's `pending.md`. If the conversation, memory or context points at more than one research folder or `pending.md` and nothing in the current request settles which, stop and ask. Never pick one, and never write to a `pending.md` you found by searching.
 2. **Read the research's `AGENTS.md`** unless it is already in context. Claude Code skips a subfolder's `AGENTS.md` when the repository has a `CLAUDE.md` above it, so do not count on it having loaded.
-3. **Read the active `pending.md` before editing it.** Edit it in place and keep everything you do not change byte-identical. If it has no increments table, create it before anything else (see The increments table). If its items table holds `Done` items, move them to the Done table right then, creating the table when missing (see Move to the Done table).
+3. **Read the active `pending.md` before editing it.** Edit it in place and keep everything you do not change byte-identical. If it has no increments table, create it before anything else (see The increments table). If its items table holds `Done` or `Rejected` items, move them to the Done table right then, creating the table when missing (see Move to the Done table).
 4. **Read `progress.md` when resuming or entering an increment you did not start**, to learn what was decided and done so far. A research that has none yet is not an error: see Log progress.
 5. **Validate after every edit to `pending.md` or `progress.md`:** `python3 <this skill>/scripts/pending.py check <pending.md>`, which checks both files. Fix every reported line before replying. Use `pending.py next <pending.md>` for the next item number and the next increment number; never count by eye.
 
@@ -55,7 +55,7 @@ Name every inferred status in the reply and ask about the ones the evidence does
 
 ## The items table
 
-The items table holds every item that is not `Done`. Columns `# | Item | Status | Depends on | Increment | Details` (pt-BR: `# | Item | Estado | Depende de | Incremento | Detalhe`). Each cell holds only what its column defines, and `pending.py check` enforces it:
+The items table holds every item that is not `Done` or `Rejected`. Columns `# | Item | Status | Depends on | Increment | Details` (pt-BR: `# | Item | Estado | Depende de | Incremento | Detalhe`). Each cell holds only what its column defines, and `pending.py check` enforces it:
 
 | Column | Holds | Never |
 |---|---|---|
@@ -72,9 +72,9 @@ Dates are always `YYYY-MM-DD`, in both languages.
 
 ## The Done table
 
-Sits right below the items table, under `## Done Items` (pt-BR `## Itens Feitos`), with the same columns as the items table. It holds every `Done` item and nothing else; the items table holds none. `Declined` and `Rejected` items stay in the items table. A row keeps its `#` and every other cell as it was: moving it is a cut and paste, never a renumbering, and Depends on and sections keep citing the same numbers.
+Sits right below the items table, under `## Done Items` (pt-BR `## Itens Feitos`), with the same columns as the items table. It holds every `Done` and `Rejected` item and nothing else; the items table holds none. `Declined` items stay in the items table. A row keeps its `#` and every other cell as it was: moving it is a cut and paste, never a renumbering, and Depends on and sections keep citing the same numbers.
 
-`pending.py check` fails on a `Done` row in the items table, on a row that is not `Done` in the Done table, and on a number that appears in both tables.
+`pending.py check` fails on a `Done` or `Rejected` row in the items table, on any other row in the Done table, and on a number that appears in both tables.
 
 ## Language
 
@@ -107,7 +107,7 @@ Trigger: the user starts work on a topic that has no folder under `docs/research
 
 1. **Check for a duplicate first.** Compare each item the user asks to add against every item in `pending.md`, in both tables, reading its row and its section. Same goal and scope is a duplicate even when worded differently.
    - **Already present:** add no row and no section. Append what the request brings that the section does not already say, as a dated paragraph (`YYYY-MM-DD: …`) in that item's section; if it brings nothing new, change nothing. Tell the user it is already item N and what you added. Shorten the Details cell only as in Update an item, then run `check`.
-   - **Present but closed** (Done, Declined, Rejected): tell the user and ask whether to reopen it; never reopen it or register a new item on your own. Reopening a `Done` item also moves its row back to the items table, at its numeric place, and drops the `(done)` suffix.
+   - **Present but closed** (Done, Declined, Rejected): tell the user and ask whether to reopen it; never reopen it or register a new item on your own. Reopening a `Done` or `Rejected` item also moves its row back to the items table, at its numeric place, and drops the status suffix.
    - **Partly covered:** the covered part goes to the existing item's section as above; only the uncovered rest becomes a new item.
    - **Unsure whether it is the same item:** ask.
 2. `pending.py next` gives the number N.
@@ -137,15 +137,15 @@ Any new fact (a decision, a blocker, a note from the user) goes into the item's 
 2. Add the suffix to the section title: `(done)`, `(declined)` or `(rejected)`.
 3. Right under the title, add one line pointing to what was delivered or why it closed: increment folder, commit, date.
 4. A `Done` item from an increment with independent verification closes only with no open gap: each gap is fixed in the same increment, or goes to the user and enters `pending.md` as a new item only with their acceptance recorded in its section.
-5. A `Done` item is not closed until its row is in the Done table (see Move to the Done table).
+5. A `Done` or `Rejected` item is not closed until its row is in the Done table (see Move to the Done table).
 6. Run `check`.
 
 ### Move to the Done table
 
-Trigger: closing an item as `Done`, or finding `Done` rows in the items table.
+Trigger: closing an item as `Done` or `Rejected`, or finding such rows in the items table.
 
 1. If `pending.md` has no Done table, create it right below the items table: heading `## Done Items` (pt-BR `## Itens Feitos`) and the same header row as the items table.
-2. Cut each `Done` row from the items table and paste it into the Done table in ascending `#` order, unchanged.
+2. Cut each `Done` and `Rejected` row from the items table and paste it into the Done table in ascending `#` order, unchanged.
 3. Run `check`.
 
 Say in the reply which items moved.
@@ -212,7 +212,7 @@ Read `pending.md` and the section of the latest increment in `progress.md`, and 
 - `Item '…' differs from section title '…'`: the row and the section drifted. Make them identical; the section title wins unless the user renamed the item.
 - `Increment NNN has no folder`: create the folder, or fix the number; never point at an increment that does not exist.
 - `progress.md line N: …`: an entry or section heading in `progress.md` breaks the format. Entries are `- YYYY-MM-DD · <type> · <text>` with a type from the file's language; headings are `## Increment NNN — <slug>` with the slug of an existing folder.
-- `Status is Done; move the row to the Done table …`: a `Done` row is still in the items table. Move it (see Move to the Done table).
-- `only Done items belong in the Done table`: a row in the Done table is not `Done`. Move it back to the items table, or fix its status.
+- `Status is Done; move the row to the Done table …` (or `Rejected`): such a row is still in the items table. Move it (see Move to the Done table).
+- `only Done and Rejected items belong in the Done table`: a row in the Done table has another status. Move it back to the items table, or fix its status.
 - `expected one items table and at most one Done table …`: the header row differs from the template (renamed column, extra column), or a third table has it. Restore the template's header for the file's language.
 - `section N has no row in the table`: an item was half-removed. Restore the row, or finish the removal (see Remove an item).

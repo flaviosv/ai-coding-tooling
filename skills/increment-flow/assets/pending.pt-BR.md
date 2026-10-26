@@ -1,10 +1,10 @@
 # Pendências — {{TOPIC}}
 
-Itens para não esquecer nesta pesquisa. Uma tabela de incrementos (andamento de cada incremento), uma tabela de itens para o que ainda não está feito e uma tabela de feitos para o que está; cada item tem, abaixo, uma seção com o mesmo número, onde fica o texto completo.
+Itens para não esquecer nesta pesquisa. Uma tabela de incrementos (andamento de cada incremento), uma tabela de itens para o que ainda não está feito e uma tabela de feitos para o que está concluído ou fora do escopo; cada item tem, abaixo, uma seção com o mesmo número, onde fica o texto completo.
 
 - O `#` é o número da seção. Ele nunca muda e nunca é reaproveitado: "item N" e "§N" são sempre a seção N.
 - Item novo entra no fim da tabela, com o próximo número livre.
-- Item `Feito` vai, com a linha inalterada e mantendo o `#`, da tabela de itens para a tabela de feitos logo abaixo. Item `Recusado` ou `Rejeitado` fica na tabela de itens. Nos dois casos, o título da seção ganha o estado entre parênteses.
+- Item `Feito` ou `Rejeitado` vai, com a linha inalterada e mantendo o `#`, da tabela de itens para a tabela de feitos logo abaixo. Item `Recusado` fica na tabela de itens. Nos dois casos, o título da seção ganha o estado entre parênteses.
 
 As colunas dos itens. Cada célula guarda só o que a coluna diz:
 
@@ -24,7 +24,7 @@ As colunas dos itens. Cada célula guarda só o que a coluna diz:
 | Desenvolvimento | implement (`tlc-implement`) em andamento |
 | Feito | entregue e provado, com a linha movida para a tabela de feitos |
 | Recusado | decidido não fazer |
-| Rejeitado | fora do escopo atual, fica para outro momento |
+| Rejeitado | fora do escopo atual, fica para outro momento; a linha vai para a tabela de feitos |
 
 Estado do incremento:
 

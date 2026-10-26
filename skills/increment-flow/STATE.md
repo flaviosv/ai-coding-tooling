@@ -99,3 +99,10 @@
 - **Trade-off**: Supersedes AD-001's single table: a closed item now changes tables, and cross-table rules (unique numbers, dependencies, section matching) are checked over both. Same columns keep the move a pure cut and paste, at the cost of a Status column that is always `Done`.
 - **Date**: 2026-10-26
 - **Status**: active
+
+### AD-015
+- **Decision**: `Rejected` items move to the Done table together with `Done` ones; only `Declined` stays in the items table. `pending.py check` flags a `Rejected` row in the items table and any status outside `Done`/`Rejected` in the Done table.
+- **Reason**: User's call: an item left for another time is not work ahead, so it leaves the main table too.
+- **Trade-off**: The `## Done Items` heading now also holds `Rejected` rows, and `Declined` is the one closed status that stays in the items table; the status column tells them apart.
+- **Date**: 2026-10-26
+- **Status**: active
