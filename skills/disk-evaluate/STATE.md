@@ -43,3 +43,10 @@
 - **Trade-off**: the script assumes k3d's container labels (`k3d.cluster`, `k3d.role`) and its `<registry-container>:5000/` image prefix, so kind/minikube clusters are not covered; it needs `jq` on the host.
 - **Date**: 2026-10-01
 - **Status**: active
+
+### AD-007
+- **Decision**: The playbook and Steps 2–4 now cover the user temp directory (`$TMPDIR`), agent worktrees (`.claude/worktrees`, `.worktrees`), and a contents-free `~/Projects` size scan; `rm -rf` targets are suggested as literal paths, never `$(...)`.
+- **Reason**: the 2026-10-24 run found 172GB of leaked test fixtures (`step-tree-*`, `step-work-*`) under `/private/var/folders/.../T` that `du ~` never sees, 14GB of agent worktrees, and 31GB of test-run output; the first Homebrew `rm -rf "$(brew --cache)"` was blocked by Claude Code's safety check, and a whole-directory `du` over the temp dir took over 5 minutes, so sampling by name pattern replaced it.
+- **Trade-off**: the temp-dir scan relies on name-pattern grouping and sampled averages, so sizes are estimates; correlating fixtures to a producer uses metadata and process arguments only, so it is a correlation, not proof of the producing code.
+- **Date**: 2026-10-26
+- **Status**: active

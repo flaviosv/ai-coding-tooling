@@ -74,8 +74,11 @@ docker exec <node> crictl rmi <image-id> ...
 
 ```bash
 brew cleanup -s                # conservative default
-rm -rf "$(brew --cache)"       # full purge of the download cache
+brew --cache                   # resolve the path first (typically ~/Library/Caches/Homebrew), then remove it by literal path
+rm -rf ~/Library/Caches/Homebrew
 ```
+
+Suggest `rm -rf` targets as literal paths: Claude Code's safety check blocks `rm -rf "$(...)"` because the target can't be verified before it runs.
 
 ## 3. Dev / language package caches
 
@@ -110,14 +113,27 @@ rm -rf ~/Library/Caches/com.spotify.client \
        ~/Library/Application\ Support/Google/GoogleUpdater/crx_cache
 ```
 
-## 5. Dev artifacts (`node_modules`)
+## 5. Dev artifacts (`node_modules`, `.venv`, build output)
 
-Safe to suggest for any project not actively being worked on right now — `npm install`/`yarn` rebuilds it:
+Safe to suggest for any project not actively being worked on right now — `npm install`/`yarn`/`uv sync`/`composer install` rebuilds it:
 
 ```bash
-find ~/Projects -maxdepth 4 -name node_modules -type d -exec du -sh {} \;   # size each one first
+find ~/Projects -maxdepth 5 \( -name node_modules -o -name .venv -o -name vendor -o -name dist -o -name build -o -name .terraform -o -name Pods \) -type d -prune -exec du -sk {} + | sort -rn | head -40   # size each one first
 rm -rf ~/Projects/<project>/node_modules                                    # suggest removal selectively, never as a batch
 ```
+
+### Measuring `~/Projects` without reading project contents
+
+When the user says projects are private or must not be read, measure sizes and names only — never open files, grep, or run `git log`/`git diff` inside them:
+
+```bash
+cd ~/Projects && du -sh -- */ | sort -rh                      # per-project totals
+du -h -d 2 . | sort -rh | head -40                            # where the weight sits, two levels down
+find . -maxdepth 5 -name .git -type d -prune -exec du -sk {} + | sort -rn | head -10   # oversized histories
+find ~/Projects -xdev -type f -size +200M -exec du -h {} + | sort -rh                  # large single files
+```
+
+Identical `.git/objects/pack/pack-<hash>.pack` file names across different folders mean the same repository was cloned or copied more than once — report them as duplicates, not as separate histories. Test-output folders (`test-runs`, `.plugin-smoke`, `e2e-*`) can hold tens of GB; if their newest entries are minutes old, a producer is still writing — flag as active and suggest keeping the newest few.
 
 ## 6. Large individual files — manual review only, no blanket command
 
@@ -128,6 +144,51 @@ find ~ -xdev -type f -size +500M -not -path "*/OrbStack/*" -exec du -h {} \; | s
 ```
 
 Typical candidates from past runs: personal `.mov`/`.mp4` recordings in `Movies`/`Downloads`, old `.sql.gz` database backups inside project folders, stale installer `.dmg`/`.zip` files already covered by the Homebrew cache purge above.
+
+## 7. User temp directory (`$TMPDIR`) — leaked test fixtures
+
+`du ~` and `find ~` never see it, yet on 2026-10-24 `/private/var/folders/<xx>/<yyyy>/T` held 172GB: 144,514 entries left by a test harness that created `mkdtemp` directories (`step-tree-*`, throwaway git repos of ~17MB; `step-work-*`, scratch dirs of ~8MB) and never removed them. Check it on every run; a plain `du` over it can take over 5 minutes, so run it in the background with a long timeout.
+
+```bash
+getconf DARWIN_USER_TEMP_DIR                                   # resolve the temp dir, then use it as a literal path below
+du -sh /private/var/folders 2>/dev/null                        # background it; slow when entries number in the 100k+
+ls -A "$T" | wc -l                                             # entry count, fast
+ls -A "$T" | sed -E 's/[0-9a-zA-Z]{6,}/X/g; s/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -15   # group by name pattern
+find "$T" -maxdepth 1 -name '<pattern>' | wc -l                # count per pattern
+find "$T" -maxdepth 1 -name '<pattern>' | head -25 | xargs -I{} du -sk {}                           # sample sizes; estimate = average × count
+find "$T" -maxdepth 1 -name '<pattern>' -exec stat -f '%Sm' -t '%Y-%m-%d' {} + | sort | uniq -c    # creation-day histogram
+ps -axo pid,etime,command | grep -E '<pattern>|<project-path>' | grep -v grep                       # is a producer running right now
+```
+
+In zsh an unquoted glob held in a loop variable does not expand and silently counts 0 — use `find -name`. Do not walk the whole directory with `du -d`/`find -exec du`; sample instead.
+
+To tie fixtures to a producer without reading the project: compare the name stems with the project's run/folder names, the creation-day histogram with the project's worktree dates (`stat -f '%SB'`), and the running processes whose arguments point into the project. Report it as a correlation and name the root-cause fix (the producer must clean up its own temp dirs). Fixtures are disposable, but re-check `ps` immediately before suggesting removal, filter by age so a live run's fixtures are skipped, and suggest it by literal path — expect ~2–3GB/min with millions of small files, so run it in the background:
+
+```bash
+find <literal-temp-dir> -maxdepth 1 -mindepth 1 \( -name 'step-tree-*' -o -name 'step-work-*' \) -mmin +60 -exec rm -rf {} +
+```
+
+`~/.Trash` and `~/Library/Group Containers/*OrbStack*` return "Operation not permitted" without Full Disk Access — list them as unmeasurable in the report, not as empty.
+
+## 8. Agent worktrees inside projects
+
+Agent and review tooling leaves git worktrees under `<project>/.claude/worktrees` and `<project>/.worktrees` (10GB and 4.3GB in the 2026-10-24 run). Size them with `du -h -d 1`, list the registered ones with `git -C <project> worktree list`, and suggest removal through git so metadata stays consistent:
+
+```bash
+git -C <project> worktree remove <path>   # no --force: refuses worktrees with modified or untracked files, which must be reported for the user to decide
+git -C <project> worktree prune
+```
+
+Removing a worktree does not delete its branch, so committed work survives; `--force` discards uncommitted work and needs the user's explicit say-so per worktree. A `prunable` entry in `worktree list` points at a path that no longer exists and is safe to prune. A `claude --plugin-dir` or editor process pointing into a worktree means it is in use.
+
+## 9. Other places that grow quietly
+
+Rank these with `du -sh ~/Library/Caches/* ~/Library/Application\ Support/* ~/.cache/* 2>/dev/null | sort -rh | head -20` rather than relying on the fixed lists above.
+
+- `~/Library/Application Support/<IDE>` keeps one directory per installed version (`GoLand2026.1`, `GoLand2026.2`, …) — older versions are candidates, but they hold settings, so flag them rather than bundling.
+- `~/Library/Application Support/Claude/vm_bundles/**/rootfs.img` (~10GB) is the Claude desktop VM disk — not a cache, flag only.
+- `~/Library/Caches/Google/Chrome` (7.6GB) is a browser cache — quit Chrome before suggesting removal.
+- `~/.gradle/caches`, `~/go/pkg/mod` (`go clean -modcache`), `~/Library/Caches/{Cypress,goimports,ms-playwright}` and `~/.cache/codex-runtimes` are re-fetched on next use.
 
 ## Verification commands (for the user to run after they act on a suggestion)
 
