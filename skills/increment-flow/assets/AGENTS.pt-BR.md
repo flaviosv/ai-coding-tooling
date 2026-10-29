@@ -21,5 +21,5 @@ Esta pasta guarda uma pesquisa, tocada em incrementos pequenos e numerados. Carr
 - **Ao fechar um incremento, devolva o aprendizado** à pesquisa inicial (a decisão, o item ou a evidência que ele mudou), apontando para a pasta do incremento.
 - **Mantenha o `progress.md` em dia.** Quando um incremento decide, conclui, muda, customiza ou adiciona algo que vale saber depois, acrescente uma linha na seção desse incremento. Um resumo, não uma transcrição.
 - **`IC <x>` é o incremento `<x>`** (`IC 3` → `003-<slug>/`), nunca o item `<x>`.
-- **Em repositórios Azure DevOps, cada incremento pode ter um `wit.md`** ligando-o a uma Task sob uma User Story; a skill `increment-flow` e o `scripts/wit.py` dela mantêm o arquivo e o estado da Task (`New`, `Active`, `Resolved`) em dia. Nunca edite à mão.
+- **Em repositórios Azure DevOps, crie a Task ao abrir o incremento**, mesmo só com o título; complete sua descrição após o primeiro design ou plano e registre o vínculo em `wit.md`; a skill `increment-flow` e o `scripts/wit.py` dela mantêm o arquivo e o estado da Task (`New`, `Active`, `Closed`) em dia. Nunca edite à mão.
 - **Versionada:** {{VERSIONED}}

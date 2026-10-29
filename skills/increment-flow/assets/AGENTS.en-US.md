@@ -21,5 +21,5 @@ This folder holds one research, worked in small numbered increments. Load the `i
 - **On closing an increment, feed the learning back** into the initial research (the decision, item or evidence it changed), pointing to the increment folder.
 - **Keep `progress.md` current.** When an increment decides, finishes, changes, customizes or adds something worth knowing later, append one line to that increment's section. A summary, not a transcript.
 - **`IC <x>` means increment `<x>`** (`IC 3` → `003-<slug>/`), never item `<x>`.
-- **On Azure DevOps repos, each increment can have a `wit.md`** linking it to a Task under a User Story; the `increment-flow` skill and its `scripts/wit.py` keep it and the Task's state (`New`, `Active`, `Resolved`) in step. Never edit it by hand.
+- **On Azure DevOps repos, create the Task when opening the increment**, with only its title if needed; complete its description after the first design or plan and record the link in `wit.md`; the `increment-flow` skill and its `scripts/wit.py` keep it and the Task's state (`New`, `Active`, `Closed`) in step. Never edit it by hand.
 - **Versioned:** {{VERSIONED}}

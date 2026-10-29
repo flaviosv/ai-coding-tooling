@@ -1,10 +1,10 @@
 ---
 name: increment-flow
-description: Runs a heavy feature or research as small numbered increments under docs/research/TOPIC/ — starts a new research (pending.md with the initial item, folder 001-slug, AGENTS.md), opens the next increment folder in order, manages pending.md (add, update, close, remove items, keep the increments table, the items table and the Done table consistent and validated by script), keeps progress.md, a short running summary of each increment's decisions, completed tasks, changes, customizations and additions, and, on Azure DevOps repos only, links each increment to a Task under an optional User Story (or a new Feature agreed in a chat) and moves it New / Active / Resolved with the increment. Use when the user says "start a new research", "new research on X", "add a pending item", "add to pending.md", "mark item N done", "update the status of item N", "open a new increment", "next increment", "IC 3", "where was I in the research", "log this in progress", "what has been done so far", "nova pesquisa", "adiciona no pending", "abre o próximo incremento", "registra no progresso". Do NOT use to run discovery, planning or implementation themselves, or for TODO lists, backlogs or work items outside a docs/research folder.
+description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.8.0
+  version: 1.9.0
 ---
 
 # Increment Flow
@@ -97,7 +97,7 @@ Trigger: the user starts work on a topic that has no folder under `docs/research
 5. Create `001-<slug>/` (en-US slug `initial-research`, pt-BR `pesquisa-inicial`, unless the user names it).
 6. Create `progress.md` (never `progress.<lang>.md`) from `assets/progress.<lang>.md`, with `{{TOPIC}}`, `{{INCREMENT}}` = `001`, `{{SLUG}}` = the folder slug from step 5 and `{{ORIGIN}}` = `Started with the research.` (pt-BR `Começou junto com a pesquisa.`).
 7. Create `AGENTS.md` from `assets/AGENTS.<lang>.md`, with `{{VERSIONED}}` filled from step 3 (see the next block).
-8. Link `001` to Azure DevOps (see Azure DevOps).
+8. Crie a Task do `001` no Azure DevOps agora, antes de iniciar discovery ou plano (veja Azure DevOps).
 9. Run `pending.py check`. Then offer to start the discovery with `tlc-discover`.
 
 `{{VERSIONED}}` values:
@@ -130,7 +130,7 @@ Move the status the moment the work moves, not when the increment closes:
 
 The first time an item of an increment leaves `Open`, set that increment to `In Progress` in the increments table. It also becomes `In Progress` the moment anything else is done in it, such as a discovery, a plan or any work without an item. Each time it becomes `In Progress`, sync its Azure DevOps Task to `Active` (see Azure DevOps).
 
-Any new fact (a decision, a blocker, a note from the user) goes into the item's section as a dated paragraph. Only shorten the Details cell when it would otherwise stop describing what is left. Run `check`.
+Any new fact (a decision, a blocker, a note from the user) goes into the item's section as a dated paragraph; when it changes what the increment's Azure DevOps Task says, keep the card true (see Azure DevOps). Only shorten the Details cell when it would otherwise stop describing what is left. Run `check`.
 
 ### Close an item
 
@@ -162,35 +162,45 @@ Only for an item registered by mistake: no work started, not cited elsewhere. De
 3. `pending.py next` gives the increment number; create `NNN-<slug>/` and append its row to the increments table: Title, Status `Open` (`Aberto`).
 4. Set the Increment column to `NNN` on every item the increment works, and move their status as the work starts.
 5. Append the section `## Increment NNN — <slug>` (pt-BR `## Incremento NNN — <slug>`) at the end of `progress.md`, with the same slug as the folder; create the file first if the research has none (see Log progress).
-6. Link the increment to Azure DevOps (see Azure DevOps).
+6. Crie a Task do incremento no Azure DevOps nesta abertura, antes de iniciar discovery ou plano (veja Azure DevOps).
 7. When the increment runs RPI, its documents go in `NNN-<slug>/`.
+8. Ao concluir o primeiro design ou plano, complete a descrição da mesma Task com `wit.py update`; não crie outra Task.
 
 ### Close an increment
 
 1. **Check the work is committed.** `git status --short` must show nothing the increment changed or produced: code, tests, docs outside the research and, when the research is versioned, its folder and files. Anything uncommitted: stop, tell the user what is pending, and leave the increment `In Progress` until it is committed. A research kept out of git is exempt for its own folder; the changes outside it still count.
-2. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table, then sync its Azure DevOps Task to `Resolved` (see Azure DevOps).
+2. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table, then sync its Azure DevOps Task to `Closed` (see Azure DevOps).
 3. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
 4. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
 5. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
 
 ### Azure DevOps
 
-An increment can be tracked in Azure DevOps as a Task under a User Story, moving with the increment. Only for repositories hosted on Azure DevOps.
+Em repositórios Azure DevOps, crie a Task no momento em que o incremento é aberto. O título basta para a abertura; não espere discovery, design, plano ou confirmação de uma User Story já conhecida. A Task acompanha o estado do incremento.
 
 **Gate.** `python3 <this skill>/scripts/wit.py ado` exits 0 only when a git remote is Azure DevOps. Any other exit: skip every Azure DevOps step in this skill, silently. No question, no `wit.md`. A GitHub repository never sees any of it.
 
-**`NNN-<slug>/wit.md`** holds the link: a table with Organization, Project, User Story, Task, State and Updated. It is written and read only by `wit.py`, in English whatever the research's language (ids, links and states, no prose). `User Story | none` and `Task | none` mean the user was asked and there is no User Story. A folder without `wit.md` was never asked.
+**`NNN-<slug>/wit.md`** guarda organização, projeto, User Story, Task, estado e data. Somente `wit.py` o lê e escreve. `User Story | none` com uma Task indica criação sem pai; ambos como `none` registram a decisão explícita de não rastrear no ADO. A ausência de `wit.md` indica criação pendente, não uma pergunta obrigatória ao usuário.
 
-**Link an increment.** Ask once, in one line, when the increment is opened (and for `001` when the research starts): is there an Azure DevOps User Story for it, as an id or a link? Offer the User Story from the nearest earlier increment's `wit.md` as the default. User Story optional, three answers:
-- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it with Activity `30 - Desenvolvimento` and Original Estimate `8`, and writes `wit.md`. The title is a short pt-BR title of the work itself; the description is complete, not a summary. Both follow Card text.
-- **None:** `wit.py none <NNN-slug/>`.
-- **A new Feature:** see Create a Feature, then link as above.
+**Criar na abertura.** Reutilize a User Story já definida para a pesquisa; na ausência dela, reutilize a do `wit.md` do incremento anterior e informe o vínculo adotado. Só pergunte quando houver ambiguidade real ou o usuário tiver indicado outro destino. Se não houver User Story conhecida, crie a Task sem pai no projeto do repositório; a definição do pai pode vir depois. A ausência de descrição ou de User Story não adia a criação. Um pedido explícito para não rastrear no ADO continua sendo respeitado com `wit.py none`.
 
-Once `wit.md` exists the increment is never asked again, unless the user volunteers a User Story for one marked `none`: run `create` then, which replaces it.
+- Com User Story: `wit.py create <NNN-slug/> --us <ref> --title …`.
+- Sem User Story: `wit.py create <NNN-slug/> --project <projeto> --title …`.
+- Se o design ou plano já estiver pronto, forneça também `--description …` com o texto completo.
+- A Task herda a área da User Story quando disponível; usa Activity `30-Desenvolvimento` e estimativa original `8`, conforme o processo já verificado.
+- A Task nasce `New`; se o incremento já estiver `In Progress`, sincronize para `Active` nesta mesma abertura.
+- Confirme a criação por leitura posterior e registre o vínculo em `wit.md` antes de anunciar a tarefa como criada. Se houver falha de rede ou autenticação, registre a pendência e continue o trabalho local; não trate a Task como criada.
 
-**Increment already in progress with no `wit.md`** (opened before this existed): when it becomes `In Progress`, `wit.py state` exits 3. Ask the same question once, answer it as above, then move the Task to `Active`.
+**Completar após design ou plano.** Quando o primeiro dos dois estiver pronto, atualize a descrição da Task existente com `wit.py update <NNN-slug/> --description …`; não espere o segundo documento nem a implementação. Se o outro documento trouxer mudança relevante depois, atualize a mesma Task. O comando relê o ADO, confirma a descrição e preserva o vínculo. Um incremento retomado com documento pronto e descrição pendente recebe a atualização na retomada.
 
-**Card text.** Everything written to Azure DevOps (titles and descriptions of Features, User Stories and Tasks) is pt-BR, whatever the research's language, and describes the card itself and nothing else. Azure DevOps knows nothing of increments: no `IC`, increment numbers or slugs, item numbers, research or topic folder names, `.md` files, paths or any other artifact of this flow. Anyone must be able to read the card and understand it without leaving Azure DevOps. **The title is understandable on its own:** a clear sentence-style pt-BR title saying what the card delivers, with no abbreviations, codes or jargon only this team's flow uses. **The description is complete, never a summary,** in four labelled parts, each on its own line starting with the label and a colon: `O que será feito:` (what is going to be done), `Por quê:` (why), `Objetivos:` (the goals) and `Como validar:` (how it will be validated). Draw them from the item sections, the research findings and what the user said, in plain text with line breaks and `- ` bullet lines, without any of the references above. `wit.py` refuses text that carries an `IC <n>` or increment reference, a `.md` file or `docs/research`, and a description missing any of the four labels.
+**Keep the card true.** Whenever something changes what the Task says (scope added, removed or narrowed; the reason or justification; the goals; the validation method; the approach; or what the title promises), whether it comes from the user, a decision, a finding, a design or plan change or a blocker, update the Task in the same turn you record the change in `pending.md` or `progress.md`:
+- Rewrite the whole description so it states the current truth in the four labelled parts, never an appended diff, and run `wit.py update <NNN-slug/> --description …`. Add `--title …` when the title no longer says what is delivered. Texto do cartão applies in full: no references to this flow.
+- Skip it for changes that leave the card's content as it is: status moves, progress notes, commits, wording of the research. No `wit.md`, or `none`: skip silently.
+- Say in the reply that Task #N was updated and what changed, in one line. If `az` fails, say so and redo the update at the next sync or when the increment is resumed.
+
+**Texto do cartão.** Título e descrição são em pt-BR e descrevem o trabalho de forma autossuficiente: sem números de IC, nomes de pastas da pesquisa, itens do pending, arquivos `.md` ou caminhos desse fluxo. O título diz o que será entregue, sem depender do contexto da conversa. A descrição pode ficar ausente somente na abertura anterior ao primeiro design ou plano; quando preenchida, deve ser completa e ter quatro partes, cada uma iniciada pelo rótulo: `O que será feito:`, `Por quê:`, `Objetivos:` e `Como validar:`. Preserve o escopo e os critérios definidos no documento disponível. A exceção de descrição ausente vale para a Task inicial, não para Features ou User Stories.
+
+**Incremento retomado sem Task.** Crie a Task assim que detectar a lacuna, usando a User Story conhecida e a descrição completa se o primeiro design ou plano já existir. A pergunta antiga sobre vínculo não é motivo para continuar adiando a criação.
 
 **Keep the Task in step.** After the increments table changes, run `wit.py state <NNN-slug/> <state>`. It does nothing when `wit.md` says `none` and when the Task is already there:
 
@@ -198,9 +208,9 @@ Once `wit.md` exists the increment is never asked again, unless the user volunte
 |---|---|
 | `Open` | `New` (what `create` leaves it in) |
 | `In Progress` | `Active` |
-| `Done`, after the commit check | `Resolved` |
+| `Done`, after the commit check | `Closed` |
 
-If Azure DevOps rejects a state (the process names it differently), report the error and ask; never pick another state. `Closed` is the user's, never set it. Any other `az` failure (login, network, permission): say so, leave the table and the work as they are, and retry on the next sync; a Task out of step blocks nothing. `az login` is the user's step.
+If Azure DevOps rejects a state (the process names it differently), report the error and ask; never pick another state. Any other `az` failure (login, network, permission): say so, leave the table and the work as they are, and retry on the next sync; a Task out of step blocks nothing. `az login` is the user's step.
 
 **Create a Feature.** When the user asks for a Feature instead of giving a User Story, this is a conversation first, in this order, short and one decision at a time:
 1. The **Feature**: title and goal.
@@ -209,9 +219,9 @@ If Azure DevOps rejects a state (the process names it differently), report the e
 
 Propose a full draft of the three levels from what the user said, adjust it with them, and show the final tree. **Create nothing in Azure DevOps before the user approves that tree.** Then, in pt-BR:
 1. `wit.py item --type Feature --title … --description … --project <project>`. The project defaults to the one in the Azure DevOps remote URL; say which.
-2. For each User Story: `wit.py item --type "User Story" --parent <feature id> --title … --description …`. Its description is complete (see Card text) and lists the planned Tasks, so they are findable in Azure DevOps. The Feature's description is complete too.
+2. For each User Story: `wit.py item --type "User Story" --parent <feature id> --title … --description …`. Its description is complete (veja Texto do cartão) and lists the planned Tasks, so they are findable in Azure DevOps. The Feature's description is complete too.
 3. Log one `addition` line in `progress.md` with the Feature and User Story ids.
-4. Link the current increment to the User Story it serves with `create`. The other planned Tasks are created as their increments open, offering that User Story as the default.
+4. Link the current increment to the User Story it serves with `create`. The other planned Tasks are created as their increments open, reutilizando essa User Story sem nova confirmação, salvo ambiguidade ou instrução contrária.
 
 If Azure DevOps rejects a type name (`Feature`, `User Story`, `Task` are the Agile process's; Scrum uses Product Backlog Item), report it and ask for the right one.
 
@@ -221,8 +231,9 @@ Trigger: inside an increment, a decision is made, a task finishes, something cha
 
 1. Append one line at the end of that increment's section in `progress.md`: `- YYYY-MM-DD · <type> · <text>`. Types, en-US / pt-BR: `decision` / `decisão`, `done` / `feito`, `change` / `mudança`, `customization` / `customização`, `addition` / `adição`.
 2. The text is one sentence of up to 200 characters. Say what was decided or done and, when useful, point to the file or item (`item 4`) instead of repeating it. Not a transcript: no attempts, no reasoning, nothing already clear from a commit or the item's section.
-3. Entries go in the order they happen and are never rewritten; a later decision that reverses an earlier one is a new `decision` line.
-4. Run `check`.
+3. A `decision` or `change` that alters what the increment's Azure DevOps Task says also updates the Task (see Azure DevOps, Keep the card true).
+4. Entries go in the order they happen and are never rewritten; a later decision that reverses an earlier one is a new `decision` line.
+5. Run `check`.
 
 **A research already in progress with no `progress.md`:** create it at that point from `assets/progress.<lang>.md` (language from `pending.md`; the created file is named `progress.md`), with `{{INCREMENT}}` and `{{SLUG}}` of the increment in play and `{{ORIGIN}}` = `Started on YYYY-MM-DD, in the middle of the research: earlier events are not recorded here; see pending.md and the increment folders.` (pt-BR `Criado em YYYY-MM-DD, com a pesquisa em andamento: os eventos anteriores não estão registrados aqui; veja o pending.md e as pastas dos incrementos.`). Do not reconstruct history or fill in earlier increments. Tell the user the file starts mid-flow. If the increment in play itself began before the file, its section is partial by design; log from now on.
 
@@ -248,11 +259,12 @@ Read `pending.md` and the section of the latest increment in `progress.md`, and 
 
 **Close.** User: "item 3 is done, commit a1b2c3d". Actions: Status `Done`; title `## 3 — <title> (done)`; under it `Done in increment 004 (a1b2c3d, 2026-10-14).`; move row 3 to the Done table, creating `## Done Items` below the items table if the file has none; `check`.
 
-**Azure DevOps.** User: "open the next increment" in a repository whose remote is `dev.azure.com`. Actions: `wit.py ado` exits 0; open `004-…` as usual; ask for its User Story, offering #50 from `003`'s `wit.md`; user says "50": `wit.py create 004-… --us 50 --title "Limitar reenvio de cobrança a 5 tentativas" --description "…"` prints the Task id and writes `wit.md`. The first item moves to `Implementing`, so the increment is `In Progress` and `wit.py state 004-… Active`. On a GitHub remote, `wit.py ado` exits 1 and none of this happens.
+**Azure DevOps.** Usuário: "abra o próximo incremento". O remoto é Azure DevOps e o incremento anterior usa a User Story #50. Abra a pasta e crie imediatamente a Task com `wit.py create 004-… --us 50 --title "Validar a instalação independente dos agentes"`; não espere o plano. Ao começar o trabalho, sincronize para `Active`. Quando o primeiro design ou plano estiver pronto, preencha as quatro partes da descrição com `wit.py update`. Se não houver pai conhecido, crie com `--project` e deixe o pai para depois. Em outros remotos, pule os passos do ADO conforme o gate.
+
 
 ## Troubleshooting
 
-- `wit.py state` exits 3: the increment has no `wit.md`, so the user was never asked. Ask (see Azure DevOps), then retry.
+- `wit.py state` sai 3: falta `wit.md`; crie a Task imediatamente usando o vínculo conhecido e repita a sincronização.
 - `--project is required when the item has no parent`: a Feature has no parent to take the project from; pass `--project`.
 
 - `no increments table`: the research predates the table, or the header was renamed. Create it as described in The increments table.

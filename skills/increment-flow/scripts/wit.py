@@ -4,15 +4,16 @@
 Usage:
   wit.py ado                                   exit 0 when a git remote is Azure DevOps, 1 otherwise
   wit.py item   --type <type> --title <text> --description <text> [--parent <id|url>] [--project <name>]
-  wit.py create <increment-dir> --us <id|url> --title <text> --description <text>
+  wit.py create <increment-dir> --title <text> [--us <id|url>] [--project <name>] [--description <text>]
+  wit.py update <increment-dir> --description <text> [--title <text>]
   wit.py none   <increment-dir>
-  wit.py state  <increment-dir> New|Active|Resolved
+  wit.py state  <increment-dir> New|Active|Closed
 
 `item` creates any work item (Feature, User Story, ...) under an optional parent and prints one JSON
-line with its id, url, type, state and project. `create` checks the User Story exists, creates a Task (Activity "30 - Desenvolvimento", Original Estimate 8), makes the Story its parent and writes
+line with its id, url, type, state and project. `create` optionally checks the User Story, creates a Task (Activity "30-Desenvolvimento", Original Estimate 8), makes the Story its parent when supplied and writes
 <increment-dir>/wit.md. `none` writes wit.md with "none" (no User Story, do not ask again).
 `state` moves the Task; it exits 0 doing nothing when wit.md says none, and exits 3 when there is no
-wit.md yet (the caller has not asked the user). Needs `az` with the azure-devops extension, logged in.
+wit.md yet (the Task has not been created). Needs `az` with the azure-devops extension, logged in.
 """
 import argparse
 import html
@@ -26,9 +27,9 @@ from pathlib import Path
 
 WIT_FILE = "wit.md"
 NONE = "none"
-STATES = ["New", "Active", "Resolved"]
+STATES = ["New", "Active", "Closed"]
 NOT_ASKED = 3
-TASK_FIELDS = ["Microsoft.VSTS.Common.Activity=30 - Desenvolvimento", "Microsoft.VSTS.Scheduling.OriginalEstimate=8"]
+TASK_FIELDS = ["Microsoft.VSTS.Common.Activity=30-Desenvolvimento", "Microsoft.VSTS.Scheduling.OriginalEstimate=8"]
 ORG_FROM_URL = re.compile(r"^(https://dev\.azure\.com/[^/]+|https://[^/.]+\.visualstudio\.com)", re.I)
 ID_FROM_REF = re.compile(r"(?:_workitems/edit/|#|^)(\d+)/?$")
 ROW = re.compile(r"^\| (.+?) \| (.*?) \|$")
@@ -66,7 +67,13 @@ def parse_ref(ref):
 
 
 def web_url(item):
-    return item["_links"]["html"]["href"]
+    html_link = item.get("_links", {}).get("html", {}).get("href")
+    if html_link:
+        return html_link
+    api_url = item.get("url", "")
+    if re.search(r"/_apis/wit/workitems/\d+$", api_url, re.I):
+        return re.sub(r"/_apis/wit/workitems/\d+$", f"/_workitems/edit/{item['id']}", api_url, flags=re.I)
+    fail(f"work item #{item.get('id')}: no supported URL in response")
 
 
 def read_wit(path):
@@ -94,14 +101,19 @@ def cmd_none(inc_dir):
     print(f"{inc_dir.name}: no User Story, wit.md says none")
 
 
-def make_item(item_type, title, description, parent, project, org, fields=()):
+def validate_text(title, description, require_description=True):
     for text in (title, description):
         leak = FLOW_LEAK.search(text)
         if leak:
             fail(f"'{leak.group(0)}' refers to the increment flow; Azure DevOps text must describe the card itself")
-    missing = [label for label in DESCRIPTION_LABELS if label.lower() not in description.lower()]
-    if missing:
-        fail(f"description lacks: {', '.join(missing)}")
+    if description or require_description:
+        missing = [label for label in DESCRIPTION_LABELS if label.lower() not in description.lower()]
+        if missing:
+            fail(f"description lacks: {', '.join(missing)}")
+
+
+def make_item(item_type, title, description, parent, project, org, fields=()):
+    validate_text(title, description, require_description=item_type != "Task")
     parent_id = None
     if parent:
         parent_id, parent_org = parse_ref(parent)
@@ -111,7 +123,8 @@ def make_item(item_type, title, description, parent, project, org, fields=()):
         fail("--project is required when the item has no parent")
     item = az(
         "work-item", "create", "--type", item_type, "--project", project,
-        "--title", title, "--description", html.escape(description).replace("\n", "<br>"),
+        "--title", title,
+        *(["--description", html.escape(description).replace("\n", "<br>")] if description else []),
         *(["--fields", *fields] if fields else []),
         org=org,
     )
@@ -132,23 +145,56 @@ def cmd_item(item_type, title, description, parent, project):
                       "state": item["fields"]["System.State"], "project": project}))
 
 
-def cmd_create(inc_dir, ref, title, description):
+def cmd_create(inc_dir, ref, title, description, project=None):
     existing = inc_dir / WIT_FILE
     if existing.exists() and read_wit(existing).get("Task") != NONE:
         fail(f"{existing} already has a Task; use `state` to move it")
-    us_id, org = parse_ref(ref)
-    story = az("work-item", "show", "--id", us_id, org=org)
-    task, project, org = make_item("Task", title, description, ref, None, org, TASK_FIELDS)
+    us_id, org = parse_ref(ref) if ref else (None, None)
+    story = az("work-item", "show", "--id", us_id, org=org) if ref else None
+    fields = TASK_FIELDS + ([f"System.AreaPath={story['fields']['System.AreaPath']}"]
+                            if story and story["fields"].get("System.AreaPath") else [])
+    task, project, org = make_item("Task", title, description, ref, project, org, fields)
+    task = az("work-item", "show", "--id", str(task["id"]), org=org)
     state = task["fields"]["System.State"]
     write_wit(inc_dir, {
         "Organization": org or "default",
         "Project": project,
-        "User Story": link(story),
+        "User Story": link(story) if story else NONE,
         "Task": link(task),
         "State": state,
         "Updated": date.today().isoformat(),
     })
-    print(f"{inc_dir.name}: Task #{task['id']} under {story['fields']['System.WorkItemType']} #{us_id}, state {state}")
+    parent_text = f"under {story['fields']['System.WorkItemType']} #{us_id}" if story else "without a parent"
+    print(f"{inc_dir.name}: Task #{task['id']} {parent_text}, state {state}")
+
+
+def cmd_update(inc_dir, description, title=None):
+    validate_text(title or "", description)
+    path = inc_dir / WIT_FILE
+    if not path.exists():
+        fail(f"{path} not found: create the Task first", NOT_ASKED)
+    rows = read_wit(path)
+    task = LINK.match(rows.get("Task", ""))
+    if not task:
+        fail(f"{inc_dir.name}: no Task to update")
+    org = rows.get("Organization")
+    org = None if org == "default" else org
+    current = az("work-item", "show", "--id", task.group(1), org=org)
+    body = html.escape(description).replace("\n", "<br>")
+    changes = []
+    if current["fields"].get("System.Description") != body:
+        changes += ["--description", body]
+    if title and current["fields"].get("System.Title") != title:
+        changes += ["--title", title]
+    if changes:
+        az("work-item", "update", "--id", task.group(1), *changes, org=org)
+    verified = az("work-item", "show", "--id", task.group(1), org=org)
+    if verified["fields"].get("System.Description") != body or (title and verified["fields"].get("System.Title") != title):
+        fail(f"Task #{task.group(1)}: read-back differs")
+    rows["State"] = verified["fields"]["System.State"]
+    rows["Updated"] = date.today().isoformat()
+    write_wit(inc_dir, rows)
+    print(f"{inc_dir.name}: Task #{task.group(1)} description confirmed")
 
 
 def remote_host(url):
@@ -188,7 +234,7 @@ def cmd_ado():
 def cmd_state(inc_dir, state):
     path = inc_dir / WIT_FILE
     if not path.exists():
-        fail(f"{path} not found: the user has not been asked about a User Story yet", NOT_ASKED)
+        fail(f"{path} not found: create the Task first", NOT_ASKED)
     rows = read_wit(path)
     task = LINK.match(rows.get("Task", ""))
     if rows.get("Task") == NONE or not task:
@@ -218,9 +264,14 @@ def main():
     item.add_argument("--project")
     create = sub.add_parser("create")
     create.add_argument("inc_dir", type=Path)
-    create.add_argument("--us", required=True)
+    create.add_argument("--us")
+    create.add_argument("--project")
     create.add_argument("--title", required=True)
-    create.add_argument("--description", required=True)
+    create.add_argument("--description", default="")
+    update = sub.add_parser("update")
+    update.add_argument("inc_dir", type=Path)
+    update.add_argument("--description", required=True)
+    update.add_argument("--title")
     sub.add_parser("none").add_argument("inc_dir", type=Path)
     state = sub.add_parser("state")
     state.add_argument("inc_dir", type=Path)
@@ -233,7 +284,9 @@ def main():
     if not args.inc_dir.is_dir():
         fail(f"{args.inc_dir} is not an increment folder")
     if args.command == "create":
-        cmd_create(args.inc_dir, args.us, args.title, args.description)
+        cmd_create(args.inc_dir, args.us, args.title, args.description, args.project)
+    elif args.command == "update":
+        cmd_update(args.inc_dir, args.description, args.title)
     elif args.command == "none":
         cmd_none(args.inc_dir)
     else:

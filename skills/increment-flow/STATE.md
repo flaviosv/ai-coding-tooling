@@ -141,3 +141,24 @@
 - **Trade-off**: The labels are fixed pt-BR strings and apply to Features and User Stories too; the script checks the labels exist, not that their content is good.
 - **Date**: 2026-10-29
 - **Status**: active
+
+### AD-021
+- **Decision**: Ao concluir um incremento, sincronizar a Task para `Closed`; o fluxo passa a `New` / `Active` / `Closed`. Substitui apenas o mapeamento de conclusão e a reserva de `Closed` da AD-016.
+- **Reason**: O ADO rejeitou `Resolved` para Task no SYS-COE; o processo oferece `Closed` na categoria Completed, e o usuário instruiu: "Update the skill then to use Closed".
+- **Trade-off**: Se outro processo rejeitar o estado, relatar e perguntar; não escolher outro automaticamente.
+- **Date**: 2026-10-29
+- **Status**: active
+
+### AD-022
+- **Decision**: Em repositórios ADO, criar a Task na abertura do incremento, com título e descrição opcional; reutilizar a User Story conhecida, ou criar sem pai quando ela não estiver definida. Completar a descrição da mesma Task após o primeiro design ou plano, o que vier antes, e confirmar por leitura posterior. Substitui a pergunta obrigatória de vínculo da AD-016 e abre uma exceção temporária à descrição completa da AD-020 para a Task inicial.
+- **Reason**: Pedido do usuário: a Task deve existir quando o IC é aberto; título basta no início e a descrição pode vir após design ou plano.
+- **Trade-off**: O valor de Activity foi corrigido para `30-Desenvolvimento`, confirmado na Task #186428 após o ADO rejeitar a versão com espaços. A Task pode permanecer brevemente sem descrição ou pai; a conclusão do primeiro documento exige completar a descrição, e falha de acesso deve ser registrada sem inventar criação.
+- **Date**: 2026-10-29
+- **Status**: active
+
+### AD-023
+- **Decision**: When something changes what the increment's ADO Task says (scope, reason or justification, goals, validation method, approach, or what the title promises), the Task is updated in the same turn the change is recorded: the whole description is rewritten in the four labelled parts (never an appended diff) via `wit.py update`, with optional `--title`. Status moves, progress notes and commits do not trigger it; no `wit.md` or `none` skips silently.
+- **Reason**: User's rule: scope, reason, justification, validation method and any other changes must reach the Task in ADO, if there is one.
+- **Trade-off**: Detecting "changes what the card says" is model judgment; `wit.py` verifies the read-back, not that an update happened. A rewrite replaces any edit made by hand in ADO.
+- **Date**: 2026-10-29
+- **Status**: active
