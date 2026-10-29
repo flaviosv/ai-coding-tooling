@@ -113,3 +113,10 @@
 - **Trade-off**: `wit.md` is English-only and unchecked by `pending.py check`. State names are fixed to New/Active/Resolved, which is the user's process, not every ADO process (a rejected state is reported, not substituted). `wit.py` was tested against a fake `az`, not a live organization; the JSON shape it reads (`fields`, `_links.html.href`) is unverified against a real tenant.
 - **Date**: 2026-10-29
 - **Status**: active
+
+### AD-017
+- **Decision**: Text written to Azure DevOps (titles and descriptions of Features, User Stories, Tasks) describes only the card, in pt-BR: no `IC`, increment numbers or slugs, item numbers, research names, `.md` files or paths. The Task title is the work's own title (no `IC NNN —` prefix). `wit.py` refuses text matching `IC <n>`, `increment(o) NNN`, a `.md` file or `docs/research`.
+- **Reason**: User's rule: ADO must not know the increment strategy; anyone reads a card and understands it without leaving ADO.
+- **Trade-off**: The guard is a regex over obvious markers; subtler leaks (a slug, an item number written as prose) are left to the SKILL.md rule. The card has no pointer back to its increment; the link lives only in `wit.md`.
+- **Date**: 2026-10-29
+- **Status**: active

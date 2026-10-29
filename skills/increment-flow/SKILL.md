@@ -182,13 +182,15 @@ An increment can be tracked in Azure DevOps as a Task under a User Story, moving
 **`NNN-<slug>/wit.md`** holds the link: a table with Organization, Project, User Story, Task, State and Updated. It is written and read only by `wit.py`, in English whatever the research's language (ids, links and states, no prose). `User Story | none` and `Task | none` mean the user was asked and there is no User Story. A folder without `wit.md` was never asked.
 
 **Link an increment.** Ask once, in one line, when the increment is opened (and for `001` when the research starts): is there an Azure DevOps User Story for it, as an id or a link? Offer the User Story from the nearest earlier increment's `wit.md` as the default. User Story optional, three answers:
-- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it and writes `wit.md`. The title is `IC NNN — <short title in pt-BR>`; the description is 2–5 plain sentences in pt-BR on what the increment does and why, taken from its title and items. Both are always pt-BR, whatever the research's language.
+- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it and writes `wit.md`. The title is a short pt-BR title of the work itself; the description is 2–5 plain pt-BR sentences on what is being done and why. Both follow Card text.
 - **None:** `wit.py none <NNN-slug/>`.
 - **A new Feature:** see Create a Feature, then link as above.
 
 Once `wit.md` exists the increment is never asked again, unless the user volunteers a User Story for one marked `none`: run `create` then, which replaces it.
 
 **Increment already in progress with no `wit.md`** (opened before this existed): when it becomes `In Progress`, `wit.py state` exits 3. Ask the same question once, answer it as above, then move the Task to `Active`.
+
+**Card text.** Everything written to Azure DevOps (titles and descriptions of Features, User Stories and Tasks) is pt-BR, whatever the research's language, and describes the card itself and nothing else. Azure DevOps knows nothing of increments: no `IC`, increment numbers or slugs, item numbers, research or topic folder names, `.md` files, paths or any other artifact of this flow. Anyone must be able to read the card and understand it without leaving Azure DevOps. `wit.py` refuses text that carries an `IC <n>` or increment reference, a `.md` file or `docs/research`.
 
 **Keep the Task in step.** After the increments table changes, run `wit.py state <NNN-slug/> <state>`. It does nothing when `wit.md` says `none` and when the Task is already there:
 
@@ -246,7 +248,7 @@ Read `pending.md` and the section of the latest increment in `progress.md`, and 
 
 **Close.** User: "item 3 is done, commit a1b2c3d". Actions: Status `Done`; title `## 3 — <title> (done)`; under it `Done in increment 004 (a1b2c3d, 2026-10-14).`; move row 3 to the Done table, creating `## Done Items` below the items table if the file has none; `check`.
 
-**Azure DevOps.** User: "open the next increment" in a repository whose remote is `dev.azure.com`. Actions: `wit.py ado` exits 0; open `004-…` as usual; ask for its User Story, offering #50 from `003`'s `wit.md`; user says "50": `wit.py create 004-… --us 50 --title "IC 004 — Reenvio de cobrança" --description "…"` prints the Task id and writes `wit.md`. The first item moves to `Implementing`, so the increment is `In Progress` and `wit.py state 004-… Active`. On a GitHub remote, `wit.py ado` exits 1 and none of this happens.
+**Azure DevOps.** User: "open the next increment" in a repository whose remote is `dev.azure.com`. Actions: `wit.py ado` exits 0; open `004-…` as usual; ask for its User Story, offering #50 from `003`'s `wit.md`; user says "50": `wit.py create 004-… --us 50 --title "Limitar reenvio de cobrança a 5 tentativas" --description "…"` prints the Task id and writes `wit.md`. The first item moves to `Implementing`, so the increment is `In Progress` and `wit.py state 004-… Active`. On a GitHub remote, `wit.py ado` exits 1 and none of this happens.
 
 ## Troubleshooting
 

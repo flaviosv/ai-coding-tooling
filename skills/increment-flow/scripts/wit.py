@@ -31,6 +31,7 @@ NOT_ASKED = 3
 ORG_FROM_URL = re.compile(r"^(https://dev\.azure\.com/[^/]+|https://[^/.]+\.visualstudio\.com)", re.I)
 ID_FROM_REF = re.compile(r"(?:_workitems/edit/|#|^)(\d+)/?$")
 ROW = re.compile(r"^\| (.+?) \| (.*?) \|$")
+FLOW_LEAK = re.compile(r"\bIC[ -]?\d+\b|\bincrement[o]?s?[ -]?\d{3}\b|\.md\b|docs/research", re.I)
 ADO_HOSTS = re.compile(r"^(ssh\.)?dev\.azure\.com$|^vs-ssh\.visualstudio\.com$|\.visualstudio\.com$", re.I)
 SCP_HOST = re.compile(r"^(?:[^@/]+@)?([^:/]+):")
 LINK = re.compile(r"^\[#(\d+)\]\((.+)\)$")
@@ -92,6 +93,10 @@ def cmd_none(inc_dir):
 
 
 def make_item(item_type, title, description, parent, project, org):
+    for text in (title, description):
+        leak = FLOW_LEAK.search(text)
+        if leak:
+            fail(f"'{leak.group(0)}' refers to the increment flow; Azure DevOps text must describe the card itself")
     parent_id = None
     if parent:
         parent_id, parent_org = parse_ref(parent)
