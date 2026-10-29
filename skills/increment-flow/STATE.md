@@ -106,3 +106,10 @@
 - **Trade-off**: The `## Done Items` heading now also holds `Rejected` rows, and `Declined` is the one closed status that stays in the items table; the status column tells them apart.
 - **Date**: 2026-10-26
 - **Status**: active
+
+### AD-016
+- **Decision**: On Azure DevOps repos only (`wit.py ado` checks the git remotes; any other host skips every ADO step silently), each increment can be linked to an ADO Task under a User Story. The user is asked once when the increment opens (or when it first goes `In Progress` if it has no `wit.md`); the answer lives in `NNN-<slug>/wit.md` (`none` when there is no User Story, so it is never asked again). The Task follows the increment: `Open` → `New`, `In Progress` → `Active`, `Done` (after the commit check) → `Resolved`; `Closed` is the user's. Title and description are always pt-BR. A Feature request starts a chat (Feature, User Stories, planned Tasks) and nothing is created in ADO before the user approves the tree. The mechanical steps are `scripts/wit.py` (`az boards` via argument arrays); the conversations stay in the SKILL.md.
+- **Reason**: User's call: ADO traceability without forcing it on GitHub repos or on increments that have no User Story. A script keeps the create/relate/state sequence out of model judgment; `none` in `wit.md` is the "asked" marker, so absence means not asked.
+- **Trade-off**: `wit.md` is English-only and unchecked by `pending.py check`. State names are fixed to New/Active/Resolved, which is the user's process, not every ADO process (a rejected state is reported, not substituted). `wit.py` was tested against a fake `az`, not a live organization; the JSON shape it reads (`fields`, `_links.html.href`) is unverified against a real tenant.
+- **Date**: 2026-10-29
+- **Status**: active

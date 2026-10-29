@@ -1,10 +1,10 @@
 ---
 name: increment-flow
-description: Runs a heavy feature or research as small numbered increments under docs/research/TOPIC/ — starts a new research (pending.md with the initial item, folder 001-slug, AGENTS.md), opens the next increment folder in order, manages pending.md (add, update, close, remove items, keep the increments table, the items table and the Done table consistent and validated by script), and keeps progress.md, a short running summary of each increment's decisions, completed tasks, changes, customizations and additions. Use when the user says "start a new research", "new research on X", "add a pending item", "add to pending.md", "mark item N done", "update the status of item N", "open a new increment", "next increment", "IC 3", "where was I in the research", "log this in progress", "what has been done so far", "nova pesquisa", "adiciona no pending", "abre o próximo incremento", "registra no progresso". Do NOT use to run discovery, planning or implementation themselves, or for TODO lists, backlogs or work items outside a docs/research folder.
+description: Runs a heavy feature or research as small numbered increments under docs/research/TOPIC/ — starts a new research (pending.md with the initial item, folder 001-slug, AGENTS.md), opens the next increment folder in order, manages pending.md (add, update, close, remove items, keep the increments table, the items table and the Done table consistent and validated by script), keeps progress.md, a short running summary of each increment's decisions, completed tasks, changes, customizations and additions, and, on Azure DevOps repos only, links each increment to a Task under an optional User Story (or a new Feature agreed in a chat) and moves it New / Active / Resolved with the increment. Use when the user says "start a new research", "new research on X", "add a pending item", "add to pending.md", "mark item N done", "update the status of item N", "open a new increment", "next increment", "IC 3", "where was I in the research", "log this in progress", "what has been done so far", "nova pesquisa", "adiciona no pending", "abre o próximo incremento", "registra no progresso". Do NOT use to run discovery, planning or implementation themselves, or for TODO lists, backlogs or work items outside a docs/research folder.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.7.0
+  version: 1.8.0
 ---
 
 # Increment Flow
@@ -27,7 +27,7 @@ docs/research/<topic>/
 ├── pending.md         increments table + items table + Done table + one section per item (from assets/pending.<lang>.md)
 ├── progress.md        short summary per increment of what was decided and done (from assets/progress.<lang>.md; the file is always named progress.md)
 ├── 001-<slug>/        the initial research
-└── 002-<slug>/ …      one folder per increment, in the order they open
+└── 002-<slug>/ …      one folder per increment, in the order they open; on Azure DevOps repos each holds a wit.md
 ```
 
 Increment folders are `NNN-<slug>`: three digits, then a short ASCII kebab-case slug (no accents) in the research's language. Everything an increment produces lives in its folder. An increment does not need the full RPI flow; a small fix can go straight to work.
@@ -97,7 +97,8 @@ Trigger: the user starts work on a topic that has no folder under `docs/research
 5. Create `001-<slug>/` (en-US slug `initial-research`, pt-BR `pesquisa-inicial`, unless the user names it).
 6. Create `progress.md` (never `progress.<lang>.md`) from `assets/progress.<lang>.md`, with `{{TOPIC}}`, `{{INCREMENT}}` = `001`, `{{SLUG}}` = the folder slug from step 5 and `{{ORIGIN}}` = `Started with the research.` (pt-BR `Começou junto com a pesquisa.`).
 7. Create `AGENTS.md` from `assets/AGENTS.<lang>.md`, with `{{VERSIONED}}` filled from step 3 (see the next block).
-8. Run `pending.py check`. Then offer to start the discovery with `tlc-discover`.
+8. Link `001` to Azure DevOps (see Azure DevOps).
+9. Run `pending.py check`. Then offer to start the discovery with `tlc-discover`.
 
 `{{VERSIONED}}` values:
 - Pushed: en-US `yes — committed with the repository.`; pt-BR `sim — vai para o repositório com o resto do código.`
@@ -127,7 +128,7 @@ Move the status the moment the work moves, not when the increment closes:
 | `tlc-plan` completes | Planned / Planejado |
 | `tlc-implement` starts, or work starts on an item without RPI | Implementing / Desenvolvimento |
 
-The first time an item of an increment leaves `Open`, set that increment to `In Progress` in the increments table. It also becomes `In Progress` the moment anything else is done in it, such as a discovery, a plan or any work without an item.
+The first time an item of an increment leaves `Open`, set that increment to `In Progress` in the increments table. It also becomes `In Progress` the moment anything else is done in it, such as a discovery, a plan or any work without an item. Each time it becomes `In Progress`, sync its Azure DevOps Task to `Active` (see Azure DevOps).
 
 Any new fact (a decision, a blocker, a note from the user) goes into the item's section as a dated paragraph. Only shorten the Details cell when it would otherwise stop describing what is left. Run `check`.
 
@@ -161,15 +162,56 @@ Only for an item registered by mistake: no work started, not cited elsewhere. De
 3. `pending.py next` gives the increment number; create `NNN-<slug>/` and append its row to the increments table: Title, Status `Open` (`Aberto`).
 4. Set the Increment column to `NNN` on every item the increment works, and move their status as the work starts.
 5. Append the section `## Increment NNN — <slug>` (pt-BR `## Incremento NNN — <slug>`) at the end of `progress.md`, with the same slug as the folder; create the file first if the research has none (see Log progress).
-6. When the increment runs RPI, its documents go in `NNN-<slug>/`.
+6. Link the increment to Azure DevOps (see Azure DevOps).
+7. When the increment runs RPI, its documents go in `NNN-<slug>/`.
 
 ### Close an increment
 
 1. **Check the work is committed.** `git status --short` must show nothing the increment changed or produced: code, tests, docs outside the research and, when the research is versioned, its folder and files. Anything uncommitted: stop, tell the user what is pending, and leave the increment `In Progress` until it is committed. A research kept out of git is exempt for its own folder; the changes outside it still count.
-2. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table.
+2. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table, then sync its Azure DevOps Task to `Resolved` (see Azure DevOps).
 3. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
 4. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
 5. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
+
+### Azure DevOps
+
+An increment can be tracked in Azure DevOps as a Task under a User Story, moving with the increment. Only for repositories hosted on Azure DevOps.
+
+**Gate.** `python3 <this skill>/scripts/wit.py ado` exits 0 only when a git remote is Azure DevOps. Any other exit: skip every Azure DevOps step in this skill, silently. No question, no `wit.md`. A GitHub repository never sees any of it.
+
+**`NNN-<slug>/wit.md`** holds the link: a table with Organization, Project, User Story, Task, State and Updated. It is written and read only by `wit.py`, in English whatever the research's language (ids, links and states, no prose). `User Story | none` and `Task | none` mean the user was asked and there is no User Story. A folder without `wit.md` was never asked.
+
+**Link an increment.** Ask once, in one line, when the increment is opened (and for `001` when the research starts): is there an Azure DevOps User Story for it, as an id or a link? Offer the User Story from the nearest earlier increment's `wit.md` as the default. User Story optional, three answers:
+- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it and writes `wit.md`. The title is `IC NNN — <short title in pt-BR>`; the description is 2–5 plain sentences in pt-BR on what the increment does and why, taken from its title and items. Both are always pt-BR, whatever the research's language.
+- **None:** `wit.py none <NNN-slug/>`.
+- **A new Feature:** see Create a Feature, then link as above.
+
+Once `wit.md` exists the increment is never asked again, unless the user volunteers a User Story for one marked `none`: run `create` then, which replaces it.
+
+**Increment already in progress with no `wit.md`** (opened before this existed): when it becomes `In Progress`, `wit.py state` exits 3. Ask the same question once, answer it as above, then move the Task to `Active`.
+
+**Keep the Task in step.** After the increments table changes, run `wit.py state <NNN-slug/> <state>`. It does nothing when `wit.md` says `none` and when the Task is already there:
+
+| Increment | Task state |
+|---|---|
+| `Open` | `New` (what `create` leaves it in) |
+| `In Progress` | `Active` |
+| `Done`, after the commit check | `Resolved` |
+
+If Azure DevOps rejects a state (the process names it differently), report the error and ask; never pick another state. `Closed` is the user's, never set it. Any other `az` failure (login, network, permission): say so, leave the table and the work as they are, and retry on the next sync; a Task out of step blocks nothing. `az login` is the user's step.
+
+**Create a Feature.** When the user asks for a Feature instead of giving a User Story, this is a conversation first, in this order, short and one decision at a time:
+1. The **Feature**: title and goal.
+2. Its **User Stories**: title, intent and acceptance criteria each.
+3. The **Tasks** planned under each User Story (one per increment by default).
+
+Propose a full draft of the three levels from what the user said, adjust it with them, and show the final tree. **Create nothing in Azure DevOps before the user approves that tree.** Then, in pt-BR:
+1. `wit.py item --type Feature --title … --description … --project <project>`. The project defaults to the one in the Azure DevOps remote URL; say which.
+2. For each User Story: `wit.py item --type "User Story" --parent <feature id> --title … --description …`. Its description lists the planned Tasks, so they are findable in Azure DevOps.
+3. Log one `addition` line in `progress.md` with the Feature and User Story ids.
+4. Link the current increment to the User Story it serves with `create`. The other planned Tasks are created as their increments open, offering that User Story as the default.
+
+If Azure DevOps rejects a type name (`Feature`, `User Story`, `Task` are the Agile process's; Scrum uses Product Backlog Item), report it and ask for the right one.
 
 ### Log progress
 
@@ -204,7 +246,12 @@ Read `pending.md` and the section of the latest increment in `progress.md`, and 
 
 **Close.** User: "item 3 is done, commit a1b2c3d". Actions: Status `Done`; title `## 3 — <title> (done)`; under it `Done in increment 004 (a1b2c3d, 2026-10-14).`; move row 3 to the Done table, creating `## Done Items` below the items table if the file has none; `check`.
 
+**Azure DevOps.** User: "open the next increment" in a repository whose remote is `dev.azure.com`. Actions: `wit.py ado` exits 0; open `004-…` as usual; ask for its User Story, offering #50 from `003`'s `wit.md`; user says "50": `wit.py create 004-… --us 50 --title "IC 004 — Reenvio de cobrança" --description "…"` prints the Task id and writes `wit.md`. The first item moves to `Implementing`, so the increment is `In Progress` and `wit.py state 004-… Active`. On a GitHub remote, `wit.py ado` exits 1 and none of this happens.
+
 ## Troubleshooting
+
+- `wit.py state` exits 3: the increment has no `wit.md`, so the user was never asked. Ask (see Azure DevOps), then retry.
+- `--project is required when the item has no parent`: a Feature has no parent to take the project from; pass `--project`.
 
 - `no increments table`: the research predates the table, or the header was renamed. Create it as described in The increments table.
 - `increment NNN has a folder but no row in the increments table`: add the row. `no folder … next to pending.md`: create the folder or fix the number.
