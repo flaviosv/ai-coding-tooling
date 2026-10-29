@@ -182,7 +182,7 @@ An increment can be tracked in Azure DevOps as a Task under a User Story, moving
 **`NNN-<slug>/wit.md`** holds the link: a table with Organization, Project, User Story, Task, State and Updated. It is written and read only by `wit.py`, in English whatever the research's language (ids, links and states, no prose). `User Story | none` and `Task | none` mean the user was asked and there is no User Story. A folder without `wit.md` was never asked.
 
 **Link an increment.** Ask once, in one line, when the increment is opened (and for `001` when the research starts): is there an Azure DevOps User Story for it, as an id or a link? Offer the User Story from the nearest earlier increment's `wit.md` as the default. User Story optional, three answers:
-- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it with Activity `30 - Desenvolvimento` and Original Estimate `8`, and writes `wit.md`. The title is a short pt-BR title of the work itself; the description is 2–5 plain pt-BR sentences on what is being done and why. Both follow Card text.
+- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it with Activity `30 - Desenvolvimento` and Original Estimate `8`, and writes `wit.md`. The title is a short pt-BR title of the work itself; the description is complete, not a summary. Both follow Card text.
 - **None:** `wit.py none <NNN-slug/>`.
 - **A new Feature:** see Create a Feature, then link as above.
 
@@ -190,7 +190,7 @@ Once `wit.md` exists the increment is never asked again, unless the user volunte
 
 **Increment already in progress with no `wit.md`** (opened before this existed): when it becomes `In Progress`, `wit.py state` exits 3. Ask the same question once, answer it as above, then move the Task to `Active`.
 
-**Card text.** Everything written to Azure DevOps (titles and descriptions of Features, User Stories and Tasks) is pt-BR, whatever the research's language, and describes the card itself and nothing else. Azure DevOps knows nothing of increments: no `IC`, increment numbers or slugs, item numbers, research or topic folder names, `.md` files, paths or any other artifact of this flow. Anyone must be able to read the card and understand it without leaving Azure DevOps. `wit.py` refuses text that carries an `IC <n>` or increment reference, a `.md` file or `docs/research`.
+**Card text.** Everything written to Azure DevOps (titles and descriptions of Features, User Stories and Tasks) is pt-BR, whatever the research's language, and describes the card itself and nothing else. Azure DevOps knows nothing of increments: no `IC`, increment numbers or slugs, item numbers, research or topic folder names, `.md` files, paths or any other artifact of this flow. Anyone must be able to read the card and understand it without leaving Azure DevOps. **Descriptions are complete, never a summary:** the goal and why it matters, the context, what is in and out of scope, how it will be done, and how to tell it is done (acceptance criteria), written for a reader with no other context. Draw it from the item sections, the research findings and what the user said, in plain text with line breaks and `- ` bullet lines, without any of the references above. `wit.py` refuses text that carries an `IC <n>` or increment reference, a `.md` file or `docs/research`.
 
 **Keep the Task in step.** After the increments table changes, run `wit.py state <NNN-slug/> <state>`. It does nothing when `wit.md` says `none` and when the Task is already there:
 
@@ -209,7 +209,7 @@ If Azure DevOps rejects a state (the process names it differently), report the e
 
 Propose a full draft of the three levels from what the user said, adjust it with them, and show the final tree. **Create nothing in Azure DevOps before the user approves that tree.** Then, in pt-BR:
 1. `wit.py item --type Feature --title … --description … --project <project>`. The project defaults to the one in the Azure DevOps remote URL; say which.
-2. For each User Story: `wit.py item --type "User Story" --parent <feature id> --title … --description …`. Its description lists the planned Tasks, so they are findable in Azure DevOps.
+2. For each User Story: `wit.py item --type "User Story" --parent <feature id> --title … --description …`. Its description is complete (see Card text) and lists the planned Tasks, so they are findable in Azure DevOps. The Feature's description is complete too.
 3. Log one `addition` line in `progress.md` with the Feature and User Story ids.
 4. Link the current increment to the User Story it serves with `create`. The other planned Tasks are created as their increments open, offering that User Story as the default.
 

@@ -127,3 +127,10 @@
 - **Trade-off**: Not configurable per call. Activity must match the process's picklist exactly; if ADO rejects it, `az`'s error is reported and no Task is created. Remaining Work is left unset.
 - **Date**: 2026-10-29
 - **Status**: active
+
+### AD-019
+- **Decision**: Descriptions of the ADO cards (Feature, User Story, Task) are complete, not summaries: goal and why, context, scope in and out, how, and acceptance criteria, for a reader with no other context. This replaces the earlier "2–5 sentences" limit.
+- **Reason**: User's rule: the card must stand on its own in ADO.
+- **Trade-off**: Longer text to write and review per card; no length or completeness check in `wit.py`, only the no-references guard from AD-017.
+- **Date**: 2026-10-29
+- **Status**: active
