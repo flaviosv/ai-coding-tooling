@@ -120,3 +120,10 @@
 - **Trade-off**: The guard is a regex over obvious markers; subtler leaks (a slug, an item number written as prose) are left to the SKILL.md rule. The card has no pointer back to its increment; the link lives only in `wit.md`.
 - **Date**: 2026-10-29
 - **Status**: active
+
+### AD-018
+- **Decision**: Every Task `wit.py create` makes gets Activity `30 - Desenvolvimento` and Original Estimate `8`, hardcoded in `wit.py`. Features and User Stories get no such fields.
+- **Reason**: User's defaults for the Tasks.
+- **Trade-off**: Not configurable per call. Activity must match the process's picklist exactly; if ADO rejects it, `az`'s error is reported and no Task is created. Remaining Work is left unset.
+- **Date**: 2026-10-29
+- **Status**: active

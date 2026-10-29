@@ -9,7 +9,7 @@ Usage:
   wit.py state  <increment-dir> New|Active|Resolved
 
 `item` creates any work item (Feature, User Story, ...) under an optional parent and prints one JSON
-line with its id, url, type, state and project. `create` checks the User Story exists, creates a Task, makes the Story its parent and writes
+line with its id, url, type, state and project. `create` checks the User Story exists, creates a Task (Activity "30 - Desenvolvimento", Original Estimate 8), makes the Story its parent and writes
 <increment-dir>/wit.md. `none` writes wit.md with "none" (no User Story, do not ask again).
 `state` moves the Task; it exits 0 doing nothing when wit.md says none, and exits 3 when there is no
 wit.md yet (the caller has not asked the user). Needs `az` with the azure-devops extension, logged in.
@@ -28,6 +28,7 @@ WIT_FILE = "wit.md"
 NONE = "none"
 STATES = ["New", "Active", "Resolved"]
 NOT_ASKED = 3
+TASK_FIELDS = ["Microsoft.VSTS.Common.Activity=30 - Desenvolvimento", "Microsoft.VSTS.Scheduling.OriginalEstimate=8"]
 ORG_FROM_URL = re.compile(r"^(https://dev\.azure\.com/[^/]+|https://[^/.]+\.visualstudio\.com)", re.I)
 ID_FROM_REF = re.compile(r"(?:_workitems/edit/|#|^)(\d+)/?$")
 ROW = re.compile(r"^\| (.+?) \| (.*?) \|$")
@@ -92,7 +93,7 @@ def cmd_none(inc_dir):
     print(f"{inc_dir.name}: no User Story, wit.md says none")
 
 
-def make_item(item_type, title, description, parent, project, org):
+def make_item(item_type, title, description, parent, project, org, fields=()):
     for text in (title, description):
         leak = FLOW_LEAK.search(text)
         if leak:
@@ -107,6 +108,7 @@ def make_item(item_type, title, description, parent, project, org):
     item = az(
         "work-item", "create", "--type", item_type, "--project", project,
         "--title", title, "--description", html.escape(description).replace("\n", "<br>"),
+        *(["--fields", *fields] if fields else []),
         org=org,
     )
     if parent_id:
@@ -132,7 +134,7 @@ def cmd_create(inc_dir, ref, title, description):
         fail(f"{existing} already has a Task; use `state` to move it")
     us_id, org = parse_ref(ref)
     story = az("work-item", "show", "--id", us_id, org=org)
-    task, project, org = make_item("Task", title, description, ref, None, org)
+    task, project, org = make_item("Task", title, description, ref, None, org, TASK_FIELDS)
     state = task["fields"]["System.State"]
     write_wit(inc_dir, {
         "Organization": org or "default",

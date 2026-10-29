@@ -182,7 +182,7 @@ An increment can be tracked in Azure DevOps as a Task under a User Story, moving
 **`NNN-<slug>/wit.md`** holds the link: a table with Organization, Project, User Story, Task, State and Updated. It is written and read only by `wit.py`, in English whatever the research's language (ids, links and states, no prose). `User Story | none` and `Task | none` mean the user was asked and there is no User Story. A folder without `wit.md` was never asked.
 
 **Link an increment.** Ask once, in one line, when the increment is opened (and for `001` when the research starts): is there an Azure DevOps User Story for it, as an id or a link? Offer the User Story from the nearest earlier increment's `wit.md` as the default. User Story optional, three answers:
-- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it and writes `wit.md`. The title is a short pt-BR title of the work itself; the description is 2–5 plain pt-BR sentences on what is being done and why. Both follow Card text.
+- **An id or link:** `wit.py create <NNN-slug/> --us <ref> --title … --description …`. It checks the User Story exists, creates the Task as a child of it with Activity `30 - Desenvolvimento` and Original Estimate `8`, and writes `wit.md`. The title is a short pt-BR title of the work itself; the description is 2–5 plain pt-BR sentences on what is being done and why. Both follow Card text.
 - **None:** `wit.py none <NNN-slug/>`.
 - **A new Feature:** see Create a Feature, then link as above.
 
