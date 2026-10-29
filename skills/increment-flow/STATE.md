@@ -133,4 +133,11 @@
 - **Reason**: User's rule: the card must stand on its own in ADO.
 - **Trade-off**: Longer text to write and review per card; no length or completeness check in `wit.py`, only the no-references guard from AD-017.
 - **Date**: 2026-10-29
+- **Status**: superseded by AD-020
+
+### AD-020
+- **Decision**: ADO card titles are understandable on their own (no abbreviations or flow jargon), and descriptions are complete in four labelled parts: `O que será feito:`, `Por quê:`, `Objetivos:`, `Como validar:`. `wit.py` refuses a description missing any label. Supersedes the free-form complete description of AD-019.
+- **Reason**: User's rule: the description must explain what is going to be done, why, the goals and the validation method.
+- **Trade-off**: The labels are fixed pt-BR strings and apply to Features and User Stories too; the script checks the labels exist, not that their content is good.
+- **Date**: 2026-10-29
 - **Status**: active

@@ -33,6 +33,7 @@ ORG_FROM_URL = re.compile(r"^(https://dev\.azure\.com/[^/]+|https://[^/.]+\.visu
 ID_FROM_REF = re.compile(r"(?:_workitems/edit/|#|^)(\d+)/?$")
 ROW = re.compile(r"^\| (.+?) \| (.*?) \|$")
 FLOW_LEAK = re.compile(r"\bIC[ -]?\d+\b|\bincrement[o]?s?[ -]?\d{3}\b|\.md\b|docs/research", re.I)
+DESCRIPTION_LABELS = ["O que será feito:", "Por quê:", "Objetivos:", "Como validar:"]
 ADO_HOSTS = re.compile(r"^(ssh\.)?dev\.azure\.com$|^vs-ssh\.visualstudio\.com$|\.visualstudio\.com$", re.I)
 SCP_HOST = re.compile(r"^(?:[^@/]+@)?([^:/]+):")
 LINK = re.compile(r"^\[#(\d+)\]\((.+)\)$")
@@ -98,6 +99,9 @@ def make_item(item_type, title, description, parent, project, org, fields=()):
         leak = FLOW_LEAK.search(text)
         if leak:
             fail(f"'{leak.group(0)}' refers to the increment flow; Azure DevOps text must describe the card itself")
+    missing = [label for label in DESCRIPTION_LABELS if label.lower() not in description.lower()]
+    if missing:
+        fail(f"description lacks: {', '.join(missing)}")
     parent_id = None
     if parent:
         parent_id, parent_org = parse_ref(parent)
