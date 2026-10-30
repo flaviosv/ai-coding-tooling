@@ -103,10 +103,20 @@
       "scope": "tech-leads-club"
     },
     {
+      "name": "tlc-discover",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club"
+    },
+    {
       "name": "tlc-spec-driven",
       "source": "tech-leads-club",
       "scope": "tech-leads-club",
       "extended": true
+    },
+    {
+      "name": "tlc-spec-lean",
+      "source": "tech-leads-club",
+      "scope": "tech-leads-club"
     }
   ]
 }

@@ -163,7 +163,9 @@ Installed globally by `fs-harness setup`. Treated as read-only — do not edit t
 | **skill-architect** | Expert guide for designing and building high-quality skills from scratch through structured conversation. Covers standalone skills and MCP-enhanced workflows. |
 | **subagent-creator** | Guide for creating AI subagents with isolated context for complex multi-step workflows. |
 | **technical-design-doc-creator** | Creates comprehensive Technical Design Documents (TDD) following industry standards. |
+| **tlc-discover** | Interviews an unshaped idea into a verdict and a design document (decisions, flows, schema, contracts) that anyone can plan from. |
 | **tlc-spec-driven** ⭐ | Spec-driven planning (Specify → Design → Tasks → Execute) with complexity auto-sizing, atomic tasks, requirement traceability, and persistent memory. **Extended in this project** (`extended/tlc-spec-driven/`): augments `coding-principles` with software-design/observability/stack-style references and routes security to `security-best-practices`. |
+| **tlc-spec-lean** | Spec-driven feature work that freezes obligations instead of the plan: one human-reviewed plan with EARS criteria, then proof-backed checks, then build, then an independent Verifier. |
 
 ### Source: [Matt Pocock](https://github.com/mattpocock/skills)
 
