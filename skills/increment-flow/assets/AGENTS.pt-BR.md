@@ -15,6 +15,7 @@ Esta pasta guarda uma pesquisa, tocada em incrementos pequenos e numerados. Carr
 
 - **Decisão já fechada na pesquisa inicial é entrada, não pauta.** Reabrir exige um motivo nomeado.
 - **Mantenha o `pending.md` em dia.** Atualize o estado do item na hora em que ele avança, sem esperar o incremento fechar.
+- **Persiga o objetivo do incremento com o mínimo de interrupção, seja qual for a skill ou o método que faz o trabalho.** Pare e pergunte só diante de contradição, ambiguidade que muda o resultado, abordagem de arquitetura, estratégia materialmente melhor ou decisão semelhante que é do usuário (mudança de escopo, reabrir decisão fechada, ação irreversível, algo que só o usuário pode fornecer). Fora isso, decida, siga em frente e relate no fim.
 - **Um incremento não fecha com lacuna aberta.** Cada lacuna da verificação independente vira correção no próprio incremento, ou vai ao usuário e só entra no `pending.md` com a aceitação dele registrada.
 - **Itens `Feito` e `Rejeitado` moram na tabela de feitos, não na tabela de itens.** Fechar um move a linha dele para lá, inalterada.
 - **Um incremento só fica `Feito` com o trabalho commitado.** Mudanças sem commit mantêm o incremento `Em Andamento`.

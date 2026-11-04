@@ -162,3 +162,10 @@
 - **Trade-off**: Detecting "changes what the card says" is model judgment; `wit.py` verifies the read-back, not that an update happened. A rewrite replaces any edit made by hand in ADO.
 - **Date**: 2026-10-29
 - **Status**: active
+
+### AD-024
+- **Decision**: Work inside an increment, done by any skill, method or none, pursues the increment's goal with minimal interruption. The agent stops to ask only for a contradiction, an ambiguity that changes the result and is costly to reverse, an architecture approach, a materially better strategy, or a similar decision that is the user's (scope change, reopening a closed decision, irreversible or outward-facing action, something only the user can supply). Confirmations, progress reports, equivalent options and habitual method pauses are not reasons to stop; a gate the user explicitly turned on stays. Stated in SKILL.md (Work an increment) and in both `AGENTS.md` templates; the skill names no other skill in the rule.
+- **Reason**: User's rule: the goal is pursued without babysitting; interruptions exist only to resolve decisions that belong to the user.
+- **Trade-off**: Prose rule, enforced by model judgment: deciding what counts as "materially" ambiguous or better is the agent's call, and researches created before this change only get the rule through the skill, not their `AGENTS.md`.
+- **Date**: 2026-11-04
+- **Status**: active

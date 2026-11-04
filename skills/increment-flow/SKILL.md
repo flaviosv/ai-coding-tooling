@@ -1,10 +1,10 @@
 ---
 name: increment-flow
-description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
+description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Define que o trabalho de um incremento, com qualquer skill ou método, persegue o objetivo com o mínimo de interrupção. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.9.0
+  version: 1.10.0
 ---
 
 # Increment Flow
@@ -165,6 +165,21 @@ Only for an item registered by mistake: no work started, not cited elsewhere. De
 6. Crie a Task do incremento no Azure DevOps nesta abertura, antes de iniciar discovery ou plano (veja Azure DevOps).
 7. When the increment runs RPI, its documents go in `NNN-<slug>/`.
 8. Ao concluir o primeiro design ou plano, complete a descrição da mesma Task com `wit.py update`; não crie outra Task.
+
+### Work an increment
+
+The increment's goal (its row in the increments table and the items it works) is the contract. Whatever skill, method or plain work carries it out (discovery, plan, implementation, verification), the agent pursues that goal to the end with minimal interruption: it decides, proceeds and reports at the end.
+
+**Stop and ask only for a decision that is the user's to make:**
+- **Contradiction:** two sources that cannot both hold (the request, the goal, decisions closed in the initial research, the code, the docs).
+- **Ambiguity:** more than one reading of the goal or a requirement, with materially different results and a cost to reverse the wrong one. Otherwise take the likelier reading, name it in the reply and proceed.
+- **Architecture approach:** a structural choice (boundaries, dependencies, data model, public interface) that is hard to reverse or shapes the work that follows.
+- **Better strategy:** a materially better way to reach the goal than the one asked or agreed, with what it changes in scope, cost or risk.
+- **Similar decisions:** changing the goal or scope, reopening a closed decision, a destructive, irreversible or outward-facing action, or something only the user can supply (access, credential, approval).
+
+**These are not reasons to stop:** confirming the next step, asking permission for work already inside the goal, choosing between equivalent options (pick one; log it as a `decision` when a later reader would need it), reporting progress, offering to continue, or a pause a method inserts by habit. A gate the user explicitly turned on for this work stays.
+
+When a stop is warranted: one message, the decision named, the options, a recommendation; group independent questions into the same message; keep working on whatever the question does not block; resume on the answer. Log the answer as a `decision` (see Log progress).
 
 ### Close an increment
 

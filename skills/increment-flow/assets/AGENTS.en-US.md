@@ -15,6 +15,7 @@ This folder holds one research, worked in small numbered increments. Load the `i
 
 - **Decisions already closed in the initial research are input, not agenda.** Reopening one needs a named reason.
 - **Keep `pending.md` current.** Update an item's status the moment it moves, not when the increment closes.
+- **Pursue the increment's goal with minimal interruption, whatever skill or method does the work.** Stop and ask only for a contradiction, an ambiguity that changes the result, an architecture approach, a materially better strategy, or a similar decision that is the user's to make (scope change, reopening a closed decision, irreversible action, something only the user can supply). Otherwise decide, proceed and report at the end.
 - **An increment never closes with an open gap.** Each gap from the independent verification becomes a fix in the same increment, or goes to the user and enters `pending.md` only with their acceptance recorded.
 - **`Done` and `Rejected` items live in the Done table, not the items table.** Closing one moves its row there, unchanged.
 - **An increment is `Done` only when its work is committed.** Uncommitted changes keep it `In Progress`.
