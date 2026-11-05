@@ -169,3 +169,10 @@
 - **Trade-off**: Prose rule, enforced by model judgment: deciding what counts as "materially" ambiguous or better is the agent's call, and researches created before this change only get the rule through the skill, not their `AGENTS.md`.
 - **Date**: 2026-11-04
 - **Status**: active
+
+### AD-025
+- **Decision**: Each increment works on its own branch `<research-branch>_ic<NNN>`, cut from the branch checked out at open; nothing is pushed to the research branch. Closing pushes that branch and opens one PR to the research branch on GitHub (`gh pr create`) or Azure DevOps (`az repos pr create`), with no assignee and no reviewer. The increment is `Done` once committed and the PR is open, not once merged. Stated only in SKILL.md, not in the `AGENTS.md` templates.
+- **Reason**: User's rule: no direct push to the research branch; deliver through a `_ic<number>` branch and an unassigned PR. The user also asked for it as skill instruction, not as research `AGENTS.md` instruction.
+- **Trade-off**: Reads "`_ic<ic number>`" as a suffix on the research branch name with the 3-digit number (assumption). Hosts may add policy-required reviewers on their own, which the skill cannot suppress. An increment with no commits ahead drops its branch and opens no PR. Researches created earlier get the rule through the skill only.
+- **Date**: 2026-11-05
+- **Status**: active

@@ -1,10 +1,10 @@
 ---
 name: increment-flow
-description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Define que o trabalho de um incremento, com qualquer skill ou método, persegue o objetivo com o mínimo de interrupção. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
+description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Define que o trabalho de um incremento, com qualquer skill ou método, persegue o objetivo com o mínimo de interrupção, e que cada incremento entrega por uma branch própria e um PR sem responsável, nunca por push direto na branch da pesquisa. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.10.0
+  version: 1.11.0
 ---
 
 # Increment Flow
@@ -42,7 +42,7 @@ Sits right above the items table, under `## Increments` (pt-BR `## Incrementos`)
 |---|---|
 | Increment Number | the 3-digit number of the folder `NNN-<slug>/` |
 | Title | a short title of what the increment does |
-| Status | `Open` (`Aberto`): the folder exists and nothing has been done in it. `In Progress` (`Em Andamento`): anything has been done in it, such as a discovery, a plan or any work. `Done` (`Feito`): closed, with every item pointing at it closed and its work committed |
+| Status | `Open` (`Aberto`): the folder exists and nothing has been done in it. `In Progress` (`Em Andamento`): anything has been done in it, such as a discovery, a plan or any work. `Done` (`Feito`): closed, with every item pointing at it closed and its work committed on its increment branch, with the PR open (see The increment branch) |
 
 `pending.py check` fails when the table is missing, an increment folder has no row, a row has no folder, an `Open` increment has an item past `Open`, or a `Done` increment has an item that is not closed.
 
@@ -159,12 +159,13 @@ Only for an item registered by mistake: no work started, not cited elsewhere. De
 
 1. Read the initial research (`001-*/`) and `pending.md`. Decisions closed in the initial research are input; reopening one needs a named reason.
 2. Prefer one increment at a time. If another increment is `In Progress`, say so and open the new one only if the user confirms.
-3. `pending.py next` gives the increment number; create `NNN-<slug>/` and append its row to the increments table: Title, Status `Open` (`Aberto`).
-4. Set the Increment column to `NNN` on every item the increment works, and move their status as the work starts.
-5. Append the section `## Increment NNN — <slug>` (pt-BR `## Incremento NNN — <slug>`) at the end of `progress.md`, with the same slug as the folder; create the file first if the research has none (see Log progress).
-6. Crie a Task do incremento no Azure DevOps nesta abertura, antes de iniciar discovery ou plano (veja Azure DevOps).
-7. When the increment runs RPI, its documents go in `NNN-<slug>/`.
-8. Ao concluir o primeiro design ou plano, complete a descrição da mesma Task com `wit.py update`; não crie outra Task.
+3. `pending.py next` gives the increment number. Before writing any file, create the increment branch and switch to it (see The increment branch).
+4. Create `NNN-<slug>/` and append its row to the increments table: Title, Status `Open` (`Aberto`).
+5. Set the Increment column to `NNN` on every item the increment works, and move their status as the work starts.
+6. Append the section `## Increment NNN — <slug>` (pt-BR `## Incremento NNN — <slug>`) at the end of `progress.md`, with the same slug as the folder; create the file first if the research has none (see Log progress).
+7. Crie a Task do incremento no Azure DevOps nesta abertura, antes de iniciar discovery ou plano (veja Azure DevOps).
+8. When the increment runs RPI, its documents go in `NNN-<slug>/`.
+9. Ao concluir o primeiro design ou plano, complete a descrição da mesma Task com `wit.py update`; não crie outra Task.
 
 ### Work an increment
 
@@ -181,13 +182,31 @@ The increment's goal (its row in the increments table and the items it works) is
 
 When a stop is warranted: one message, the decision named, the options, a recommendation; group independent questions into the same message; keep working on whatever the question does not block; resume on the answer. Log the answer as a `decision` (see Log progress).
 
+### The increment branch
+
+Nothing an increment produces is pushed to the research branch. The **research branch** is the branch checked out when the increment opens; each increment works, commits and pushes on its own branch and reaches the research branch only through a pull request.
+
+- **Name:** `<research-branch>_ic<NNN>`, with the 3-digit increment number (`feat/billing_ic003`). The research branch is that name without the `_ic<NNN>` suffix.
+- **Open:** `git switch -c <research-branch>_ic<NNN>` from the research branch, before the first file of the increment is written. Uncommitted changes carry over. If the checkout is already another increment's branch, stop and ask which branch is the base.
+- **Work:** every commit of the increment goes on this branch; never commit or push to the research branch, whoever or whatever skill does the work. Push only this branch, with `git push -u origin <branch>`.
+- **Close:** the PR (see Close an increment). The user merges it; the increment does not wait for the merge.
+- **Resumed on the wrong branch:** switch to the increment's branch before touching anything; if work already landed on the research branch, say so and ask before moving it.
+
 ### Close an increment
 
 1. **Check the work is committed.** `git status --short` must show nothing the increment changed or produced: code, tests, docs outside the research and, when the research is versioned, its folder and files. Anything uncommitted: stop, tell the user what is pending, and leave the increment `In Progress` until it is committed. A research kept out of git is exempt for its own folder; the changes outside it still count.
-2. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table, then sync its Azure DevOps Task to `Closed` (see Azure DevOps).
-3. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
-4. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
-5. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
+2. **Push the branch and open the PR** (see The increment branch):
+   - An increment branch with no commit ahead of the research branch has nothing to deliver: switch back, delete the branch and open no PR.
+   - `git push -u origin <research-branch>_ic<NNN>`, then open one PR from it to the research branch, **with no assignee and no reviewer**: never pass `--assignee`, `--reviewer` or `--reviewers`, nor assign it to the user or anyone else. If a PR for that branch already exists, reuse it and push the new commits.
+   - GitHub remote: `gh pr create --base <research-branch> --head <branch> --title … --body …`.
+   - Azure DevOps remote (`wit.py ado` exits 0): `az repos pr create --source-branch <branch> --target-branch <research-branch> --title … --description …`.
+   - Any other remote: push only, and say no PR was opened.
+   - Title and body are in the research's language and say what the increment delivers, why, and how to validate it, without depending on the conversation. A policy-required reviewer that the host adds on its own stays; say so.
+   - Push or PR failure (login, network, permission): say so, leave the increment `In Progress` and retry on resume; `az login` and `gh auth login` are the user's step.
+3. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table, then sync its Azure DevOps Task to `Closed` (see Azure DevOps).
+4. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
+5. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
+6. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
 
 ### Azure DevOps
 
