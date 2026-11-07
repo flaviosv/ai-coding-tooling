@@ -1,6 +1,6 @@
 ---
 name: increment-flow
-description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Define que o trabalho de um incremento, com qualquer skill ou método, persegue o objetivo com o mínimo de interrupção, e que cada incremento entrega por uma branch própria e um PR sem responsável, nunca por push direto na branch da pesquisa. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
+description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Define que o trabalho de um incremento, com qualquer skill ou método, persegue o objetivo com o mínimo de interrupção, e que cada incremento trabalha numa branch própria dentro de um worktree exclusivo, removido ao concluir, e entrega por um PR sem responsável, nunca por push direto na branch da pesquisa. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
@@ -42,7 +42,7 @@ Sits right above the items table, under `## Increments` (pt-BR `## Incrementos`)
 |---|---|
 | Increment Number | the 3-digit number of the folder `NNN-<slug>/` |
 | Title | a short title of what the increment does |
-| Status | `Open` (`Aberto`): the folder exists and nothing has been done in it. `In Progress` (`Em Andamento`): anything has been done in it, such as a discovery, a plan or any work. `Done` (`Feito`): closed, with every item pointing at it closed and its work committed on its increment branch, with the PR open (see The increment branch) |
+| Status | `Open` (`Aberto`): the folder exists and nothing has been done in it. `In Progress` (`Em Andamento`): anything has been done in it, such as a discovery, a plan or any work. `Done` (`Feito`): closed, with every item pointing at it closed, its work committed on its increment branch, the PR open and its worktree removed (see The increment branch) |
 
 `pending.py check` fails when the table is missing, an increment folder has no row, a row has no folder, an `Open` increment has an item past `Open`, or a `Done` increment has an item that is not closed.
 
@@ -159,7 +159,7 @@ Only for an item registered by mistake: no work started, not cited elsewhere. De
 
 1. Read the initial research (`001-*/`) and `pending.md`. Decisions closed in the initial research are input; reopening one needs a named reason.
 2. Prefer one increment at a time. If another increment is `In Progress`, say so and open the new one only if the user confirms.
-3. `pending.py next` gives the increment number. Before writing any file, create the increment branch and switch to it (see The increment branch).
+3. `pending.py next` gives the increment number. Before writing any file, create the increment branch in its own worktree and work from there (see The increment branch).
 4. Create `NNN-<slug>/` and append its row to the increments table: Title, Status `Open` (`Aberto`).
 5. Set the Increment column to `NNN` on every item the increment works, and move their status as the work starts.
 6. Append the section `## Increment NNN — <slug>` (pt-BR `## Incremento NNN — <slug>`) at the end of `progress.md`, with the same slug as the folder; create the file first if the research has none (see Log progress).
@@ -184,29 +184,33 @@ When a stop is warranted: one message, the decision named, the options, a recomm
 
 ### The increment branch
 
-Nothing an increment produces is pushed to the research branch. The **research branch** is the branch checked out when the increment opens; each increment works, commits and pushes on its own branch and reaches the research branch only through a pull request.
+Nothing an increment produces is pushed to the research branch. The **research branch** is the branch checked out when the increment opens; each increment works, commits and pushes on its own branch, inside a worktree used for that increment alone, and reaches the research branch only through a pull request. The worktree is created when the increment opens and removed when it closes.
 
 - **Name:** `<research-branch>_ic<NNN>`, with the 3-digit increment number (`feat/billing_ic003`). The research branch is that name without the `_ic<NNN>` suffix.
-- **Open:** `git switch -c <research-branch>_ic<NNN>` from the research branch, before the first file of the increment is written. Uncommitted changes carry over. If the checkout is already another increment's branch, stop and ask which branch is the base.
-- **Work:** every commit of the increment goes on this branch; never commit or push to the research branch, whoever or whatever skill does the work. Push only this branch, with `git push -u origin <branch>`.
-- **Close:** the PR (see Close an increment). The user merges it; the increment does not wait for the merge.
-- **Resumed on the wrong branch:** switch to the increment's branch before touching anything; if work already landed on the research branch, say so and ask before moving it.
+- **Worktree path:** `<repo-parent>/<repo-name>.worktrees/<branch>`, with every `/` in the branch name replaced by `-` (`../app.worktrees/feat-billing_ic003`). It is outside the repository, so no ignore rule is needed.
+- **Open:** `git worktree add -b <research-branch>_ic<NNN> <worktree-path> <research-branch>`, before the first file of the increment is written. Uncommitted changes of the original checkout do not follow into it: when the increment needs them, stop and ask. If the checkout is already another increment's branch, stop and ask which branch is the base.
+- **Exclusive:** the worktree holds that one branch and serves that one increment: it is never reused for another increment or for other work, and nothing of the increment is done in the original checkout. Every edit, command, test and commit of the increment, whoever or whatever skill or subagent does it, runs with the worktree as its working directory, so hand it the path.
+- **Research files:** a versioned research is read and edited in the worktree, where `pending.md`, `progress.md` and the increment folder are committed on the branch. A research kept out of git is absent from the worktree and stays at its path in the original checkout, which is the only place it is edited.
+- **Work:** every commit of the increment goes on this branch; never commit or push to the research branch. Push only this branch, with `git push -u origin <branch>`.
+- **Close:** the PR, then the worktree removal (see Close an increment). The user merges the PR; the increment does not wait for the merge.
+- **Resumed:** find the worktree with `git worktree list` and move into it before touching anything. If it is gone but the branch exists, recreate it with `git worktree add <worktree-path> <branch>`. If work already landed on the research branch or in the original checkout, say so and ask before moving it.
 
 ### Close an increment
 
 1. **Check the work is committed.** `git status --short` must show nothing the increment changed or produced: code, tests, docs outside the research and, when the research is versioned, its folder and files. Anything uncommitted: stop, tell the user what is pending, and leave the increment `In Progress` until it is committed. A research kept out of git is exempt for its own folder; the changes outside it still count.
 2. **Push the branch and open the PR** (see The increment branch):
-   - An increment branch with no commit ahead of the research branch has nothing to deliver: switch back, delete the branch and open no PR.
+   - An increment branch with no commit ahead of the research branch has nothing to deliver: remove the worktree (step 7), delete the branch and open no PR.
    - `git push -u origin <research-branch>_ic<NNN>`, then open one PR from it to the research branch, **with no assignee and no reviewer**: never pass `--assignee`, `--reviewer` or `--reviewers`, nor assign it to the user or anyone else. If a PR for that branch already exists, reuse it and push the new commits.
    - GitHub remote: `gh pr create --base <research-branch> --head <branch> --title … --body …`.
    - Azure DevOps remote (`wit.py ado` exits 0): `az repos pr create --source-branch <branch> --target-branch <research-branch> --title … --description …`.
    - Any other remote: push only, and say no PR was opened.
    - Title and body are in the research's language and say what the increment delivers, why, and how to validate it, without depending on the conversation. A policy-required reviewer that the host adds on its own stays; say so.
-   - Push or PR failure (login, network, permission): say so, leave the increment `In Progress` and retry on resume; `az login` and `gh auth login` are the user's step.
+   - Push or PR failure (login, network, permission): say so, leave the increment `In Progress` and its worktree in place, and retry on resume; `az login` and `gh auth login` are the user's step.
 3. Close its items (see Close an item) and set the increment to `Done` (`Feito`) in the increments table, then sync its Azure DevOps Task to `Closed` (see Azure DevOps).
 4. Reread its `progress.md` section against what the increment actually did and add any decision, change, customization or addition that is missing.
 5. Feed the learning back: update the affected decision, item or evidence in the initial research (`001-*/`) and point to the increment folder.
 6. If the research is local (not versioned), check that nothing the increment changed outside `docs/research/` cites the research, its paths or its item numbers.
+7. **Remove the worktree. Mandatory, and always the last step.** From the original checkout, `git -C <worktree-path> status --short` must be empty and the branch must have nothing ahead of its upstream (`git rev-list @{u}..HEAD` empty). Steps 3 to 5 edit files, so commit them on the increment branch and push before checking. Then `git worktree remove <worktree-path>`, never with `--force`, and `git worktree prune`. A worktree that will not come out is not forced: say what blocks it and leave the increment `In Progress`. The local and remote branch stay, because the PR needs them; the user deletes them after merging. The increment is not closed while its worktree exists.
 
 ### Azure DevOps
 

@@ -176,3 +176,10 @@
 - **Trade-off**: Reads "`_ic<ic number>`" as a suffix on the research branch name with the 3-digit number (assumption). Hosts may add policy-required reviewers on their own, which the skill cannot suppress. An increment with no commits ahead drops its branch and opens no PR. Researches created earlier get the rule through the skill only.
 - **Date**: 2026-11-05
 - **Status**: active
+
+### AD-026
+- **Decision**: Each increment branch lives in its own exclusive git worktree at `<repo-parent>/<repo-name>.worktrees/<branch with / as ->`, created with `git worktree add -b` when the increment opens. All of the increment's work runs there, and removing it (`git worktree remove`, never `--force`, after a clean status and a pushed branch) is the mandatory last step of closing; the increment is not closed while the worktree exists. The local and remote branches stay for the PR. Refines AD-025, which used `git switch -c` in the original checkout.
+- **Reason**: User's rule: the new increment branches are followed in an exclusive worktree, and the worktree is closed and removed when the IC is done.
+- **Trade-off**: Uncommitted changes of the original checkout no longer follow the increment, and a research kept out of git is absent from the worktree, so it is edited only in the original checkout. Reads "closed and removed" as the worktree, not the branch (assumption). The sibling path sits outside the session's working directory, which can prompt for permission.
+- **Date**: 2026-11-07
+- **Status**: active
