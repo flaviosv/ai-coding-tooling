@@ -183,3 +183,10 @@
 - **Trade-off**: Uncommitted changes of the original checkout no longer follow the increment, and a research kept out of git is absent from the worktree, so it is edited only in the original checkout. Reads "closed and removed" as the worktree, not the branch (assumption). The sibling path sits outside the session's working directory, which can prompt for permission.
 - **Date**: 2026-11-07
 - **Status**: active
+
+### AD-027
+- **Decision**: `pending.md` accepts any number of side tables besides the items and Done tables, named by the user with a `##` heading (e.g. `## Future Features`) and sharing the items table's columns. `pending.py` finds tables by heading, not position: the first items-header table is the items table, the one under the Done heading is the Done table, every other one is a side table. Parked rows move unchanged, keeping `#` and Status, with no section suffix; side tables are ignored by "Where was I" and by the increment-versus-items consistency check, but their numbers stay unique across all tables. Procedures Park items and Bring items back were added; the duplicate check scans every table.
+- **Reason**: User's request: after many increments, move items to a table like "Future Features" that is outside the research but kept documented, with any number of such tables, undeclared, with the same columns and parameters.
+- **Trade-off**: Preserving Status instead of adding a `Deferred` status keeps where the item stopped and adds no value in either language, but a side table's meaning lives in its heading, not in a column. `Rejected` (closed history in the Done table) and a side table (live backlog) now overlap in spirit. A Done table under a non-standard heading is read as a side table. Dependents of a parked item are caught by the procedure's prompt, not by `check`.
+- **Date**: 2026-11-09
+- **Status**: active

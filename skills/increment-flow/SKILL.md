@@ -4,7 +4,7 @@ description: Gerencia pesquisas e funcionalidades em incrementos numerados sob d
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.11.0
+  version: 1.12.0
 ---
 
 # Increment Flow
@@ -24,7 +24,7 @@ Keeps a heavy piece of work small: one research folder, a `pending.md` that trac
 ```text
 docs/research/<topic>/
 ├── AGENTS.md          rules and map for agents (from assets/AGENTS.<lang>.md)
-├── pending.md         increments table + items table + Done table + one section per item (from assets/pending.<lang>.md)
+├── pending.md         increments table + items table + Done table + any side tables + one section per item (from assets/pending.<lang>.md)
 ├── progress.md        short summary per increment of what was decided and done (from assets/progress.<lang>.md; the file is always named progress.md)
 ├── 001-<slug>/        the initial research
 └── 002-<slug>/ …      one folder per increment, in the order they open; on Azure DevOps repos each holds a wit.md
@@ -76,6 +76,17 @@ Sits right below the items table, under `## Done Items` (pt-BR `## Itens Feitos`
 
 `pending.py check` fails on a `Done` or `Rejected` row in the items table, on any other row in the Done table, and on a number that appears in both tables.
 
+## Side tables
+
+Items that stay documented but leave the research's working scope (a "Future Features" list, ideas for later) go in a **side table**: any `##` heading other than the increments, items and Done headings, followed by a table with the same columns as the items table. The user names it (`## Future Features`, in whatever language they use); nothing is declared up front, and the table is created the first time an item is parked in it. Side tables sit after the Done table, in the order they were created, and there can be as many as the user wants.
+
+- **Parked row:** cut and pasted unchanged, keeping its `#`, its Status and every other cell, so where the item stopped stays visible. Nothing is renumbered and its section keeps its number and title, with no status suffix.
+- **What belongs there:** the statuses the items table accepts (`Open` to `Implementing`, and `Declined`). `Done` and `Rejected` rows still go only to the Done table.
+- **Not worked:** a parked item is outside the research. "Where was I", the increments table's agreement with its items and any increment's work ignore it until it is brought back. Its Increment column may still name an earlier increment.
+- **Numbers:** unique across every table; `pending.py next` counts them all.
+
+`pending.py check` fails on a side table with no heading, on a name that is reserved (`Increments`, `Items`, `Done Items`, or their pt-BR forms) or that looks like an item section (`7 — …`), on two side tables with the same name, and on the same row rules as the items table.
+
 ## Language
 
 **An existing `pending.md` decides the language.** Detect it from the table header and write everything in that research (rows, sections, `AGENTS.md`, increment documents) in it. Never translate or switch an existing research, whatever the user, the repository or the other signals below say.
@@ -106,9 +117,10 @@ Trigger: the user starts work on a topic that has no folder under `docs/research
 
 ### Add an item
 
-1. **Check for a duplicate first.** Compare each item the user asks to add against every item in `pending.md`, in both tables, reading its row and its section. Same goal and scope is a duplicate even when worded differently.
+1. **Check for a duplicate first.** Compare each item the user asks to add against every item in `pending.md`, in every table (items, Done, side), reading its row and its section. Same goal and scope is a duplicate even when worded differently.
    - **Already present:** add no row and no section. Append what the request brings that the section does not already say, as a dated paragraph (`YYYY-MM-DD: …`) in that item's section; if it brings nothing new, change nothing. Tell the user it is already item N and what you added. Shorten the Details cell only as in Update an item, then run `check`.
    - **Present but closed** (Done, Declined, Rejected): tell the user and ask whether to reopen it; never reopen it or register a new item on your own. Reopening a `Done` or `Rejected` item also moves its row back to the items table, at its numeric place, and drops the status suffix.
+   - **Present in a side table:** tell the user which table it is in and ask whether to bring it back (see Bring items back); never register a new item for it on your own.
    - **Partly covered:** the covered part goes to the existing item's section as above; only the uncovered rest becomes a new item.
    - **Unsure whether it is the same item:** ask.
 2. `pending.py next` gives the number N.
@@ -150,6 +162,24 @@ Trigger: closing an item as `Done` or `Rejected`, or finding such rows in the it
 3. Run `check`.
 
 Say in the reply which items moved.
+
+### Park items
+
+Trigger: the user asks to move items out of the research's working scope into a named table ("move 5 and 7 to Future Features").
+
+1. Name the table exactly as the user gave it. If `pending.md` has no side table with that name, create it right below the last table (the Done table, or the last side table): heading `## <name>` and the same header row as the items table. Otherwise reuse it.
+2. Items the user named that are `Done` or `Rejected` stay where they are; say so. Any other item can be parked, whatever its status.
+3. If an item still in the items table depends on a parked item, or an increment `In Progress` works it, say so and ask before moving it: the dependent would wait on something outside the research.
+4. Cut each row from its table and paste it into the side table in ascending `#` order, unchanged. Leave the section as it is.
+5. When an increment is in play, log one `decision` line in `progress.md` naming the items and the table.
+6. Run `check`. Say in the reply which items moved and to which table.
+
+### Bring items back
+
+Trigger: the user wants a parked item worked again.
+
+1. Cut the row from the side table and paste it into the items table at its numeric place, unchanged. Leave a side table that became empty in place.
+2. Run `check`. Say which items came back.
 
 ### Remove an item
 
@@ -277,7 +307,7 @@ Trigger: inside an increment, a decision is made, a task finishes, something cha
 
 ### Where was I
 
-Read `pending.md` and the section of the latest increment in `progress.md`, and report, briefly: the increment `In Progress`, then items in a working status with their increment, then `Open` items whose dependencies are all `Done`, then blocked items with what blocks them. Recommend the next one.
+Read `pending.md` and the section of the latest increment in `progress.md`, and report, briefly: the increment `In Progress`, then items in a working status with their increment, then `Open` items whose dependencies are all `Done`, then blocked items with what blocks them. Recommend the next one. Items in side tables are left out; mention only how many each holds.
 
 ## Examples
 
@@ -294,6 +324,8 @@ Read `pending.md` and the section of the latest increment in `progress.md`, and 
 **Existing language wins.** User, writing in English: "add an item to cap retries at 5" in a research whose `pending.md` header is `# | Item | Estado | …`. Actions: write the row and section in pt-BR (`Aberto`, `Registrado em 2026-10-14.`); never translate the file.
 
 **Table missing.** User: "mark item 3 done" in a research whose `pending.md` has only the items table and folders `001-` and `002-`. Actions: before the edit, insert `## Increments` above `## Items` with rows `001` and `002`; item 1 is `Done`, so `001` is `Done`; item 3 is `Implementing` with Increment `002`, so `002` is `In Progress`; say both were inferred; then close item 3, `check`.
+
+**Park.** User: "move 5 and 7 to Future Features, they're not part of this research". Item 5 is `Researched`, item 7 `Open`, and no other item depends on them. Actions: create `## Future Features` with the items header below the Done table; move rows 5 and 7 unchanged, sections untouched; log `- 2026-11-09 · decision · Items 5 and 7 moved to Future Features, out of this research's scope.` under the increment in play; `check`; reply that both moved.
 
 **Close.** User: "item 3 is done, commit a1b2c3d". Actions: Status `Done`; title `## 3 — <title> (done)`; under it `Done in increment 004 (a1b2c3d, 2026-10-14).`; move row 3 to the Done table, creating `## Done Items` below the items table if the file has none; `check`.
 
@@ -313,5 +345,6 @@ Read `pending.md` and the section of the latest increment in `progress.md`, and 
 - `progress.md line N: …`: an entry or section heading in `progress.md` breaks the format. Entries are `- YYYY-MM-DD · <type> · <text>` with a type from the file's language; headings are `## Increment NNN — <slug>` with the slug of an existing folder.
 - `Status is Done; move the row to the Done table …` (or `Rejected`): such a row is still in the items table. Move it (see Move to the Done table).
 - `only Done and Rejected items belong in the Done table`: a row in the Done table has another status. Move it back to the items table, or fix its status.
-- `expected one items table and at most one Done table …`: the header row differs from the template (renamed column, extra column), or a third table has it. Restore the template's header for the file's language.
+- `expected one items table, at most one Done table and any side tables …`: no table has the template's header (renamed column, extra column), or two tables sit under the Done heading. Restore the header for the file's language, or rename one of them.
+- `side table has no '## <name>' heading` / `side table name '…' is reserved …` / `more than one side table named '…'`: give the side table its own `## <name>` heading, unique and not one of the standard headings.
 - `section N has no row in the table`: an item was half-removed. Restore the row, or finish the removal (see Remove an item).

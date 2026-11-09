@@ -5,6 +5,7 @@ Itens para não esquecer nesta pesquisa. Uma tabela de incrementos (andamento de
 - O `#` é o número da seção. Ele nunca muda e nunca é reaproveitado: "item N" e "§N" são sempre a seção N.
 - Item novo entra no fim da tabela, com o próximo número livre.
 - Item `Feito` ou `Rejeitado` vai, com a linha inalterada e mantendo o `#`, da tabela de itens para a tabela de feitos logo abaixo. Item `Recusado` fica na tabela de itens. Nos dois casos, o título da seção ganha o estado entre parênteses.
+- Item que continua documentado mas sai do escopo desta pesquisa vai, com a linha inalterada e mantendo o `#` e o Estado, para uma tabela lateral: um título `##` com o nome que o usuário der (por exemplo `## Funcionalidades Futuras`) e as mesmas colunas, abaixo da tabela de feitos. Crie uma quando precisar; pode haver várias.
 
 As colunas dos itens. Cada célula guarda só o que a coluna diz:
 

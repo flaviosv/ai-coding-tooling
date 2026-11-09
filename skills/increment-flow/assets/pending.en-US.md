@@ -5,6 +5,7 @@ Items to keep track of in this research. An increments table (progress of each i
 - `#` is the section number. It never changes and is never reused: "item N" and "§N" always mean section N.
 - A new item goes at the end of the table with the next free number.
 - A `Done` or `Rejected` item moves, row unchanged and keeping its `#`, from the items table to the Done table right below it. A `Declined` item stays in the items table. Either way, the section title gets the status in parentheses.
+- Items that stay documented but leave this research's scope go, row unchanged and keeping their `#` and Status, to a side table: a `##` heading with the name the user gives (for example `## Future Features`) and the same columns, below the Done table. Create one when needed; there can be several.
 
 Item columns. Each cell holds only what its column says:
 

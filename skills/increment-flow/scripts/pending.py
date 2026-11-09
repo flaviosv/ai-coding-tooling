@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Validate an increment-flow pending.md (increments table, items table, Done table, and the progress.md beside it) and compute the next free numbers.
 
+Tables are found by their "## " heading: the first items-header table is the items table, the one under the Done heading is the Done table, and any other items-header table is a side table (e.g. "Future Features").
+
 Usage:
   pending.py check <pending.md>   exit 0 when consistent, 1 with one line per violation
   pending.py next  <pending.md>   prints "item=<N> increment=<NNN>"
@@ -12,6 +14,8 @@ from pathlib import Path
 LANGS = {
     "en-US": {
         "header": ["#", "Item", "Status", "Depends on", "Increment", "Details"],
+        "reserved": ["Increments", "Items", "Done Items"],
+        "done_heading": "Done Items",
         "inc_header": ["Increment Number", "Title", "Status"],
         "inc_statuses": ["Open", "In Progress", "Done"],
         "open": ["Open", "Researching", "Researched", "Planning", "Planned", "Implementing"],
@@ -22,6 +26,8 @@ LANGS = {
     },
     "pt-BR": {
         "header": ["#", "Item", "Estado", "Depende de", "Incremento", "Detalhe"],
+        "reserved": ["Incrementos", "Itens", "Itens Feitos"],
+        "done_heading": "Itens Feitos",
         "inc_header": ["Número do Incremento", "Título", "Estado"],
         "inc_statuses": ["Aberto", "Em Andamento", "Feito"],
         "open": ["Aberto", "Em Pesquisa", "Pesquisado", "Em Planejamento", "Planejado", "Desenvolvimento"],
@@ -57,24 +63,51 @@ def read_rows(lines, start):
 def parse(path):
     lines = path.read_text(encoding="utf-8").splitlines()
     tables, inc_tables = [], []
+    heading = None
     for i, line in enumerate(lines):
+        if line.startswith("## "):
+            heading = line[3:].strip()
         if not line.startswith("|"):
             continue
         row = cells(line)
         for lang, spec in LANGS.items():
             if row == spec["header"]:
-                tables.append((i, lang))
+                kind = "items" if not tables else "done" if heading == spec["done_heading"] else "side"
+                tables.append({"line": i, "lang": lang, "heading": heading, "kind": kind, "rows": read_rows(lines, i)})
             elif row == spec["inc_header"]:
                 inc_tables.append((i, lang))
-    rows = read_rows(lines, tables[0][0]) if tables else []
-    done_rows = read_rows(lines, tables[1][0]) if len(tables) == 2 else []
     inc_rows = read_rows(lines, inc_tables[0][0]) if len(inc_tables) == 1 else []
     sections = {}
     for n, line in enumerate(lines, 1):
         m = SECTION.match(line)
         if m:
             sections.setdefault(int(m.group(1)), []).append((n, m.group(2), m.group(3)))
-    return tables, rows, done_rows, sections, inc_tables, inc_rows
+    return tables, sections, inc_tables, inc_rows
+
+
+def structure_error(tables):
+    if not tables or sum(t["kind"] == "done" for t in tables) > 1:
+        return f"expected one items table, at most one Done table and any side tables, found {len(tables)} tables with the items header"
+    other = next((t["lang"] for t in tables if t["lang"] != tables[0]["lang"]), None)
+    if other:
+        return f"the items table is in {tables[0]['lang']} but another table is in {other}"
+    return None
+
+
+def side_table_errors(tables, spec):
+    errors, seen = [], []
+    for t in tables:
+        if t["kind"] != "side":
+            continue
+        name, where = t["heading"], f"line {t['line'] + 1}"
+        if not name:
+            errors.append(f"{where}: side table has no '## <name>' heading above it")
+        elif name in spec["reserved"] or SECTION.match(f"## {name}"):
+            errors.append(f"{where}: side table name '{name}' is reserved or looks like an item section; rename it")
+        elif name in seen:
+            errors.append(f"{where}: more than one side table named '{name}'")
+        seen.append(name)
+    return errors
 
 
 def increments(root):
@@ -172,25 +205,28 @@ def check_increments(inc_tables, inc_rows, lang, incs, rows):
 
 def check(path):
     errors = []
-    tables, rows, done_rows, sections, inc_tables, inc_rows = parse(path)
-    if len(tables) not in (1, 2):
-        return [f"expected one items table and at most one Done table below it, found {len(tables)} tables with the items header"]
-    if tables[0][1] != tables[-1][1]:
-        return [f"the items table is in {tables[0][1]} but the Done table is in {tables[-1][1]}"]
-    lang = tables[0][1]
+    tables, sections, inc_tables, inc_rows = parse(path)
+    broken = structure_error(tables)
+    if broken:
+        return [broken]
+    lang = tables[0]["lang"]
     spec = LANGS[lang]
+    errors += side_table_errors(tables, spec)
     suffix_of = spec["closed"]
     statuses = spec["open"] + list(suffix_of)
     incs = increments(path.parent)
     for code, names in incs.items():
         if len(names) > 1:
             errors.append(f"increment {code} has more than one folder: {', '.join(sorted(names))}")
-    errors += check_increments(inc_tables, inc_rows, lang, incs, rows + done_rows)
+    rows = [r for t in tables if t["kind"] != "side" for r in t["rows"]]
+    errors += check_increments(inc_tables, inc_rows, lang, incs, rows)
+    all_rows = [r for t in tables for r in t["rows"]]
 
     numbers = []
     last = {}
-    tagged = [(line, row, False) for line, row in rows] + [(line, row, True) for line, row in done_rows]
-    for line, row, in_done in tagged:
+    tagged = [(line, row, t["kind"], k) for k, t in enumerate(tables) for line, row in t["rows"]]
+    for line, row, kind, k in tagged:
+        in_done = kind == "done"
         where = f"line {line}"
         if len(row) != 6:
             errors.append(f"{where}: expected 6 cells, found {len(row)}")
@@ -203,9 +239,9 @@ def check(path):
         where = f"line {line} (#{n})"
         if n in numbers:
             errors.append(f"{where}: duplicate item number")
-        if n < last.get(in_done, 0):
+        if n < last.get(k, 0):
             errors.append(f"{where}: rows must be in ascending '#' order")
-        last[in_done] = n
+        last[k] = n
         numbers.append(n)
         if not item:
             errors.append(f"{where}: Item is empty")
@@ -243,7 +279,7 @@ def check(path):
             want = f"'({expected})'" if expected else "no status suffix"
             errors.append(f"{where}: section title must have {want} for status '{status}'")
 
-    for line, row in rows + done_rows:
+    for line, row in all_rows:
         if len(row) == 6 and row[3] != NONE and re.fullmatch(r"[1-9]\d*", row[0]):
             for d in (x.strip() for x in row[3].split(",")):
                 if d.isdigit() and int(d) not in numbers:
@@ -262,8 +298,8 @@ def check(path):
 
 
 def next_numbers(path):
-    _, rows, done_rows, sections, _, _ = parse(path)
-    used = {int(r[0]) for _, r in rows + done_rows if r and r[0].isdigit()} | set(sections)
+    tables, sections, _, _ = parse(path)
+    used = {int(r[0]) for t in tables for _, r in t["rows"] if r and r[0].isdigit()} | set(sections)
     incs = increments(path.parent)
     item = max(used, default=0) + 1
     inc = max((int(c) for c in incs), default=0) + 1

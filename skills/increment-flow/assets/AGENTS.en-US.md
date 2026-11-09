@@ -18,6 +18,7 @@ This folder holds one research, worked in small numbered increments. Load the `i
 - **Pursue the increment's goal with minimal interruption, whatever skill or method does the work.** Stop and ask only for a contradiction, an ambiguity that changes the result, an architecture approach, a materially better strategy, or a similar decision that is the user's to make (scope change, reopening a closed decision, irreversible action, something only the user can supply). Otherwise decide, proceed and report at the end.
 - **An increment never closes with an open gap.** Each gap from the independent verification becomes a fix in the same increment, or goes to the user and enters `pending.md` only with their acceptance recorded.
 - **`Done` and `Rejected` items live in the Done table, not the items table.** Closing one moves its row there, unchanged.
+- **Out-of-scope items you want to keep live in side tables**, a `##` heading with the same columns below the Done table (for example `## Future Features`). Parking moves a row there unchanged; side-table items are not worked until brought back.
 - **An increment is `Done` only when its work is committed.** Uncommitted changes keep it `In Progress`.
 - **On closing an increment, feed the learning back** into the initial research (the decision, item or evidence it changed), pointing to the increment folder.
 - **Keep `progress.md` current.** When an increment decides, finishes, changes, customizes or adds something worth knowing later, append one line to that increment's section. A summary, not a transcript.
