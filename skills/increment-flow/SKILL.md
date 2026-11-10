@@ -4,7 +4,7 @@ description: Gerencia pesquisas e funcionalidades em incrementos numerados sob d
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.12.0
+  version: 1.13.0
 ---
 
 # Increment Flow
@@ -14,7 +14,7 @@ Keeps a heavy piece of work small: one research folder, a `pending.md` that trac
 ## Always, before anything else
 
 1. **Resolve the active research.** It is the `docs/research/<topic>/` folder this conversation is working in. "The pending.md", "add an item", "item 4" always mean that folder's `pending.md`. If the conversation, memory or context points at more than one research folder or `pending.md` and nothing in the current request settles which, stop and ask. Never pick one, and never write to a `pending.md` you found by searching.
-2. **Read the research's `AGENTS.md`** unless it is already in context. Claude Code skips a subfolder's `AGENTS.md` when the repository has a `CLAUDE.md` above it, so do not count on it having loaded.
+2. **Read the research's `AGENTS.md`** unless it is already in context. Claude Code skips a subfolder's `AGENTS.md` when the repository has a `CLAUDE.md` above it, so do not count on it having loaded. A research created in the earlier format has a `CLAUDE.md` in its folder and no `AGENTS.md`: rename it to `AGENTS.md` first (`git mv` when tracked, `mv` otherwise), keep its content, say so in the reply, and read it. If both files exist, stop and ask. The skill never creates a `CLAUDE.md` in a research folder.
 3. **Read the active `pending.md` before editing it.** Edit it in place and keep everything you do not change byte-identical. If it has no increments table, create it before anything else (see The increments table). If its items table holds `Done` or `Rejected` items, move them to the Done table right then, creating the table when missing (see Move to the Done table).
 4. **Read `progress.md` when resuming or entering an increment you did not start**, to learn what was decided and done so far. A research that has none yet is not an error: see Log progress.
 5. **Validate after every edit to `pending.md` or `progress.md`:** `python3 <this skill>/scripts/pending.py check <pending.md>`, which checks both files. Fix every reported line before replying. Use `pending.py next <pending.md>` for the next item number and the next increment number; never count by eye.

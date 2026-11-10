@@ -190,3 +190,10 @@
 - **Trade-off**: Preserving Status instead of adding a `Deferred` status keeps where the item stopped and adds no value in either language, but a side table's meaning lives in its heading, not in a column. `Rejected` (closed history in the Done table) and a side table (live backlog) now overlap in spirit. A Done table under a non-standard heading is read as a side table. Dependents of a parked item are caught by the procedure's prompt, not by `check`.
 - **Date**: 2026-11-09
 - **Status**: active
+
+### AD-028
+- **Decision**: A research folder that still has the earlier-format `CLAUDE.md` and no `AGENTS.md` gets it renamed to `AGENTS.md` (content kept) in the always-before-anything-else step, before the skill reads it; both files present means stop and ask. The skill never creates a `CLAUDE.md` in a research folder. Complements AD-005, which already stopped templates from producing one.
+- **Reason**: User's request: the flow must produce `AGENTS.md`, not `CLAUDE.md`, and rename the file when the previous format exists.
+- **Trade-off**: Renaming does not rewrite self-references inside the file's text, and the rename is an uncommitted change on whichever checkout the skill is in when it notices it.
+- **Date**: 2026-11-10
+- **Status**: active
