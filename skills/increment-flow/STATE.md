@@ -197,3 +197,10 @@
 - **Trade-off**: Renaming does not rewrite self-references inside the file's text, and the rename is an uncommitted change on whichever checkout the skill is in when it notices it.
 - **Date**: 2026-11-10
 - **Status**: active
+
+### AD-029
+- **Decision**: Closing an increment first brings the research branch into the increment branch: `git fetch` then `git merge origin/<research-branch>` (conventional-commit message, never a rebase), conflicts resolved in the increment branch, the increment's proof and `pending.py check` re-run, and only then the push and the PR. A conflict only the user can settle follows Work an increment: stop and ask, no PR, increment stays `In Progress`. Refines AD-025's close step.
+- **Reason**: User's request: before opening the PR, get the base branch's changes, merge and resolve conflicts in the IC branch, so the PR opens mergeable.
+- **Trade-off**: Reads "base branch" as the research branch, the PR target (assumption). Resolution quality rests on model judgment, and the base can still move between the merge and the user merging the PR.
+- **Date**: 2026-11-11
+- **Status**: active

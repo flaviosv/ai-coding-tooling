@@ -1,10 +1,10 @@
 ---
 name: increment-flow
-description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Define que o trabalho de um incremento, com qualquer skill ou método, persegue o objetivo com o mínimo de interrupção, e que cada incremento trabalha numa branch própria dentro de um worktree exclusivo, removido ao concluir, e entrega por um PR sem responsável, nunca por push direto na branch da pesquisa. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
+description: Gerencia pesquisas e funcionalidades em incrementos numerados sob docs/research/TOPIC/, mantendo pending.md, progress.md e a criação de Tasks na abertura em repositórios Azure DevOps nos estados New, Active e Closed. Use para iniciar pesquisa, abrir o próximo incremento, adicionar ou atualizar pendências, fechar itens, registrar progresso ou retomar uma pesquisa; aceita referências como IC 3 e incremento 003. Define que o trabalho de um incremento, com qualquer skill ou método, persegue o objetivo com o mínimo de interrupção, e que cada incremento trabalha numa branch própria dentro de um worktree exclusivo, removido ao concluir, e entrega por um PR sem responsável, aberto só depois de mesclar a branch da pesquisa na do incremento e resolver os conflitos, nunca por push direto na branch da pesquisa. Não executa discovery, planejamento ou implementação, nem gerencia listas fora de docs/research/.
 license: CC-BY-4.0
 metadata:
   author: flaviostudart@gmail.com
-  version: 1.13.0
+  version: 1.14.0
 ---
 
 # Increment Flow
@@ -222,14 +222,15 @@ Nothing an increment produces is pushed to the research branch. The **research b
 - **Exclusive:** the worktree holds that one branch and serves that one increment: it is never reused for another increment or for other work, and nothing of the increment is done in the original checkout. Every edit, command, test and commit of the increment, whoever or whatever skill or subagent does it, runs with the worktree as its working directory, so hand it the path.
 - **Research files:** a versioned research is read and edited in the worktree, where `pending.md`, `progress.md` and the increment folder are committed on the branch. A research kept out of git is absent from the worktree and stays at its path in the original checkout, which is the only place it is edited.
 - **Work:** every commit of the increment goes on this branch; never commit or push to the research branch. Push only this branch, with `git push -u origin <branch>`.
-- **Close:** the PR, then the worktree removal (see Close an increment). The user merges the PR; the increment does not wait for the merge.
+- **Close:** merge the research branch into the increment branch, then the PR, then the worktree removal (see Close an increment). The user merges the PR; the increment does not wait for the merge.
 - **Resumed:** find the worktree with `git worktree list` and move into it before touching anything. If it is gone but the branch exists, recreate it with `git worktree add <worktree-path> <branch>`. If work already landed on the research branch or in the original checkout, say so and ask before moving it.
 
 ### Close an increment
 
 1. **Check the work is committed.** `git status --short` must show nothing the increment changed or produced: code, tests, docs outside the research and, when the research is versioned, its folder and files. Anything uncommitted: stop, tell the user what is pending, and leave the increment `In Progress` until it is committed. A research kept out of git is exempt for its own folder; the changes outside it still count.
-2. **Push the branch and open the PR** (see The increment branch):
+2. **Merge the research branch in, push the branch and open the PR** (see The increment branch):
    - An increment branch with no commit ahead of the research branch has nothing to deliver: remove the worktree (step 7), delete the branch and open no PR.
+   - **Merge before opening the PR.** In the worktree, `git fetch origin <research-branch>`, then `git merge origin/<research-branch> -m "chore: merge <research-branch> into <branch>"` (the local research branch when it has no remote). Resolve every conflict in the increment branch, keeping what both sides intended, and commit the merge there; never rebase and never touch the research branch. Then run what proved the increment's work, plus `pending.py check` when `pending.md` or `progress.md` changed on either side, and fix what the merge broke. A conflict that only the user can settle (the two sides contradict each other, or a choice is hard to reverse) follows Work an increment: stop and ask, open no PR, leave the increment `In Progress`. A failed fetch is a network or login failure: handle it as a failed push below.
    - `git push -u origin <research-branch>_ic<NNN>`, then open one PR from it to the research branch, **with no assignee and no reviewer**: never pass `--assignee`, `--reviewer` or `--reviewers`, nor assign it to the user or anyone else. If a PR for that branch already exists, reuse it and push the new commits.
    - GitHub remote: `gh pr create --base <research-branch> --head <branch> --title … --body …`.
    - Azure DevOps remote (`wit.py ado` exits 0): `az repos pr create --source-branch <branch> --target-branch <research-branch> --title … --description …`.
