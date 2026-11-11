@@ -28,7 +28,7 @@ Developers (primarily the maintainer) running Claude Code across several machine
 - `extended/` overlay system for customizing vendor skills without forking: `mermaid-studio`, `skill-architect`, `tlc-spec-driven`.
 - `fs-harness` CLI: `setup`, `destroy`, `add`, `delete`, `update`, `override`, `unoverride`, `list`, `doctor`, `statusline`, `hooks`.
 - `config/skills.json` as the authoritative skill registry (`config/hooks.json` for hook definitions).
-- Claude Code hooks (`scripts/hooks/`, defined in `config/hooks.json`): per-repo credential scoping and spoken alerts when a session needs input or goes idle.
+- Claude Code hooks (`scripts/hooks/`, defined in `config/hooks.json`): per-repo credential scoping.
 - A status line script (`scripts/bin/misc/statusline.sh`) with token-based and subscription display modes.
 - A shared, repo-root `references/` directory linked only from the global agent-instructions file.
 - Consistency checks (`scripts/bin/misc/`) that validate cross-references between skills, overlays, and the shared `references/` directory, and guard against a removed concept regaining a stale mention.

@@ -4,11 +4,11 @@
 
 ## Core
 
-- Language: JavaScript (ES modules, `"type": "module"`) for the CLI; Python 3 (standard library only) for the scripts skills bundle; POSIX/bash shell for hooks, the status line and `disk-evaluate`'s k3d script; Swift for one macOS hook helper (`scripts/hooks/mic-in-use.swift`, compiled on first use with `swiftc`, needs macOS 14+)
+- Language: JavaScript (ES modules, `"type": "module"`) for the CLI; Python 3 (standard library only) for the scripts skills bundle; POSIX/bash shell for hooks, the status line and `disk-evaluate`'s k3d script
 - Runtime: Node.js ≥ 18 (tested on Node 26)
 - Minimum versions: Node ≥ 18 (oldest maintained LTS)
 - Package manager: npm (`npm link` for local install); zero runtime dependencies
-- System tools used by hooks and the status line: `jq`, macOS `say` / `afplay` (spoken alerts), `swiftc` (optional; without it alerts keep normal volume)
+- System tools used by hooks and the status line: `jq`
 
 ## Key Libraries
 

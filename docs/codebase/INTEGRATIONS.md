@@ -27,8 +27,8 @@ The CLI's external integrations are skill-package registries reached through `np
 
 **Local session tooling:**
 
-- Type: macOS system utilities and local cluster tooling
-- Purpose: `scripts/hooks/speak-pending-input.sh` speaks alerts with `say` and plays them quietly through `afplay` while `scripts/hooks/mic-in-use.swift` (Core Audio) reports a microphone in use; `skills/disk-evaluate/scripts/k3d_stale_images.sh` reads k3d node images through `docker`, `kubectl` and `jq`, plus an optional local registry HTTP check
+- Type: Local cluster tooling
+- Purpose: `skills/disk-evaluate/scripts/k3d_stale_images.sh` reads k3d node images through `docker`, `kubectl` and `jq`, plus an optional local registry HTTP check
 - Data flow: local only; the k3d script is read-only
 
 **Matt Pocock:**
@@ -67,4 +67,4 @@ None.
 
 ## Background Jobs
 
-None scheduled. No crons or queues. The one detached background work is `speak-pending-input.sh`: it starts a delayed reminder (900 seconds) per armed alert and, on first use, a background `swiftc` build of the microphone helper.
+None scheduled. No crons, queues or detached background work.

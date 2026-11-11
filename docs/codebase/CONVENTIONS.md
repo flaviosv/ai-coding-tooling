@@ -9,7 +9,7 @@
 | Constants | UPPER_SNAKE_CASE | `SCRIPT_DIR`, `ROOT`, `SKILL_NAME_RE` |
 | Files (JS) | kebab-case | `fs-harness.mjs` |
 | Files (Python) | snake_case; tests `test_<module>.py` in a `tests/` folder beside the module | `ado_review.py`, `tests/test_ado_review.py` |
-| Files (shell, Swift) | kebab-case | `speak-pending-input.sh`, `mic-in-use.swift` |
+| Files (shell) | kebab-case | `require-direnv-credential.sh`, `resolve-gh-account.sh` |
 | Files (config) | kebab-case | `skills.json`, `hooks.json` |
 | Functions | camelCase | `cmdSetup`, `installSkill`, `applyOverlay` |
 | Skills (dirs) | kebab-case | `code-review`, `disk-evaluate`, `architecture-evaluate` |
@@ -36,7 +36,7 @@ import { fileURLToPath } from 'node:url';
 
 **File structure within `scripts/bin/fs-harness.mjs`:** constants → utility/logging helpers → filesystem helpers → command functions → doc generation → CLI entry point. The two `scripts/bin/misc/` consistency-check scripts follow the same shape at smaller scale: header comment stating intent → constants → check logic → report/exit.
 
-**Python skill scripts** are standard-library only, start with `#!/usr/bin/env python3` and a module docstring that gives the usage and the JSON shapes they read or write, and have tests under a `tests/` folder using `unittest`. **Shell hooks** start with `#!/usr/bin/env bash` and `set -o pipefail` (`-u` always, `-e` only in `require-direnv-credential.sh`) and read the hook event as JSON on stdin with `jq`; the notification-style hooks (`resolve-gh-account.sh`, `speak-pending-input.sh`) exit 0 on every path, and only `require-direnv-credential.sh` is allowed to block with exit 2.
+**Python skill scripts** are standard-library only, start with `#!/usr/bin/env python3` and a module docstring that gives the usage and the JSON shapes they read or write, and have tests under a `tests/` folder using `unittest`. **Shell hooks** start with `#!/usr/bin/env bash` and `set -o pipefail` (`-u` always, `-e` only in `require-direnv-credential.sh`) and read the hook event as JSON on stdin with `jq`; the notification-style hook `resolve-gh-account.sh` exits 0 on every path, and only `require-direnv-credential.sh` is allowed to block with exit 2.
 
 ## Error Handling
 

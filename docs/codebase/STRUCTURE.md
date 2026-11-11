@@ -41,10 +41,8 @@ ai-coding-tooling/
 │   │       ├── check-references.mjs     # shared-reference + skill-internal link validation (used by `doctor`)
 │   │       └── statusline.sh            # deployment source for the `statusline` command (token and subscription modes)
 │   ├── hooks/
-│   │   ├── mic-in-use.swift           # exit 0 while any app records from a microphone (helper for speak-pending-input.sh)
 │   │   ├── require-direnv-credential.sh
-│   │   ├── resolve-gh-account.sh
-│   │   └── speak-pending-input.sh     # spoken alert when a session needs input or goes idle
+│   │   └── resolve-gh-account.sh
 │   └── skills/
 │       └── sonar-mcp-wrapper.sh # Docker DNS fix for k3d-hosted SonarQube MCP server
 ├── skills/                  # Project-owned skills (installed globally via fs-harness setup)
@@ -69,7 +67,7 @@ The project's root agent-instructions file and its global counterpart (symlinked
 
 ### CLI (`scripts/`)
 **Purpose:** All executable logic — install, update, override, link, delete, list, doctor, statusline, hooks — plus the standalone hook and MCP-wrapper scripts it wires up, and two consistency-check scripts.
-**Key files:** `scripts/bin/fs-harness.mjs` (single file, 814 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to Claude Code's global status-line script location. `scripts/bin/misc/check-references.mjs` validates the shared-reference rule and skill-internal link resolution (installed-location aware); run standalone or via `fs-harness doctor`. `scripts/bin/misc/check-no-stale-refs.mjs` is a standalone `git grep` guard against a removed concept's name reappearing in tracked files (`STATE.md` files exempt, as an append-only decision log). `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/hooks/resolve-gh-account.sh` is the SessionStart/CwdChanged hook, registered the same way, that scopes a GitHub repo's `gh` calls to its owning account via `GH_TOKEN` when more than one `gh` account is logged in. `scripts/hooks/speak-pending-input.sh` is a `say`-based (macOS) hook registered for Notification, PreToolUse, PostToolUse, PostToolUseFailure, Stop and UserPromptSubmit; it speaks when a session needs input or goes idle, and `scripts/hooks/mic-in-use.swift` is the helper it compiles on first use to lower speech volume while a microphone is in use. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/uninstall_sonar.md`.
+**Key files:** `scripts/bin/fs-harness.mjs` (single file, 814 lines, zero runtime dependencies). Manages Claude Code only — its paths are hardcoded constants, not registry-driven. `scripts/bin/misc/statusline.sh` is the deployment source for the `statusline` command, copied to Claude Code's global status-line script location. `scripts/bin/misc/check-references.mjs` validates the shared-reference rule and skill-internal link resolution (installed-location aware); run standalone or via `fs-harness doctor`. `scripts/bin/misc/check-no-stale-refs.mjs` is a standalone `git grep` guard against a removed concept's name reappearing in tracked files (`STATE.md` files exempt, as an append-only decision log). `scripts/hooks/require-direnv-credential.sh` is the SessionStart/UserPromptSubmit hook registered via `config/hooks.json`. `scripts/hooks/resolve-gh-account.sh` is the SessionStart/CwdChanged hook, registered the same way, that scopes a GitHub repo's `gh` calls to its owning account via `GH_TOKEN` when more than one `gh` account is logged in. `scripts/skills/sonar-mcp-wrapper.sh` is a standalone Docker DNS fix for the SonarQube MCP server, deployed manually per `docs/uninstall_sonar.md`.
 
 ### Registry (`config/`)
 **Purpose:** Authoritative source of truth for skill and hook configuration.

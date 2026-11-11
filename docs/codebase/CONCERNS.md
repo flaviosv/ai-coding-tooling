@@ -64,12 +64,7 @@
 
 ## Fragile Areas
 
-**Spoken-alert hook depends on undocumented and platform-specific behavior:**
-
-- Issue: `scripts/hooks/speak-pending-input.sh` reads the session title out of the transcript file, whose format Claude Code does not document (its own comment says so); it needs macOS `say`, and its volume lowering needs a Swift helper built in the background on first use with `swiftc` and macOS 14+ Core Audio process objects. Where any of these is missing it degrades silently — no alert text from the title (falls back to the folder name), or normal volume during a call.
-- Files: `scripts/hooks/speak-pending-input.sh`, `scripts/hooks/mic-in-use.swift`
-- Why fragile / impact: a Claude Code release that changes the transcript format loses session titles in alerts without any error; no test covers the hook's marker/reminder logic.
-- Safe-modification notes: if the title lookup breaks, switch it to a documented hook payload field when one exists.
+None identified.
 
 ## Missing Critical Features
 

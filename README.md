@@ -85,7 +85,6 @@ To customize without losing changes on the next `--force` run, edit `~/.claude/s
 |---|---|
 | `require-direnv-credential.sh` | Blocks the session when direnv is missing or has not resolved a credential for the current directory |
 | `resolve-gh-account.sh` | Scopes `gh` calls in a repo to its owning account via `GH_TOKEN` when several `gh` accounts are logged in |
-| `speak-pending-input.sh` | macOS only (`say`): speaks when a session needs input (with one reminder 15 minutes later) or goes idle, and lowers the volume while a microphone is in use (`mic-in-use.swift`, compiled on first use with `swiftc`) |
 
 ## Managing skills
 
