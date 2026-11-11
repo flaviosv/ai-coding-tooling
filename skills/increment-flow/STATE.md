@@ -204,3 +204,10 @@
 - **Trade-off**: Reads "base branch" as the research branch, the PR target (assumption). Resolution quality rests on model judgment, and the base can still move between the merge and the user merging the PR.
 - **Date**: 2026-11-11
 - **Status**: active
+
+### AD-030
+- **Decision**: An increment's PR may be opened as a draft while the work is in progress, but closing converts it to active (`gh pr ready`, `az repos pr update --draft false`) or opens it non-draft, and confirms `isDraft` is false before the increment can be `Done`. A PR still in draft leaves the increment `In Progress`. Refines AD-025's close step.
+- **Reason**: User's request: the PR can be created in draft mode, but when all the implementation is done it must be active.
+- **Trade-off**: The skill itself still opens the PR only at close; draft is a permitted earlier state, not a new opening step (assumption). The `isDraft` check relies on model execution, not a script.
+- **Date**: 2026-11-11
+- **Status**: active
