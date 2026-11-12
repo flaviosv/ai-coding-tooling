@@ -182,7 +182,7 @@
 - **Reason**: User's rule: the new increment branches are followed in an exclusive worktree, and the worktree is closed and removed when the IC is done.
 - **Trade-off**: Uncommitted changes of the original checkout no longer follow the increment, and a research kept out of git is absent from the worktree, so it is edited only in the original checkout. Reads "closed and removed" as the worktree, not the branch (assumption). The sibling path sits outside the session's working directory, which can prompt for permission.
 - **Date**: 2026-11-07
-- **Status**: active
+- **Status**: superseded by AD-031 (worktree path only)
 
 ### AD-027
 - **Decision**: `pending.md` accepts any number of side tables besides the items and Done tables, named by the user with a `##` heading (e.g. `## Future Features`) and sharing the items table's columns. `pending.py` finds tables by heading, not position: the first items-header table is the items table, the one under the Done heading is the Done table, every other one is a side table. Parked rows move unchanged, keeping `#` and Status, with no section suffix; side tables are ignored by "Where was I" and by the increment-versus-items consistency check, but their numbers stay unique across all tables. Procedures Park items and Bring items back were added; the duplicate check scans every table.
@@ -210,4 +210,11 @@
 - **Reason**: User's request: the PR can be created in draft mode, but when all the implementation is done it must be active.
 - **Trade-off**: The skill itself still opens the PR only at close; draft is a permitted earlier state, not a new opening step (assumption). The `isDraft` check relies on model execution, not a script.
 - **Date**: 2026-11-11
+- **Status**: active
+
+### AD-031
+- **Decision**: The increment worktree path is always `<repo-root>/.worktree/<branch with / as ->`, never beside the repository or under another folder. Because it now sits inside the repo, the skill ensures `.worktree/` is ignored by appending it to `.git/info/exclude` when `git check-ignore -q .worktree` fails. Supersedes the path in AD-026; the rest of AD-026 stands.
+- **Reason**: User's request: the worktree must be created within the project's `.worktree` folder.
+- **Trade-off**: Takes `.worktree` (singular) literally. The exclude lives in the shared git dir, not in a tracked `.gitignore`, so it is per-clone and invisible to teammates; tools that scan the repo (search, test runners, linters) can now descend into `.worktree/` unless they honor git ignores. The sibling-path permission-prompt issue noted in AD-026 goes away.
+- **Date**: 2026-11-12
 - **Status**: active
